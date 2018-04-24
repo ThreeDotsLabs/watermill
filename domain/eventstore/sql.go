@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"strings"
 	"time"
+	"github.com/pkg/errors"
 )
 
 type SQLEvent struct {
@@ -57,8 +58,7 @@ func (s SQL) Save(events []domain.EventPayload) error {
 
 	_, err := s.db.Exec(query, args...)
 	if err != nil {
-		// todo - error  handling
-		panic(err)
+		return errors.Wrapf(err, "cannot save events to database")
 	}
 
 	return nil
