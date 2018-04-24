@@ -14,12 +14,13 @@ type PlaceOrder struct {
 }
 
 type PlaceOrderHandler struct {
-	cartRepo  cart.Repository
-	eventstore domain.Eventstore
+	cartRepo      cart.Repository
+	eventstore    domain.Eventstore
+	eventsFactory domain.EventsFactory
 }
 
-func NewPlaceOrderHandler(cartRepo cart.Repository, eventstore domain.Eventstore) PlaceOrderHandler {
-	return PlaceOrderHandler{cartRepo, eventstore}
+func NewPlaceOrderHandler(cartRepo cart.Repository, eventstore domain.Eventstore, eventsFactory domain.EventsFactory) PlaceOrderHandler {
+	return PlaceOrderHandler{cartRepo, eventstore, eventsFactory}
 }
 
 func (h PlaceOrderHandler) Handle(cmd PlaceOrder) error {
@@ -34,8 +35,8 @@ func (h PlaceOrderHandler) Handle(cmd PlaceOrder) error {
 		return errors.Wrap(err, "cannot place orde")
 	}
 
-	h.eventstore.Save(ordersService.PopEvents())
-
+	// todo -simplify it!
+	h.eventstore.Save(h.eventsFactory.NewEvents(ordersService.PopEvents()))
 
 	return nil
 }

@@ -6,5 +6,5 @@ type Eventstore interface {
 	// todo - rename????
 	// todo - it is stupid to call it every time (easy to forget)
 	// todo - make it work with transaction (!!!)
-	Save(events []EventPayload) error
+	Save(events []Event) error
 }

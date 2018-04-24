@@ -13,12 +13,17 @@ type PutProductToCart struct {
 }
 
 type PutProductToCartHandler struct {
-	repo cart.Repository
-	eventstore domain.Eventstore
+	repo          cart.Repository
+	eventstore    domain.Eventstore
+	eventsFactory domain.EventsFactory
 }
 
-func NewPutProductToCartHandler(repo cart.Repository, eventstore domain.Eventstore) PutProductToCartHandler {
-	return PutProductToCartHandler{repo, eventstore}
+func NewPutProductToCartHandler(
+	repo cart.Repository,
+	eventstore domain.Eventstore,
+	eventsFactory domain.EventsFactory,
+) PutProductToCartHandler {
+	return PutProductToCartHandler{repo, eventstore, eventsFactory}
 }
 
 func (h PutProductToCartHandler) Handle(cmd PutProductToCart) error {
@@ -33,7 +38,7 @@ func (h PutProductToCartHandler) Handle(cmd PutProductToCart) error {
 		return errors.Wrap(err, "cannot save cart")
 	}
 
-	h.eventstore.Save(c.PopEvents())
+	h.eventstore.Save(h.eventsFactory.NewEvents(c.PopEvents()))
 
 	return nil
 }

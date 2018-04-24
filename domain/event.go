@@ -3,7 +3,6 @@ package domain
 import (
 	"github.com/roblaszczak/gooddd/pubsub"
 	"time"
-	"github.com/satori/go.uuid"
 	"fmt"
 )
 
@@ -25,9 +24,19 @@ type EventPayload interface {
 	AggregateVersion() int
 }
 
-func NewEvent(payload EventPayload) Event {
+type uuidGenerator func() string
+
+type EventsFactory struct {
+	generateUUID uuidGenerator
+}
+
+func NewEventsFactory(generateUUID uuidGenerator) EventsFactory {
+	return EventsFactory{generateUUID}
+}
+
+func (e EventsFactory) NewEvent(payload EventPayload) Event {
 	return Event{
-		ID:         uuid.NewV4().String(),      // todo - inject it
+		ID:         e.generateUUID(),
 		Name:       fmt.Sprintf("%T", payload), // todo - do something with it
 		Payload:    payload,
 		OccurredOn: time.Now(),
@@ -36,6 +45,16 @@ func NewEvent(payload EventPayload) Event {
 		AggregateID:      payload.AggregateID(),      // todo - provide by interface of event?
 		AggregateType:    payload.AggregateType(),    // todo - provide by payload interface
 	}
+}
+
+func (e EventsFactory) NewEvents(payloads []EventPayload) []Event {
+	var events []Event
+
+	for _, payload := range payloads {
+		events = append(events, e.NewEvent(payload))
+	}
+
+	return events
 }
 
 // todo - validate on commit

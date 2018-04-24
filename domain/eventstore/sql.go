@@ -36,7 +36,7 @@ func NewSQL(db *sql.DB, serializer SQLEventSerializer) domain.Eventstore {
 	return &SQL{db, serializer}
 }
 
-func (s SQL) Save(events []domain.EventPayload) error {
+func (s SQL) Save(events []domain.Event) error {
 	if len(events) == 0 {
 		return nil
 	}
@@ -49,10 +49,8 @@ func (s SQL) Save(events []domain.EventPayload) error {
 
 	var args []interface{}
 
-	for _, eventPayload := range events {
+	for _, event := range events {
 		// todo - move it somewhere(higher level)
-		event := domain.NewEvent(eventPayload)
-
 		args = append(args, s.serializer(event).Args()...)
 	}
 

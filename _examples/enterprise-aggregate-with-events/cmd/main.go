@@ -57,6 +57,11 @@ func main() {
 		}
 	})
 
+	eventsFactory := domain.NewEventsFactory(func() string {
+		// todo - ordered uuid
+		return uuid.NewV4().String()
+	})
+
 	router := msghandler.NewRouter(pubsub)
 	interfaces.SetupInterfaces(router)
 	go router.Run()
@@ -64,23 +69,34 @@ func main() {
 	time.Sleep(time.Second * 2)
 
 	cartID := cart2.ID(uuid.NewV4().String())
-	addCart(cartID, repo, eventstore)
-	putProductToCart(cartID, "product_1", repo, eventstore)
+	addCart(cartID, repo, eventstore, eventsFactory)
+	putProductToCart(cartID, "product_1", repo, eventstore, eventsFactory)
 
-	placeOrder(cartID, repo, eventstore)
+	placeOrder(cartID, repo, eventstore, eventsFactory)
 
 	time.Sleep(time.Second * 5)
 }
 
-func placeOrder(cartID cart2.ID, repo *cart.MemoryRepository, eventstore domain.Eventstore) {
-	handler := command.NewPlaceOrderHandler(repo, eventstore)
+func placeOrder(
+	cartID cart2.ID,
+	repo *cart.MemoryRepository,
+	eventstore domain.Eventstore,
+	eventsFactory domain.EventsFactory,
+) {
+	handler := command.NewPlaceOrderHandler(repo, eventstore, eventsFactory)
 	if err := handler.Handle(command.PlaceOrder{order.ID(uuid.NewV4().String()), cartID, "customer_1"}); err != nil {
 		panic(err)
 	}
 }
 
-func putProductToCart(cartID cart2.ID, productID product.ID, repo *cart.MemoryRepository, eventstore domain.Eventstore) {
-	handler := command.NewPutProductToCartHandler(repo, eventstore)
+func putProductToCart(
+	cartID cart2.ID,
+	productID product.ID,
+	repo *cart.MemoryRepository,
+	eventstore domain.Eventstore,
+	eventsFactory domain.EventsFactory,
+) {
+	handler := command.NewPutProductToCartHandler(repo, eventstore, eventsFactory)
 	cmd := command.PutProductToCart{cartID, productID}
 
 	if err := handler.Handle(cmd); err != nil {
@@ -88,8 +104,12 @@ func putProductToCart(cartID cart2.ID, productID product.ID, repo *cart.MemoryRe
 	}
 }
 
-func addCart(id cart2.ID, repo *cart.MemoryRepository, eventstore domain.Eventstore) {
-	handler := command.NewAddCartHandler(repo, eventstore)
+func addCart(
+	id cart2.ID, repo *cart.MemoryRepository,
+	eventstore domain.Eventstore,
+	eventsFactory domain.EventsFactory,
+) {
+	handler := command.NewAddCartHandler(repo, eventstore, eventsFactory)
 	cmd := command.AddCart{id}
 
 	if err := handler.Handle(cmd); err != nil {

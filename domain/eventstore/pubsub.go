@@ -16,8 +16,8 @@ func NewPubSub(topic string, pubsub pubsub.PubSub) domain.Eventstore {
 }
 
 // todo - test
-func (p pubSub) Save(events []domain.EventPayload) error {
+func (p pubSub) Save(events []domain.Event) error {
 	// todo
-	p.pubsub.Publish(p.topic, domain.EventsToMessagePayloads(events)...)
+	//p.pubsub.Publish(p.topic, domain.EventsToMessagePayloads(events)...)
 	return nil
 }
