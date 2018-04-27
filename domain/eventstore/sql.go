@@ -1,11 +1,12 @@
 package eventstore
 
 import (
-	"github.com/roblaszczak/gooddd/domain"
 	"database/sql"
 	"strings"
 	"time"
+
 	"github.com/pkg/errors"
+	"github.com/roblaszczak/gooddd/domain"
 )
 
 type SQLEvent struct {
@@ -25,14 +26,20 @@ func (e SQLEvent) Args() []interface{} {
 	}
 }
 
-type SQLEventSerializer func(event domain.Event) SQLEvent
+type SQLEventSerializer func(event domain.Event) (SQLEvent, error)
+
+type db interface {
+	Exec(query string, args ...interface{}) (sql.Result, error)
+	Query(query string, args ...interface{}) (*sql.Rows, error)
+	QueryRow(query string, args ...interface{}) *sql.Row
+}
 
 type SQL struct {
-	db         *sql.DB
+	db         db
 	serializer SQLEventSerializer
 }
 
-func NewSQL(db *sql.DB, serializer SQLEventSerializer) domain.Eventstore {
+func NewSQL(db db, serializer SQLEventSerializer) domain.Eventstore {
 	return &SQL{db, serializer}
 }
 
@@ -51,7 +58,12 @@ func (s SQL) Save(events []domain.Event) error {
 
 	for _, event := range events {
 		// todo - move it somewhere(higher level)
-		args = append(args, s.serializer(event).Args()...)
+		event, err := s.serializer(event)
+		if err != nil {
+			return errors.Wrap(err, "cannot serialize event")
+		}
+
+		args = append(args, event.Args()...)
 	}
 
 	_, err := s.db.Exec(query, args...)
