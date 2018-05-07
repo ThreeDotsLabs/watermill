@@ -2,7 +2,7 @@ package eventlistener
 
 import (
 	"github.com/roblaszczak/gooddd/domain"
-	"github.com/roblaszczak/gooddd/msghandler"
+	"github.com/roblaszczak/gooddd/handler"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/pkg/errors"
 	"encoding/json"
@@ -20,7 +20,7 @@ type confluentKafka struct {
 	closing chan struct{}
 }
 
-func CreateConfluentKafkaListener(subscriberName string) (msghandler.EventsListener, error) {
+func CreateConfluentKafkaListener(subscriberName string) (handler.EventsListener, error) {
 	c, err := kafka.NewConsumer(&kafka.ConfigMap{
 		"bootstrap.servers": "localhost",
 		"group.id":          "todo_app-" + subscriberName + "_v13", // todo - refactor
@@ -45,7 +45,7 @@ func CreateConfluentKafkaListener(subscriberName string) (msghandler.EventsListe
 	return listener, nil
 }
 
-func NewConfluentKafka(consumer *kafka.Consumer) (msghandler.EventsListener, error) {
+func NewConfluentKafka(consumer *kafka.Consumer) (handler.EventsListener, error) {
 	return confluentKafka{consumer, make(chan struct{}, 0)}, nil
 }
 

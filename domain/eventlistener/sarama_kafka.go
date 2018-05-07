@@ -3,7 +3,7 @@ package eventlistener
 import (
 	"github.com/Shopify/sarama"
 	"github.com/roblaszczak/gooddd/domain"
-	"github.com/roblaszczak/gooddd/msghandler"
+	"github.com/roblaszczak/gooddd/handler"
 	"github.com/pkg/errors"
 )
 
@@ -11,7 +11,7 @@ type saramaKafka struct {
 	consumer sarama.Consumer
 }
 
-func NewSimpleKafka(brokers []string) (msghandler.EventsListener, error) {
+func NewSimpleKafka(brokers []string) (handler.EventsListener, error) {
 	config := sarama.NewConfig()
 	consumer, err := sarama.NewConsumer(brokers, config)
 	if err != nil {
@@ -21,7 +21,7 @@ func NewSimpleKafka(brokers []string) (msghandler.EventsListener, error) {
 	return NewSaramaKafka(consumer)
 }
 
-func NewSaramaKafka(consumer sarama.Consumer) (msghandler.EventsListener, error) {
+func NewSaramaKafka(consumer sarama.Consumer) (handler.EventsListener, error) {
 	return saramaKafka{consumer}, nil
 }
 

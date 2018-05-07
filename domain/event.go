@@ -1,7 +1,6 @@
 package domain
 
 import (
-	"github.com/roblaszczak/gooddd/pubsub"
 	"time"
 	"fmt"
 	"github.com/mitchellh/mapstructure"
@@ -62,8 +61,8 @@ func (e EventsFactory) NewEvents(payloads []EventPayload) []Event {
 
 // todo - validate on commit
 // todo - comment
-func EventsToMessagePayloads(events []EventPayload) []pubsub.EventPayload {
-	var messages []pubsub.EventPayload
+func EventsToMessagePayloads(events []EventPayload) []EventPayload {
+	var messages []EventPayload
 
 	for _, event := range events {
 		messages = append(messages, event)

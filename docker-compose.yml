@@ -1,0 +1,118 @@
+version: '3'
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    network_mode: host
+    restart: always
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    network_mode: host
+    restart: always
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: localhost:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_NUM_PARTITIONS: 8
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+
+#  app:
+#    build: .
+#    entrypoint: sleep infinity
+#    volumes:
+#      - ./cmd/:$GO_PROJECT_DIR/cmd/
+#      - ./pkg/:$GO_PROJECT_DIR/pkg/
+#    environment:
+#      - SHOP_RABBITMQ_ADDR=rabbitmq:5672
+#      - SHOP_RABBITMQ_ORDERS_TO_PAY_QUEUE=orders-to-pay
+#      - SHOP_ORDERS_SERVICE_ADDR=http://orders:8080
+#    depends_on:
+#      - rabbitmq
+
+#  rabbitmq:
+#    image: rabbitmq:3.7-management
+#    ports:
+#      - "15672:15672"
+
+#  mysql:
+#    image: mysql:5
+#    restart: always
+#    ports:
+#      - "3306:3306"
+#    environment:
+#      MYSQL_ROOT_PASSWORD: secret
+#
+#  zookeeper:
+#    image: confluent/zookeeper
+#    ports:
+#      - "2181:2181"
+#    environment:
+#      zk_id: "1"
+#
+#  kafka:
+#    image: confluent/kafka
+#    restart: always
+#    depends_on:
+#      - zookeeper
+#    ports:
+#      - "9092:9092"
+#    environment:
+#      KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
+#      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+#      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+#      KAFKA_NUM_PARTITIONS: 32
+
+#  rest-proxy:
+#    image: confluent/rest-proxy
+#    restart: always
+#    depends_on:
+#      - zookeeper
+#      - kafka
+#      - schema-registry
+#    ports:
+#      - "8082:8082"
+#    environment:
+#      RP_ZOOKEEPER_CONNECT: "zookeeper:2181"
+#      RP_SCHEMA_REGISTRY_URL: "http://schema-registry:8081"
+#
+#  schema-registry:
+#    image: confluent/schema-registry
+#    restart: always
+#    depends_on:
+#      - kafka
+#      - zookeeper
+#    ports:
+#      - "8081:8081"
+#    environment:
+#      SR_KAFKASTORE_CONNECTION_URL: "zookeeper:2181"
+#
+#  schema-registry-ui:
+#    image: landoop/schema-registry-ui:0.9.3
+#    restart: always
+#    ports:
+#      - "8001:8000"
+#    environment:
+#      SCHEMAREGISTRY_URL: http://schema-registry:8081/
+#      PROXY: "true"
+#    depends_on:
+#      - schema-registry
+#
+#  kafka-topics-ui:
+#    image: landoop/kafka-topics-ui:0.9.3
+#    restart: always
+#    ports:
+#      - "8000:8000"
+#    environment:
+#      KAFKA_REST_PROXY_URL: "http://rest-proxy:8082/"
+#      PROXY: "true"
+#    depends_on:
+#      - zookeeper
+#      - kafka
+#      - schema-registry
+#      - rest-proxy

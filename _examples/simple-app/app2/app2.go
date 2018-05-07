@@ -1,19 +1,19 @@
 package main
 
 import (
-	"github.com/roblaszczak/gooddd/msghandler"
 	"github.com/pkg/errors"
 	"time"
 	"github.com/roblaszczak/gooddd/domain/eventlistener"
 	"github.com/roblaszczak/gooddd/domain"
 	"fmt"
 	"sync/atomic"
-	"github.com/roblaszczak/gooddd/msghandler/plugin"
-	"github.com/roblaszczak/gooddd/msghandler/middleware"
+	"github.com/roblaszczak/gooddd/handler/plugin"
+	"github.com/roblaszczak/gooddd/handler/middleware"
 
 	"log"
 	"github.com/rcrowley/go-metrics"
 	"os"
+	"github.com/roblaszczak/gooddd/handler"
 )
 
 // todo - doc why separated type
@@ -93,7 +93,7 @@ func (f FeedGenerator) UpdateFeed(event domain.Event) ([]domain.EventPayload, er
 	return nil, nil
 }
 
-func LogEventMiddleware(h msghandler.Handler) msghandler.Handler {
+func LogEventMiddleware(h handler.Handler) handler.Handler {
 	return func(event domain.Event) ([]domain.EventPayload, error) {
 		//fmt.Printf("event received: %#v\n", event)
 
@@ -105,7 +105,7 @@ type MetricsMiddleware struct {
 	timer metrics.Timer
 }
 
-func (m MetricsMiddleware) Middleware(h msghandler.Handler) msghandler.Handler {
+func (m MetricsMiddleware) Middleware(h handler.Handler) handler.Handler {
 	return func(event domain.Event) ([]domain.EventPayload, error) {
 		start := time.Now()
 		defer func() {
@@ -127,7 +127,7 @@ func main() {
 	counter := PostsCounter{memoryCountStorage{new(int64)}}
 	feedGenerator := FeedGenerator{printFeedStorage{}}
 
-	router := msghandler.NewRouter(eventlistener.CreateConfluentKafkaListener)
+	router := handler.NewRouter(eventlistener.CreateConfluentKafkaListener)
 
 	metricsMiddleware := MetricsMiddleware{t}
 	metricsMiddleware.ShowStats(time.Second*5, log.New(os.Stderr, "metrics: ", log.Lmicroseconds))
