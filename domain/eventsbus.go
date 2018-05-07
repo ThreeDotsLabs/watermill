@@ -5,6 +5,9 @@ type EventProducer struct {
 }
 
 func (e *EventProducer) RecordThat(event EventPayload) {
+	if event == nil {
+		return
+	}
 	e.events = append(e.events, event)
 }
 
