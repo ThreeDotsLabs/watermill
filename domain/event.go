@@ -4,9 +4,12 @@ import (
 	"github.com/roblaszczak/gooddd/pubsub"
 	"time"
 	"fmt"
+	"github.com/mitchellh/mapstructure"
+	"github.com/pkg/errors"
 )
 
 // todo - change to interface?
+// todo - move ack from pubsub etc.
 type Event struct {
 	ID         string
 	Name       string
@@ -21,7 +24,7 @@ type Event struct {
 type EventPayload interface {
 	AggregateID() string
 	AggregateType() string
-	AggregateVersion() int
+	AggregateVersion() int // todo - make it optional?
 }
 
 type uuidGenerator func() string
@@ -59,12 +62,21 @@ func (e EventsFactory) NewEvents(payloads []EventPayload) []Event {
 
 // todo - validate on commit
 // todo - comment
-func EventsToMessagePayloads(events []EventPayload) []pubsub.MessagePayload {
-	var messages []pubsub.MessagePayload
+func EventsToMessagePayloads(events []EventPayload) []pubsub.EventPayload {
+	var messages []pubsub.EventPayload
 
 	for _, event := range events {
 		messages = append(messages, event)
 	}
 
 	return messages
+}
+
+// todo - do it better way
+func DecodeEventPayload(event Event, target interface{}) error {
+	if err := mapstructure.Decode(event.Payload, target); err != nil {
+		return errors.Wrap(err, "cannot decode payload")
+	}
+
+	return nil
 }
