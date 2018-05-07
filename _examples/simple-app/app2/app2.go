@@ -10,10 +10,14 @@ import (
 	"github.com/roblaszczak/gooddd/handler/plugin"
 	"github.com/roblaszczak/gooddd/handler/middleware"
 
-	"log"
 	"github.com/rcrowley/go-metrics"
-	"os"
 	"github.com/roblaszczak/gooddd/handler"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/deathowl/go-metrics-prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"net/http"
+	"log"
+	"os"
 )
 
 // todo - doc why separated type
@@ -101,38 +105,56 @@ func LogEventMiddleware(h handler.Handler) handler.Handler {
 	}
 }
 
-type MetricsMiddleware struct {
-	timer metrics.Timer
-}
-
-func (m MetricsMiddleware) Middleware(h handler.Handler) handler.Handler {
-	return func(event domain.Event) ([]domain.EventPayload, error) {
-		start := time.Now()
-		defer func() {
-			m.timer.Update(time.Now().Sub(start))
-		}()
-
-		return h(event)
-	}
-}
-
-func (m MetricsMiddleware) ShowStats(interval time.Duration, logger metrics.Logger) {
-	go metrics.Log(metrics.DefaultRegistry, interval, logger)
-}
-
 func main() {
 	t := metrics.NewTimer()
 	metrics.Register("handler.time", t)
+
+	errs := metrics.NewCounter()
+	metrics.Register("handler.errors", errs)
+
+	success := metrics.NewCounter()
+	metrics.Register("handler.success", success)
+
+	// todo - use not default registry
+	// todo - rewrite
+	pClient := prometheusmetrics.NewPrometheusProvider(
+		metrics.DefaultRegistry,
+		"test",
+		"subsys",
+		prometheus.DefaultRegisterer,
+		1*time.Second,
+	)
+	go pClient.UpdatePrometheusMetrics()
+
+	http.Handle("/metrics", promhttp.Handler())
+	go http.ListenAndServe(":9000", nil)
 
 	counter := PostsCounter{memoryCountStorage{new(int64)}}
 	feedGenerator := FeedGenerator{printFeedStorage{}}
 
 	router := handler.NewRouter(eventlistener.CreateConfluentKafkaListener)
 
-	metricsMiddleware := MetricsMiddleware{t}
+	metricsMiddleware := middleware.NewMetrics(t, errs, success)
 	metricsMiddleware.ShowStats(time.Second*5, log.New(os.Stderr, "metrics: ", log.Lmicroseconds))
 
-	router.AddMiddleware(middleware.Recoverer, metricsMiddleware.Middleware)
+	retryMiddleware := middleware.NewRetry()
+	retryMiddleware.OnRetryHook = func(retryNum int, delay time.Duration) {
+		fmt.Println("retrying, num:", retryNum, "delay:", delay)
+	}
+	retryMiddleware.MaxRetries = 1
+	retryMiddleware.WaitTime = 0
+
+	router.AddMiddleware(
+		metricsMiddleware.Middleware,
+		middleware.PoisonQueueHook(func(event domain.Event) {
+			fmt.Println("unable to process", event)
+		}),
+		retryMiddleware.Middleware,
+		middleware.Recoverer,
+		middleware.RandomFail(0.002),
+		middleware.RandomPanic(0.002),
+	)
+
 	router.AddPlugin(plugin.SignalsHandler)
 
 	router.Subscribe(

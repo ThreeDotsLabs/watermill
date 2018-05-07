@@ -42,7 +42,7 @@ func main() {
 		return uuid.NewV4().String()
 	})
 
-	i := 10000000
+	i := 100000
 	wg := &sync.WaitGroup{}
 
 	for {

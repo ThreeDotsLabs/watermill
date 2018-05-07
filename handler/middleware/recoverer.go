@@ -2,18 +2,20 @@ package middleware
 
 import (
 	"github.com/roblaszczak/gooddd/handler"
-	"fmt"
 	"github.com/roblaszczak/gooddd/domain"
-	"runtime/debug"
+	"github.com/pkg/errors"
 )
 
 func Recoverer(h handler.Handler) handler.Handler {
-	return func(event domain.Event) ([]domain.EventPayload, error) {
+	return func(event domain.Event) (events []domain.EventPayload, err error) {
 		defer func() {
 			if r := recover(); r != nil {
-				// todo - better log
-				fmt.Println("panic occurred: ", r, debug.Stack())
-				debug.PrintStack()
+				if err == nil {
+					err = errors.Errorf("panic occurred: %+v", r)
+				} else {
+					err = errors.Wrapf(err, "panic occurred: %+v", r)
+				}
+				return
 			}
 		}()
 
