@@ -1,7 +1,7 @@
+// todo - move to handler level?
 package eventlistener
 
 import (
-	"github.com/roblaszczak/gooddd/domain"
 	"github.com/roblaszczak/gooddd/handler"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/pkg/errors"
@@ -10,24 +10,29 @@ import (
 	"os"
 )
 
-const (
-	TimedOutErrorCode = -185
-)
+type confluentKafkaDeserializer func(kafka.Message) (handler.Message, error)
 
-type confluentKafka struct {
-	consumer *kafka.Consumer
+type confluentKafkaGroupGenerator func(subscriberMeta handler.SubscriberMetadata) string
 
-	closing chan struct{}
+type ConfluentKafkaFactory struct {
+	deserializer   confluentKafkaDeserializer
+	groupGenerator confluentKafkaGroupGenerator
 }
 
-func CreateConfluentKafkaListener(subscriberName string) (handler.EventsListener, error) {
+func NewConfluentKafkaFactory(
+	deserializer confluentKafkaDeserializer,
+	groupGenerator confluentKafkaGroupGenerator,
+) ConfluentKafkaFactory {
+	return ConfluentKafkaFactory{deserializer, groupGenerator}
+}
+
+func (f ConfluentKafkaFactory) CreateListener(subscriberMeta handler.SubscriberMetadata) (handler.MessageListener, error) {
 	c, err := kafka.NewConsumer(&kafka.ConfigMap{
 		"bootstrap.servers": "localhost",
-		"group.id":          "todo_app-" + subscriberName + "_v13", // todo - refactor
+		"group.id":          f.groupGenerator(subscriberMeta),
 
 		"auto.offset.reset":    "earliest",
 		"default.topic.config": kafka.ConfigMap{"auto.offset.reset": "earliest"},
-
 
 		"session.timeout.ms":              6000,
 		"go.events.channel.enable":        true,
@@ -37,7 +42,7 @@ func CreateConfluentKafkaListener(subscriberName string) (handler.EventsListener
 		panic(err)
 	}
 
-	listener, err := NewConfluentKafka(c)
+	listener, err := NewConfluentKafka(c, f.deserializer)
 	if err != nil {
 		return nil, err
 	}
@@ -45,18 +50,29 @@ func CreateConfluentKafkaListener(subscriberName string) (handler.EventsListener
 	return listener, nil
 }
 
-func NewConfluentKafka(consumer *kafka.Consumer) (handler.EventsListener, error) {
-	return confluentKafka{consumer, make(chan struct{}, 0)}, nil
+type confluentKafka struct {
+	consumer     *kafka.Consumer
+	deserializer confluentKafkaDeserializer
+
+	closing chan struct{}
 }
 
-func (s confluentKafka) Subscribe(topic string) (chan domain.Event, error) {
+func NewConfluentKafka(consumer *kafka.Consumer, deserializer confluentKafkaDeserializer) (handler.MessageListener, error) {
+	return confluentKafka{
+		consumer,
+		deserializer,
+		make(chan struct{}, 0),
+	}, nil
+}
+
+func (s confluentKafka) Subscribe(topic string) (chan handler.Message, error) {
 	if err := s.consumer.SubscribeTopics([]string{topic}, nil); err != nil {
 		return nil, errors.Wrapf(err, "cannot subscribe topic %s", topic)
 	}
 
-	output := make(chan domain.Event)
+	output := make(chan handler.Message)
 
-	go func(events chan<- domain.Event) {
+	go func(events chan<- handler.Message) {
 		run := true
 
 		for run {
@@ -86,16 +102,16 @@ func (s confluentKafka) Subscribe(topic string) (chan domain.Event, error) {
 					//	continue
 					//}
 
-					event := domain.Event{}
+					event := handler.Message{}
 					if err := json.Unmarshal(e.Value, &event); err != nil {
 						fmt.Println(err)
 						continue
 					}
 
 					// todo - better validate event
-					if event.ID == "" {
-						continue
-					}
+					//if event.Payload == "" {
+					//	continue
+					//}
 
 					//fmt.Printf("unmarshaled: %s \nto %#v\n\n", e.Value, event)
 

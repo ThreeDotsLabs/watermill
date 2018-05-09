@@ -56,11 +56,11 @@ func (s SQL) Save(events []domain.Event) error {
 
 	var args []interface{}
 
-	for _, event := range events {
+	for _, message := range events {
 		// todo - move it somewhere(higher level)
-		event, err := s.serializer(event)
+		event, err := s.serializer(message)
 		if err != nil {
-			return errors.Wrap(err, "cannot serialize event")
+			return errors.Wrap(err, "cannot serialize message")
 		}
 
 		args = append(args, event.Args()...)

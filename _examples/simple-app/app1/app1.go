@@ -4,12 +4,16 @@ import (
 	"github.com/satori/go.uuid"
 	"github.com/Pallinder/go-randomdata"
 	"github.com/roblaszczak/gooddd/domain/eventstore"
-	"github.com/roblaszczak/gooddd/domain"
 	"sync"
+	"time"
+	"github.com/roblaszczak/gooddd/domain"
 )
 
 type postAdded struct {
-	UUID string `json:"uuid"`
+	UUID          []byte `json:"uuid"`
+	AggregateUUID []byte `json:"aggregate_uuid"`
+
+	OccurredOn time.Time `json:"occurred_on"`
 
 	Author string `json:"author"`
 	Title  string `json:"title"`
@@ -19,8 +23,16 @@ type postAdded struct {
 	Content string `json:"content"`
 }
 
-func (p postAdded) AggregateID() string {
+func (p postAdded) EventID() []byte {
 	return p.UUID
+}
+
+func (p postAdded) EventOccurredOn() time.Time {
+	return p.OccurredOn
+}
+
+func (p postAdded) AggregateID() []byte {
+	return p.AggregateUUID
 }
 
 func (postAdded) AggregateType() string {
@@ -37,17 +49,13 @@ func main() {
 		panic(err)
 	}
 
-	// todo - move it out1!
-	eventsFactory := domain.NewEventsFactory(func() string {
-		return uuid.NewV4().String()
-	})
-
-	i := 100000
+	i := 10
 	wg := &sync.WaitGroup{}
 
 	for {
-		event := postAdded{
-			UUID: uuid.NewV4().String(),
+		message := postAdded{
+			UUID:       uuid.NewV4().Bytes(),
+			OccurredOn: time.Now(),
 
 			Author: randomdata.FullName(randomdata.RandomGender),
 			Title:  randomdata.SillyName(),
@@ -61,13 +69,13 @@ func main() {
 			Content: randomdata.Paragraph(),
 		}
 
-		//fmt.Printf("Generated event: %#v\n", event)
+		//fmt.Printf("Generated message: %#v\n", message)
 
 		wg.Add(1)
 		go func() {
-			err := es.Save(eventsFactory.NewEvents([]domain.EventPayload{
-				event,
-			}))
+			err := es.Save([]domain.Event{
+				message,
+			})
 			if err != nil {
 				panic(err)
 			}

@@ -4,7 +4,6 @@ import (
 	"github.com/pkg/errors"
 	"time"
 	"github.com/roblaszczak/gooddd/domain/eventlistener"
-	"github.com/roblaszczak/gooddd/domain"
 	"fmt"
 	"sync/atomic"
 	"github.com/roblaszczak/gooddd/handler/plugin"
@@ -18,12 +17,15 @@ import (
 	"net/http"
 	"log"
 	"os"
+	"github.com/confluentinc/confluent-kafka-go/kafka"
+	"encoding/json"
 )
 
 // todo - doc why separated type
 type postAdded struct {
-	Author string `json:"author"`
-	Title  string `json:"title"`
+	Author     string    `json:"author"`
+	Title      string    `json:"title"`
+	OccurredOn time.Time `json:"occurred_on"`
 }
 
 type postsCountUpdated struct {
@@ -52,7 +54,7 @@ type PostsCounter struct {
 	countStorage countStorage
 }
 
-func (p PostsCounter) Count(event domain.Event) ([]domain.EventPayload, error) {
+func (p PostsCounter) Count(message handler.Message) ([]handler.MessagePayload, error) {
 	newCount, err := p.countStorage.CountAdd()
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot add count")
@@ -61,9 +63,8 @@ func (p PostsCounter) Count(event domain.Event) ([]domain.EventPayload, error) {
 	if newCount%100000 == 0 {
 		fmt.Println("> new count:", newCount)
 	}
-	return nil, nil
-	// todo - return
-	//return []pubsub.EventPayload{postsCountUpdated{newCount}}, nil
+
+	return []handler.MessagePayload{postsCountUpdated{newCount}}, nil
 }
 
 // todo - replace with mongo?
@@ -83,13 +84,13 @@ type FeedGenerator struct {
 	feedStorage feedStorage
 }
 
-func (f FeedGenerator) UpdateFeed(event domain.Event) ([]domain.EventPayload, error) {
-	eventPayload := postAdded{}
-	if err := domain.DecodeEventPayload(event, &eventPayload); err != nil {
+func (f FeedGenerator) UpdateFeed(message handler.Message) ([]handler.MessagePayload, error) {
+	event := postAdded{}
+	if err := handler.DecodeEventPayload(message, &event); err != nil {
 		return nil, errors.Wrap(err, "cannot decode payload")
 	}
 
-	err := f.feedStorage.AddToFeed(eventPayload.Title, eventPayload.Author, event.OccurredOn)
+	err := f.feedStorage.AddToFeed(event.Title, event.Author, event.OccurredOn)
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot update feed")
 	}
@@ -98,7 +99,7 @@ func (f FeedGenerator) UpdateFeed(event domain.Event) ([]domain.EventPayload, er
 }
 
 func LogEventMiddleware(h handler.Handler) handler.Handler {
-	return func(event domain.Event) ([]domain.EventPayload, error) {
+	return func(event handler.Message) ([]handler.MessagePayload, error) {
 		//fmt.Printf("event received: %#v\n", event)
 
 		return h(event)
@@ -132,22 +133,34 @@ func main() {
 	counter := PostsCounter{memoryCountStorage{new(int64)}}
 	feedGenerator := FeedGenerator{printFeedStorage{}}
 
-	router := handler.NewRouter(eventlistener.CreateConfluentKafkaListener)
+	// todo - move this boilerplate somewhere, to make examples more clear
+	listenerFactory := eventlistener.NewConfluentKafkaFactory(func(kafkaMsg kafka.Message) (handler.Message, error) {
+		msg := handler.Message{}
+		if err := json.Unmarshal(kafkaMsg.Value, &msg); err != nil {
+			return handler.Message{}, nil
+		}
+
+		return msg, nil
+	}, func(subscriberMeta handler.SubscriberMetadata) string {
+		return fmt.Sprintf("%s_%s", subscriberMeta.ServerName, subscriberMeta.SubscriberName)
+	})
+
+	router := handler.NewRouter("example", listenerFactory)
 
 	metricsMiddleware := middleware.NewMetrics(t, errs, success)
 	metricsMiddleware.ShowStats(time.Second*5, log.New(os.Stderr, "metrics: ", log.Lmicroseconds))
 
 	retryMiddleware := middleware.NewRetry()
 	retryMiddleware.OnRetryHook = func(retryNum int, delay time.Duration) {
-		fmt.Println("retrying, num:", retryNum, "delay:", delay)
+		//fmt.Println("retrying, num:", retryNum, "delay:", delay)
 	}
 	retryMiddleware.MaxRetries = 1
-	retryMiddleware.WaitTime = 0
+	retryMiddleware.WaitTime = time.Millisecond * 10
 
 	router.AddMiddleware(
 		metricsMiddleware.Middleware,
-		middleware.PoisonQueueHook(func(event domain.Event) {
-			fmt.Println("unable to process", event)
+		middleware.PoisonQueueHook(func(message handler.Message) {
+			fmt.Println("unable to process", message)
 		}),
 		retryMiddleware.Middleware,
 		middleware.Recoverer,

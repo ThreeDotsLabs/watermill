@@ -2,17 +2,16 @@ package middleware
 
 import (
 	"github.com/roblaszczak/gooddd/handler"
-	"github.com/roblaszczak/gooddd/domain"
 )
 
-type poisonQueueHook func(event domain.Event)
+type poisonQueueHook func(message handler.Message)
 
 func PoisonQueueHook(hook poisonQueueHook) handler.Middleware {
 	return func(h handler.Handler) handler.Handler {
-		return func(event domain.Event) ([]domain.EventPayload, error) {
-			events, err := h(event)
+		return func(message handler.Message) ([]handler.MessagePayload, error) {
+			events, err := h(message)
 			if err != nil {
-				hook(event)
+				hook(message)
 			}
 
 			return events, err

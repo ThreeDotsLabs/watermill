@@ -5,30 +5,33 @@ import (
 	"github.com/pkg/errors"
 	sync_internal "github.com/roblaszczak/gooddd/internal/sync"
 	"time"
-	"github.com/roblaszczak/gooddd/domain"
 	"fmt"
 )
 
 // todo - rename package
 // check: https://en.wikipedia.org/wiki/Event-driven_architecture
 
-type Handler func(msg domain.Event) ([]domain.EventPayload, error)
+type Handler func(msg Message) (returnMsgPayloads []MessagePayload, err error)
 
 type Middleware func(h Handler) Handler
 
 type Plugin func(*Router) error
 
 // todo - make it easier to implement
-type EventsListener interface {
-	Subscribe(topic string) (chan domain.Event, error) // rename to listen? rename to EventsListener??
+type MessageListener interface {
+	Subscribe(topic string) (chan Message, error) // rename to listen? rename to MessageListener??
 	Close() error
 }
 
-type listenerFactoryFunc func(subscriberName string) (EventsListener, error)
+type ListenerFactory interface {
+	CreateListener(subscriberMeta SubscriberMetadata) (MessageListener, error)
+}
 
-func NewRouter(listenerFactoryFunc listenerFactoryFunc) *Router {
+func NewRouter(serverName string, listenerFactory ListenerFactory) *Router {
 	return &Router{
-		listenerFactoryFunc: listenerFactoryFunc,
+		serverName: serverName,
+
+		listenerFactory: listenerFactory,
 
 		subscribers: map[string]*subscriber{},
 
@@ -40,7 +43,9 @@ func NewRouter(listenerFactoryFunc listenerFactoryFunc) *Router {
 
 // todo - rename!!
 type Router struct {
-	listenerFactoryFunc listenerFactoryFunc
+	serverName string
+
+	listenerFactory ListenerFactory
 
 	middlewares []Middleware
 
@@ -70,12 +75,14 @@ type subscriber struct {
 	topic   string
 	handler Handler
 
+	metadata SubscriberMetadata
+
 	subscriberWorkers []subscriberWorker
 }
 
 type subscriberWorker struct {
-	listener      EventsListener
-	eventsChannel chan domain.Event
+	listener      MessageListener
+	eventsChannel chan Message
 }
 
 func (r *Router) Subscribe(subscriberName string, topic string, handler Handler) error {
@@ -83,7 +90,17 @@ func (r *Router) Subscribe(subscriberName string, topic string, handler Handler)
 		return errors.Errorf("subscriber %s already exists", subscriberName)
 	}
 
-	r.subscribers[subscriberName] = &subscriber{name: subscriberName, topic: topic, handler: handler}
+	r.subscribers[subscriberName] = &subscriber{
+		name:    subscriberName,
+		topic:   topic,
+		handler: handler,
+
+		metadata: SubscriberMetadata{
+			SubscriberName: subscriberName,
+			ServerName:     r.serverName,
+			Hostname:       "localhost", // todo
+		},
+	}
 	return nil
 }
 
@@ -97,7 +114,7 @@ func (r *Router) Run() error {
 
 	for _, s := range r.subscribers {
 		for i := 0; i < 8; i ++ { // todo - config
-			listener, err := r.listenerFactoryFunc(s.name)
+			listener, err := r.listenerFactory.CreateListener(s.metadata)
 			if err != nil {
 				return errors.Wrap(err, "cannot create listener")
 			}

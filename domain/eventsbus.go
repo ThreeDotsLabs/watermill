@@ -1,17 +1,17 @@
 package domain
 
 type EventProducer struct {
-	events  []EventPayload
+	events  []Event
 }
 
-func (e *EventProducer) RecordThat(event EventPayload) {
+func (e *EventProducer) RecordThat(event Event) {
 	if event == nil {
 		return
 	}
 	e.events = append(e.events, event)
 }
 
-func (e *EventProducer) PopEvents() []EventPayload {
-	defer func() { e.events = []EventPayload{} }()
+func (e *EventProducer) PopEvents() []Event {
+	defer func() { e.events = []Event{} }()
 	return e.events
 }

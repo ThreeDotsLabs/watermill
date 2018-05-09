@@ -4,7 +4,6 @@ import (
 	"time"
 	"github.com/rcrowley/go-metrics"
 	"github.com/roblaszczak/gooddd/handler"
-	"github.com/roblaszczak/gooddd/domain"
 )
 
 // todo - rewrite (more universal?)
@@ -19,7 +18,7 @@ func NewMetrics(timer metrics.Timer, errs metrics.Counter, success metrics.Count
 }
 
 func (m Metrics) Middleware(h handler.Handler) handler.Handler {
-	return func(event domain.Event) (events []domain.EventPayload, err error) {
+	return func(event handler.Message) (events []handler.MessagePayload, err error) {
 		start := time.Now()
 		defer func() {
 			m.timer.Update(time.Now().Sub(start))

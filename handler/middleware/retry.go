@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"github.com/roblaszczak/gooddd/handler"
-	"github.com/roblaszczak/gooddd/domain"
 	"time"
 )
 
@@ -32,12 +31,12 @@ func NewRetry() *Retry {
 }
 
 func (r Retry) Middleware(h handler.Handler) handler.Handler {
-	return func(event domain.Event) ([]domain.EventPayload, error) {
+	return func(message handler.Message) ([]handler.MessagePayload, error) {
 		retries := 0
 
 		for {
 			// todo - what if events aren't empty? global error?
-			events, err := h(event)
+			events, err := h(message)
 			if err != nil && (retries <= r.MaxRetries || r.MaxRetries == RetryForever) {
 				// todo - move to func
 				retries++
