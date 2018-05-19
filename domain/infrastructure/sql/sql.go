@@ -1,4 +1,4 @@
-package eventstore
+package sql
 
 import (
 	"database/sql"
@@ -7,6 +7,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/roblaszczak/gooddd/domain"
+	"github.com/roblaszczak/gooddd/message/event"
 )
 
 type SQLEvent struct {

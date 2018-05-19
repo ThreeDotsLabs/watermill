@@ -3,14 +3,13 @@ package main
 import (
 	"github.com/pkg/errors"
 	"time"
-	"github.com/roblaszczak/gooddd/domain/eventlistener"
 	"fmt"
 	"sync/atomic"
-	"github.com/roblaszczak/gooddd/handler/plugin"
-	"github.com/roblaszczak/gooddd/handler/middleware"
+	"github.com/roblaszczak/gooddd/message/handler/plugin"
+	"github.com/roblaszczak/gooddd/message/handler/middleware"
 
 	"github.com/rcrowley/go-metrics"
-	"github.com/roblaszczak/gooddd/handler"
+	"github.com/roblaszczak/gooddd/message/handler"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/deathowl/go-metrics-prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -19,6 +18,10 @@ import (
 	"os"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"encoding/json"
+	"github.com/roblaszczak/gooddd/message"
+	"github.com/roblaszczak/gooddd/message/infrastructure/kafka/confluent"
+
+	_ "net/http/pprof"
 )
 
 // todo - doc why separated type
@@ -54,7 +57,7 @@ type PostsCounter struct {
 	countStorage countStorage
 }
 
-func (p PostsCounter) Count(message handler.Message) ([]handler.MessagePayload, error) {
+func (p PostsCounter) Count(msg *message.Message) ([]message.Payload, error) {
 	newCount, err := p.countStorage.CountAdd()
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot add count")
@@ -64,7 +67,7 @@ func (p PostsCounter) Count(message handler.Message) ([]handler.MessagePayload, 
 		fmt.Println("> new count:", newCount)
 	}
 
-	return []handler.MessagePayload{postsCountUpdated{newCount}}, nil
+	return []message.Payload{postsCountUpdated{newCount}}, nil
 }
 
 // todo - replace with mongo?
@@ -84,7 +87,7 @@ type FeedGenerator struct {
 	feedStorage feedStorage
 }
 
-func (f FeedGenerator) UpdateFeed(message handler.Message) ([]handler.MessagePayload, error) {
+func (f FeedGenerator) UpdateFeed(message *message.Message) ([]message.Payload, error) {
 	event := postAdded{}
 	if err := handler.DecodeEventPayload(message, &event); err != nil {
 		return nil, errors.Wrap(err, "cannot decode payload")
@@ -98,8 +101,8 @@ func (f FeedGenerator) UpdateFeed(message handler.Message) ([]handler.MessagePay
 	return nil, nil
 }
 
-func LogEventMiddleware(h handler.Handler) handler.Handler {
-	return func(event handler.Message) ([]handler.MessagePayload, error) {
+func LogEventMiddleware(h handler.HandlerFunc) handler.HandlerFunc {
+	return func(event *message.Message) ([]message.Payload, error) {
 		//fmt.Printf("event received: %#v\n", event)
 
 		return h(event)
@@ -107,6 +110,10 @@ func LogEventMiddleware(h handler.Handler) handler.Handler {
 }
 
 func main() {
+	go func() {
+		log.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
+
 	t := metrics.NewTimer()
 	metrics.Register("handler.time", t)
 
@@ -134,15 +141,18 @@ func main() {
 	feedGenerator := FeedGenerator{printFeedStorage{}}
 
 	// todo - move this boilerplate somewhere, to make examples more clear
-	listenerFactory := eventlistener.NewConfluentKafkaFactory(func(kafkaMsg kafka.Message) (handler.Message, error) {
-		msg := handler.Message{}
+	listenerFactory := confluent.NewConfluentKafka(func(kafkaMsg kafka.Message) (*message.Message, error) {
+		msg, err := message.DefaultFactoryFunc(nil)
+		if err != nil {
+			return nil, err
+		}
 		if err := json.Unmarshal(kafkaMsg.Value, &msg); err != nil {
-			return handler.Message{}, nil
+			return nil, err
 		}
 
 		return msg, nil
-	}, func(subscriberMeta handler.SubscriberMetadata) string {
-		return fmt.Sprintf("%s_%s", subscriberMeta.ServerName, subscriberMeta.SubscriberName)
+	}, func(subscriberMeta message.SubscriberMetadata) string {
+		return fmt.Sprintf("%s_%s_v5", subscriberMeta.ServerName, subscriberMeta.SubscriberName)
 	})
 
 	router := handler.NewRouter("example", listenerFactory)
@@ -159,8 +169,10 @@ func main() {
 
 	router.AddMiddleware(
 		metricsMiddleware.Middleware,
-		middleware.PoisonQueueHook(func(message handler.Message) {
-			fmt.Println("unable to process", message)
+		middleware.Ack,
+
+		middleware.PoisonQueueHook(func(message *message.Message, err error) {
+			fmt.Println("unable to process", message, "err:", err)
 		}),
 		retryMiddleware.Middleware,
 		middleware.Recoverer,

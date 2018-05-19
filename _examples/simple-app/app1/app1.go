@@ -3,10 +3,10 @@ package main
 import (
 	"github.com/satori/go.uuid"
 	"github.com/Pallinder/go-randomdata"
-	"github.com/roblaszczak/gooddd/domain/eventstore"
 	"sync"
 	"time"
-	"github.com/roblaszczak/gooddd/domain"
+	"github.com/roblaszczak/gooddd/message/infrastructure/kafka/sarama"
+	message2 "github.com/roblaszczak/gooddd/message"
 )
 
 type postAdded struct {
@@ -44,12 +44,14 @@ func (postAdded) AggregateVersion() int {
 }
 
 func main() {
-	es, err := eventstore.NewSimpleSyncKafka([]string{"localhost:9092"})
+	publisherBackend, err := sarama.NewSimpleSyncProducer([]string{"localhost:9092"})
 	if err != nil {
 		panic(err)
 	}
 
-	i := 10
+	publisher := message2.NewPublisher(publisherBackend, message2.DefaultFactoryFunc)
+
+	i := 10000000
 	wg := &sync.WaitGroup{}
 
 	for {
@@ -73,7 +75,8 @@ func main() {
 
 		wg.Add(1)
 		go func() {
-			err := es.Save([]domain.Event{
+			// todo - how to create messages to send?
+			err := publisher.Publish("test_topic", []message2.Payload{
 				message,
 			})
 			if err != nil {

@@ -9,6 +9,7 @@ CREATE TABLE `events` (
     `aggregate_version` INT UNSIGNED NOT NULL,
     `aggregate_id` BINARY(16) NOT NULL,
     `aggregate_type` VARCHAR(128) NOT NULL,
+    `message_metadata` JSON NOT NULL,
     PRIMARY KEY (`event_no`),
     UNIQUE KEY (`event_id`),
     UNIQUE KEY `ix_unique_event` (`aggregate_type`, `aggregate_id`, `aggregate_version`)

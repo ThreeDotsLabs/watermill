@@ -3,7 +3,8 @@ package middleware
 import (
 	"time"
 	"github.com/rcrowley/go-metrics"
-	"github.com/roblaszczak/gooddd/handler"
+	"github.com/roblaszczak/gooddd/message/handler"
+	"github.com/roblaszczak/gooddd/message"
 )
 
 // todo - rewrite (more universal?)
@@ -17,8 +18,8 @@ func NewMetrics(timer metrics.Timer, errs metrics.Counter, success metrics.Count
 	return Metrics{timer, errs, success}
 }
 
-func (m Metrics) Middleware(h handler.Handler) handler.Handler {
-	return func(event handler.Message) (events []handler.MessagePayload, err error) {
+func (m Metrics) Middleware(h handler.HandlerFunc) handler.HandlerFunc {
+	return func(event *message.Message) (events []message.Payload, err error) {
 		start := time.Now()
 		defer func() {
 			m.timer.Update(time.Now().Sub(start))

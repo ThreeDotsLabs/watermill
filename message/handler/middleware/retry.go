@@ -1,8 +1,9 @@
 package middleware
 
 import (
-	"github.com/roblaszczak/gooddd/handler"
 	"time"
+	"github.com/roblaszczak/gooddd/message/handler"
+	"github.com/roblaszczak/gooddd/message"
 )
 
 const RetryForever = -1
@@ -30,8 +31,8 @@ func NewRetry() *Retry {
 	}
 }
 
-func (r Retry) Middleware(h handler.Handler) handler.Handler {
-	return func(message handler.Message) ([]handler.MessagePayload, error) {
+func (r Retry) Middleware(h handler.HandlerFunc) handler.HandlerFunc {
+	return func(message *message.Message) ([]message.Payload, error) {
 		retries := 0
 
 		for {
