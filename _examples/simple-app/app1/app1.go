@@ -7,6 +7,7 @@ import (
 	"time"
 	"github.com/roblaszczak/gooddd/message/infrastructure/kafka/sarama"
 	message2 "github.com/roblaszczak/gooddd/message"
+	"github.com/roblaszczak/gooddd/message/marshal"
 )
 
 type postAdded struct {
@@ -44,7 +45,7 @@ func (postAdded) AggregateVersion() int {
 }
 
 func main() {
-	publisherBackend, err := sarama.NewSimpleSyncProducer([]string{"localhost:9092"})
+	publisherBackend, err := sarama.NewSimpleSyncProducer([]string{"localhost:9092"}, marshal.Json)
 	if err != nil {
 		panic(err)
 	}

@@ -22,6 +22,7 @@ import (
 	"github.com/roblaszczak/gooddd/message/infrastructure/kafka/confluent"
 
 	_ "net/http/pprof"
+	"github.com/roblaszczak/gooddd/message/marshal"
 )
 
 // todo - doc why separated type
@@ -153,7 +154,7 @@ func main() {
 		return msg, nil
 	}, func(subscriberMeta message.SubscriberMetadata) string {
 		return fmt.Sprintf("%s_%s_v5", subscriberMeta.ServerName, subscriberMeta.SubscriberName)
-	})
+	}, marshal.UnmarshalJson)
 
 	router := handler.NewRouter("example", listenerFactory)
 

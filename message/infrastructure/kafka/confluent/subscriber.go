@@ -4,7 +4,6 @@ package confluent
 import (
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/pkg/errors"
-	"encoding/json"
 	"fmt"
 	"github.com/roblaszczak/gooddd/message"
 	"sync"
@@ -14,9 +13,13 @@ type confluentKafkaDeserializer func(kafka.Message) (*message.Message, error)
 
 type confluentKafkaGroupGenerator func(subscriberMeta message.SubscriberMetadata) string
 
+type unmarshalMessageFunc func(data []byte, msg *message.Message) error
+
 type confluentKafka struct {
 	deserializer   confluentKafkaDeserializer
 	groupGenerator confluentKafkaGroupGenerator
+
+	unmarshalMessage unmarshalMessageFunc
 
 	closing chan struct{}
 
@@ -26,10 +29,13 @@ type confluentKafka struct {
 func NewConfluentKafka(
 	deserializer confluentKafkaDeserializer,
 	groupGenerator confluentKafkaGroupGenerator,
+	unmarshalMessageFunc unmarshalMessageFunc,
 ) (message.Subscriber) {
 	return &confluentKafka{
 		deserializer:   deserializer,
 		groupGenerator: groupGenerator,
+
+		unmarshalMessage: unmarshalMessageFunc,
 
 		closing: make(chan struct{}),
 
@@ -46,8 +52,8 @@ func (s confluentKafka) createConsumer(subscriberMeta message.SubscriberMetadata
 		"auto.offset.reset":    "earliest",
 		"default.topic.config": kafka.ConfigMap{"auto.offset.reset": "earliest"},
 
-		"session.timeout.ms":              6000,
-		"enable.auto.commit":              true,
+		"session.timeout.ms": 6000,
+		"enable.auto.commit": true,
 		// todo - allow ssl? add flexability
 	})
 
@@ -109,7 +115,7 @@ func (s confluentKafka) Subscribe(topic string, metadata message.SubscriberMetad
 							continue
 						}
 						// todo - move it out?
-						if err := json.Unmarshal(e.Value, &msg); err != nil {
+						if err := s.unmarshalMessage(e.Value, msg); err != nil {
 							// todo - err support
 							fmt.Println(err)
 							continue

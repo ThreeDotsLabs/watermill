@@ -4,15 +4,18 @@ import (
 	"time"
 	"github.com/Shopify/sarama"
 	"github.com/pkg/errors"
-	"encoding/json"
 	"github.com/roblaszczak/gooddd/message"
 )
 
+type marshalMessageFunc func(message *message.Message) ([]byte, error)
+
 type syncKafka struct {
 	producer sarama.SyncProducer
+
+	marshalMsg marshalMessageFunc
 }
 
-func NewSimpleSyncProducer(brokers []string) (message.PublisherBackend, error) {
+func NewSimpleSyncProducer(brokers []string, marshalMsg marshalMessageFunc) (message.PublisherBackend, error) {
 	// todo - pass consumer id
 
 	config := sarama.NewConfig()
@@ -26,11 +29,11 @@ func NewSimpleSyncProducer(brokers []string) (message.PublisherBackend, error) {
 		return nil, errors.Wrap(err, "cannot create producer")
 	}
 
-	return NewSyncProducer(producer)
+	return NewSyncProducer(producer, marshalMsg)
 }
 
-func NewSyncProducer(producer sarama.SyncProducer) (message.PublisherBackend, error) {
-	return syncKafka{producer}, nil
+func NewSyncProducer(producer sarama.SyncProducer, marshalMsg marshalMessageFunc) (message.PublisherBackend, error) {
+	return syncKafka{producer, marshalMsg}, nil
 }
 
 // todo - test
@@ -38,16 +41,14 @@ func (p syncKafka) Publish(topic string, messages []*message.Message) error {
 	var saramaMessages []*sarama.ProducerMessage
 
 	for _, message := range messages {
-		// todo - move out of here
-		// todo - move to encoder/marshaller (and use it in listener)
-		marshalled, err := json.Marshal(message)
+		b, err := p.marshalMsg(message)
 		if err != nil {
 			return errors.Wrapf(err, "cannot marshal message %s", message)
 		}
 
 		saramaMessages = append(saramaMessages, &sarama.ProducerMessage{
-			Topic: topic, // todo - use some strategy for naming?
-			Value: sarama.ByteEncoder(marshalled),
+			Topic: topic,
+			Value: sarama.ByteEncoder(b),
 		})
 	}
 
