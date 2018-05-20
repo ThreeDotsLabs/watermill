@@ -23,6 +23,7 @@ import (
 
 	_ "net/http/pprof"
 	"github.com/roblaszczak/gooddd/message/marshal"
+	"github.com/roblaszczak/gooddd"
 )
 
 // todo - doc why separated type
@@ -115,6 +116,9 @@ func main() {
 		log.Println(http.ListenAndServe("localhost:6060", nil))
 	}()
 
+	logger := gooddd.NewStdLogger(true, true)
+	//logger := gooddd.NopLogger{}
+
 	t := metrics.NewTimer()
 	metrics.Register("handler.time", t)
 
@@ -147,16 +151,18 @@ func main() {
 		if err != nil {
 			return nil, err
 		}
+		// todo - use standard way to unmarshal
 		if err := json.Unmarshal(kafkaMsg.Value, &msg); err != nil {
 			return nil, err
 		}
 
 		return msg, nil
 	}, func(subscriberMeta message.SubscriberMetadata) string {
-		return fmt.Sprintf("%s_%s_v5", subscriberMeta.ServerName, subscriberMeta.SubscriberName)
-	}, marshal.UnmarshalJson)
+		return fmt.Sprintf("%s_%s_v9", subscriberMeta.ServerName, subscriberMeta.SubscriberName)
+	}, marshal.UnmarshalJson, logger)
 
 	router := handler.NewRouter("example", listenerFactory)
+	router.Logger = logger
 
 	metricsMiddleware := middleware.NewMetrics(t, errs, success)
 	metricsMiddleware.ShowStats(time.Second*5, log.New(os.Stderr, "metrics: ", log.Lmicroseconds))
@@ -168,17 +174,22 @@ func main() {
 	retryMiddleware.MaxRetries = 1
 	retryMiddleware.WaitTime = time.Millisecond * 10
 
+	throttle, err := middleware.NewThrottlePerSecond(1, logger)
+	if err != nil {
+		panic(err)
+	}
+
 	router.AddMiddleware(
 		metricsMiddleware.Middleware,
 		middleware.Ack,
-
-		middleware.PoisonQueueHook(func(message *message.Message, err error) {
-			fmt.Println("unable to process", message, "err:", err)
-		}),
+		throttle.Middleware,
+		//middleware.PoisonQueueHook(func(message *message.Message, err error) {
+		//	fmt.Println("unable to process", message, "err:", err)
+		//}),
 		retryMiddleware.Middleware,
 		middleware.Recoverer,
-		middleware.RandomFail(0.002),
-		middleware.RandomPanic(0.002),
+		//middleware.RandomFail(0.002),
+		//middleware.RandomPanic(0.002),
 	)
 
 	router.AddPlugin(plugin.SignalsHandler)

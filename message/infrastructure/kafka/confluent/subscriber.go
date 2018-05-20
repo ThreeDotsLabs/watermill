@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/roblaszczak/gooddd/message"
 	"sync"
+	"github.com/roblaszczak/gooddd"
 )
 
 type confluentKafkaDeserializer func(kafka.Message) (*message.Message, error)
@@ -23,13 +24,18 @@ type confluentKafka struct {
 
 	closing chan struct{}
 
-	subscribersWg *sync.WaitGroup
+	allSubscribersWg *sync.WaitGroup
+
+	logger gooddd.LoggerAdapter
+
+	poolersCount int
 }
 
 func NewConfluentKafka(
 	deserializer confluentKafkaDeserializer,
 	groupGenerator confluentKafkaGroupGenerator,
 	unmarshalMessageFunc unmarshalMessageFunc,
+	logger gooddd.LoggerAdapter,
 ) (message.Subscriber) {
 	return &confluentKafka{
 		deserializer:   deserializer,
@@ -39,14 +45,18 @@ func NewConfluentKafka(
 
 		closing: make(chan struct{}),
 
-		subscribersWg: &sync.WaitGroup{},
+		allSubscribersWg: &sync.WaitGroup{},
+
+		logger: logger,
+
+		poolersCount: 8, // todo - config
 	}
 }
 
-func (s confluentKafka) createConsumer(subscriberMeta message.SubscriberMetadata) (*kafka.Consumer, error) {
+func (s confluentKafka) createConsumer(consumerGroup string) (*kafka.Consumer, error) {
 	return kafka.NewConsumer(&kafka.ConfigMap{
 		"bootstrap.servers": "localhost",
-		"group.id":          s.groupGenerator(subscriberMeta),
+		"group.id": consumerGroup,
 
 		// todo ?
 		"auto.offset.reset":    "earliest",
@@ -60,7 +70,17 @@ func (s confluentKafka) createConsumer(subscriberMeta message.SubscriberMetadata
 }
 
 func (s confluentKafka) Subscribe(topic string, metadata message.SubscriberMetadata) (chan *message.Message, error) {
-	consumer, err := s.createConsumer(metadata)
+	consumerGroup := s.groupGenerator(metadata)
+
+	logFields := gooddd.LogFields{
+		"topic":                   topic,
+		"subscriber_name":         metadata.SubscriberName,
+		"kafka_subscribers_count": fmt.Sprintf("%d", s.poolersCount),
+		"consumer_group":          consumerGroup,
+	}
+	s.logger.Info("Subscribing to Kafka topic", logFields)
+
+	consumer, err := s.createConsumer(consumerGroup)
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot create subscriber")
 	}
@@ -69,23 +89,43 @@ func (s confluentKafka) Subscribe(topic string, metadata message.SubscriberMetad
 		return nil, errors.Wrapf(err, "cannot subscribe topic %s", topic)
 	}
 
-	output := make(chan *message.Message)
+	output := make(chan *message.Message, 0)
 
-	s.subscribersWg.Add(1)
+	s.allSubscribersWg.Add(1)
 
-	for i := 0; i < 8; i++ {
+	poolersWg := &sync.WaitGroup{}
+	poolersWg.Add(s.poolersCount)
+
+	go func() {
+		poolersWg.Wait()
+		s.logger.Debug("Closing message consumer", logFields)
+
+		err := consumer.Close()
+		if err != nil {
+			// todo - handle err
+			fmt.Println(err)
+		}
+
+		close(output)
+		s.allSubscribersWg.Done()
+	}()
+
+	for i := 0; i < s.poolersCount; i++ {
+		subscriberLogFields := logFields.Add(gooddd.LogFields{
+			"pooler_no": i,
+		})
+		s.logger.Debug("Starting messages pooler", subscriberLogFields)
+
 		go func(events chan<- *message.Message) {
-			defer s.subscribersWg.Done()
+			defer func() {
+				defer poolersWg.Done()
+				s.logger.Debug("Messages consumption done", subscriberLogFields)
+			}()
 
 			for {
 				select {
 				case <-s.closing:
-					err := consumer.Close()
-					if err != nil {
-						// todo - handle err
-						fmt.Println(err)
-					}
-					close(output)
+					s.logger.Debug("Closing message pooler", subscriberLogFields)
 					return
 				default:
 					ev := consumer.Poll(100)
@@ -95,18 +135,11 @@ func (s confluentKafka) Subscribe(topic string, metadata message.SubscriberMetad
 
 					switch e := ev.(type) {
 					case *kafka.Message:
-						//msg, err := s.consumer.ReadMessage(time.Millisecond * 100)
-						// todo - support error handling
-						// todo - support close
-						//if kafkaError, ok := err.(kafka.Error); ok && kafkaError.Code() == TimedOutErrorCode {
-						//	continue
-						//}
-
-						//if err != nil {
-						//	// todo - better support for errors
-						//	fmt.Println("error:", err)
-						//	continue
-						//}
+						receivedMsgLogFields := subscriberLogFields.Add(gooddd.LogFields{
+							"kafka_partition":        e.TopicPartition.Partition,
+							"kafka_partition_offset": e.TopicPartition.Offset,
+						})
+						s.logger.Trace("Received message from Kafka", receivedMsgLogFields)
 
 						// todo - wtf with it?
 						msg, err := message.DefaultFactoryFunc(nil)
@@ -121,13 +154,18 @@ func (s confluentKafka) Subscribe(topic string, metadata message.SubscriberMetad
 							continue
 						}
 
+						receivedMsgLogFields = receivedMsgLogFields.Add(gooddd.LogFields{
+							"message_id": msg.UUID,
+						})
+
+						s.logger.Trace("Kafka message unmarshalled, sending to output", receivedMsgLogFields)
+
 						// todo - replace with func call to avoid events loss
 						events <- msg
+
+						s.logger.Trace("Waiting for ACK", receivedMsgLogFields)
 						<-msg.Acknowledged()
-						if err != nil {
-							// todo - err support
-							fmt.Println(err)
-						}
+						s.logger.Trace("Message acknowledged", receivedMsgLogFields)
 					case kafka.PartitionEOF:
 						fmt.Printf("%% Reached %v\n", e)
 					default:
@@ -147,7 +185,7 @@ func (s confluentKafka) Close() error {
 			s.closing <- struct{}{}
 		}
 	}()
-	s.subscribersWg.Wait()
+	s.allSubscribersWg.Wait()
 
 	// todo - errors from consumers?
 	return nil

@@ -7,6 +7,7 @@ import (
 	"time"
 	"fmt"
 	"github.com/roblaszczak/gooddd/message"
+	"github.com/roblaszczak/gooddd"
 )
 
 // todo - rename package
@@ -19,6 +20,8 @@ type Middleware func(h HandlerFunc) HandlerFunc
 type Plugin func(*Router) error
 
 func NewRouter(serverName string, subscriber message.Subscriber) *Router {
+	// todo -validate server name
+
 	return &Router{
 		serverName: serverName,
 
@@ -26,9 +29,11 @@ func NewRouter(serverName string, subscriber message.Subscriber) *Router {
 
 		handlers: map[string]*handler{},
 
-		messagesWg: &sync.WaitGroup{},
+		handlersWg: &sync.WaitGroup{},
 
 		closeCh: make(chan struct{}),
+
+		Logger: gooddd.NopLogger{},
 	}
 }
 
@@ -44,19 +49,27 @@ type Router struct {
 
 	handlers map[string]*handler
 
-	messagesWg *sync.WaitGroup
+	handlersWg *sync.WaitGroup
 
 	closeCh chan struct{}
+
+	Logger gooddd.LoggerAdapter
+
+	running bool
 }
 
 // todo - rename
 // todo - doc that order matters
 func (r *Router) AddMiddleware(m ...Middleware) {
+	r.Logger.Debug("Adding middlewares", gooddd.LogFields{"count": fmt.Sprintf("%d", len(m))})
+
 	// todo - use
 	r.middlewares = append(r.middlewares, m...)
 }
 
 func (r *Router) AddPlugin(p ...Plugin) {
+	r.Logger.Debug("Adding plugins", gooddd.LogFields{"count": fmt.Sprintf("%d", len(p))})
+
 	// todo - use
 	r.plugins = append(r.plugins, p...)
 }
@@ -72,6 +85,11 @@ type handler struct {
 }
 
 func (r *Router) Subscribe(subscriberName string, topic string, handlerFunc HandlerFunc) error {
+	r.Logger.Info("Adding subscriber", gooddd.LogFields{
+		"subscriber_name": subscriberName,
+		"topic":           topic,
+	})
+
 	if _, ok := r.handlers[subscriberName]; ok {
 		return errors.Errorf("handler %s already exists", subscriberName)
 	}
@@ -91,7 +109,13 @@ func (r *Router) Subscribe(subscriberName string, topic string, handlerFunc Hand
 }
 
 func (r *Router) Run() error {
+	if r.running {
+		return errors.New("router is already running")
+	}
+	r.running = true
+
 	// todo - defer cleanup & close
+	r.Logger.Debug("Loading plugins", nil)
 	for _, plugin := range r.plugins {
 		if err := plugin(r); err != nil {
 			return errors.Wrapf(err, "cannot initialize plugin %s", plugin)
@@ -99,6 +123,11 @@ func (r *Router) Run() error {
 	}
 
 	for _, s := range r.handlers {
+		r.Logger.Debug("Subscribing to topic", gooddd.LogFields{
+			"subscriber_name": s.name,
+			"topic":           s.topic,
+		})
+
 		messages, err := r.subscriber.Subscribe(s.topic, s.metadata)
 		if err != nil {
 			return errors.Wrapf(err, "cannot subscribe topic %s", s.topic)
@@ -108,44 +137,73 @@ func (r *Router) Run() error {
 	}
 
 	for i := range r.handlers {
-		go func(messages <-chan *message.Message, handler HandlerFunc) {
-			middlewareHandler := handler
+		r.handlersWg.Add(1)
+
+		go func(s *handler) {
+			r.Logger.Info("Starting handler", gooddd.LogFields{
+				"subscriber_name": s.name,
+				"topic":           s.topic,
+			})
+
+			middlewareHandler := s.handlerFunc
 
 			// first added middlewares should be executed first (so should be at the top of call stack)
 			for i := len(r.middlewares) - 1; i >= 0; i-- {
 				middlewareHandler = r.middlewares[i](middlewareHandler)
 			}
 
-			for msg := range messages {
-				r.messagesWg.Add(1)
-				go func() {
-					defer r.messagesWg.Done()
+			for msg := range s.messagesCh {
+				go func(msg *message.Message) {
+					msgFields := gooddd.LogFields{"message_uuid": msg.UUID}
+
+					r.Logger.Trace("Received message", msgFields)
 					middlewareHandler(msg)
-				}()
+
+					r.Logger.Trace("Message processed", msgFields)
+				}(msg)
 			}
-		}(r.handlers[i].messagesCh, r.handlers[i].handlerFunc)
+
+			r.handlersWg.Done()
+			r.Logger.Info("Handler stopped", gooddd.LogFields{
+				"subscriber_name": s.name,
+				"topic":           s.topic,
+			})
+			// todo - wait for it
+		}(r.handlers[i])
 	}
 
 	<-r.closeCh
+
+	r.Logger.Debug("Waiting for subscriber to close", nil)
 	err := r.subscriber.Close()
 	if err != nil {
 		return errors.Wrap(err, "cannot close handler")
 	}
+	r.Logger.Debug("Subscriber closed", nil)
+
+	r.Logger.Info("Router closed", nil)
 
 	return nil
 }
 
 func (r *Router) Close() error {
-	fmt.Println("closing")
+	r.Logger.Info("Closing router", nil)
 
-	go func() {
-		// todo - replace with context??
-		for {
-			r.closeCh <- struct{}{}
-		}
-	}()
+	r.closeCh <- struct{}{}
 
-	sync_internal.WaitGroupTimeout(r.messagesWg, time.Second*10) // todo - config
+	timeout := time.Second * 10
+	r.Logger.Info("Waiting for messages", gooddd.LogFields{
+		"timeout": timeout.String(),
+	})
+
+	// todo - it doesn't work if r.subscriber.Close() is blocking
+	timeouted := sync_internal.WaitGroupTimeout(r.handlersWg, timeout) // todo - config
+	if timeouted {
+		// todo - what to do with it?
+		r.Logger.Info("Timeout", nil)
+	} else {
+		r.Logger.Info("All messages processed", nil)
+	}
 
 	return nil
 }

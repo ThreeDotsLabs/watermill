@@ -1,7 +1,6 @@
 package message
 
 import (
-	"context"
 	"sync"
 )
 
@@ -10,6 +9,8 @@ type Payload interface{}
 // todo - encapsulate fields?
 // todo - replace with interface?
 type Message struct {
+	UUID string
+
 	Payload Payload
 
 	Metadata struct {
@@ -19,8 +20,6 @@ type Message struct {
 		CorrelationID string
 		// todo - add something to help with tracing? hosts list?
 	}
-
-	Context context.Context
 
 	ackListeners []chan<- struct{}
 	acked        bool

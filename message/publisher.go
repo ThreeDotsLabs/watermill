@@ -3,7 +3,7 @@ package message
 import "github.com/pkg/errors"
 
 type PublisherBackend interface {
-	Publish(topic string, messages []*Message) error
+	Publish(topic string, messages []*Message) error // todo - remove topic from args?
 	Close() error
 }
 
