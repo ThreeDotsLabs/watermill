@@ -183,20 +183,12 @@ func (r *Router) Run() error {
 
 	r.Logger.Info("Router closed", nil)
 
-	return nil
-}
-
-func (r *Router) Close() error {
-	r.Logger.Info("Closing router", nil)
-
-	r.closeCh <- struct{}{}
-
 	timeout := time.Second * 10
+
 	r.Logger.Info("Waiting for messages", gooddd.LogFields{
-		"timeout": timeout.String(),
+		"timeout": timeout,
 	})
 
-	// todo - it doesn't work if r.subscriber.Close() is blocking
 	timeouted := sync_internal.WaitGroupTimeout(r.handlersWg, timeout) // todo - config
 	if timeouted {
 		// todo - what to do with it?
@@ -204,6 +196,13 @@ func (r *Router) Close() error {
 	} else {
 		r.Logger.Info("All messages processed", nil)
 	}
+
+	return nil
+}
+
+func (r *Router) Close() error {
+	r.Logger.Info("Closing router", nil)
+	r.closeCh <- struct{}{}
 
 	return nil
 }
