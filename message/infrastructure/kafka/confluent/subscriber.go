@@ -28,7 +28,7 @@ type confluentKafka struct {
 
 	logger gooddd.LoggerAdapter
 
-	poolersCount int
+	subscribersCount int
 }
 
 func NewConfluentKafka(
@@ -49,7 +49,7 @@ func NewConfluentKafka(
 
 		logger: logger,
 
-		poolersCount: 8, // todo - config
+		subscribersCount: 8, // todo - config
 	}
 }
 
@@ -75,57 +75,57 @@ func (s confluentKafka) Subscribe(topic string, metadata message.SubscriberMetad
 	logFields := gooddd.LogFields{
 		"topic":                   topic,
 		"subscriber_name":         metadata.SubscriberName,
-		"kafka_subscribers_count": fmt.Sprintf("%d", s.poolersCount),
+		"kafka_subscribers_count": fmt.Sprintf("%d", s.subscribersCount),
 		"consumer_group":          consumerGroup,
 	}
 	s.logger.Info("Subscribing to Kafka topic", logFields)
-
-	consumer, err := s.createConsumer(consumerGroup)
-	if err != nil {
-		return nil, errors.Wrap(err, "cannot create subscriber")
-	}
-
-	if err := consumer.SubscribeTopics([]string{topic}, nil); err != nil {
-		return nil, errors.Wrapf(err, "cannot subscribe topic %s", topic)
-	}
 
 	output := make(chan *message.Message, 0)
 
 	s.allSubscribersWg.Add(1)
 
-	poolersWg := &sync.WaitGroup{}
-	poolersWg.Add(s.poolersCount)
+	subscribersWg := &sync.WaitGroup{}
+	subscribersWg.Add(s.subscribersCount)
 
 	go func() {
-		poolersWg.Wait()
+		subscribersWg.Wait()
 		s.logger.Debug("Closing message consumer", logFields)
-
-		err := consumer.Close()
-		if err != nil {
-			// todo - handle err
-			fmt.Println(err)
-		}
 
 		close(output)
 		s.allSubscribersWg.Done()
 	}()
 
-	for i := 0; i < s.poolersCount; i++ {
+	for i := 0; i < s.subscribersCount; i++ {
+		consumer, err := s.createConsumer(consumerGroup)
+		if err != nil {
+			return nil, errors.Wrap(err, "cannot create subscriber")
+		}
+
+		if err := consumer.SubscribeTopics([]string{topic}, nil); err != nil {
+			return nil, errors.Wrapf(err, "cannot subscribe topic %s", topic)
+		}
+
 		subscriberLogFields := logFields.Add(gooddd.LogFields{
-			"pooler_no": i,
+			"subscriber_no": i,
 		})
-		s.logger.Debug("Starting messages pooler", subscriberLogFields)
+		s.logger.Debug("Starting messages subscriber", subscriberLogFields)
 
 		go func(events chan<- *message.Message) {
 			defer func() {
-				defer poolersWg.Done()
+				err := consumer.Close()
+				if err != nil {
+					// todo - handle err
+					fmt.Println(err)
+				}
+
+				subscribersWg.Done()
 				s.logger.Debug("Messages consumption done", subscriberLogFields)
 			}()
 
 			for {
 				select {
 				case <-s.closing:
-					s.logger.Debug("Closing message pooler", subscriberLogFields)
+					s.logger.Debug("Closing message subscriber", subscriberLogFields)
 					return
 				default:
 					ev := consumer.Poll(100)
