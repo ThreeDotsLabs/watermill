@@ -5,7 +5,6 @@ import (
 )
 
 type Event interface {
-	EventID() []byte
 	EventOccurredOn() time.Time
 
 	AggregateID() []byte

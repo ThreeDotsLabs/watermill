@@ -6,8 +6,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/roblaszczak/gooddd/domain"
-	"github.com/roblaszczak/gooddd/message/event"
+	"github.com/roblaszczak/gooddd/message"
 )
 
 type SQLEvent struct {
@@ -27,7 +26,7 @@ func (e SQLEvent) Args() []interface{} {
 	}
 }
 
-type SQLEventSerializer func(event domain.Event) (SQLEvent, error)
+type SQLEventSerializer func(*message.Message) (SQLEvent, error)
 
 type db interface {
 	Exec(query string, args ...interface{}) (sql.Result, error)
@@ -40,26 +39,25 @@ type SQL struct {
 	serializer SQLEventSerializer
 }
 
-func NewSQL(db db, serializer SQLEventSerializer) domain.Eventstore {
+func NewSQL(db db, serializer SQLEventSerializer) message.PublisherBackend {
 	return &SQL{db, serializer}
 }
 
-func (s SQL) Save(events []domain.Event) error {
-	if len(events) == 0 {
+func (s SQL) Publish(topic string, messages []*message.Message) error {
+	if len(messages) == 0 {
 		return nil
 	}
 
 	query := "INSERT INTO " +
 		"`events` (`event_id`, `event_name`, `event_payload`, `event_occurred_on`, `aggregate_version`, " +
-		"`aggregate_id`, `aggregate_type`) VALUES " + strings.Repeat("(?, ?, ?, ?, ?, ?, ?),", len(events))
+		"`aggregate_id`, `aggregate_type`) VALUES " + strings.Repeat("(?, ?, ?, ?, ?, ?, ?),", len(messages))
 
 	query = strings.TrimRight(query, ",")
 
 	var args []interface{}
 
-	for _, message := range events {
-		// todo - move it somewhere(higher level)
-		event, err := s.serializer(message)
+	for _, m := range messages {
+		event, err := s.serializer(m)
 		if err != nil {
 			return errors.Wrap(err, "cannot serialize message")
 		}
@@ -72,5 +70,9 @@ func (s SQL) Save(events []domain.Event) error {
 		return errors.Wrapf(err, "cannot save events to database")
 	}
 
+	return nil
+}
+
+func (s SQL) Close() error {
 	return nil
 }

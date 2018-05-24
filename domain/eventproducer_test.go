@@ -1,4 +1,4 @@
-package domain
+package domain_test
 
 import (
 	"testing"
@@ -11,7 +11,7 @@ type testEvent struct{
 }
 
 func TestEventProducer(t *testing.T) {
-	ep := event.EventProducer{}
+	ep := domain.EventProducer{}
 
 	event1 := testEvent{"foo"}
 	event2 := testEvent{"bar"}
@@ -21,7 +21,7 @@ func TestEventProducer(t *testing.T) {
 
 	events := ep.PopEvents()
 
-	assert.Equal(t, []event.Event{event1, event2}, events)
+	assert.Equal(t, []domain.Event{event1, event2}, events)
 
 	assert.Empty(t, ep.PopEvents())
 }
