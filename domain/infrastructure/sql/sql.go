@@ -43,7 +43,7 @@ func NewSQL(db db, serializer SQLEventSerializer) message.PublisherBackend {
 	return &SQL{db, serializer}
 }
 
-func (s SQL) Publish(topic string, messages []*message.Message) error {
+func (s SQL) Publish(messages []*message.Message) error {
 	if len(messages) == 0 {
 		return nil
 	}

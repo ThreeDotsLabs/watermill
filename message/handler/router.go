@@ -19,17 +19,19 @@ type Middleware func(h HandlerFunc) HandlerFunc
 
 type Plugin func(*Router) error
 
-func NewRouter(serverName string, subscriber message.Subscriber) *Router {
+func NewRouter(serverName string, subscriber message.Subscriber, publisher *message.Publisher) *Router {
 	// todo -validate server name
 
 	return &Router{
 		serverName: serverName,
 
 		subscriber: subscriber,
+		publisher:  publisher,
 
 		handlers: map[string]*handler{},
 
-		handlersWg: &sync.WaitGroup{},
+		handlersWg:        &sync.WaitGroup{},
+		runningHandlersWg: &sync.WaitGroup{},
 
 		closeCh: make(chan struct{}),
 
@@ -42,6 +44,7 @@ type Router struct {
 	serverName string
 
 	subscriber message.Subscriber // todo - rename? or rename subscribers?
+	publisher  *message.Publisher
 
 	middlewares []Middleware
 
@@ -49,7 +52,8 @@ type Router struct {
 
 	handlers map[string]*handler
 
-	handlersWg *sync.WaitGroup
+	handlersWg        *sync.WaitGroup
+	runningHandlersWg *sync.WaitGroup
 
 	closeCh chan struct{}
 
@@ -153,11 +157,34 @@ func (r *Router) Run() error {
 			}
 
 			for msg := range s.messagesCh {
+				r.runningHandlersWg.Add(1)
+
 				go func(msg *message.Message) {
+					defer r.runningHandlersWg.Done()
+
 					msgFields := gooddd.LogFields{"message_uuid": msg.UUID}
 
 					r.Logger.Trace("Received message", msgFields)
-					middlewareHandler(msg)
+
+					producedPayloads, err := middlewareHandler(msg)
+					if err != nil {
+						// todo - what to do with it?
+						fmt.Println(err)
+						return
+					}
+
+					if len(producedPayloads) > 0 {
+						r.Logger.Trace("Sending produced payload", msgFields.Add(gooddd.LogFields{
+							"produced_payloads_count": len(producedPayloads),
+						}))
+
+						// todo - set topic
+						if err := r.publisher.Publish(producedPayloads); err != nil {
+							// todo - what to do with it?
+							fmt.Println(err)
+							return
+						}
+					}
 
 					r.Logger.Trace("Message processed", msgFields)
 				}(msg)
@@ -189,6 +216,7 @@ func (r *Router) Run() error {
 		"timeout": timeout,
 	})
 
+	// todo - add timeout to all wg's & subscriber close
 	timeouted := sync_internal.WaitGroupTimeout(r.handlersWg, timeout) // todo - config
 	if timeouted {
 		// todo - what to do with it?

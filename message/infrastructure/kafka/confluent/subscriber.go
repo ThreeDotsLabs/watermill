@@ -28,7 +28,7 @@ type confluentKafka struct {
 
 	logger gooddd.LoggerAdapter
 
-	subscribersCount int
+	consumersCount int
 }
 
 func NewConfluentKafka(
@@ -49,7 +49,7 @@ func NewConfluentKafka(
 
 		logger: logger,
 
-		subscribersCount: 8, // todo - config
+		consumersCount: 8, // todo - config
 	}
 }
 
@@ -75,7 +75,7 @@ func (s confluentKafka) Subscribe(topic string, metadata message.SubscriberMetad
 	logFields := gooddd.LogFields{
 		"topic":                   topic,
 		"subscriber_name":         metadata.SubscriberName,
-		"kafka_subscribers_count": fmt.Sprintf("%d", s.subscribersCount),
+		"kafka_subscribers_count": fmt.Sprintf("%d", s.consumersCount),
 		"consumer_group":          consumerGroup,
 	}
 	s.logger.Info("Subscribing to Kafka topic", logFields)
@@ -84,48 +84,49 @@ func (s confluentKafka) Subscribe(topic string, metadata message.SubscriberMetad
 
 	s.allSubscribersWg.Add(1)
 
-	subscribersWg := &sync.WaitGroup{}
-	subscribersWg.Add(s.subscribersCount)
+	consumersWg := &sync.WaitGroup{}
+	consumersWg.Add(s.consumersCount)
 
 	go func() {
-		subscribersWg.Wait()
+		consumersWg.Wait()
 		s.logger.Debug("Closing message consumer", logFields)
 
 		close(output)
 		s.allSubscribersWg.Done()
 	}()
 
-	for i := 0; i < s.subscribersCount; i++ {
+	for i := 0; i < s.consumersCount; i++ {
 		consumer, err := s.createConsumer(consumerGroup)
 		if err != nil {
-			return nil, errors.Wrap(err, "cannot create subscriber")
+			return nil, errors.Wrap(err, "cannot create consumer")
 		}
 
 		if err := consumer.SubscribeTopics([]string{topic}, nil); err != nil {
 			return nil, errors.Wrapf(err, "cannot subscribe topic %s", topic)
 		}
 
-		subscriberLogFields := logFields.Add(gooddd.LogFields{
-			"subscriber_no": i,
+		consumerLogFields := logFields.Add(gooddd.LogFields{
+			"consumer_no": i,
 		})
-		s.logger.Debug("Starting messages subscriber", subscriberLogFields)
+		s.logger.Debug("Starting messages consumer", consumerLogFields)
 
-		go func(events chan<- *message.Message) {
+		go func(events chan<- *message.Message, consumer *kafka.Consumer) {
 			defer func() {
-				err := consumer.Close()
-				if err != nil {
-					// todo - handle err
-					fmt.Println(err)
-				}
+				// todo - reenable when https://github.com/confluentinc/confluent-kafka-go/issues/189 fixed
+				//err := consumer.Close()
+				//if err != nil {
+				//	// todo - handle err
+				//	fmt.Println(err)
+				//}
 
-				subscribersWg.Done()
-				s.logger.Debug("Messages consumption done", subscriberLogFields)
+				consumersWg.Done()
+				s.logger.Debug("Messages consumption done", consumerLogFields)
 			}()
 
 			for {
 				select {
 				case <-s.closing:
-					s.logger.Debug("Closing message subscriber", subscriberLogFields)
+					s.logger.Debug("Closing message consumer", consumerLogFields)
 					return
 				default:
 					ev := consumer.Poll(100)
@@ -135,7 +136,7 @@ func (s confluentKafka) Subscribe(topic string, metadata message.SubscriberMetad
 
 					switch e := ev.(type) {
 					case *kafka.Message:
-						receivedMsgLogFields := subscriberLogFields.Add(gooddd.LogFields{
+						receivedMsgLogFields := consumerLogFields.Add(gooddd.LogFields{
 							"kafka_partition":        e.TopicPartition.Partition,
 							"kafka_partition_offset": e.TopicPartition.Offset,
 						})
@@ -173,7 +174,7 @@ func (s confluentKafka) Subscribe(topic string, metadata message.SubscriberMetad
 					}
 				}
 			}
-		}(output)
+		}(output, consumer)
 	}
 
 	return output, nil

@@ -3,7 +3,7 @@ package message
 import "github.com/pkg/errors"
 
 type PublisherBackend interface {
-	Publish(topic string, messages []*Message) error // todo - remove topic from args?
+	Publish(messages []*Message) error // todo - remove topic from args?
 	Close() error
 }
 
@@ -19,7 +19,7 @@ func NewPublisher(backend PublisherBackend, msgFactoryFunc FactoryFunc) *Publish
 	return &Publisher{backend, msgFactoryFunc}
 }
 
-func (p *Publisher) Publish(topic string, payloads []Payload) error {
+func (p *Publisher) Publish(payloads []Payload) error {
 	var msgs []*Message
 	for _, payload := range payloads {
 		msg, err := p.msgFactoryFunc(payload)
@@ -30,7 +30,7 @@ func (p *Publisher) Publish(topic string, payloads []Payload) error {
 		msgs = append(msgs, msg)
 	}
 
-	return p.backend.Publish(topic, msgs)
+	return p.backend.Publish(msgs)
 }
 
 func (p *Publisher) Close() error {

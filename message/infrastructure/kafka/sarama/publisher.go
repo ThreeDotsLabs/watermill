@@ -10,12 +10,13 @@ import (
 type marshalMessageFunc func(message *message.Message) ([]byte, error)
 
 type syncKafka struct {
+	topic    string
 	producer sarama.SyncProducer
 
 	marshalMsg marshalMessageFunc
 }
 
-func NewSimpleSyncProducer(brokers []string, marshalMsg marshalMessageFunc) (message.PublisherBackend, error) {
+func NewSimpleSyncProducer(topic string, brokers []string, marshalMsg marshalMessageFunc) (message.PublisherBackend, error) {
 	// todo - pass consumer id
 
 	config := sarama.NewConfig()
@@ -29,15 +30,15 @@ func NewSimpleSyncProducer(brokers []string, marshalMsg marshalMessageFunc) (mes
 		return nil, errors.Wrap(err, "cannot create producer")
 	}
 
-	return NewSyncProducer(producer, marshalMsg)
+	return NewSyncProducer(topic, producer, marshalMsg)
 }
 
-func NewSyncProducer(producer sarama.SyncProducer, marshalMsg marshalMessageFunc) (message.PublisherBackend, error) {
-	return syncKafka{producer, marshalMsg}, nil
+func NewSyncProducer(topic string, producer sarama.SyncProducer, marshalMsg marshalMessageFunc) (message.PublisherBackend, error) {
+	return syncKafka{topic, producer, marshalMsg}, nil
 }
 
 // todo - test
-func (p syncKafka) Publish(topic string, messages []*message.Message) error {
+func (p syncKafka) Publish(messages []*message.Message) error {
 	var saramaMessages []*sarama.ProducerMessage
 
 	for _, message := range messages {
@@ -47,7 +48,7 @@ func (p syncKafka) Publish(topic string, messages []*message.Message) error {
 		}
 
 		saramaMessages = append(saramaMessages, &sarama.ProducerMessage{
-			Topic: topic,
+			Topic: p.topic,
 			Value: sarama.ByteEncoder(b),
 		})
 	}

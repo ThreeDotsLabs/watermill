@@ -24,6 +24,7 @@ import (
 	_ "net/http/pprof"
 	"github.com/roblaszczak/gooddd/message/marshal"
 	"github.com/roblaszczak/gooddd"
+	"github.com/roblaszczak/gooddd/message/infrastructure/kafka/sarama"
 )
 
 // todo - doc why separated type
@@ -158,10 +159,18 @@ func main() {
 
 		return msg, nil
 	}, func(subscriberMeta message.SubscriberMetadata) string {
-		return fmt.Sprintf("%s_%s_v9", subscriberMeta.ServerName, subscriberMeta.SubscriberName)
+		return fmt.Sprintf("%s_%s_v12", subscriberMeta.ServerName, subscriberMeta.SubscriberName)
 	}, marshal.UnmarshalJson, logger)
 
-	router := handler.NewRouter("example", listenerFactory)
+
+	publisherBackend, err := sarama.NewSimpleSyncProducer("test_topic", []string{"localhost:9092"}, marshal.Json)
+	if err != nil {
+		panic(err)
+	}
+
+	publisher := message.NewPublisher(publisherBackend, message.DefaultFactoryFunc)
+
+	router := handler.NewRouter("example", listenerFactory, publisher)
 	router.Logger = logger
 
 	metricsMiddleware := middleware.NewMetrics(t, errs, success)
