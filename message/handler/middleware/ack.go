@@ -6,10 +6,12 @@ import (
 )
 
 // todo - test
-func Ack(h handler.HandlerFunc) handler.HandlerFunc {
-	return func(msg message.Message) ([]message.Message, error) {
+func AckOnSuccess(h handler.HandlerFunc) handler.HandlerFunc {
+	return func(msg message.Message) (_ []message.Message, err error) {
 		defer func() {
-			msg.Acknowledge()
+			if err == nil {
+				msg.Acknowledge()
+			}
 		}()
 
 		return h(msg)

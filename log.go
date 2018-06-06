@@ -23,6 +23,7 @@ func (l LogFields) Add(newFields LogFields) LogFields {
 }
 
 type LoggerAdapter interface {
+	Error(msg string, err error, fields LogFields)
 	Info(msg string, fields LogFields)
 	Debug(msg string, fields LogFields)
 	Trace(msg string, fields LogFields)
@@ -30,11 +31,13 @@ type LoggerAdapter interface {
 
 type NopLogger struct{}
 
-func (NopLogger) Info(msg string, fields LogFields)  {}
-func (NopLogger) Debug(msg string, fields LogFields) {}
-func (NopLogger) Trace(msg string, fields LogFields) {}
+func (NopLogger) Error(msg string, err error, fields LogFields) {}
+func (NopLogger) Info(msg string, fields LogFields)             {}
+func (NopLogger) Debug(msg string, fields LogFields)            {}
+func (NopLogger) Trace(msg string, fields LogFields)            {}
 
 type StdLoggerAdapter struct {
+	ErrorLogger *log.Logger
 	InfoLogger  *log.Logger
 	DebugLogger *log.Logger
 	TraceLogger *log.Logger
@@ -52,6 +55,10 @@ func NewStdLogger(debug, trace bool) LoggerAdapter {
 	}
 
 	return a
+}
+
+func (l *StdLoggerAdapter) Error(msg string, err error, fields LogFields) {
+	l.log(l.TraceLogger, "ERROR", msg, fields.Add(LogFields{"err": err}))
 }
 
 func (l *StdLoggerAdapter) Info(msg string, fields LogFields) {

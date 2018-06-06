@@ -173,7 +173,7 @@ func main() {
 
 	router.AddMiddleware(
 		metricsMiddleware.Middleware,
-		middleware.Ack,
+		middleware.AckOnSuccess,
 		throttle.Middleware,
 		//middleware.PoisonQueueHook(func(message *message.Message, err error) {
 		//	fmt.Println("unable to process", message, "err:", err)
@@ -181,7 +181,7 @@ func main() {
 		retryMiddleware.Middleware,
 		middleware.Recoverer,
 		middleware.CorrelationUUID,
-		//middleware.RandomFail(0.002),
+		middleware.RandomFail(1),
 		//middleware.RandomPanic(0.002),
 	)
 

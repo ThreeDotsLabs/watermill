@@ -72,7 +72,7 @@ func (s confluentKafka) Subscribe(topic string, metadata message.SubscriberMetad
 	logFields := gooddd.LogFields{
 		"topic":                   topic,
 		"subscriber_name":         metadata.SubscriberName,
-		"kafka_subscribers_count": fmt.Sprintf("%d", s.consumersCount),
+		"kafka_subscribers_count": s.consumersCount,
 		"consumer_group":          consumerGroup,
 	}
 	s.logger.Info("Subscribing to Kafka topic", logFields)
@@ -142,13 +142,12 @@ func (s confluentKafka) Subscribe(topic string, metadata message.SubscriberMetad
 						msg, err := s.deserializer(e)
 						// todo - move it out?
 						if err != nil {
-							// todo - err support
-							fmt.Println(err)
+							s.logger.Error("Cannot deserialize message", err, receivedMsgLogFields)
 							continue
 						}
 
 						receivedMsgLogFields = receivedMsgLogFields.Add(gooddd.LogFields{
-							"message_id": msg.UUID,
+							"message_id": msg.UUID(),
 						})
 
 						s.logger.Trace("Kafka message unmarshalled, sending to output", receivedMsgLogFields)
@@ -157,12 +156,21 @@ func (s confluentKafka) Subscribe(topic string, metadata message.SubscriberMetad
 						events <- msg
 
 						s.logger.Trace("Waiting for ACK", receivedMsgLogFields)
-						<-msg.Acknowledged()
-						s.logger.Trace("Message acknowledged", receivedMsgLogFields)
+
+						if err := <-msg.Acknowledged(); err != nil {
+							s.logger.Info("Making rollback", receivedMsgLogFields)
+
+							// todo - test !!!!
+							if err := consumer.Seek(e.TopicPartition, -1); err != nil {
+								panic(err)
+							}
+						} else {
+							s.logger.Trace("Message acknowledged", receivedMsgLogFields)
+						}
 					case kafka.PartitionEOF:
-						fmt.Printf("%% Reached %v\n", e)
+						s.logger.Trace("Reached end of partition", nil)
 					default:
-						fmt.Println("unsupportted msg:", e)
+						s.logger.Info("Unsupportted msg", gooddd.LogFields{"msg": s})
 					}
 				}
 			}

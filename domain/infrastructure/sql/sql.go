@@ -26,7 +26,7 @@ func (e SQLEvent) Args() []interface{} {
 	}
 }
 
-type SQLEventSerializer func(*message.Message) (SQLEvent, error)
+type SQLEventSerializer func(message.Message) (SQLEvent, error)
 
 type db interface {
 	Exec(query string, args ...interface{}) (sql.Result, error)
@@ -39,11 +39,11 @@ type SQL struct {
 	serializer SQLEventSerializer
 }
 
-func NewSQL(db db, serializer SQLEventSerializer) message.PublisherBackend {
+func NewSQL(db db, serializer SQLEventSerializer) message.Publisher {
 	return &SQL{db, serializer}
 }
 
-func (s SQL) Publish(messages []*message.Message) error {
+func (s SQL) Publish(messages []message.Message) error {
 	if len(messages) == 0 {
 		return nil
 	}

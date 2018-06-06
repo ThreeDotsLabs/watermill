@@ -168,8 +168,7 @@ func (r *Router) Run() error {
 
 					producedMessages, err := middlewareHandler(msg)
 					if err != nil {
-						// todo - what to do with it?
-						fmt.Println(err)
+						msg.Error(err)
 						return
 					}
 
@@ -178,11 +177,12 @@ func (r *Router) Run() error {
 							"produced_messages_count": len(producedMessages),
 						}))
 
-						// todo - set topic
+						// todo - set topic?
 						if err := r.publisher.Publish(producedMessages); err != nil {
-							// todo - what to do with it?
-							fmt.Println(err)
-							return
+							// todo - configurable
+							r.Logger.Error("cannot publish message", err, msgFields.Add(gooddd.LogFields{
+								"not_sent_message": fmt.Sprintf("%#v", producedMessages),
+							}))
 						}
 					}
 
