@@ -9,6 +9,11 @@ func Json(message message.Message) ([]byte, error) {
 	return json.Marshal(message)
 }
 
-func UnmarshalJson(data []byte, msg *message.Message) error {
-	return json.Unmarshal(data, msg)
+func UnmarshalJson(data []byte) (message.Message, error) {
+	msg := message.NewEmptyDefault()
+	if err := json.Unmarshal(data, msg); err != nil {
+		return nil, err
+	}
+
+	return msg, nil
 }

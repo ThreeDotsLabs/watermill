@@ -17,7 +17,6 @@ import (
 	"log"
 	"os"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
-	"encoding/json"
 	"github.com/roblaszczak/gooddd/message"
 	"github.com/roblaszczak/gooddd/message/infrastructure/kafka/confluent"
 
@@ -144,13 +143,7 @@ func main() {
 
 	// todo - move this boilerplate somewhere, to make examples more clear
 	listenerFactory := confluent.NewConfluentKafka(func(kafkaMsg *kafka.Message) (message.Message, error) {
-		msg := &message.Default{}
-		// todo - use standard way to unmarshal
-		if err := json.Unmarshal(kafkaMsg.Value, msg); err != nil {
-			return nil, err
-		}
-
-		return msg, nil
+		return marshal.UnmarshalJson(kafkaMsg.Value)
 	}, func(subscriberMeta message.SubscriberMetadata) string {
 		return fmt.Sprintf("%s_%s_v14", subscriberMeta.ServerName, subscriberMeta.SubscriberName)
 	}, logger)
@@ -180,7 +173,7 @@ func main() {
 
 	router.AddMiddleware(
 		metricsMiddleware.Middleware,
-		//middleware.Ack,
+		middleware.Ack,
 		throttle.Middleware,
 		//middleware.PoisonQueueHook(func(message *message.Message, err error) {
 		//	fmt.Println("unable to process", message, "err:", err)

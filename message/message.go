@@ -13,12 +13,17 @@ type Message interface {
 	GetMetadata(key string) string
 
 	UnmarshalPayload(val interface{}) error
+
+	Acknowledged() (<-chan struct{})
+	Acknowledge()
 }
 
 type Default struct {
 	MessageUUID     string            `json:"message_uuid"`
 	MessageMetadata map[string]string `json:"message_metadata"`
 	MessagePayload  Payload           `json:"message_payload"`
+
+	*Ack
 }
 
 func NewDefault(uuid string, payload Payload) Message {
@@ -26,6 +31,15 @@ func NewDefault(uuid string, payload Payload) Message {
 		MessageUUID:     uuid,
 		MessageMetadata: make(map[string]string),
 		MessagePayload:  payload,
+
+		Ack: NewAck(),
+	}
+}
+
+func NewEmptyDefault() Message {
+	return &Default{
+		MessageMetadata: make(map[string]string),
+		Ack: NewAck(),
 	}
 }
 

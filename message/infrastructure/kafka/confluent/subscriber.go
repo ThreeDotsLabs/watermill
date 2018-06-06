@@ -157,7 +157,7 @@ func (s confluentKafka) Subscribe(topic string, metadata message.SubscriberMetad
 						events <- msg
 
 						s.logger.Trace("Waiting for ACK", receivedMsgLogFields)
-						// todo - wait for processing
+						<-msg.Acknowledged()
 						s.logger.Trace("Message acknowledged", receivedMsgLogFields)
 					case kafka.PartitionEOF:
 						fmt.Printf("%% Reached %v\n", e)
