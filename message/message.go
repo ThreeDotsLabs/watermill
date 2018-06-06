@@ -1,56 +1,50 @@
 package message
 
 import (
-	"sync"
+	"github.com/mitchellh/mapstructure"
 )
 
 type Payload interface{}
 
-// todo - encapsulate fields?
-// todo - replace with interface?
-type Message struct {
-	UUID string
+type Message interface {
+	UUID() string
 
-	Payload Payload
+	SetMetadata(key, value string)
+	GetMetadata(key string) string
 
-	Metadata struct {
-		// todo - fill it
-		OriginService string
-		OriginHost    string
-		CorrelationID string
-		// todo - add something to help with tracing? hosts list?
-	}
-
-	ackListeners []chan<- struct{}
-	acked        bool
-	ackLock      sync.Locker
+	UnmarshalPayload(val interface{}) error
 }
 
-// todo - remove ptr
-func (m *Message) Acknowledged() (<-chan struct{}) {
-	m.ackLock.Lock()
-	defer m.ackLock.Unlock()
-	ch := make(chan struct{}, 1)
-
-	if m.acked {
-		ch <- struct{}{}
-		return ch
-	}
-	m.ackListeners = append(m.ackListeners, ch)
-
-	return ch
+type Default struct {
+	MessageUUID     string            `json:"message_uuid"`
+	MessageMetadata map[string]string `json:"message_metadata"`
+	MessagePayload  Payload           `json:"message_payload"`
 }
 
-func (m *Message) Acknowledge() {
-	m.ackLock.Lock()
-	defer m.ackLock.Unlock()
-
-	if m.acked {
-		return
+func NewDefault(uuid string, payload Payload) Message {
+	return &Default{
+		MessageUUID:     uuid,
+		MessageMetadata: make(map[string]string),
+		MessagePayload:  payload,
 	}
-	m.acked = true
+}
 
-	for _, ch := range m.ackListeners {
-		ch <- struct{}{}
+func (m Default) UUID() string {
+	return m.MessageUUID
+}
+
+func (m *Default) SetMetadata(key, value string) {
+	m.MessageMetadata[key] = value
+}
+
+func (m *Default) GetMetadata(key string) string {
+	if val, ok := m.MessageMetadata[key]; ok {
+		return val
 	}
+
+	return ""
+}
+
+func (m *Default) UnmarshalPayload(val interface{}) error {
+	return mapstructure.Decode(m.MessagePayload, val)
 }

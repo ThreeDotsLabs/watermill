@@ -7,7 +7,7 @@ import (
 	"github.com/roblaszczak/gooddd/message"
 )
 
-type marshalMessageFunc func(message *message.Message) ([]byte, error)
+type marshalMessageFunc func(message message.Message) ([]byte, error)
 
 type syncKafka struct {
 	topic    string
@@ -16,7 +16,7 @@ type syncKafka struct {
 	marshalMsg marshalMessageFunc
 }
 
-func NewSimpleSyncProducer(topic string, brokers []string, marshalMsg marshalMessageFunc) (message.PublisherBackend, error) {
+func NewSimpleSyncProducer(topic string, brokers []string, marshalMsg marshalMessageFunc) (message.Publisher, error) {
 	// todo - pass consumer id
 
 	config := sarama.NewConfig()
@@ -33,18 +33,18 @@ func NewSimpleSyncProducer(topic string, brokers []string, marshalMsg marshalMes
 	return NewSyncProducer(topic, producer, marshalMsg)
 }
 
-func NewSyncProducer(topic string, producer sarama.SyncProducer, marshalMsg marshalMessageFunc) (message.PublisherBackend, error) {
+func NewSyncProducer(topic string, producer sarama.SyncProducer, marshalMsg marshalMessageFunc) (message.Publisher, error) {
 	return syncKafka{topic, producer, marshalMsg}, nil
 }
 
 // todo - test
-func (p syncKafka) Publish(messages []*message.Message) error {
+func (p syncKafka) Publish(messages []message.Message) error {
 	var saramaMessages []*sarama.ProducerMessage
 
-	for _, message := range messages {
-		b, err := p.marshalMsg(message)
+	for _, msg := range messages {
+		b, err := p.marshalMsg(msg)
 		if err != nil {
-			return errors.Wrapf(err, "cannot marshal message %s", message)
+			return errors.Wrapf(err, "cannot marshal message %s", msg)
 		}
 
 		saramaMessages = append(saramaMessages, &sarama.ProducerMessage{

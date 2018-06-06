@@ -19,7 +19,7 @@ func NewMetrics(timer metrics.Timer, errs metrics.Counter, success metrics.Count
 }
 
 func (m Metrics) Middleware(h handler.HandlerFunc) handler.HandlerFunc {
-	return func(event *message.Message) (events []message.Payload, err error) {
+	return func(event message.Message) (events []message.Message, err error) {
 		start := time.Now()
 		defer func() {
 			m.timer.Update(time.Now().Sub(start))

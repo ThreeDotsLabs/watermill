@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 )
 
-func Json(message *message.Message) ([]byte, error) {
+func Json(message message.Message) ([]byte, error) {
 	return json.Marshal(message)
 }
 

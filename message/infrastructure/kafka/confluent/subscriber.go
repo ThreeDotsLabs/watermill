@@ -10,7 +10,7 @@ import (
 	"github.com/roblaszczak/gooddd"
 )
 
-type confluentKafkaDeserializer func(kafka.Message) (*message.Message, error)
+type confluentKafkaDeserializer func(*kafka.Message) (message.Message, error)
 
 type confluentKafkaGroupGenerator func(subscriberMeta message.SubscriberMetadata) string
 
@@ -34,14 +34,11 @@ type confluentKafka struct {
 func NewConfluentKafka(
 	deserializer confluentKafkaDeserializer,
 	groupGenerator confluentKafkaGroupGenerator,
-	unmarshalMessageFunc unmarshalMessageFunc,
 	logger gooddd.LoggerAdapter,
 ) (message.Subscriber) {
 	return &confluentKafka{
 		deserializer:   deserializer,
 		groupGenerator: groupGenerator,
-
-		unmarshalMessage: unmarshalMessageFunc,
 
 		closing: make(chan struct{}),
 
@@ -56,7 +53,7 @@ func NewConfluentKafka(
 func (s confluentKafka) createConsumer(consumerGroup string) (*kafka.Consumer, error) {
 	return kafka.NewConsumer(&kafka.ConfigMap{
 		"bootstrap.servers": "localhost",
-		"group.id": consumerGroup,
+		"group.id":          consumerGroup,
 
 		// todo ?
 		"auto.offset.reset":    "earliest",
@@ -69,7 +66,7 @@ func (s confluentKafka) createConsumer(consumerGroup string) (*kafka.Consumer, e
 
 }
 
-func (s confluentKafka) Subscribe(topic string, metadata message.SubscriberMetadata) (chan *message.Message, error) {
+func (s confluentKafka) Subscribe(topic string, metadata message.SubscriberMetadata) (chan message.Message, error) {
 	consumerGroup := s.groupGenerator(metadata)
 
 	logFields := gooddd.LogFields{
@@ -80,7 +77,7 @@ func (s confluentKafka) Subscribe(topic string, metadata message.SubscriberMetad
 	}
 	s.logger.Info("Subscribing to Kafka topic", logFields)
 
-	output := make(chan *message.Message, 0)
+	output := make(chan message.Message, 0)
 
 	s.allSubscribersWg.Add(1)
 
@@ -110,7 +107,7 @@ func (s confluentKafka) Subscribe(topic string, metadata message.SubscriberMetad
 		})
 		s.logger.Debug("Starting messages consumer", consumerLogFields)
 
-		go func(events chan<- *message.Message, consumer *kafka.Consumer) {
+		go func(events chan<- message.Message, consumer *kafka.Consumer) {
 			defer func() {
 				// todo - reenable when https://github.com/confluentinc/confluent-kafka-go/issues/189 fixed
 				//err := consumer.Close()
@@ -142,14 +139,9 @@ func (s confluentKafka) Subscribe(topic string, metadata message.SubscriberMetad
 						})
 						s.logger.Trace("Received message from Kafka", receivedMsgLogFields)
 
-						// todo - wtf with it?
-						msg, err := message.DefaultFactoryFunc(nil)
-						if err != nil {
-							fmt.Println(err)
-							continue
-						}
+						msg, err := s.deserializer(e)
 						// todo - move it out?
-						if err := s.unmarshalMessage(e.Value, msg); err != nil {
+						if err != nil {
 							// todo - err support
 							fmt.Println(err)
 							continue
@@ -165,7 +157,7 @@ func (s confluentKafka) Subscribe(topic string, metadata message.SubscriberMetad
 						events <- msg
 
 						s.logger.Trace("Waiting for ACK", receivedMsgLogFields)
-						<-msg.Acknowledged()
+						// todo - wait for processing
 						s.logger.Trace("Message acknowledged", receivedMsgLogFields)
 					case kafka.PartitionEOF:
 						fmt.Printf("%% Reached %v\n", e)

@@ -70,8 +70,8 @@ func BenchmarkMessage_Acknowledge_before_ack(b *testing.B) {
 	}
 }
 
-func createBenchmarkMessages(b *testing.B) []*message.Message {
-	messages := make([]*message.Message, b.N)
+func createBenchmarkMessages(b *testing.B) []message.Message {
+	messages := make([]message.Message, b.N)
 	for n := 0; n < b.N; n++ {
 		messages[n], _ = message.DefaultFactoryFunc(nil)
 	}

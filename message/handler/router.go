@@ -13,13 +13,13 @@ import (
 // todo - rename package
 // check: https://en.wikipedia.org/wiki/Event-driven_architecture
 
-type HandlerFunc func(msg *message.Message) (returnMsgPayloads []message.Payload, err error)
+type HandlerFunc func(msg message.Message) (producedMessages []message.Message, err error)
 
 type Middleware func(h HandlerFunc) HandlerFunc
 
 type Plugin func(*Router) error
 
-func NewRouter(serverName string, subscriber message.Subscriber, publisher *message.Publisher) *Router {
+func NewRouter(serverName string, subscriber message.Subscriber, publisher message.Publisher) *Router {
 	// todo -validate server name
 
 	return &Router{
@@ -44,7 +44,7 @@ type Router struct {
 	serverName string
 
 	subscriber message.Subscriber // todo - rename? or rename subscribers?
-	publisher  *message.Publisher
+	publisher  message.Publisher
 
 	middlewares []Middleware
 
@@ -83,7 +83,7 @@ type handler struct {
 	topic       string
 	handlerFunc HandlerFunc
 
-	messagesCh chan *message.Message
+	messagesCh chan message.Message
 
 	metadata message.SubscriberMetadata // todo - rename it?
 }
@@ -159,27 +159,27 @@ func (r *Router) Run() error {
 			for msg := range s.messagesCh {
 				r.runningHandlersWg.Add(1)
 
-				go func(msg *message.Message) {
+				go func(msg message.Message) {
 					defer r.runningHandlersWg.Done()
 
-					msgFields := gooddd.LogFields{"message_uuid": msg.UUID}
+					msgFields := gooddd.LogFields{"message_uuid": msg.UUID()}
 
 					r.Logger.Trace("Received message", msgFields)
 
-					producedPayloads, err := middlewareHandler(msg)
+					producedMessages, err := middlewareHandler(msg)
 					if err != nil {
 						// todo - what to do with it?
 						fmt.Println(err)
 						return
 					}
 
-					if len(producedPayloads) > 0 {
-						r.Logger.Trace("Sending produced payload", msgFields.Add(gooddd.LogFields{
-							"produced_payloads_count": len(producedPayloads),
+					if len(producedMessages) > 0 {
+						r.Logger.Trace("Sending produced messages", msgFields.Add(gooddd.LogFields{
+							"produced_messages_count": len(producedMessages),
 						}))
 
 						// todo - set topic
-						if err := r.publisher.Publish(producedPayloads); err != nil {
+						if err := r.publisher.Publish(producedMessages); err != nil {
 							// todo - what to do with it?
 							fmt.Println(err)
 							return

@@ -8,10 +8,13 @@ import (
 	"github.com/roblaszczak/gooddd/message/infrastructure/kafka/sarama"
 	message2 "github.com/roblaszczak/gooddd/message"
 	"github.com/roblaszczak/gooddd/message/marshal"
+	"github.com/renstrom/shortuuid"
+	"github.com/roblaszczak/gooddd/message/handler/middleware"
 )
 
 type postAdded struct {
-	UUID          []byte `json:"uuid"`
+	EventID string `json:"event_id"`
+
 	AggregateUUID []byte `json:"aggregate_uuid"`
 
 	OccurredOn time.Time `json:"occurred_on"`
@@ -24,8 +27,8 @@ type postAdded struct {
 	Content string `json:"content"`
 }
 
-func (p postAdded) EventID() []byte {
-	return p.UUID
+func (p postAdded) UUID() string {
+	return p.EventID
 }
 
 func (p postAdded) EventOccurredOn() time.Time {
@@ -45,19 +48,18 @@ func (postAdded) AggregateVersion() int {
 }
 
 func main() {
-	publisherBackend, err := sarama.NewSimpleSyncProducer([]string{"localhost:9092"}, marshal.Json)
+	publisher, err := sarama.NewSimpleSyncProducer("test_topic", []string{"localhost:9092"}, marshal.Json)
 	if err != nil {
 		panic(err)
 	}
 
-	publisher := message2.NewPublisher(publisherBackend, message2.DefaultFactoryFunc)
-
-	i := 10000000
+	i := 100000
 	wg := &sync.WaitGroup{}
 
 	for {
-		message := postAdded{
-			UUID:       uuid.NewV4().Bytes(),
+		msgPayload := postAdded{
+			EventID: uuid.NewV4().String(),
+
 			OccurredOn: time.Now(),
 
 			Author: randomdata.FullName(randomdata.RandomGender),
@@ -71,14 +73,17 @@ func main() {
 
 			Content: randomdata.Paragraph(),
 		}
+		msg := message2.NewDefault(msgPayload.UUID(), msgPayload)
 
-		//fmt.Printf("Generated message: %#v\n", message)
+		middleware.SetCorrelationUUID(shortuuid.New(), msg)
+
+		//fmt.Printf("Generated message: %#v\n", msg)
 
 		wg.Add(1)
 		go func() {
 			// todo - how to create messages to send?
-			err := publisher.Publish("test_topic", []message2.Payload{
-				message,
+			err := publisher.Publish([]message2.Message{
+				msg,
 			})
 			if err != nil {
 				panic(err)

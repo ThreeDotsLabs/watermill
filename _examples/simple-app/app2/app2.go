@@ -25,6 +25,7 @@ import (
 	"github.com/roblaszczak/gooddd/message/marshal"
 	"github.com/roblaszczak/gooddd"
 	"github.com/roblaszczak/gooddd/message/infrastructure/kafka/sarama"
+	"github.com/satori/go.uuid"
 )
 
 // todo - doc why separated type
@@ -60,7 +61,7 @@ type PostsCounter struct {
 	countStorage countStorage
 }
 
-func (p PostsCounter) Count(msg *message.Message) ([]message.Payload, error) {
+func (p PostsCounter) Count(msg message.Message) ([]message.Message, error) {
 	newCount, err := p.countStorage.CountAdd()
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot add count")
@@ -70,7 +71,10 @@ func (p PostsCounter) Count(msg *message.Message) ([]message.Payload, error) {
 		fmt.Println("> new count:", newCount)
 	}
 
-	return []message.Payload{postsCountUpdated{newCount}}, nil
+	producedMsg := postsCountUpdated{NewCount: newCount}
+	//producedMsg.
+
+	return []message.Message{message.NewDefault(uuid.NewV4().String(), producedMsg)}, nil
 }
 
 // todo - replace with mongo?
@@ -90,10 +94,10 @@ type FeedGenerator struct {
 	feedStorage feedStorage
 }
 
-func (f FeedGenerator) UpdateFeed(message *message.Message) ([]message.Payload, error) {
+func (f FeedGenerator) UpdateFeed(message message.Message) ([]message.Message, error) {
 	event := postAdded{}
-	if err := handler.DecodeEventPayload(message, &event); err != nil {
-		return nil, errors.Wrap(err, "cannot decode payload")
+	if err := message.UnmarshalPayload(&event); err != nil {
+		return nil, err
 	}
 
 	err := f.feedStorage.AddToFeed(event.Title, event.Author, event.OccurredOn)
@@ -104,20 +108,12 @@ func (f FeedGenerator) UpdateFeed(message *message.Message) ([]message.Payload, 
 	return nil, nil
 }
 
-func LogEventMiddleware(h handler.HandlerFunc) handler.HandlerFunc {
-	return func(event *message.Message) ([]message.Payload, error) {
-		//fmt.Printf("event received: %#v\n", event)
-
-		return h(event)
-	}
-}
-
 func main() {
 	go func() {
 		log.Println(http.ListenAndServe("localhost:6060", nil))
 	}()
 
-	logger := gooddd.NewStdLogger(true, true)
+	logger := gooddd.NewStdLogger(false, false)
 	//logger := gooddd.NopLogger{}
 
 	t := metrics.NewTimer()
@@ -147,28 +143,22 @@ func main() {
 	feedGenerator := FeedGenerator{printFeedStorage{}}
 
 	// todo - move this boilerplate somewhere, to make examples more clear
-	listenerFactory := confluent.NewConfluentKafka(func(kafkaMsg kafka.Message) (*message.Message, error) {
-		msg, err := message.DefaultFactoryFunc(nil)
-		if err != nil {
-			return nil, err
-		}
+	listenerFactory := confluent.NewConfluentKafka(func(kafkaMsg *kafka.Message) (message.Message, error) {
+		msg := &message.Default{}
 		// todo - use standard way to unmarshal
-		if err := json.Unmarshal(kafkaMsg.Value, &msg); err != nil {
+		if err := json.Unmarshal(kafkaMsg.Value, msg); err != nil {
 			return nil, err
 		}
 
 		return msg, nil
 	}, func(subscriberMeta message.SubscriberMetadata) string {
-		return fmt.Sprintf("%s_%s_v12", subscriberMeta.ServerName, subscriberMeta.SubscriberName)
-	}, marshal.UnmarshalJson, logger)
+		return fmt.Sprintf("%s_%s_v14", subscriberMeta.ServerName, subscriberMeta.SubscriberName)
+	}, logger)
 
-
-	publisherBackend, err := sarama.NewSimpleSyncProducer("test_topic", []string{"localhost:9092"}, marshal.Json)
+	publisher, err := sarama.NewSimpleSyncProducer("todo", []string{"localhost:9092"}, marshal.Json)
 	if err != nil {
 		panic(err)
 	}
-
-	publisher := message.NewPublisher(publisherBackend, message.DefaultFactoryFunc)
 
 	router := handler.NewRouter("example", listenerFactory, publisher)
 	router.Logger = logger
@@ -190,13 +180,14 @@ func main() {
 
 	router.AddMiddleware(
 		metricsMiddleware.Middleware,
-		middleware.Ack,
+		//middleware.Ack,
 		throttle.Middleware,
 		//middleware.PoisonQueueHook(func(message *message.Message, err error) {
 		//	fmt.Println("unable to process", message, "err:", err)
 		//}),
 		retryMiddleware.Middleware,
 		middleware.Recoverer,
+		middleware.CorrelationUUID,
 		//middleware.RandomFail(0.002),
 		//middleware.RandomPanic(0.002),
 	)
