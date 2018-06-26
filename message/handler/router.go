@@ -19,11 +19,13 @@ type Middleware func(h HandlerFunc) HandlerFunc
 
 type Plugin func(*Router) error
 
-func NewRouter(serverName string, subscriber message.Subscriber, publisher message.Publisher) *Router {
-	// todo -validate server name
+func NewRouter(serverName string, publishEventsTopic string, subscriber message.Subscriber, publisher message.Publisher) *Router {
+	// todo -validate server name?
 
 	return &Router{
 		serverName: serverName,
+
+		publishEventsTopic: publishEventsTopic,
 
 		subscriber: subscriber,
 		publisher:  publisher,
@@ -43,7 +45,9 @@ func NewRouter(serverName string, subscriber message.Subscriber, publisher messa
 type Router struct {
 	serverName string
 
-	subscriber message.Subscriber // todo - rename? or rename subscribers?
+	publishEventsTopic string
+
+	subscriber message.Subscriber
 	publisher  message.Publisher
 
 	middlewares []Middleware
@@ -84,8 +88,6 @@ type handler struct {
 	handlerFunc HandlerFunc
 
 	messagesCh chan message.Message
-
-	metadata message.SubscriberMetadata // todo - rename it?
 }
 
 func (r *Router) Subscribe(subscriberName string, topic string, handlerFunc HandlerFunc) error {
@@ -102,12 +104,6 @@ func (r *Router) Subscribe(subscriberName string, topic string, handlerFunc Hand
 		name:        subscriberName,
 		topic:       topic,
 		handlerFunc: handlerFunc,
-
-		metadata: message.SubscriberMetadata{
-			SubscriberName: subscriberName,
-			ServerName:     r.serverName,
-			Hostname:       "localhost", // todo
-		},
 	}
 	return nil
 }
@@ -132,7 +128,7 @@ func (r *Router) Run() error {
 			"topic":           s.topic,
 		})
 
-		messages, err := r.subscriber.Subscribe(s.topic, s.metadata)
+		messages, err := r.subscriber.Subscribe(s.topic)
 		if err != nil {
 			return errors.Wrapf(err, "cannot subscribe topic %s", s.topic)
 		}
@@ -178,7 +174,7 @@ func (r *Router) Run() error {
 						}))
 
 						// todo - set topic?
-						if err := r.publisher.Publish(producedMessages); err != nil {
+						if err := r.publisher.Publish(r.publishEventsTopic, producedMessages); err != nil {
 							// todo - configurable
 							r.Logger.Error("cannot publish message", err, msgFields.Add(gooddd.LogFields{
 								"not_sent_message": fmt.Sprintf("%#v", producedMessages),
@@ -202,11 +198,17 @@ func (r *Router) Run() error {
 	<-r.closeCh
 
 	r.Logger.Debug("Waiting for subscriber to close", nil)
-	err := r.subscriber.Close()
-	if err != nil {
+	if err := r.subscriber.CloseSubscriber(); err != nil {
 		return errors.Wrap(err, "cannot close handler")
 	}
 	r.Logger.Debug("Subscriber closed", nil)
+
+	r.Logger.Debug("Waiting for publisher to close", nil)
+	if err := r.publisher.ClosePublisher(); err != nil {
+		return errors.Wrap(err, "cannot close handler")
+	}
+	r.Logger.Debug("Publisher closed", nil)
+
 
 	r.Logger.Info("Router closed", nil)
 

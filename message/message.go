@@ -7,7 +7,7 @@ import (
 type Payload interface{}
 
 type Message interface {
-	UUID() string
+	UUID() string // todo - change to []byte?, change to type
 
 	SetMetadata(key, value string)
 	GetMetadata(key string) string
@@ -61,5 +61,6 @@ func (m *Default) GetMetadata(key string) string {
 }
 
 func (m *Default) UnmarshalPayload(val interface{}) error {
+	// todo - detect immutable
 	return mapstructure.Decode(m.MessagePayload, val)
 }

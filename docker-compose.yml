@@ -22,6 +22,17 @@ services:
       KAFKA_NUM_PARTITIONS: 8
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
 
+  mysql:
+    image: mysql:5.7
+    restart: always
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: secret
+      MYSQL_DATABASE: test
+    volumes:
+      - ./tests/sql/schema:/docker-entrypoint-initdb.d
+
 #  app:
 #    build: .
 #    entrypoint: sleep infinity
@@ -40,13 +51,6 @@ services:
 #    ports:
 #      - "15672:15672"
 
-#  mysql:
-#    image: mysql:5
-#    restart: always
-#    ports:
-#      - "3306:3306"
-#    environment:
-#      MYSQL_ROOT_PASSWORD: secret
 #
 #  zookeeper:
 #    image: confluent/zookeeper
