@@ -53,8 +53,8 @@ func TestFunctional(t *testing.T) {
 	)
 	go router.Run()
 
-	receivedMessages, err := subscriber.ReadAll(receivedMessagesCh, len(messagesToPublish), time.Second*10)
-	require.NoError(t, err)
+	receivedMessages, all:= subscriber.BulkRead(receivedMessagesCh, len(messagesToPublish), time.Second*10)
+	require.True(t, all)
 
 	tests.AssertAllMessagesReceived(t, messagesToPublish, receivedMessages)
 }

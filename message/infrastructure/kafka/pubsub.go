@@ -36,7 +36,7 @@ func NewPubSub(brokers []string, mu MarshallerUnmarshaller, consumerGroup string
 		return nil, errors.Wrap(err, "cannot create publisher")
 	}
 
-	subscriber := NewSubscriber(brokers, consumerGroup, mu, logger)
+	subscriber := NewConfluentSubscriber(brokers, consumerGroup, mu, logger)
 
 	return pubsub{publisher, subscriber}, nil
 }

@@ -11,15 +11,15 @@ import (
 	"fmt"
 )
 
-var ackCloseCheckThreshold = time.Second * 5 // todo - config
+var confluentAckCloseCheckThreshold = time.Second * 5 // todo - config
 
-type ConsumerConstructor func(brokers []string, consumerGroup string) (*kafka.Consumer, error)
+type ConfluentConsumerConstructor func(brokers []string, consumerGroup string) (*kafka.Consumer, error)
 
 type confluentSubscriber struct {
 	brokers             []string
 	consumerGroup       string
 	unmarshaller        Unmarshaller
-	consumerConstructor ConsumerConstructor
+	consumerConstructor ConfluentConsumerConstructor
 	logger              gooddd.LoggerAdapter
 
 	closing          chan struct{}
@@ -30,15 +30,15 @@ type confluentSubscriber struct {
 }
 
 // todo - ubiquitous name: listener, consumer, subscriber
-func NewSubscriber(brokers []string, consumerGroup string, unmarshaller Unmarshaller, logger gooddd.LoggerAdapter) (message.Subscriber) {
-	return NewCustomSubscriber(brokers, consumerGroup, unmarshaller, DefaultConsumerConstructor, logger)
+func NewConfluentSubscriber(brokers []string, consumerGroup string, unmarshaller Unmarshaller, logger gooddd.LoggerAdapter) (message.Subscriber) {
+	return NewCustomConfluentSubscriber(brokers, consumerGroup, unmarshaller, DefaultConfluentConsumerConstructor, logger)
 }
 
-func NewCustomSubscriber(
+func NewCustomConfluentSubscriber(
 	brokers []string,
 	consumerGroup string,
 	unmarshaller Unmarshaller,
-	consumerConstructor ConsumerConstructor,
+	consumerConstructor ConfluentConsumerConstructor,
 	logger gooddd.LoggerAdapter,
 ) (message.Subscriber) {
 	return &confluentSubscriber{
@@ -54,22 +54,23 @@ func NewCustomSubscriber(
 	}
 }
 
-func DefaultConsumerConstructor(brokers []string, consumerGroup string) (*kafka.Consumer, error) {
+func DefaultConfluentConsumerConstructor(brokers []string, consumerGroup string) (*kafka.Consumer, error) {
 	return kafka.NewConsumer(&kafka.ConfigMap{
 		"bootstrap.servers": strings.Join(brokers, ","),
 		"group.id":          consumerGroup,
 
-		// todo ?
-		//"auto.offset.reset":    "earliest",
+		"auto.offset.reset":    "earliest",
 		"default.topic.config": kafka.ConfigMap{"auto.offset.reset": "earliest"},
 
-		"session.timeout.ms": 6000,
-		"enable.auto.commit": false,
+		"session.timeout.ms":       6000,
+		"enable.auto.commit":       true,
+		"enable.auto.offset.store": false,
 		// todo - allow ssl? add flexability
 	})
 
 }
 
+// todo - review!!
 func (s *confluentSubscriber) Subscribe(topic string) (chan message.Message, error) {
 	if s.closed {
 		return nil, errors.New("subscriber closed")
@@ -105,28 +106,10 @@ func (s *confluentSubscriber) Subscribe(topic string) (chan message.Message, err
 
 		consumersWg.Add(1)
 		go func(events chan<- message.Message, consumer *kafka.Consumer) {
-			lastPartitition := kafka.TopicPartition{}
-
 			defer func() {
-				if lastPartitition != (kafka.TopicPartition{}) {
-					// todo - commit every x messages?
-					offsets := []kafka.TopicPartition{lastPartitition}
-					offsets[0].Offset++
-
+				if err := consumer.Close(); err != nil {
 					// todo - handle err
-					_, err := consumer.CommitOffsets(offsets)
-					if err != nil {
-						// todo - log
-					}
-				}
-				//if err := consumer.Unsubscribe(); err != nil {
-				//	// todo - err handle
-				//	panic(err)
-				//}
-				err := consumer.Close()
-				if err != nil {
-					// todo - handle err
-					fmt.Println(err)
+					panic(err)
 				}
 
 				consumersWg.Done()
@@ -148,6 +131,7 @@ func (s *confluentSubscriber) Subscribe(topic string) (chan message.Message, err
 					switch e := ev.(type) {
 					case *kafka.Message:
 						if e.TopicPartition.Error != nil {
+							// todo - handle
 							panic(e.TopicPartition.Error)
 						}
 
@@ -176,6 +160,7 @@ func (s *confluentSubscriber) Subscribe(topic string) (chan message.Message, err
 								"Message not sent and close received, making rollback",
 								receivedMsgLogFields,
 							)
+							s.rollback(consumer, e.TopicPartition)
 							continue
 						case events <- msg:
 							// ok
@@ -196,15 +181,22 @@ func (s *confluentSubscriber) Subscribe(topic string) (chan message.Message, err
 									s.rollback(consumer, e.TopicPartition)
 								} else {
 									s.logger.Trace("Message acknowledged", receivedMsgLogFields)
-									lastPartitition = e.TopicPartition
+									stored, err := consumer.StoreOffsets([]kafka.TopicPartition{e.TopicPartition})
+									if err != nil {
+										// todo - handle
+										panic(err)
+									}
+									s.logger.Trace(
+										"stored Kafka offsets",
+										receivedMsgLogFields.Add(gooddd.LogFields{"stored_offsets": stored}),
+									)
 								}
 								break AckLoop
-							case <-time.After(ackCloseCheckThreshold):
+							case <-time.After(confluentAckCloseCheckThreshold):
 								s.logger.Info(
-									fmt.Sprintf("Ack not received after %s", ackCloseCheckThreshold),
+									fmt.Sprintf("Ack not received after %s", confluentAckCloseCheckThreshold),
 									receivedMsgLogFields,
 								)
-								continue
 							}
 
 							// check close
@@ -214,6 +206,7 @@ func (s *confluentSubscriber) Subscribe(topic string) (chan message.Message, err
 									"Ack not received and received close",
 									receivedMsgLogFields,
 								)
+								s.rollback(consumer, e.TopicPartition) // todo - reactor occurance of rollback
 								continue EventsLoop
 							default:
 								s.logger.Trace(
@@ -223,9 +216,12 @@ func (s *confluentSubscriber) Subscribe(topic string) (chan message.Message, err
 							}
 						}
 					case kafka.PartitionEOF:
-						s.logger.Trace("Reached end of partition", nil)
+						s.logger.Trace("Reached end of partition", logFields)
 					default:
-						s.logger.Info("Unsupportted msg", gooddd.LogFields{"msg": s})
+						s.logger.Info(
+							"Unsupported msg",
+							logFields.Add(gooddd.LogFields{"msg": fmt.Sprintf("%#v", s)}),
+						)
 					}
 				}
 			}
@@ -245,6 +241,7 @@ func (s *confluentSubscriber) Subscribe(topic string) (chan message.Message, err
 
 func (s *confluentSubscriber) rollback(consumer *kafka.Consumer, partition kafka.TopicPartition) {
 	if err := consumer.Seek(partition, 1000*60); err != nil {
+		// todo - handle
 		panic(err)
 	}
 }
