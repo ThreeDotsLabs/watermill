@@ -5,11 +5,11 @@ import (
 	"github.com/Pallinder/go-randomdata"
 	"sync"
 	"time"
-	"github.com/roblaszczak/gooddd/message/infrastructure/kafka/sarama"
-	message2 "github.com/roblaszczak/gooddd/message"
-	"github.com/roblaszczak/gooddd/message/marshal"
+	"github.com/roblaszczak/gooddd/message/infrastructure/kafka"
+	"github.com/roblaszczak/gooddd/message"
 	"github.com/renstrom/shortuuid"
 	"github.com/roblaszczak/gooddd/message/handler/middleware"
+	"github.com/roblaszczak/gooddd/message/infrastructure/kafka/marshal"
 )
 
 type postAdded struct {
@@ -48,7 +48,7 @@ func (postAdded) AggregateVersion() int {
 }
 
 func main() {
-	publisher, err := sarama.NewSimpleSyncProducer("test_topic", []string{"localhost:9092"}, marshal.Json)
+	publisher, err := kafka.NewPublisher([]string{"localhost:9092"}, marshal.Json{})
 	if err != nil {
 		panic(err)
 	}
@@ -73,7 +73,7 @@ func main() {
 
 			Content: randomdata.Paragraph(),
 		}
-		msg := message2.NewDefault(msgPayload.UUID(), msgPayload)
+		msg := message.NewDefault(msgPayload.UUID(), msgPayload)
 
 		middleware.SetCorrelationUUID(shortuuid.New(), msg)
 
@@ -82,7 +82,7 @@ func main() {
 		wg.Add(1)
 		go func() {
 			// todo - how to create messages to send?
-			err := publisher.Publish([]message2.Message{
+			err := publisher.Publish("test_topic", []message.Message{
 				msg,
 			})
 			if err != nil {

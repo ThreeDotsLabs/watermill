@@ -14,7 +14,7 @@ func SignalsHandler(router *handler.Router) error {
 
 	go func() {
 		sig := <-sigs
-		router.Logger.Info(fmt.Sprintf("received %s signal, closing\n", sig), nil)
+		router.Logger.Info(fmt.Sprintf("Received %s signal, closing\n", sig), nil)
 
 		router.Close()
 	}()

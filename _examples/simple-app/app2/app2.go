@@ -16,15 +16,13 @@ import (
 	"net/http"
 	"log"
 	"os"
-	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/roblaszczak/gooddd/message"
-	"github.com/roblaszczak/gooddd/message/infrastructure/kafka/confluent"
 
 	_ "net/http/pprof"
-	"github.com/roblaszczak/gooddd/message/marshal"
 	"github.com/roblaszczak/gooddd"
-	"github.com/roblaszczak/gooddd/message/infrastructure/kafka/sarama"
 	"github.com/satori/go.uuid"
+	"github.com/roblaszczak/gooddd/message/infrastructure/kafka/marshal"
+	kafka2 "github.com/roblaszczak/gooddd/message/infrastructure/kafka"
 )
 
 // todo - doc why separated type
@@ -112,8 +110,8 @@ func main() {
 		log.Println(http.ListenAndServe("localhost:6060", nil))
 	}()
 
-	logger := gooddd.NewStdLogger(false, false)
-	//logger := gooddd.NopLogger{}
+	//logger := gooddd.NewStdLogger(false, false)
+	logger := gooddd.NopLogger{}
 
 	t := metrics.NewTimer()
 	metrics.Register("handler.time", t)
@@ -141,19 +139,13 @@ func main() {
 	counter := PostsCounter{memoryCountStorage{new(int64)}}
 	feedGenerator := FeedGenerator{printFeedStorage{}}
 
-	// todo - move this boilerplate somewhere, to make examples more clear
-	listenerFactory := confluent.NewConfluentKafka(func(kafkaMsg *kafka.Message) (message.Message, error) {
-		return marshal.UnmarshalJson(kafkaMsg.Value)
-	}, func(subscriberMeta message.SubscriberMetadata) string {
-		return fmt.Sprintf("%s_%s_v14", subscriberMeta.ServerName, subscriberMeta.SubscriberName)
-	}, logger)
 
-	publisher, err := sarama.NewSimpleSyncProducer("todo", []string{"localhost:9092"}, marshal.Json)
+	pubSub, err := kafka2.NewPubSub([]string{"localhost:9092"}, marshal.Json{}, "app2", logger)
 	if err != nil {
 		panic(err)
 	}
 
-	router := handler.NewRouter("example", listenerFactory, publisher)
+	router := handler.NewRouter("example", "app2_events", pubSub, pubSub)
 	router.Logger = logger
 
 	metricsMiddleware := middleware.NewMetrics(t, errs, success)
@@ -166,23 +158,23 @@ func main() {
 	retryMiddleware.MaxRetries = 1
 	retryMiddleware.WaitTime = time.Millisecond * 10
 
-	throttle, err := middleware.NewThrottlePerSecond(1, logger)
-	if err != nil {
-		panic(err)
-	}
+	//throttle, err := middleware.NewThrottlePerSecond(1, logger)
+	//if err != nil {
+	//	panic(err)
+	//}
 
 	router.AddMiddleware(
 		metricsMiddleware.Middleware,
 		middleware.AckOnSuccess,
-		throttle.Middleware,
+		//throttle.Middleware,
 		//middleware.PoisonQueueHook(func(message *message.Message, err error) {
 		//	fmt.Println("unable to process", message, "err:", err)
 		//}),
 		retryMiddleware.Middleware,
 		middleware.Recoverer,
 		middleware.CorrelationUUID,
-		middleware.RandomFail(1),
-		//middleware.RandomPanic(0.002),
+		middleware.RandomFail(0.002),
+		middleware.RandomPanic(0.002),
 	)
 
 	router.AddPlugin(plugin.SignalsHandler)
