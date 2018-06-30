@@ -233,7 +233,7 @@ func noAckTest(t *testing.T, pubSub message.PubSub) {
 
 	for i := 0; i < 2; i++ {
 		id := uuid.NewV4().String()
-		// same type, to be sure that messages are sent to same consumer
+		// same type, to be sure that messages are sent to same subscriber
 		payload := MessageWithType{0, i}
 
 		msg := message.NewDefault(id, payload)
@@ -295,7 +295,7 @@ func continueAfterCloseTest(t *testing.T, createPubSub PubSubConstructor) {
 	// with at-least-once delivery we cannot assume that 5 (5*20msg=100) clients will be enough
 	// because messages will be delivered twice
 	for i := 0; i < 20; i++ {
-		addedByConsumer := 0
+		addedBySubscriber := 0
 		pubSub := createPubSub(t, consumerGroup)
 
 		messages, err := pubSub.Subscribe(topicName)
@@ -308,7 +308,7 @@ func continueAfterCloseTest(t *testing.T, createPubSub PubSubConstructor) {
 			if _, ok := receivedMessagesMap[msg.UUID()]; ok {
 				fmt.Printf("%s is duplicated\n", msg.UUID())
 			} else {
-				addedByConsumer++
+				addedBySubscriber++
 				messagesLeft--
 				receivedMessagesMap[msg.UUID()] = msg
 				receivedMessages = append(receivedMessages, msg)
@@ -320,8 +320,8 @@ func continueAfterCloseTest(t *testing.T, createPubSub PubSubConstructor) {
 		fmt.Println(
 			"already received:", len(receivedMessagesMap),
 			"total:", len(messagesToPublish),
-			"received by this consumer:", addedByConsumer,
-			"new in this consumer (unique):", len(receivedMessagesPart),
+			"received by this subscriber:", addedBySubscriber,
+			"new in this subscriber (unique):", len(receivedMessagesPart),
 		)
 		if messagesLeft == 0 {
 			break
@@ -348,7 +348,7 @@ func continueAfterErrors(t *testing.T, createPubSub PubSubConstructor) {
 	messagesToPublish := addSimpleMessagesMessages(t, totalMessagesCount, pubSub, topicName)
 	closePubSub(t, pubSub)
 
-	// sending totalMessagesCount*2 errors from 3 consumers
+	// sending totalMessagesCount*2 errors from 3 subscribers
 	for i := 0; i < 3; i++ {
 		errorsPubSub := createPubSub(t, consumerGroup)
 

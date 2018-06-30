@@ -8,15 +8,15 @@ import (
 	"github.com/roblaszczak/gooddd/message/handler"
 )
 
-func SignalsHandler(router *handler.Router) error {
+func SignalsHandler(handler *handler.Handler) error {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
 		sig := <-sigs
-		router.Logger.Info(fmt.Sprintf("Received %s signal, closing\n", sig), nil)
+		handler.Logger.Info(fmt.Sprintf("Received %s signal, closing\n", sig), nil)
 
-		router.Close()
+		handler.Close()
 	}()
 	return nil
 }

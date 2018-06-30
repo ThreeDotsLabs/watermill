@@ -11,7 +11,7 @@ import (
 	"fmt"
 )
 
-var confluentAckCloseCheckThreshold = time.Second * 5 // todo - config
+var confluentAckCloseCheckThreshold = time.Second * 5
 
 type ConfluentConsumerConstructor func(brokers []string, consumerGroup string) (*kafka.Consumer, error)
 
@@ -29,7 +29,6 @@ type confluentSubscriber struct {
 	closed bool
 }
 
-// todo - ubiquitous name: listener, consumer, subscriber
 func NewConfluentSubscriber(brokers []string, consumerGroup string, unmarshaler Unmarshaler, logger gooddd.LoggerAdapter) (message.Subscriber) {
 	return NewCustomConfluentSubscriber(brokers, consumerGroup, unmarshaler, DefaultConfluentConsumerConstructor, logger)
 }

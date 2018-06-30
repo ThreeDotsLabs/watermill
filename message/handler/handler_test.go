@@ -32,46 +32,46 @@ func TestFunctional(t *testing.T) {
 	}()
 
 	messagesCount := 100
-	expectedReceivedMessages := publishMessagesForRouter(t, messagesCount, pubSub, topicName)
+	expectedReceivedMessages := publishMessagesForHandler(t, messagesCount, pubSub, topicName)
 
 	receivedMessagesCh := make(chan message.Message, messagesCount)
-	sentByRouterCh := make(chan message.Message, messagesCount)
+	sentByHandlerCh := make(chan message.Message, messagesCount)
 
 	publishedEventsTopic := "published_events_" + testID
-	router := handler.NewRouter("test_"+testID, publishedEventsTopic, pubSub, pubSub, )
-	router.Subscribe(
-		"test_consumer",
+	h := handler.NewHandler("test_"+testID, publishedEventsTopic, pubSub, pubSub, )
+	h.Subscribe(
+		"test_subscriber",
 		topicName,
 		func(msg message.Message) (producedMessages []message.Message, err error) {
 			receivedMessagesCh <- msg
 			msg.Acknowledge()
 
 			toPublish := message.NewDefault(uuid.NewV4().String(), msgPublishedByHandler{})
-			sentByRouterCh <- toPublish
+			sentByHandlerCh <- toPublish
 
 			return []message.Message{toPublish}, nil
 		},
 	)
-	go router.Run()
+	go h.Run()
 	defer func() {
-		assert.NoError(t, router.Close())
+		assert.NoError(t, h.Close())
 	}()
 
-	expectedSentByRouter, all := subscriber.BulkRead(sentByRouterCh, len(expectedReceivedMessages), time.Second*10)
+	expectedSentByHandler, all := subscriber.BulkRead(sentByHandlerCh, len(expectedReceivedMessages), time.Second*10)
 	require.True(t, all)
 
 	receivedMessages, all := subscriber.BulkRead(receivedMessagesCh, len(expectedReceivedMessages), time.Second*10)
 	require.True(t, all)
 	tests.AssertAllMessagesReceived(t, expectedReceivedMessages, receivedMessages)
 
-	publishedByRouterCh, err := pubSub.Subscribe(publishedEventsTopic)
+	publishedByHandlerCh, err := pubSub.Subscribe(publishedEventsTopic)
 	require.NoError(t, err)
-	publishedByRouter, all := subscriber.BulkRead(publishedByRouterCh, len(expectedReceivedMessages), time.Second*10)
+	publishedByHandler, all := subscriber.BulkRead(publishedByHandlerCh, len(expectedReceivedMessages), time.Second*10)
 	require.True(t, all)
-	tests.AssertAllMessagesReceived(t, expectedSentByRouter, publishedByRouter)
+	tests.AssertAllMessagesReceived(t, expectedSentByHandler, publishedByHandler)
 }
 
-func publishMessagesForRouter(t *testing.T, messagesCount int, pubSub message.PubSub, topicName string) ([]message.Message) {
+func publishMessagesForHandler(t *testing.T, messagesCount int, pubSub message.PubSub, topicName string) ([]message.Message) {
 	var messagesToPublish []message.Message
 	for i := 0; i < messagesCount; i++ {
 		messagesToPublish = append(messagesToPublish, message.NewDefault(uuid.NewV4().String(), publisherMsg{i}))

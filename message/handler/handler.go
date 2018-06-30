@@ -10,22 +10,49 @@ import (
 	"github.com/roblaszczak/gooddd"
 )
 
-// todo - rename package
-// check: https://en.wikipedia.org/wiki/Event-driven_architecture
-
 type HandlerFunc func(msg message.Message) (producedMessages []message.Message, err error)
 
 type Middleware func(h HandlerFunc) HandlerFunc
 
-type Plugin func(*Router) error
+type Plugin func(*Handler) error
 
-func NewRouter(serverName string, publishEventsTopic string, subscriber message.Subscriber, publisher message.Publisher) *Router {
-	// todo -validate server name?
+type Config struct {
+	ServerName         string
+	PublishEventsTopic string
 
-	return &Router{
-		serverName: serverName,
+	CloseTimeout time.Duration
+}
 
-		publishEventsTopic: publishEventsTopic,
+func (c Config) Validate() error {
+	if c.ServerName == "" {
+		return errors.New("empty ServerName")
+	}
+	if c.PublishEventsTopic == "" {
+		// todo - create router without PublishEventsTopic
+		return errors.New("empty PublishEventsTopic")
+	}
+
+	return nil
+}
+
+func (c *Config) setDefaults() {
+	if c.CloseTimeout == 0 {
+		c.CloseTimeout = time.Second * 30
+	}
+}
+
+func NewHandler(config *Config, subscriber message.Subscriber, publisher message.Publisher) (*Handler, error) {
+	if config == nil {
+		return nil, errors.New("missing config")
+	}
+
+	config.setDefaults()
+	if err := config.Validate(); err != nil {
+		return nil, errors.Wrap(err, "invalid config")
+	}
+
+	return &Handler{
+		config: config,
 
 		subscriber: subscriber,
 		publisher:  publisher,
@@ -38,14 +65,11 @@ func NewRouter(serverName string, publishEventsTopic string, subscriber message.
 		closeCh: make(chan struct{}),
 
 		Logger: gooddd.NopLogger{},
-	}
+	}, nil
 }
 
-// todo - rename!!
-type Router struct {
-	serverName string
-
-	publishEventsTopic string
+type Handler struct {
+	config *Config
 
 	subscriber message.Subscriber
 	publisher  message.Publisher
@@ -66,19 +90,18 @@ type Router struct {
 	running bool
 }
 
-// todo - rename
-// todo - doc that order matters
-func (r *Router) AddMiddleware(m ...Middleware) {
+// AddMiddleware adds a new middleware to the router.
+//
+// The order of middlewares matters. Middleware added at the beginning is executed first.
+func (r *Handler) AddMiddleware(m ...Middleware) {
 	r.Logger.Debug("Adding middlewares", gooddd.LogFields{"count": fmt.Sprintf("%d", len(m))})
 
-	// todo - use
 	r.middlewares = append(r.middlewares, m...)
 }
 
-func (r *Router) AddPlugin(p ...Plugin) {
+func (r *Handler) AddPlugin(p ...Plugin) {
 	r.Logger.Debug("Adding plugins", gooddd.LogFields{"count": fmt.Sprintf("%d", len(p))})
 
-	// todo - use
 	r.plugins = append(r.plugins, p...)
 }
 
@@ -90,7 +113,7 @@ type handler struct {
 	messagesCh chan message.Message
 }
 
-func (r *Router) Subscribe(subscriberName string, topic string, handlerFunc HandlerFunc) error {
+func (r *Handler) Subscribe(subscriberName string, topic string, handlerFunc HandlerFunc) error {
 	r.Logger.Info("Adding subscriber", gooddd.LogFields{
 		"subscriber_name": subscriberName,
 		"topic":           topic,
@@ -108,13 +131,12 @@ func (r *Router) Subscribe(subscriberName string, topic string, handlerFunc Hand
 	return nil
 }
 
-func (r *Router) Run() error {
+func (r *Handler) Run() error {
 	if r.running {
-		return errors.New("router is already running")
+		return errors.New("handler is already running")
 	}
 	r.running = true
 
-	// todo - defer cleanup & close
 	r.Logger.Debug("Loading plugins", nil)
 	for _, plugin := range r.plugins {
 		if err := plugin(r); err != nil {
@@ -173,9 +195,8 @@ func (r *Router) Run() error {
 							"produced_messages_count": len(producedMessages),
 						}))
 
-						// todo - set topic?
-						if err := r.publisher.Publish(r.publishEventsTopic, producedMessages); err != nil {
-							// todo - configurable
+						if err := r.publisher.Publish(r.config.PublishEventsTopic, producedMessages); err != nil {
+							// todo - how to deal with it better?
 							r.Logger.Error("cannot publish message", err, msgFields.Add(gooddd.LogFields{
 								"not_sent_message": fmt.Sprintf("%#v", producedMessages),
 							}))
@@ -191,7 +212,6 @@ func (r *Router) Run() error {
 				"subscriber_name": s.name,
 				"topic":           s.topic,
 			})
-			// todo - wait for it
 		}(r.handlers[i])
 	}
 
@@ -209,29 +229,20 @@ func (r *Router) Run() error {
 	}
 	r.Logger.Debug("Publisher closed", nil)
 
-
-	r.Logger.Info("Router closed", nil)
-
-	timeout := time.Second * 10
-
 	r.Logger.Info("Waiting for messages", gooddd.LogFields{
-		"timeout": timeout,
+		"timeout": r.config.CloseTimeout,
 	})
-
-	// todo - add timeout to all wg's & subscriber close
-	timeouted := sync_internal.WaitGroupTimeout(r.handlersWg, timeout) // todo - config
+	timeouted := sync_internal.WaitGroupTimeout(r.handlersWg, r.config.CloseTimeout)
 	if timeouted {
-		// todo - what to do with it?
-		r.Logger.Info("Timeout", nil)
-	} else {
-		r.Logger.Info("All messages processed", nil)
+		return errors.New("handler close timeouted")
 	}
 
+	r.Logger.Info("All messages processed", nil)
 	return nil
 }
 
-func (r *Router) Close() error {
-	r.Logger.Info("Closing router", nil)
+func (r *Handler) Close() error {
+	r.Logger.Info("Closing handler", nil)
 	r.closeCh <- struct{}{}
 
 	return nil
