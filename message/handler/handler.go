@@ -41,11 +41,7 @@ func (c *Config) setDefaults() {
 	}
 }
 
-func NewHandler(config *Config, subscriber message.Subscriber, publisher message.Publisher) (*Handler, error) {
-	if config == nil {
-		return nil, errors.New("missing config")
-	}
-
+func NewHandler(config Config, subscriber message.Subscriber, publisher message.Publisher) (*Handler, error) {
 	config.setDefaults()
 	if err := config.Validate(); err != nil {
 		return nil, errors.Wrap(err, "invalid config")
@@ -69,7 +65,7 @@ func NewHandler(config *Config, subscriber message.Subscriber, publisher message
 }
 
 type Handler struct {
-	config *Config
+	config Config
 
 	subscriber message.Subscriber
 	publisher  message.Publisher

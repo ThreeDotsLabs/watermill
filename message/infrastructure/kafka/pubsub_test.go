@@ -18,7 +18,51 @@ func generatePartitionKey(topic string, msg message.Message) (string, error) {
 	if err := msg.UnmarshalPayload(&payload); err != nil {
 		return "", nil
 	}
+
 	return fmt.Sprintf("%d", payload.Type), nil
+}
+
+func createPubSub(t *testing.T, consumerGroup string) message.PubSub {
+	marshaler := marshal.Json{}
+
+	publisher, err := kafka.NewPublisher(brokers, marshaler)
+	require.NoError(t, err)
+
+	logger := gooddd.NewStdLogger(true, true)
+
+	subscriber, err := kafka.NewConfluentSubscriber(
+		kafka.SubscriberConfig{
+			Brokers:        brokers,
+			ConsumerGroup:  consumerGroup,
+			ConsumersCount: 8,
+		},
+		marshaler,
+		logger,
+	)
+	require.NoError(t, err)
+
+	return message.NewPubSub(publisher, subscriber)
+}
+
+func createPartitionedPubSub(t *testing.T, consumerGroup string) message.PubSub {
+	marshaler := marshal.NewJsonWithPartitioning(generatePartitionKey)
+
+	publisher, err := kafka.NewPublisher(brokers, marshaler)
+	require.NoError(t, err)
+
+	logger := gooddd.NewStdLogger(true, true)
+
+	subscriber, err := kafka.NewConfluentSubscriber(
+		kafka.SubscriberConfig{
+			Brokers:        brokers,
+			ConsumerGroup:  consumerGroup,
+			ConsumersCount: 8,
+		},
+		marshaler, logger,
+	)
+	require.NoError(t, err)
+
+	return message.NewPubSub(publisher, subscriber)
 }
 
 func TestPublishSubscribe(t *testing.T) {
@@ -29,16 +73,7 @@ func TestPublishSubscribe(t *testing.T) {
 			ExactlyOnceDelivery: false,
 			GuaranteedOrder:     false,
 		},
-		func(t *testing.T, consumerGroup string) message.PubSub {
-			pubSub, err := kafka.NewPubSub(
-				brokers,
-				marshal.Json{},
-				consumerGroup,
-				gooddd.NewStdLogger(true, true),
-			)
-			require.NoError(t, err)
-			return pubSub
-		},
+		createPubSub,
 	)
 }
 
@@ -50,15 +85,6 @@ func TestPublishSubscribe_ordered(t *testing.T) {
 			ExactlyOnceDelivery: false,
 			GuaranteedOrder:     false,
 		},
-		func(t *testing.T, consumerGroup string) message.PubSub {
-			pubSub, err := kafka.NewPubSub(
-				brokers,
-				marshal.NewJsonWithPartitioning(generatePartitionKey),
-				consumerGroup,
-				gooddd.NewStdLogger(true, true),
-			)
-			require.NoError(t, err)
-			return pubSub
-		},
+		createPartitionedPubSub,
 	)
 }

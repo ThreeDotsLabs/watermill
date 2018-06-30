@@ -38,7 +38,16 @@ func TestFunctional(t *testing.T) {
 	sentByHandlerCh := make(chan message.Message, messagesCount)
 
 	publishedEventsTopic := "published_events_" + testID
-	h := handler.NewHandler("test_"+testID, publishedEventsTopic, pubSub, pubSub, )
+	h, err := handler.NewHandler(
+		handler.Config{
+			ServerName:         "test_" + testID,
+			PublishEventsTopic: publishedEventsTopic,
+		},
+		pubSub,
+		pubSub,
+	)
+	require.NoError(t, err)
+
 	h.Subscribe(
 		"test_subscriber",
 		topicName,
@@ -85,10 +94,23 @@ func publishMessagesForHandler(t *testing.T, messagesCount int, pubSub message.P
 }
 
 func createPubSub() (message.PubSub, error) {
-	return kafka.NewPubSub(
-		[]string{"localhost:9092"},
-		marshal.Json{},
-		"test",
-		gooddd.NewStdLogger(true, true),
-	)
+	brokers := []string{"localhost:9092"}
+	marshaler := marshal.Json{}
+	logger := gooddd.NewStdLogger(true, true)
+
+	pub, err := kafka.NewPublisher(brokers, marshaler)
+	if err != nil {
+		return nil, err
+	}
+
+	sub, err := kafka.NewConfluentSubscriber(kafka.SubscriberConfig{
+		Brokers:        brokers,
+		ConsumerGroup:  "test",
+		ConsumersCount: 8,
+	}, marshaler, logger)
+	if err != nil {
+		return nil, err
+	}
+
+	return message.NewPubSub(pub, sub), nil
 }
