@@ -348,10 +348,11 @@ func continueAfterErrors(t *testing.T, createPubSub PubSubConstructor) {
 	messagesToPublish := addSimpleMessagesMessages(t, totalMessagesCount, pubsub, topicName)
 	closePubSub(t, pubsub)
 
+	// sending totalMessagesCount*2 errors from 3 consumers
 	for i := 0; i < 3; i++ {
-		pubsub := createPubSub(t, consumerGroup)
+		errorsPubSub := createPubSub(t, consumerGroup)
 
-		messages, err := pubsub.Subscribe(topicName)
+		messages, err := errorsPubSub.Subscribe(topicName)
 		require.NoError(t, err)
 
 		// waiting to initialize
@@ -367,14 +368,16 @@ func continueAfterErrors(t *testing.T, createPubSub PubSubConstructor) {
 			}
 		}
 
-		closePubSub(t, pubsub)
+		closePubSub(t, errorsPubSub)
 	}
 
 	pubsub = createPubSub(t, consumerGroup)
 	defer closePubSub(t, pubsub)
+
 	messages, err := pubsub.Subscribe(topicName)
 	require.NoError(t, err)
 
+	// no message should be consumed
 	receivedMessages, all := subscriber.BulkRead(messages, len(messagesToPublish), time.Second*10)
 	require.True(t, all)
 
