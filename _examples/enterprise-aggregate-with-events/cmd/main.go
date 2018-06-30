@@ -22,7 +22,7 @@ import (
 
 func main() {
 	repo := cart.NewMemoryRepository()
-	pubsub := gochannel.NewPubSub()
+	pubSub := gochannel.NewPubSub()
 
 	db, err := sql.Open("mysql", "root:secret@/shop")
 	if err != nil {
@@ -62,7 +62,7 @@ func main() {
 		return uuid.NewV4().String()
 	})
 
-	router := msghandler.NewRouter(pubsub)
+	router := msghandler.NewRouter(pubSub)
 	interfaces.SetupInterfaces(router)
 	go router.Run()
 

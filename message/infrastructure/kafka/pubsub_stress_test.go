@@ -19,14 +19,14 @@ func TestPublishSubscribe_stress(t *testing.T) {
 			GuaranteedOrder:     false,
 		},
 		func(t *testing.T, consumerGroup string) message.PubSub {
-			pubsub, err := kafka.NewPubSub(
+			pubSub, err := kafka.NewPubSub(
 				brokers,
 				marshal.Json{},
 				consumerGroup,
 				gooddd.NewStdLogger(true, true),
 			)
 			require.NoError(t, err)
-			return pubsub
+			return pubSub
 		},
 	)
 }
@@ -40,14 +40,14 @@ func TestPublishSubscribe_ordered_stress(t *testing.T) {
 			GuaranteedOrder:     false,
 		},
 		func(t *testing.T, consumerGroup string) message.PubSub {
-			pubsub, err := kafka.NewPubSub(
+			pubSub, err := kafka.NewPubSub(
 				brokers,
 				marshal.NewJsonWithPartitioning(generatePartitionKey),
 				consumerGroup,
 				gooddd.NewStdLogger(true, true),
 			)
 			require.NoError(t, err)
-			return pubsub
+			return pubSub
 		},
 	)
 }

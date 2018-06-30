@@ -41,7 +41,7 @@ type JsonWithPartitioning struct {
 	generatePartitionKey GeneratePartitionKey
 }
 
-func NewJsonWithPartitioning(generatePartitionKey GeneratePartitionKey) kafka.MarshallerUnmarshaller {
+func NewJsonWithPartitioning(generatePartitionKey GeneratePartitionKey) kafka.MarshalerUnmarshaler {
 	return JsonWithPartitioning{generatePartitionKey: generatePartitionKey}
 }
 

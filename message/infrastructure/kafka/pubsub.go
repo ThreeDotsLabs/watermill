@@ -6,7 +6,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func NewPubSub(brokers []string, mu MarshallerUnmarshaller, consumerGroup string, logger gooddd.LoggerAdapter) (message.PubSub, error) {
+func NewPubSub(brokers []string, mu MarshalerUnmarshaler, consumerGroup string, logger gooddd.LoggerAdapter) (message.PubSub, error) {
 	publisher, err := NewPublisher(brokers, mu)
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot create publisher")

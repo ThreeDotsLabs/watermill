@@ -10,12 +10,12 @@ type PubSub interface {
 	Close() error
 }
 
-type pubsub struct {
+type pubSub struct {
 	Publisher
 	Subscriber
 }
 
-func (p pubsub) Close() error {
+func (p pubSub) Close() error {
 	publisherErr := p.Publisher.ClosePublisher()
 	subscriberErr := p.Subscriber.CloseSubscriber()
 
@@ -23,7 +23,7 @@ func (p pubsub) Close() error {
 		return nil
 	}
 
-	errMsg := "cannot close pubsub: "
+	errMsg := "cannot close pubSub: "
 	if publisherErr != nil {
 		errMsg += "publisher err: " + publisherErr.Error()
 	}
@@ -35,5 +35,5 @@ func (p pubsub) Close() error {
 }
 
 func NewPubSub(publisher Publisher, subscriber Subscriber) (PubSub) {
-	return pubsub{publisher, subscriber}
+	return pubSub{publisher, subscriber}
 }

@@ -6,15 +6,15 @@ import (
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 )
 
-type Marshaller interface {
+type Marshaler interface {
 	Marshal(topic string, msg message.Message) (*sarama.ProducerMessage, error)
 }
 
-type Unmarshaller interface {
+type Unmarshaler interface {
 	Unmarshal(*kafka.Message) (message.Message, error)
 }
 
-type MarshallerUnmarshaller interface {
-	Marshaller
-	Unmarshaller
+type MarshalerUnmarshaler interface {
+	Marshaler
+	Unmarshaler
 }

@@ -18,7 +18,7 @@ type ConfluentConsumerConstructor func(brokers []string, consumerGroup string) (
 type confluentSubscriber struct {
 	brokers             []string
 	consumerGroup       string
-	unmarshaller        Unmarshaller
+	unmarshaler        Unmarshaler
 	consumerConstructor ConfluentConsumerConstructor
 	logger              gooddd.LoggerAdapter
 
@@ -30,21 +30,21 @@ type confluentSubscriber struct {
 }
 
 // todo - ubiquitous name: listener, consumer, subscriber
-func NewConfluentSubscriber(brokers []string, consumerGroup string, unmarshaller Unmarshaller, logger gooddd.LoggerAdapter) (message.Subscriber) {
-	return NewCustomConfluentSubscriber(brokers, consumerGroup, unmarshaller, DefaultConfluentConsumerConstructor, logger)
+func NewConfluentSubscriber(brokers []string, consumerGroup string, unmarshaler Unmarshaler, logger gooddd.LoggerAdapter) (message.Subscriber) {
+	return NewCustomConfluentSubscriber(brokers, consumerGroup, unmarshaler, DefaultConfluentConsumerConstructor, logger)
 }
 
 func NewCustomConfluentSubscriber(
 	brokers []string,
 	consumerGroup string,
-	unmarshaller Unmarshaller,
+	unmarshaler Unmarshaler,
 	consumerConstructor ConfluentConsumerConstructor,
 	logger gooddd.LoggerAdapter,
 ) (message.Subscriber) {
 	return &confluentSubscriber{
 		brokers:             brokers,
 		consumerGroup:       consumerGroup,
-		unmarshaller:        unmarshaller,
+		unmarshaler:        unmarshaler,
 		consumerConstructor: consumerConstructor,
 		logger:              logger,
 
@@ -141,7 +141,7 @@ func (s *confluentSubscriber) Subscribe(topic string) (chan message.Message, err
 						})
 						s.logger.Trace("Received message from Kafka", receivedMsgLogFields)
 
-						msg, err := s.unmarshaller.Unmarshal(e)
+						msg, err := s.unmarshaler.Unmarshal(e)
 						// todo - move it out?
 						if err != nil {
 							s.logger.Error("Cannot deserialize message", err, receivedMsgLogFields)

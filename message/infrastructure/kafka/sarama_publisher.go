@@ -10,10 +10,10 @@ import (
 type saramaPublisher struct {
 	producer sarama.SyncProducer
 
-	marshaller Marshaller
+	marshaler Marshaler
 }
 
-func NewPublisher(brokers []string, marshaller Marshaller) (message.Publisher, error) {
+func NewPublisher(brokers []string, marshaler Marshaler) (message.Publisher, error) {
 	config := sarama.NewConfig()
 	config.Producer.RequiredAcks = sarama.WaitForAll
 	config.Producer.Compression = sarama.CompressionGZIP
@@ -26,18 +26,18 @@ func NewPublisher(brokers []string, marshaller Marshaller) (message.Publisher, e
 		return nil, errors.Wrap(err, "cannot create producer")
 	}
 
-	return NewCustomPublisher(producer, marshaller)
+	return NewCustomPublisher(producer, marshaler)
 }
 
-func NewCustomPublisher(producer sarama.SyncProducer, marshaller Marshaller) (message.Publisher, error) {
-	return saramaPublisher{producer, marshaller}, nil
+func NewCustomPublisher(producer sarama.SyncProducer, marshaler Marshaler) (message.Publisher, error) {
+	return saramaPublisher{producer, marshaler}, nil
 }
 
 func (p saramaPublisher) Publish(topic string, messages []message.Message) error {
 	var saramaMessages []*sarama.ProducerMessage
 
 	for _, msg := range messages {
-		kafkaMsg, err := p.marshaller.Marshal(topic, msg)
+		kafkaMsg, err := p.marshaler.Marshal(topic, msg)
 		if err != nil {
 			return errors.Wrapf(err, "cannot marshal message %s", msg)
 		}

@@ -19,7 +19,7 @@ func TestFunctional(t *testing.T) {
 	topicName := "test_topic_" + testID
 
 	// todo - run with other pubsub
-	pubsub, err := kafka.NewPubSub(
+	pubSub, err := kafka.NewPubSub(
 		[]string{"localhost:9092"},
 		marshal.Json{},
 		"test",
@@ -36,12 +36,12 @@ func TestFunctional(t *testing.T) {
 		messagesToPublish = append(messagesToPublish, message.NewDefault(uuid.NewV4().String(), publisherMsg{i}))
 	}
 
-	err = pubsub.Publish(topicName, messagesToPublish)
+	err = pubSub.Publish(topicName, messagesToPublish)
 	require.NoError(t, err)
 
 	receivedMessagesCh := make(chan message.Message)
 
-	router := handler.NewRouter("test_"+testID, "published_events", pubsub, pubsub, )
+	router := handler.NewRouter("test_"+testID, "published_events", pubSub, pubSub, )
 	router.Subscribe(
 		"test_consumer",
 		topicName,
