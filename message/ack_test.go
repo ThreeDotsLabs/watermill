@@ -5,41 +5,122 @@ import (
 	"github.com/roblaszczak/gooddd/message"
 	"time"
 	"github.com/stretchr/testify/assert"
+	"github.com/pkg/errors"
 )
 
-func TestMessage_Acknowledged_after_ack(t *testing.T) {
-	ack := message.NewAck()
-	ack.Acknowledge()
+func TestAck_Acknowledged_after_ack(t *testing.T) {
+	testCases := []struct {
+		Name           string
+		SendAck        func(ack *message.Ack)
+		ExpectedAckErr error
+	}{
+		{
+			Name: "ack",
+			SendAck: func(ack *message.Ack) {
+				err := ack.Acknowledge()
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name: "err",
+			SendAck: func(ack *message.Ack) {
+				err := ack.Error(errors.New("error"))
+				assert.NoError(t, err)
+			},
+			ExpectedAckErr: errors.New("error"),
+		},
+	}
 
-	select {
-	case <-ack.Acknowledged():
-		// ok
-	case <-time.After(time.Millisecond * 50):
-		t.Fatal("no ack received, timeouted")
+	for _, tc := range testCases {
+		t.Run(tc.Name, func(t *testing.T) {
+			ack := message.NewAck()
+			tc.SendAck(ack)
+
+			select {
+			case ackErr := <-ack.Acknowledged():
+				if tc.ExpectedAckErr == nil {
+					assert.Nil(t, ackErr)
+				} else {
+					assert.Equal(t, tc.ExpectedAckErr.Error(), ackErr.Error())
+				}
+			case <-time.After(time.Millisecond * 50):
+				t.Fatal("no ack received, timeouted")
+			}
+		})
 	}
 }
 
-func TestMessage_Acknowledged_before_ack(t *testing.T) {
-	ack := message.NewAck()
+func TestAck_Acknowledged_before_ack(t *testing.T) {
+	testCases := []struct {
+		Name           string
+		SendAck        func(ack *message.Ack)
+		ExpectedAckErr error
+	}{
+		{
+			Name: "ack",
+			SendAck: func(ack *message.Ack) {
+				err := ack.Acknowledge()
+				assert.NoError(t, err)
+			},
+		},
+		{
+			Name: "err",
+			SendAck: func(ack *message.Ack) {
+				err := ack.Error(errors.New("error"))
+				assert.NoError(t, err)
+			},
+			ExpectedAckErr: errors.New("error"),
+		},
+	}
 
-	acked := false
-	go func() {
-		select {
-		case <-ack.Acknowledged():
-			acked = true
-		case <-time.After(time.Millisecond * 50):
-			t.Fatal("no ack received, timeouted")
-		}
-	}()
+	for _, tc := range testCases {
+		t.Run(tc.Name, func(t *testing.T) {
+			ack := message.NewAck()
 
-	ack.Acknowledge()
+			acked := false
+			go func() {
+				select {
+				case <-ack.Acknowledged():
+					acked = true
+				case <-time.After(time.Millisecond * 50):
+					t.Fatal("no ack received, timeouted")
+				}
+			}()
 
-	time.Sleep(time.Millisecond * 50)
+			tc.SendAck(ack)
 
-	assert.True(t, acked)
+			time.Sleep(time.Millisecond * 50)
+
+			assert.True(t, acked)
+		})
+	}
 }
 
-func BenchmarkMessage_Acknowledge_after_ack(b *testing.B) {
+func TestAck_Acknowledge_two_times(t *testing.T) {
+	ack := message.NewAck()
+	err := ack.Acknowledge()
+	assert.NoError(t, err)
+
+	err = ack.Error(errors.New("error"))
+	assert.Error(t, err)
+
+	err = ack.Acknowledge()
+	assert.Error(t, err)
+}
+
+func TestAck_Error_two_times(t *testing.T) {
+	ack := message.NewAck()
+	err := ack.Error(errors.New("error"))
+	assert.NoError(t, err)
+
+	err = ack.Error(errors.New("error 2"))
+	assert.Error(t, err)
+
+	err = ack.Acknowledge()
+	assert.Error(t, err)
+}
+
+func BenchmarkAck_Acknowledge_after_ack(b *testing.B) {
 	messages := createBenchmarkMessages(b)
 
 	for n := 0; n < b.N; n++ {
@@ -50,7 +131,7 @@ func BenchmarkMessage_Acknowledge_after_ack(b *testing.B) {
 	}
 }
 
-func BenchmarkMessage_Acknowledge_before_ack(b *testing.B) {
+func BenchmarkAck_Acknowledge_before_ack(b *testing.B) {
 	messages := createBenchmarkMessages(b)
 
 	for n := 0; n < b.N; n++ {

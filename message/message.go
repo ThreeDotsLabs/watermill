@@ -15,8 +15,9 @@ type Message interface {
 	UnmarshalPayload(val interface{}) error
 
 	Acknowledged() (<-chan error)
-	Acknowledge()
-	Error(err error)
+
+	Acknowledge() error
+	Error(err error) error
 }
 
 type Default struct {

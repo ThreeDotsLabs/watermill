@@ -2,6 +2,7 @@ package message
 
 import (
 	"sync"
+	"github.com/pkg/errors"
 )
 
 type Ack struct {
@@ -16,7 +17,6 @@ func NewAck() *Ack {
 	return &Ack{make([]chan<- error, 0),  &sync.Mutex{}, false, nil}
 }
 
-// todo - rename?
 func (m *Ack) Acknowledged() (<-chan error) {
 	m.ackLock.Lock()
 	defer m.ackLock.Unlock()
@@ -31,13 +31,16 @@ func (m *Ack) Acknowledged() (<-chan error) {
 	return ch
 }
 
-func (m *Ack) sendAck(err error) {
+func (m *Ack) sendAck(err error) error {
 	m.ackLock.Lock()
 	defer m.ackLock.Unlock()
 
 	if m.acked {
-		// todo - test
-		return
+		if m.ackErr != nil {
+			return errors.New("error already sent")
+		} else {
+			return errors.New("ack already sent")
+		}
 	}
 	m.acked = true
 	m.ackErr = err
@@ -45,13 +48,14 @@ func (m *Ack) sendAck(err error) {
 	for _, ch := range m.ackListeners {
 		ch <- err
 	}
+
+	return nil
 }
 
-func (m *Ack) Acknowledge() {
-	m.sendAck(nil)
+func (m *Ack) Acknowledge() error {
+	return m.sendAck(nil)
 }
 
-// todo - rename?
-func (m *Ack) Error(err error) {
-	m.sendAck(err)
+func (m *Ack) Error(err error) error {
+	return m.sendAck(err)
 }
