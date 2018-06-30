@@ -11,15 +11,16 @@ type Message interface {
 
 	SetMetadata(key, value string)
 	GetMetadata(key string) string
+	AllMetadata() map[string]string
 
 	UnmarshalPayload(val interface{}) error
 
 	Acknowledged() (<-chan error)
-
 	Acknowledge() error
 	Error(err error) error
 }
 
+// Default is default Message implementation.
 type Default struct {
 	MessageUUID     string            `json:"message_uuid"`
 	MessageMetadata map[string]string `json:"message_metadata"`
@@ -41,7 +42,7 @@ func NewDefault(uuid string, payload Payload) Message {
 func NewEmptyDefault() Message {
 	return &Default{
 		MessageMetadata: make(map[string]string),
-		Ack: NewAck(),
+		Ack:             NewAck(),
 	}
 }
 
@@ -59,6 +60,10 @@ func (m *Default) GetMetadata(key string) string {
 	}
 
 	return ""
+}
+
+func (m Default) AllMetadata() map[string]string {
+	return m.MessageMetadata
 }
 
 func (m *Default) UnmarshalPayload(val interface{}) error {
