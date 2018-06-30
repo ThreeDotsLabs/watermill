@@ -9,7 +9,6 @@ import (
 	"github.com/roblaszczak/gooddd/message/infrastructure/kafka"
 )
 
-// todo - unit tests
 type Json struct{}
 
 func (Json) Marshal(topic string, msg message.Message) (*sarama.ProducerMessage, error) {
@@ -35,17 +34,17 @@ func (Json) Unmarshal(kafkaMsg *confluentKafka.Message) (message.Message, error)
 
 type GeneratePartitionKey func(topic string, msg message.Message) (string, error)
 
-type JsonWithPartitioning struct {
+type jsonWithPartitioning struct {
 	Json
 
 	generatePartitionKey GeneratePartitionKey
 }
 
 func NewJsonWithPartitioning(generatePartitionKey GeneratePartitionKey) kafka.MarshalerUnmarshaler {
-	return JsonWithPartitioning{generatePartitionKey: generatePartitionKey}
+	return jsonWithPartitioning{generatePartitionKey: generatePartitionKey}
 }
 
-func (j JsonWithPartitioning) Marshal(topic string, msg message.Message) (*sarama.ProducerMessage, error) {
+func (j jsonWithPartitioning) Marshal(topic string, msg message.Message) (*sarama.ProducerMessage, error) {
 	kafkaMsg, err := j.Json.Marshal(topic, msg)
 	if err != nil {
 		return nil, err
