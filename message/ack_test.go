@@ -5,16 +5,14 @@ import (
 	"github.com/roblaszczak/gooddd/message"
 	"time"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestMessage_Acknowledged_after_ack(t *testing.T) {
-	msg, err := message.DefaultFactoryFunc(nil)
-	require.NoError(t, err)
-	msg.Acknowledge()
+	ack := message.NewAck()
+	ack.Acknowledge()
 
 	select {
-	case <-msg.Acknowledged():
+	case <-ack.Acknowledged():
 		// ok
 	case <-time.After(time.Millisecond * 50):
 		t.Fatal("no ack received, timeouted")
@@ -22,20 +20,19 @@ func TestMessage_Acknowledged_after_ack(t *testing.T) {
 }
 
 func TestMessage_Acknowledged_before_ack(t *testing.T) {
-	msg, err := message.DefaultFactoryFunc(nil)
-	require.NoError(t, err)
+	ack := message.NewAck()
 
 	acked := false
 	go func() {
 		select {
-		case <-msg.Acknowledged():
+		case <-ack.Acknowledged():
 			acked = true
 		case <-time.After(time.Millisecond * 50):
 			t.Fatal("no ack received, timeouted")
 		}
 	}()
 
-	msg.Acknowledge()
+	ack.Acknowledge()
 
 	time.Sleep(time.Millisecond * 50)
 
@@ -70,12 +67,12 @@ func BenchmarkMessage_Acknowledge_before_ack(b *testing.B) {
 	}
 }
 
-func createBenchmarkMessages(b *testing.B) []message.Message {
-	messages := make([]message.Message, b.N)
+func createBenchmarkMessages(b *testing.B) []*message.Ack {
+	acks := make([]*message.Ack, b.N)
 	for n := 0; n < b.N; n++ {
-		messages[n], _ = message.DefaultFactoryFunc(nil)
+		acks[n] = message.NewAck()
 	}
 	b.ResetTimer()
 
-	return messages
+	return acks
 }
