@@ -139,14 +139,40 @@ func main() {
 	counter := PostsCounter{memoryCountStorage{new(int64)}}
 	feedGenerator := FeedGenerator{printFeedStorage{}}
 
-
-	pubSub, err := kafka2.NewPubSub([]string{"localhost:9092"}, marshal.Json{}, "app2", logger)
+	marshaler := marshal.Json{}
+	brokers := []string{"localhost:9092"}
+	pub, err := kafka2.NewPublisher(brokers, marshaler)
 	if err != nil {
 		panic(err)
 	}
 
-	router := handler.NewRouter("example", "app2_events", pubSub, pubSub)
-	router.Logger = logger
+	sub, err := kafka2.NewConfluentSubscriber(
+		kafka2.SubscriberConfig{
+			Brokers:       brokers,
+			ConsumerGroup: "app2_v2",
+			ConsumersCount: 8,
+		},
+		marshaler,
+		logger,
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	pubSub := message.NewPubSub(pub, sub)
+
+	h, err := handler.NewHandler(
+		handler.Config{
+			ServerName:         "example",
+			PublishEventsTopic: "app2_events",
+		},
+		pubSub,
+		pubSub,
+	)
+	if err != nil {
+		panic(err)
+	}
+	h.Logger = logger
 
 	metricsMiddleware := middleware.NewMetrics(t, errs, success)
 	metricsMiddleware.ShowStats(time.Second*5, log.New(os.Stderr, "metrics: ", log.Lmicroseconds))
@@ -163,7 +189,7 @@ func main() {
 	//	panic(err)
 	//}
 
-	router.AddMiddleware(
+	h.AddMiddleware(
 		metricsMiddleware.Middleware,
 		middleware.AckOnSuccess,
 		//throttle.Middleware,
@@ -177,18 +203,19 @@ func main() {
 		middleware.RandomPanic(0.002),
 	)
 
-	router.AddPlugin(plugin.SignalsHandler)
+	h.AddPlugin(plugin.SignalsHandler)
 
-	router.Subscribe(
+	// todo - fix it
+	h.Subscribe(
 		"posts_counter",
 		"test_topic",
 		counter.Count,
 	)
-	router.Subscribe(
+	h.Subscribe(
 		"feed_generator",
 		"test_topic",
 		feedGenerator.UpdateFeed,
 	)
 
-	router.Run()
+	h.Run()
 }
