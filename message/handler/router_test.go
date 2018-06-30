@@ -12,51 +12,83 @@ import (
 	"github.com/roblaszczak/gooddd/message/infrastructure/kafka/marshal"
 	"github.com/roblaszczak/gooddd"
 	"github.com/roblaszczak/gooddd/message/subscriber"
+	"github.com/stretchr/testify/assert"
 )
+
+type publisherMsg struct {
+	Num int `json:"num"`
+}
+
+type msgPublishedByHandler struct{}
 
 func TestFunctional(t *testing.T) {
 	testID := uuid.NewV4().String()
 	topicName := "test_topic_" + testID
 
-	// todo - run with other pubsub
-	pubSub, err := kafka.NewPubSub(
-		[]string{"localhost:9092"},
-		marshal.Json{},
-		"test",
-		gooddd.NewStdLogger(true, true),
-	)
+	pubSub, err := createPubSub()
 	require.NoError(t, err)
+	defer func() {
+		assert.NoError(t, pubSub.Close())
+	}()
 
-	type publisherMsg struct {
-		Num int `json:"num"`
-	}
+	messagesCount := 100
+	expectedReceivedMessages := publishMessagesForRouter(t, messagesCount, pubSub, topicName)
 
-	var messagesToPublish []message.Message
-	for i := 0; i < 100; i++ {
-		messagesToPublish = append(messagesToPublish, message.NewDefault(uuid.NewV4().String(), publisherMsg{i}))
-	}
+	receivedMessagesCh := make(chan message.Message, messagesCount)
+	sentByRouterCh := make(chan message.Message, messagesCount)
 
-	err = pubSub.Publish(topicName, messagesToPublish)
-	require.NoError(t, err)
-
-	receivedMessagesCh := make(chan message.Message)
-
-	router := handler.NewRouter("test_"+testID, "published_events", pubSub, pubSub, )
+	publishedEventsTopic := "published_events_" + testID
+	router := handler.NewRouter("test_"+testID, publishedEventsTopic, pubSub, pubSub, )
 	router.Subscribe(
 		"test_consumer",
 		topicName,
 		func(msg message.Message) (producedMessages []message.Message, err error) {
 			receivedMessagesCh <- msg
 			msg.Acknowledge()
-			return nil, nil
+
+			toPublish := message.NewDefault(uuid.NewV4().String(), msgPublishedByHandler{})
+			sentByRouterCh <- toPublish
+
+			return []message.Message{toPublish}, nil
 		},
 	)
 	go router.Run()
+	defer func() {
+		assert.NoError(t, router.Close())
+	}()
 
-	receivedMessages, all:= subscriber.BulkRead(receivedMessagesCh, len(messagesToPublish), time.Second*10)
+	expectedSentByRouter, all := subscriber.BulkRead(sentByRouterCh, len(expectedReceivedMessages), time.Second*10)
 	require.True(t, all)
 
-	tests.AssertAllMessagesReceived(t, messagesToPublish, receivedMessages)
+	receivedMessages, all := subscriber.BulkRead(receivedMessagesCh, len(expectedReceivedMessages), time.Second*10)
+	require.True(t, all)
+	tests.AssertAllMessagesReceived(t, expectedReceivedMessages, receivedMessages)
+
+	publishedByRouterCh, err := pubSub.Subscribe(publishedEventsTopic)
+	require.NoError(t, err)
+	publishedByRouter, all := subscriber.BulkRead(publishedByRouterCh, len(expectedReceivedMessages), time.Second*10)
+	require.True(t, all)
+	tests.AssertAllMessagesReceived(t, expectedSentByRouter, publishedByRouter)
 }
 
-// todo - test multiple handlers
+func publishMessagesForRouter(t *testing.T, messagesCount int, pubSub message.PubSub, topicName string) ([]message.Message) {
+	var messagesToPublish []message.Message
+	for i := 0; i < messagesCount; i++ {
+		messagesToPublish = append(messagesToPublish, message.NewDefault(uuid.NewV4().String(), publisherMsg{i}))
+	}
+
+	err := pubSub.Publish(topicName, messagesToPublish)
+
+	require.NoError(t, err)
+
+	return messagesToPublish
+}
+
+func createPubSub() (message.PubSub, error) {
+	return kafka.NewPubSub(
+		[]string{"localhost:9092"},
+		marshal.Json{},
+		"test",
+		gooddd.NewStdLogger(true, true),
+	)
+}

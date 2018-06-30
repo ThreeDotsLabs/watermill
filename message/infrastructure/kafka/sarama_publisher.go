@@ -8,9 +8,10 @@ import (
 )
 
 type saramaPublisher struct {
-	producer sarama.SyncProducer
-
+	producer  sarama.SyncProducer
 	marshaler Marshaler
+
+	closed bool
 }
 
 func NewPublisher(brokers []string, marshaler Marshaler) (message.Publisher, error) {
@@ -30,7 +31,7 @@ func NewPublisher(brokers []string, marshaler Marshaler) (message.Publisher, err
 }
 
 func NewCustomPublisher(producer sarama.SyncProducer, marshaler Marshaler) (message.Publisher, error) {
-	return saramaPublisher{producer, marshaler}, nil
+	return &saramaPublisher{producer, marshaler, false}, nil
 }
 
 func (p saramaPublisher) Publish(topic string, messages []message.Message) error {
@@ -48,7 +49,12 @@ func (p saramaPublisher) Publish(topic string, messages []message.Message) error
 	return p.producer.SendMessages(saramaMessages)
 }
 
-func (p saramaPublisher) ClosePublisher() error {
+func (p *saramaPublisher) ClosePublisher() error {
+	if p.closed {
+		return nil
+	}
+	p.closed = true
+
 	if err := p.producer.Close(); err != nil {
 		return errors.Wrap(err, "cannot close publisher")
 	}
