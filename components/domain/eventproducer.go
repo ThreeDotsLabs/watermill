@@ -12,6 +12,6 @@ func (e *EventProducer) RecordThat(event Event) {
 }
 
 func (e *EventProducer) PopEvents() []Event {
-	defer func() { e.events = []Event{} }()
+	defer func() { e.events = nil }()
 	return e.events
 }
