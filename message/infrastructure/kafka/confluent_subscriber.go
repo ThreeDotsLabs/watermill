@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 	"fmt"
+	"runtime"
 )
 
 type ConfluentConsumerConstructor func(brokers []string, consumerGroup string) (*kafka.Consumer, error)
@@ -54,7 +55,7 @@ func (c *SubscriberConfig) setDefaults() {
 		c.CloseCheckThreshold = time.Second * 1
 	}
 	if c.ConsumersCount == 0 {
-		c.ConsumersCount = 1
+		c.ConsumersCount = runtime.NumCPU()
 	}
 }
 
