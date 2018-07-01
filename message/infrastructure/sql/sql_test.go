@@ -11,7 +11,7 @@ import (
 	"github.com/satori/go.uuid"
 	"github.com/roblaszczak/gooddd/message/infrastructure/sql"
 	"fmt"
-	"github.com/roblaszczak/gooddd/domain"
+	"github.com/roblaszczak/gooddd/components/domain"
 	"encoding/json"
 	stdSQL "database/sql"
 )

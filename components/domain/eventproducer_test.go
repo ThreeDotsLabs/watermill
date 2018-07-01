@@ -1,8 +1,8 @@
-package domain_test
+package domain
 
 import (
 	"testing"
-	"github.com/roblaszczak/gooddd/domain"
+	"github.com/roblaszczak/gooddd/components/domainents/domain"
 	"github.com/stretchr/testify/assert"
 )
 

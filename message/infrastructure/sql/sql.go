@@ -7,7 +7,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/roblaszczak/gooddd/message"
-	"github.com/roblaszczak/gooddd/domain"
+	"github.com/roblaszczak/gooddd/components/domain"
 	"encoding/json"
 )
 
