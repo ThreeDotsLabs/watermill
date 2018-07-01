@@ -1,31 +1,29 @@
 package middleware
 
-// todo - move to separated package?
-
 import (
 	"github.com/roblaszczak/gooddd/message/handler"
 	"github.com/roblaszczak/gooddd/message"
 )
 
-const CorrelationUUIDMetadataKey = "correlation_uuid"
+const CorrelationIDMetadataKey = "correlation_id"
 
-func CorrelationUUID(h handler.Func) handler.Func {
+func CorrelationID(h handler.Func) handler.Func {
 	return func(message message.Message) ([]message.Message, error) {
 		producedMessages, err := h(message)
 
-		correlationUUID := MessageCorrelationUUID(message)
+		correlationID := MessageCorrelationID(message)
 		for _, msg := range producedMessages {
-			SetCorrelationUUID(correlationUUID, msg)
+			SetCorrelationID(correlationID, msg)
 		}
 
 		return producedMessages, err
 	}
 }
 
-func MessageCorrelationUUID(message message.Message) string {
-	return message.GetMetadata(CorrelationUUIDMetadataKey)
+func MessageCorrelationID(message message.Message) string {
+	return message.GetMetadata(CorrelationIDMetadataKey)
 }
 
-func SetCorrelationUUID(correlationUUID string, msg message.Message) {
-	msg.SetMetadata(CorrelationUUIDMetadataKey, correlationUUID)
+func SetCorrelationID(id string, msg message.Message) {
+	msg.SetMetadata(CorrelationIDMetadataKey, id)
 }
