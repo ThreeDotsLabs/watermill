@@ -10,17 +10,34 @@ import (
 	"github.com/roblaszczak/gooddd"
 )
 
-type HandlerFunc func(msg message.Message) (producedMessages []message.Message, err error)
+type Func func(msg message.Message) (producedMessages []message.Message, err error)
 
-type Middleware func(h HandlerFunc) HandlerFunc
+type Middleware func(h Func) Func
 
 type Plugin func(*Handler) error
+
+type GenerateConsumerGroup func(serverName, handlerName string) message.ConsumerGroup
+
+func DefaultGenerateConsumerGroup(serverName, handlerName string) message.ConsumerGroup {
+	return message.ConsumerGroup(fmt.Sprintf("gooddd_%s_%s", serverName, handlerName))
+}
 
 type Config struct {
 	ServerName         string
 	PublishEventsTopic string
 
 	CloseTimeout time.Duration
+
+	GenerateConsumerGroupFunc GenerateConsumerGroup
+}
+
+func (c *Config) setDefaults() {
+	if c.CloseTimeout == 0 {
+		c.CloseTimeout = time.Second * 30
+	}
+	if c.GenerateConsumerGroupFunc == nil {
+		c.GenerateConsumerGroupFunc = DefaultGenerateConsumerGroup
+	}
 }
 
 func (c Config) Validate() error {
@@ -33,12 +50,6 @@ func (c Config) Validate() error {
 	}
 
 	return nil
-}
-
-func (c *Config) setDefaults() {
-	if c.CloseTimeout == 0 {
-		c.CloseTimeout = time.Second * 30
-	}
 }
 
 func NewHandler(config Config, subscriber message.Subscriber, publisher message.Publisher) (*Handler, error) {
@@ -104,26 +115,27 @@ func (r *Handler) AddPlugin(p ...Plugin) {
 type handler struct {
 	name        string
 	topic       string
-	handlerFunc HandlerFunc
+	handlerFunc Func
 
 	messagesCh chan message.Message
 }
 
-func (r *Handler) Subscribe(subscriberName string, topic string, handlerFunc HandlerFunc) error {
+func (r *Handler) AddHandler(handlerName string, topic string, handlerFunc Func) error {
 	r.Logger.Info("Adding subscriber", gooddd.LogFields{
-		"subscriber_name": subscriberName,
-		"topic":           topic,
+		"handler_name": handlerName,
+		"topic":        topic,
 	})
 
-	if _, ok := r.handlers[subscriberName]; ok {
-		return errors.Errorf("handler %s already exists", subscriberName)
+	if _, ok := r.handlers[handlerName]; ok {
+		return errors.Errorf("handler %s already exists", handlerName)
 	}
 
-	r.handlers[subscriberName] = &handler{
-		name:        subscriberName,
+	r.handlers[handlerName] = &handler{
+		name:        handlerName,
 		topic:       topic,
 		handlerFunc: handlerFunc,
 	}
+
 	return nil
 }
 
@@ -146,7 +158,10 @@ func (r *Handler) Run() error {
 			"topic":           s.topic,
 		})
 
-		messages, err := r.subscriber.Subscribe(s.topic)
+		messages, err := r.subscriber.Subscribe(
+			s.topic,
+			r.config.GenerateConsumerGroupFunc(r.config.ServerName, s.name),
+		)
 		if err != nil {
 			return errors.Wrapf(err, "cannot subscribe topic %s", s.topic)
 		}

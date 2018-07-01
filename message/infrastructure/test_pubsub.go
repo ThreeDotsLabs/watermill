@@ -19,7 +19,7 @@ type Features struct {
 	GuaranteedOrder     bool
 }
 
-type PubSubConstructor func(t *testing.T, consumerGroup string) message.PubSub
+type PubSubConstructor func(t *testing.T) message.PubSub
 
 type MessageWithType struct {
 	Type int `json:"type"`
@@ -33,12 +33,12 @@ type SimpleMessage struct {
 func TestPubSub(t *testing.T, features Features, pubSubConstructor PubSubConstructor) {
 	t.Run("publishSubscribe", func(t *testing.T) {
 		t.Parallel()
-		publishSubscribeTest(t, pubSubConstructor(t, generateConsumerGroup()))
+		publishSubscribeTest(t, pubSubConstructor(t))
 	})
 
 	t.Run("resendOnError", func(t *testing.T) {
 		t.Parallel()
-		resendOnErrorTest(t, pubSubConstructor(t, generateConsumerGroup()))
+		resendOnErrorTest(t, pubSubConstructor(t))
 	})
 
 	t.Run("noAck", func(t *testing.T) {
@@ -46,7 +46,7 @@ func TestPubSub(t *testing.T, features Features, pubSubConstructor PubSubConstru
 			t.Skip("guaranteed order is required for this test")
 		}
 		t.Parallel()
-		noAckTest(t, pubSubConstructor(t, generateConsumerGroup()))
+		noAckTest(t, pubSubConstructor(t))
 	})
 
 	t.Run("continueAfterClose", func(t *testing.T) {
@@ -69,7 +69,7 @@ func TestPubSub(t *testing.T, features Features, pubSubConstructor PubSubConstru
 		}
 
 		t.Parallel()
-		publishSubscribeInOrderTest(t, pubSubConstructor(t, generateConsumerGroup()))
+		publishSubscribeInOrderTest(t, pubSubConstructor(t))
 	})
 
 	t.Run("consumerGroupsTest", func(t *testing.T) {
@@ -118,7 +118,7 @@ func publishSubscribeTest(t *testing.T, pubSub message.PubSub) {
 	err := pubSub.Publish(topicName, messagesToPublish)
 	require.NoError(t, err)
 
-	messages, err := pubSub.Subscribe(topicName)
+	messages, err := pubSub.Subscribe(topicName, generateConsumerGroup())
 	require.NoError(t, err)
 
 	receivedMessages, all := subscriber.BulkRead(messages, len(messagesToPublish), time.Second*10)
@@ -157,7 +157,7 @@ func publishSubscribeInOrderTest(t *testing.T, pubSub message.PubSub) {
 	err := pubSub.Publish(topicName, messagesToPublish)
 	require.NoError(t, err)
 
-	messages, err := pubSub.Subscribe(topicName)
+	messages, err := pubSub.Subscribe(topicName, generateConsumerGroup())
 	require.NoError(t, err)
 
 	receivedMessages, all := subscriber.BulkRead(messages, len(messagesToPublish), time.Second*10)
@@ -189,7 +189,7 @@ func resendOnErrorTest(t *testing.T, pubSub message.PubSub) {
 
 	messagesToPublish := addSimpleMessagesMessages(t, 100, pubSub, topicName)
 
-	messages, err := pubSub.Subscribe(topicName)
+	messages, err := pubSub.Subscribe(topicName, generateConsumerGroup())
 	require.NoError(t, err)
 
 	var receivedMessages []message.Message
@@ -244,7 +244,7 @@ func noAckTest(t *testing.T, pubSub message.PubSub) {
 	err := pubSub.Publish(topicName, messagesToPublish)
 	require.NoError(t, err)
 
-	messages, err := pubSub.Subscribe(topicName)
+	messages, err := pubSub.Subscribe(topicName, generateConsumerGroup())
 	require.NoError(t, err)
 
 	wait := make(chan struct{}, 1)
@@ -284,7 +284,7 @@ func continueAfterCloseTest(t *testing.T, createPubSub PubSubConstructor) {
 
 	totalMessagesCount := 500
 
-	pubSub := createPubSub(t, consumerGroup)
+	pubSub := createPubSub(t)
 	messagesToPublish := addSimpleMessagesMessages(t, totalMessagesCount, pubSub, topicName)
 	closePubSub(t, pubSub)
 
@@ -296,9 +296,9 @@ func continueAfterCloseTest(t *testing.T, createPubSub PubSubConstructor) {
 	// because messages will be delivered twice
 	for i := 0; i < 20; i++ {
 		addedBySubscriber := 0
-		pubSub := createPubSub(t, consumerGroup)
+		pubSub := createPubSub(t)
 
-		messages, err := pubSub.Subscribe(topicName)
+		messages, err := pubSub.Subscribe(topicName, consumerGroup)
 		require.NoError(t, err)
 
 		receivedMessagesPart, _ := subscriber.BulkRead(messages, 100, time.Second*10)
@@ -344,15 +344,15 @@ func continueAfterErrors(t *testing.T, createPubSub PubSubConstructor) {
 
 	totalMessagesCount := 50
 
-	pubSub := createPubSub(t, consumerGroup)
+	pubSub := createPubSub(t)
 	messagesToPublish := addSimpleMessagesMessages(t, totalMessagesCount, pubSub, topicName)
 	closePubSub(t, pubSub)
 
 	// sending totalMessagesCount*2 errors from 3 subscribers
 	for i := 0; i < 3; i++ {
-		errorsPubSub := createPubSub(t, consumerGroup)
+		errorsPubSub := createPubSub(t)
 
-		messages, err := errorsPubSub.Subscribe(topicName)
+		messages, err := errorsPubSub.Subscribe(topicName, consumerGroup)
 		require.NoError(t, err)
 
 		// waiting to initialize
@@ -371,10 +371,10 @@ func continueAfterErrors(t *testing.T, createPubSub PubSubConstructor) {
 		closePubSub(t, errorsPubSub)
 	}
 
-	pubSub = createPubSub(t, consumerGroup)
+	pubSub = createPubSub(t)
 	defer closePubSub(t, pubSub)
 
-	messages, err := pubSub.Subscribe(topicName)
+	messages, err := pubSub.Subscribe(topicName, consumerGroup)
 	require.NoError(t, err)
 
 	// no message should be consumed
@@ -405,7 +405,7 @@ func consumerGroupsTest(t *testing.T, pubSubConstructor PubSubConstructor) {
 	topicName := testTopicName()
 	totalMessagesCount := 50
 
-	publisher := pubSubConstructor(t, generateConsumerGroup())
+	publisher := pubSubConstructor(t)
 	messagesToPublish := addSimpleMessagesMessages(t, totalMessagesCount, publisher, topicName)
 	closePubSub(t, publisher)
 
@@ -414,19 +414,19 @@ func consumerGroupsTest(t *testing.T, pubSubConstructor PubSubConstructor) {
 	assertConsumerGroupReceivedMessages(t, pubSubConstructor, topicName, group1, messagesToPublish)
 	assertConsumerGroupReceivedMessages(t, pubSubConstructor, topicName, group2, messagesToPublish)
 
-	subscriberGroup1 := pubSubConstructor(t, group1)
-	messages, err := subscriberGroup1.Subscribe(topicName)
+	subscriberGroup1 := pubSubConstructor(t)
+	messages, err := subscriberGroup1.Subscribe(topicName, group1)
 	require.NoError(t, err)
 
 	receivedMessages, _ := subscriber.BulkRead(messages, 1, time.Second*2)
 	assert.Equal(t, 0, len(receivedMessages))
 }
 
-func assertConsumerGroupReceivedMessages(t *testing.T, pubSubConstructor PubSubConstructor, topicName, consumerGroup string, expectedMessages []message.Message) {
-	s := pubSubConstructor(t, consumerGroup)
+func assertConsumerGroupReceivedMessages(t *testing.T, pubSubConstructor PubSubConstructor, topicName string, consumerGroup message.ConsumerGroup, expectedMessages []message.Message) {
+	s := pubSubConstructor(t)
 	defer closePubSub(t, s)
 
-	messages, err := s.Subscribe(topicName)
+	messages, err := s.Subscribe(topicName, consumerGroup)
 	require.NoError(t, err)
 
 	receivedMessages, all := subscriber.BulkRead(messages, len(expectedMessages), time.Second*10)
@@ -444,6 +444,6 @@ func closePubSub(t *testing.T, pubSub message.PubSub) {
 	assert.NoError(t, err)
 }
 
-func generateConsumerGroup() string {
-	return uuid.NewV4().String()
+func generateConsumerGroup() message.ConsumerGroup {
+	return message.ConsumerGroup(uuid.NewV4().String())
 }

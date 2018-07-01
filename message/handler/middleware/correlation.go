@@ -9,7 +9,7 @@ import (
 
 const CorrelationUUIDMetadataKey = "correlation_uuid"
 
-func CorrelationUUID(h handler.HandlerFunc) handler.HandlerFunc {
+func CorrelationUUID(h handler.Func) handler.Func {
 	return func(message message.Message) ([]message.Message, error) {
 		producedMessages, err := h(message)
 

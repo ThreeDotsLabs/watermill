@@ -22,7 +22,7 @@ func generatePartitionKey(topic string, msg message.Message) (string, error) {
 	return fmt.Sprintf("%d", payload.Type), nil
 }
 
-func createPubSub(t *testing.T, consumerGroup string) message.PubSub {
+func createPubSub(t *testing.T) message.PubSub {
 	marshaler := marshal.Json{}
 
 	publisher, err := kafka.NewPublisher(brokers, marshaler)
@@ -33,7 +33,6 @@ func createPubSub(t *testing.T, consumerGroup string) message.PubSub {
 	subscriber, err := kafka.NewConfluentSubscriber(
 		kafka.SubscriberConfig{
 			Brokers:        brokers,
-			ConsumerGroup:  consumerGroup,
 			ConsumersCount: 8,
 		},
 		marshaler,
@@ -44,7 +43,7 @@ func createPubSub(t *testing.T, consumerGroup string) message.PubSub {
 	return message.NewPubSub(publisher, subscriber)
 }
 
-func createPartitionedPubSub(t *testing.T, consumerGroup string) message.PubSub {
+func createPartitionedPubSub(t *testing.T) message.PubSub {
 	marshaler := marshal.NewJsonWithPartitioning(generatePartitionKey)
 
 	publisher, err := kafka.NewPublisher(brokers, marshaler)
@@ -55,7 +54,6 @@ func createPartitionedPubSub(t *testing.T, consumerGroup string) message.PubSub 
 	subscriber, err := kafka.NewConfluentSubscriber(
 		kafka.SubscriberConfig{
 			Brokers:        brokers,
-			ConsumerGroup:  consumerGroup,
 			ConsumersCount: 8,
 		},
 		marshaler, logger,

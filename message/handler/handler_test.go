@@ -34,7 +34,8 @@ func TestFunctional(t *testing.T) {
 	messagesCount := 100
 	expectedReceivedMessages := publishMessagesForHandler(t, messagesCount, pubSub, topicName)
 
-	receivedMessagesCh := make(chan message.Message, messagesCount)
+	receivedMessagesCh1 := make(chan message.Message, messagesCount)
+	receivedMessagesCh2 := make(chan message.Message, messagesCount)
 	sentByHandlerCh := make(chan message.Message, messagesCount)
 
 	publishedEventsTopic := "published_events_" + testID
@@ -48,11 +49,11 @@ func TestFunctional(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	h.Subscribe(
-		"test_subscriber",
+	err = h.AddHandler(
+		"test_subscriber_1",
 		topicName,
 		func(msg message.Message) (producedMessages []message.Message, err error) {
-			receivedMessagesCh <- msg
+			receivedMessagesCh1 <- msg
 			msg.Acknowledge()
 
 			toPublish := message.NewDefault(uuid.NewV4().String(), msgPublishedByHandler{})
@@ -61,6 +62,19 @@ func TestFunctional(t *testing.T) {
 			return []message.Message{toPublish}, nil
 		},
 	)
+	require.NoError(t, err)
+
+	err = h.AddHandler(
+		"test_subscriber_2",
+		topicName,
+		func(msg message.Message) (producedMessages []message.Message, err error) {
+			receivedMessagesCh2 <- msg
+			msg.Acknowledge()
+			return []message.Message{}, nil
+		},
+	)
+	require.NoError(t, err)
+
 	go h.Run()
 	defer func() {
 		assert.NoError(t, h.Close())
@@ -69,11 +83,15 @@ func TestFunctional(t *testing.T) {
 	expectedSentByHandler, all := subscriber.BulkRead(sentByHandlerCh, len(expectedReceivedMessages), time.Second*10)
 	require.True(t, all)
 
-	receivedMessages, all := subscriber.BulkRead(receivedMessagesCh, len(expectedReceivedMessages), time.Second*10)
+	receivedMessages1, all := subscriber.BulkRead(receivedMessagesCh1, len(expectedReceivedMessages), time.Second*10)
 	require.True(t, all)
-	tests.AssertAllMessagesReceived(t, expectedReceivedMessages, receivedMessages)
+	tests.AssertAllMessagesReceived(t, expectedReceivedMessages, receivedMessages1)
 
-	publishedByHandlerCh, err := pubSub.Subscribe(publishedEventsTopic)
+	receivedMessages2, all := subscriber.BulkRead(receivedMessagesCh2, len(expectedReceivedMessages), time.Second*10)
+	require.True(t, all)
+	tests.AssertAllMessagesReceived(t, expectedReceivedMessages, receivedMessages2)
+
+	publishedByHandlerCh, err := pubSub.Subscribe(publishedEventsTopic, "test")
 	require.NoError(t, err)
 	publishedByHandler, all := subscriber.BulkRead(publishedByHandlerCh, len(expectedReceivedMessages), time.Second*10)
 	require.True(t, all)
@@ -105,7 +123,6 @@ func createPubSub() (message.PubSub, error) {
 
 	sub, err := kafka.NewConfluentSubscriber(kafka.SubscriberConfig{
 		Brokers:        brokers,
-		ConsumerGroup:  "test",
 		ConsumersCount: 8,
 	}, marshaler, logger)
 	if err != nil {

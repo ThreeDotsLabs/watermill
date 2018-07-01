@@ -31,7 +31,7 @@ func NewRetry() *Retry {
 	}
 }
 
-func (r Retry) Middleware(h handler.HandlerFunc) handler.HandlerFunc {
+func (r Retry) Middleware(h handler.Func) handler.Func {
 	return func(message message.Message) ([]message.Message, error) {
 		retries := 0
 

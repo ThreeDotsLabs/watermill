@@ -6,7 +6,7 @@ import (
 	"github.com/roblaszczak/gooddd/message/handler"
 )
 
-func Recoverer(h handler.HandlerFunc) handler.HandlerFunc {
+func Recoverer(h handler.Func) handler.Func {
 	return func(event message.Message) (events []message.Message, err error) {
 		defer func() {
 			if r := recover(); r != nil {

@@ -8,7 +8,7 @@ import (
 type poisonQueueHook func(message message.Message, err error)
 
 func PoisonQueueHook(hook poisonQueueHook) handler.Middleware {
-	return func(h handler.HandlerFunc) handler.HandlerFunc {
+	return func(h handler.Func) handler.Func {
 		return func(message message.Message) ([]message.Message, error) {
 			events, err := h(message)
 			if err != nil {

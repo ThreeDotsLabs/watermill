@@ -1,6 +1,8 @@
 package message
 
+type ConsumerGroup string
+
 type Subscriber interface {
-	Subscribe(topic string) (chan Message, error)
+	Subscribe(topic string, consumerGroup ConsumerGroup) (chan Message, error)
 	CloseSubscriber() error
 }

@@ -149,7 +149,6 @@ func main() {
 	sub, err := kafka2.NewConfluentSubscriber(
 		kafka2.SubscriberConfig{
 			Brokers:       brokers,
-			ConsumerGroup: "app2_v2",
 			ConsumersCount: 8,
 		},
 		marshaler,
@@ -163,7 +162,7 @@ func main() {
 
 	h, err := handler.NewHandler(
 		handler.Config{
-			ServerName:         "example",
+			ServerName:         "example_v2",
 			PublishEventsTopic: "app2_events",
 		},
 		pubSub,
@@ -179,7 +178,8 @@ func main() {
 
 	retryMiddleware := middleware.NewRetry()
 	retryMiddleware.OnRetryHook = func(retryNum int, delay time.Duration) {
-		//fmt.Println("retrying, num:", retryNum, "delay:", delay)
+		// you can use dead letter queue here, for example
+		fmt.Println("retrying, num:", retryNum, "delay:", delay)
 	}
 	retryMiddleware.MaxRetries = 1
 	retryMiddleware.WaitTime = time.Millisecond * 10
@@ -205,13 +205,12 @@ func main() {
 
 	h.AddPlugin(plugin.SignalsHandler)
 
-	// todo - fix it
-	h.Subscribe(
+	h.AddHandler(
 		"posts_counter",
 		"test_topic",
 		counter.Count,
 	)
-	h.Subscribe(
+	h.AddHandler(
 		"feed_generator",
 		"test_topic",
 		feedGenerator.UpdateFeed,

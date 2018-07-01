@@ -12,7 +12,7 @@ import (
 	"runtime"
 )
 
-type ConfluentConsumerConstructor func(brokers []string, consumerGroup string) (*kafka.Consumer, error)
+type ConfluentConsumerConstructor func(brokers []string, consumerGroup message.ConsumerGroup) (*kafka.Consumer, error)
 
 type confluentSubscriber struct {
 	config SubscriberConfig
@@ -28,26 +28,11 @@ type confluentSubscriber struct {
 }
 
 type SubscriberConfig struct {
-	Brokers       []string
-	ConsumerGroup string
+	Brokers []string
 
 	ConsumersCount int
 
 	CloseCheckThreshold time.Duration
-}
-
-func (c SubscriberConfig) Validate() error {
-	if len(c.Brokers) == 0 {
-		return errors.New("missing brokers")
-	}
-	if c.ConsumerGroup == "" {
-		return errors.New("missing consumer group")
-	}
-	if c.ConsumersCount <= 0 {
-		return errors.Errorf("ConsumersCount must be greater than 0, have %d", c.ConsumersCount)
-	}
-
-	return nil
 }
 
 func (c *SubscriberConfig) setDefaults() {
@@ -57,6 +42,17 @@ func (c *SubscriberConfig) setDefaults() {
 	if c.ConsumersCount == 0 {
 		c.ConsumersCount = runtime.NumCPU()
 	}
+}
+
+func (c SubscriberConfig) Validate() error {
+	if len(c.Brokers) == 0 {
+		return errors.New("missing brokers")
+	}
+	if c.ConsumersCount <= 0 {
+		return errors.Errorf("ConsumersCount must be greater than 0, have %d", c.ConsumersCount)
+	}
+
+	return nil
 }
 
 func NewConfluentSubscriber(
@@ -89,10 +85,10 @@ func NewCustomConfluentSubscriber(
 	}, nil
 }
 
-func DefaultConfluentConsumerConstructor(brokers []string, consumerGroup string) (*kafka.Consumer, error) {
+func DefaultConfluentConsumerConstructor(brokers []string, consumerGroup message.ConsumerGroup) (*kafka.Consumer, error) {
 	return kafka.NewConsumer(&kafka.ConfigMap{
 		"bootstrap.servers": strings.Join(brokers, ","),
-		"group.id":          consumerGroup,
+		"group.id":          string(consumerGroup),
 
 		"auto.offset.reset":    "earliest",
 		"default.topic.config": kafka.ConfigMap{"auto.offset.reset": "earliest"},
@@ -104,7 +100,7 @@ func DefaultConfluentConsumerConstructor(brokers []string, consumerGroup string)
 }
 
 // todo - review!!
-func (s *confluentSubscriber) Subscribe(topic string) (chan message.Message, error) {
+func (s *confluentSubscriber) Subscribe(topic string, group message.ConsumerGroup) (chan message.Message, error) {
 	if s.closed {
 		return nil, errors.New("subscriber closed")
 	}
@@ -112,7 +108,7 @@ func (s *confluentSubscriber) Subscribe(topic string) (chan message.Message, err
 	logFields := gooddd.LogFields{
 		"topic":                   topic,
 		"kafka_subscribers_count": s.config.ConsumersCount,
-		"consumer_group":          s.config.ConsumerGroup,
+		"consumer_group":          group,
 	}
 	s.logger.Info("Subscribing to Kafka topic", logFields)
 
@@ -123,7 +119,7 @@ func (s *confluentSubscriber) Subscribe(topic string) (chan message.Message, err
 	consumersWg := &sync.WaitGroup{}
 
 	for i := 0; i < s.config.ConsumersCount; i++ {
-		consumer, err := s.consumerConstructor(s.config.Brokers, s.config.ConsumerGroup)
+		consumer, err := s.consumerConstructor(s.config.Brokers, group)
 		if err != nil {
 			return nil, errors.Wrap(err, "cannot create consumer")
 		}
