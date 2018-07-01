@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"github.com/roblaszczak/gooddd/domain"
 	"encoding/json"
+	stdSQL "database/sql"
 )
 
 var testSchema = "CREATE TABLE `%s` ( " +
@@ -21,7 +22,7 @@ var testSchema = "CREATE TABLE `%s` ( " +
 	"`event_name` VARCHAR(64) NOT NULL, " +
 	"`event_payload` JSON NOT NULL, " +
 	"`event_occurred_on` TIMESTAMP NOT NULL, " +
-	"`aggregate_version` INT UNSIGNED NOT NULL, " +
+	"`aggregate_version` INT UNSIGNED, " +
 	"`aggregate_id` BINARY(16) NOT NULL, " +
 	"`aggregate_type` VARCHAR(128) NOT NULL, " +
 	"`topic` VARCHAR(128), " +
@@ -37,6 +38,8 @@ type testDomainEvent struct {
 	aggregateID []byte
 
 	ExtraValue string
+
+	Version int
 }
 
 type dbEvent struct {
@@ -45,18 +48,18 @@ type dbEvent struct {
 	EventPayload    []byte    `db:"event_payload"`
 	EventOccurredOn time.Time `db:"event_occurred_on"`
 
-	AggregateVersion int    `db:"aggregate_version"`
-	AggregateID      []byte `db:"aggregate_id"`
-	AggregateType    string `db:"aggregate_type"`
+	AggregateVersion stdSQL.NullInt64 `db:"aggregate_version"`
+	AggregateID      []byte           `db:"aggregate_id"`
+	AggregateType    string           `db:"aggregate_type"`
 
 	Topic string `db:"topic"`
 }
 
-func (t testDomainEvent) EventOccurredOn() time.Time {
+func (t testDomainEvent) OccurredOn() time.Time {
 	return t.occurredOn
 }
 
-func (t testDomainEvent) EventName() string {
+func (t testDomainEvent) Name() string {
 	return "test"
 }
 
@@ -69,7 +72,7 @@ func (t testDomainEvent) AggregateType() string {
 }
 
 func (t testDomainEvent) AggregateVersion() int {
-	return 0
+	return t.Version
 }
 
 func TestDomainEventsPublisher_Publish(t *testing.T) {
@@ -109,6 +112,28 @@ func TestDomainEventsPublisher_Publish(t *testing.T) {
 		extraValues[id] = extraValue
 	}
 
+	sameAggregateID := uuid.NewV4().Bytes()
+	for i := 1; i < 10; i++ {
+		msgID := uuid.NewV4().String()
+		extraValue := uuid.NewV4().String()
+
+		msg := message.NewDefault(msgID, nil)
+		msg.SetMetadata("test", uuid.NewV4().String())
+
+		occurredOn := time.
+			Date(2009, 11, 17, 20, 34, 13, 0, time.UTC).
+			Add(time.Minute * time.Duration(i))
+
+		eventsToPublish = append(eventsToPublish, testDomainEvent{
+			Message:     msg,
+			occurredOn:  occurredOn,
+			aggregateID: sameAggregateID,
+			ExtraValue:  extraValue,
+			Version:     i,
+		})
+		extraValues[msgID] = extraValue
+	}
+
 	topicName := "topic_name"
 	err = publieher.Publish(topicName, eventsToPublish)
 	require.NoError(t, err)
@@ -135,9 +160,15 @@ func TestDomainEventsPublisher_Publish(t *testing.T) {
 		publishedEvent := dbEvents[key]
 
 		assert.Equal(t, eventToPublish.UUID(), publishedEvent.EventID)
-		assert.Equal(t, eventToPublish.EventName(), publishedEvent.EventName)
-		assert.Equal(t, eventToPublish.EventOccurredOn().Unix(), publishedEvent.EventOccurredOn.Unix())
-		assert.Equal(t, eventToPublish.AggregateVersion(), publishedEvent.AggregateVersion)
+		assert.Equal(t, eventToPublish.Name(), publishedEvent.EventName)
+		assert.Equal(t, eventToPublish.OccurredOn().Unix(), publishedEvent.EventOccurredOn.Unix())
+
+		expectedAggregateVersion := stdSQL.NullInt64{}
+		if versionedEvent, ok := eventToPublish.(domain.VersionedEvent); ok {
+			expectedAggregateVersion = stdSQL.NullInt64{Int64: int64(versionedEvent.AggregateVersion()), Valid: true}
+		}
+		assert.Equal(t, expectedAggregateVersion, publishedEvent.AggregateVersion)
+
 		assert.Equal(t, eventToPublish.AggregateID(), publishedEvent.AggregateID)
 		assert.Equal(t, eventToPublish.AggregateType(), publishedEvent.AggregateType)
 

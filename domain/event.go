@@ -8,10 +8,15 @@ import (
 type Event interface {
 	message.Message
 
-	EventOccurredOn() time.Time
-	EventName() string
+	OccurredOn() time.Time
+	Name() string
 
 	AggregateID() []byte
 	AggregateType() string
+}
+
+type VersionedEvent interface {
+	Event
+
 	AggregateVersion() int
 }

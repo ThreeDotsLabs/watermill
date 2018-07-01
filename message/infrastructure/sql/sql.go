@@ -17,7 +17,7 @@ type event struct {
 	JsonPayload []byte
 	OccurredOn  time.Time
 
-	AggregateVersion int
+	AggregateVersion sql.NullInt64
 	AggregateID      interface{}
 	AggregateType    string
 
@@ -76,14 +76,16 @@ func (s DomainEventsPublisher) PublishDomainEvents(topic string, domainEvents []
 		}
 
 		sqlEvent := event{
-			ID:               e.UUID(),
-			Name:             e.EventName(),
-			JsonPayload:      jsonPayload,
-			OccurredOn:       e.EventOccurredOn(),
-			AggregateVersion: e.AggregateVersion(),
-			AggregateID:      e.AggregateID(),
-			AggregateType:    e.AggregateType(),
-			Topic:            topic,
+			ID:            e.UUID(),
+			Name:          e.Name(),
+			JsonPayload:   jsonPayload,
+			OccurredOn:    e.OccurredOn(),
+			AggregateID:   e.AggregateID(),
+			AggregateType: e.AggregateType(),
+			Topic:         topic,
+		}
+		if ve, ok := e.(domain.VersionedEvent); ok {
+			sqlEvent.AggregateVersion = sql.NullInt64{Int64: int64(ve.AggregateVersion()), Valid: true}
 		}
 
 		args = append(args, sqlEvent.Args()...)
