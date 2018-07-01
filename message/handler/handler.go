@@ -139,7 +139,14 @@ func (r *Handler) AddHandler(handlerName string, topic string, handlerFunc Func)
 	return nil
 }
 
-func (r *Handler) Run() error {
+func (r *Handler) Run() (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = errors.Errorf("panic recovered: %#v", r)
+			return
+		}
+	}()
+
 	if r.running {
 		return errors.New("handler is already running")
 	}
