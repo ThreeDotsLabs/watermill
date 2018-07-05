@@ -43,7 +43,7 @@ func main() {
 		}
 
 		return message.NewDefault(uuid.NewV4().String(), p), nil
-	})
+	}, logger)
 	if err != nil {
 		panic(err)
 	}

@@ -4,6 +4,8 @@ import (
 	"github.com/roblaszczak/gooddd/message"
 	"github.com/go-chi/chi"
 	"net/http"
+	"github.com/roblaszczak/gooddd"
+	"sync"
 )
 
 type UnmarshalMessageFunc func(topic string, request *http.Request) (message.Message, error)
@@ -11,34 +13,56 @@ type UnmarshalMessageFunc func(topic string, request *http.Request) (message.Mes
 type Subscriber struct {
 	router chi.Router
 	server *http.Server
+	logger gooddd.LoggerAdapter
 
 	unmarshalMessageFunc UnmarshalMessageFunc
+
+	outputChannels     []chan message.Message
+	outputChannelsLock sync.Locker
 }
 
-func NewSubscriber(addr string, unmarshalMessageFunc UnmarshalMessageFunc) (message.Subscriber, error) {
+// todo - test
+func NewSubscriber(addr string, unmarshalMessageFunc UnmarshalMessageFunc, logger gooddd.LoggerAdapter) (message.Subscriber, error) {
 	r := chi.NewRouter()
 	s := &http.Server{Addr: addr, Handler: r}
 
-	return &Subscriber{r, s, unmarshalMessageFunc}, nil
+	return &Subscriber{
+		r,
+		s,
+		logger,
+		unmarshalMessageFunc,
+		make([]chan message.Message, 1),
+		&sync.Mutex{},
+	}, nil
 }
 
-func (s Subscriber) Subscribe(topic string, consumerGroup message.ConsumerGroup) (chan message.Message, error) {
+func (s *Subscriber) Subscribe(topic string, consumerGroup message.ConsumerGroup) (chan message.Message, error) {
 	messages := make(chan message.Message)
+
+	s.outputChannelsLock.Lock()
+	s.outputChannels = append(s.outputChannels, messages)
+	s.outputChannelsLock.Unlock()
+
+	baseLogFields := gooddd.LogFields{"topic": topic}
 
 	s.router.Post(topic, func(writer http.ResponseWriter, request *http.Request) {
 		msg, err := s.unmarshalMessageFunc(topic, request)
 		if err != nil {
-			// todo - log
+			s.logger.Info("Cannot unmarshal message", baseLogFields.Add(gooddd.LogFields{"err": err}))
 			writer.WriteHeader(http.StatusBadRequest)
 			return
 		}
+		logFields := baseLogFields.Add(gooddd.LogFields{"message_id": msg.UUID()})
 
+		s.logger.Trace("Sending msg", logFields)
 		messages <- msg
 
-		// todo - log
+		s.logger.Trace("Waiting for ACK", logFields)
 		select {
 		case <-msg.Acknowledged():
+			s.logger.Trace("Message acknowledged", logFields)
 		case <-request.Context().Done():
+			s.logger.Info("Request stopped without ACK received", logFields)
 		}
 	})
 
@@ -50,5 +74,11 @@ func (s Subscriber) Subscribe(topic string, consumerGroup message.ConsumerGroup)
 }
 
 func (s Subscriber) CloseSubscriber() error {
+	defer func() {
+		for _, ch := range s.outputChannels {
+			close(ch)
+		}
+	}()
+
 	return s.server.Close()
 }
