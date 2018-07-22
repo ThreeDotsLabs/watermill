@@ -1,11 +1,9 @@
-package handler_test
+package message_test
 
 import (
 	"testing"
 	"github.com/satori/go.uuid"
-	"github.com/roblaszczak/gooddd/message"
 	"github.com/stretchr/testify/require"
-	"github.com/roblaszczak/gooddd/message/handler"
 	"time"
 	"github.com/roblaszczak/gooddd/internal/tests"
 	"github.com/roblaszczak/gooddd/message/infrastructure/kafka"
@@ -13,6 +11,7 @@ import (
 	"github.com/roblaszczak/gooddd"
 	"github.com/roblaszczak/gooddd/message/subscriber"
 	"github.com/stretchr/testify/assert"
+	"github.com/roblaszczak/gooddd/message"
 )
 
 type publisherMsg struct {
@@ -34,13 +33,13 @@ func TestFunctional(t *testing.T) {
 	messagesCount := 100
 	expectedReceivedMessages := publishMessagesForHandler(t, messagesCount, pubSub, topicName)
 
-	receivedMessagesCh1 := make(chan message.Message, messagesCount)
-	receivedMessagesCh2 := make(chan message.Message, messagesCount)
+	receivedMessagesCh1 := make(chan message.ConsumedMessage, messagesCount)
+	receivedMessagesCh2 := make(chan message.ConsumedMessage, messagesCount)
 	sentByHandlerCh := make(chan message.Message, messagesCount)
 
 	publishedEventsTopic := "published_events_" + testID
-	h, err := handler.NewHandler(
-		handler.Config{
+	h, err := message.NewRouter(
+		message.RouterConfig{
 			ServerName:         "test_" + testID,
 			PublishEventsTopic: publishedEventsTopic,
 		},
@@ -52,14 +51,14 @@ func TestFunctional(t *testing.T) {
 	err = h.AddHandler(
 		"test_subscriber_1",
 		topicName,
-		func(msg message.Message) (producedMessages []message.Message, err error) {
+		func(msg message.ConsumedMessage) (producedMessages []message.ProducedMessage, err error) {
 			receivedMessagesCh1 <- msg
 			msg.Acknowledge()
 
 			toPublish := message.NewDefault(uuid.NewV4().String(), msgPublishedByHandler{})
 			sentByHandlerCh <- toPublish
 
-			return []message.Message{toPublish}, nil
+			return []message.ProducedMessage{toPublish}, nil
 		},
 	)
 	require.NoError(t, err)
@@ -67,10 +66,10 @@ func TestFunctional(t *testing.T) {
 	err = h.AddHandler(
 		"test_subscriber_2",
 		topicName,
-		func(msg message.Message) (producedMessages []message.Message, err error) {
+		func(msg message.ConsumedMessage) (producedMessages []message.ProducedMessage, err error) {
 			receivedMessagesCh2 <- msg
 			msg.Acknowledge()
-			return []message.Message{}, nil
+			return nil, nil
 		},
 	)
 	require.NoError(t, err)
@@ -80,7 +79,9 @@ func TestFunctional(t *testing.T) {
 		assert.NoError(t, h.Close())
 	}()
 
-	expectedSentByHandler, all := subscriber.BulkRead(sentByHandlerCh, len(expectedReceivedMessages), time.Second*10)
+
+
+	expectedSentByHandler, all := readMessages(sentByHandlerCh, len(expectedReceivedMessages), time.Second*10)
 	require.True(t, all)
 
 	receivedMessages1, all := subscriber.BulkRead(receivedMessagesCh1, len(expectedReceivedMessages), time.Second*10)
@@ -99,16 +100,20 @@ func TestFunctional(t *testing.T) {
 }
 
 func publishMessagesForHandler(t *testing.T, messagesCount int, pubSub message.PubSub, topicName string) ([]message.Message) {
-	var messagesToPublish []message.Message
+	var messagesToPublish []message.ProducedMessage
+	var messagesToPublishMessage []message.Message
 	for i := 0; i < messagesCount; i++ {
-		messagesToPublish = append(messagesToPublish, message.NewDefault(uuid.NewV4().String(), publisherMsg{i}))
+		msg := message.NewDefault(uuid.NewV4().String(), publisherMsg{i})
+
+		messagesToPublish = append(messagesToPublish, msg)
+		messagesToPublishMessage = append(messagesToPublishMessage, msg)
 	}
 
 	err := pubSub.Publish(topicName, messagesToPublish)
 
 	require.NoError(t, err)
 
-	return messagesToPublish
+	return messagesToPublishMessage
 }
 
 func createPubSub() (message.PubSub, error) {
@@ -130,4 +135,28 @@ func createPubSub() (message.PubSub, error) {
 	}
 
 	return message.NewPubSub(pub, sub), nil
+}
+
+func readMessages(messagesCh <-chan message.Message, limit int, timeout time.Duration) (receivedMessages []message.Message, all bool) {
+	allMessagesReceived := make(chan struct{}, 1)
+
+	go func() {
+		for msg := range messagesCh {
+			receivedMessages = append(receivedMessages, msg)
+
+			if len(receivedMessages) == limit {
+				allMessagesReceived <- struct{}{}
+				break
+			}
+		}
+		// messagesCh closed
+		allMessagesReceived <- struct{}{}
+	}()
+
+	select {
+	case <-allMessagesReceived:
+	case <-time.After(timeout):
+	}
+
+	return receivedMessages, len(receivedMessages) == limit
 }
