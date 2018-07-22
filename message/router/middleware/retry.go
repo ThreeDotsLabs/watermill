@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"time"
-	"github.com/roblaszczak/gooddd/message/handler"
 	"github.com/roblaszczak/gooddd/message"
 )
 
@@ -31,7 +30,7 @@ func NewRetry() *Retry {
 	}
 }
 
-func (r Retry) Middleware(h handler.Func) handler.Func {
+func (r Retry) Middleware(h message.HandlerFunc) message.HandlerFunc {
 	return func(message message.ConsumedMessage) ([]message.ProducedMessage, error) {
 		retries := 0
 

@@ -5,18 +5,18 @@ import (
 	"syscall"
 	"fmt"
 	"os"
-	"github.com/roblaszczak/gooddd/message/handler"
+	"github.com/roblaszczak/gooddd/message"
 )
 
-func SignalsHandler(handler *handler.Handler) error {
+func SignalsHandler(r *message.Router) error {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
 		sig := <-sigs
-		handler.Logger.Info(fmt.Sprintf("Received %s signal, closing\n", sig), nil)
+		r.Logger.Info(fmt.Sprintf("Received %s signal, closing\n", sig), nil)
 
-		handler.Close()
+		r.Close()
 	}()
 	return nil
 }

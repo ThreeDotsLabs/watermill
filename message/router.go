@@ -1,4 +1,4 @@
-package handler
+package message
 
 import (
 	"sync"
@@ -6,23 +6,22 @@ import (
 	sync_internal "github.com/roblaszczak/gooddd/internal/sync"
 	"time"
 	"fmt"
-	"github.com/roblaszczak/gooddd/message"
 	"github.com/roblaszczak/gooddd"
 )
 
-type Func func(msg message.ConsumedMessage) (producedMessages []message.ProducedMessage, err error)
+type HandlerFunc func(msg ConsumedMessage) (producedMessages []ProducedMessage, err error)
 
-type Middleware func(h Func) Func
+type HandlerMiddleware func(h HandlerFunc) HandlerFunc
 
-type Plugin func(*Handler) error
+type RouterPlugin func(*Router) error
 
-type GenerateConsumerGroup func(serverName, handlerName string) message.ConsumerGroup
+type GenerateConsumerGroup func(serverName, handlerName string) ConsumerGroup
 
-func DefaultGenerateConsumerGroup(serverName, handlerName string) message.ConsumerGroup {
-	return message.ConsumerGroup(fmt.Sprintf("%s_%s", serverName, handlerName))
+func DefaultGenerateConsumerGroup(serverName, handlerName string) ConsumerGroup {
+	return ConsumerGroup(fmt.Sprintf("%s_%s", serverName, handlerName))
 }
 
-type Config struct {
+type RouterConfig struct {
 	ServerName         string
 	PublishEventsTopic string
 
@@ -31,7 +30,7 @@ type Config struct {
 	GenerateConsumerGroupFunc GenerateConsumerGroup
 }
 
-func (c *Config) setDefaults() {
+func (c *RouterConfig) setDefaults() {
 	if c.CloseTimeout == 0 {
 		c.CloseTimeout = time.Second * 30
 	}
@@ -40,7 +39,7 @@ func (c *Config) setDefaults() {
 	}
 }
 
-func (c Config) Validate() error {
+func (c RouterConfig) Validate() error {
 	if c.ServerName == "" {
 		return errors.New("empty ServerName")
 	}
@@ -52,13 +51,13 @@ func (c Config) Validate() error {
 	return nil
 }
 
-func NewHandler(config Config, subscriber message.Subscriber, publisher message.Publisher) (*Handler, error) {
+func NewRouter(config RouterConfig, subscriber Subscriber, publisher Publisher) (*Router, error) {
 	config.setDefaults()
 	if err := config.Validate(); err != nil {
 		return nil, errors.Wrap(err, "invalid config")
 	}
 
-	return &Handler{
+	return &Router{
 		config: config,
 
 		subscriber: subscriber,
@@ -75,15 +74,15 @@ func NewHandler(config Config, subscriber message.Subscriber, publisher message.
 	}, nil
 }
 
-type Handler struct {
-	config Config
+type Router struct {
+	config RouterConfig
 
-	subscriber message.Subscriber
-	publisher  message.Publisher
+	subscriber Subscriber
+	publisher  Publisher
 
-	middlewares []Middleware
+	middlewares []HandlerMiddleware
 
-	plugins []Plugin
+	plugins []RouterPlugin
 
 	handlers map[string]*handler
 
@@ -100,13 +99,13 @@ type Handler struct {
 // AddMiddleware adds a new middleware to the router.
 //
 // The order of middlewares matters. Middleware added at the beginning is executed first.
-func (r *Handler) AddMiddleware(m ...Middleware) {
+func (r *Router) AddMiddleware(m ...HandlerMiddleware) {
 	r.Logger.Debug("Adding middlewares", gooddd.LogFields{"count": fmt.Sprintf("%d", len(m))})
 
 	r.middlewares = append(r.middlewares, m...)
 }
 
-func (r *Handler) AddPlugin(p ...Plugin) {
+func (r *Router) AddPlugin(p ...RouterPlugin) {
 	r.Logger.Debug("Adding plugins", gooddd.LogFields{"count": fmt.Sprintf("%d", len(p))})
 
 	r.plugins = append(r.plugins, p...)
@@ -115,12 +114,12 @@ func (r *Handler) AddPlugin(p ...Plugin) {
 type handler struct {
 	name        string
 	topic       string
-	handlerFunc Func
+	handlerFunc HandlerFunc
 
-	messagesCh chan message.ConsumedMessage
+	messagesCh chan ConsumedMessage
 }
 
-func (r *Handler) AddHandler(handlerName string, topic string, handlerFunc Func) error {
+func (r *Router) AddHandler(handlerName string, topic string, handlerFunc HandlerFunc) error {
 	r.Logger.Info("Adding subscriber", gooddd.LogFields{
 		"handler_name": handlerName,
 		"topic":        topic,
@@ -139,7 +138,7 @@ func (r *Handler) AddHandler(handlerName string, topic string, handlerFunc Func)
 	return nil
 }
 
-func (r *Handler) Run() (err error) {
+func (r *Router) Run() (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = errors.Errorf("panic recovered: %#v", r)
@@ -148,7 +147,7 @@ func (r *Handler) Run() (err error) {
 	}()
 
 	if r.running {
-		return errors.New("handler is already running")
+		return errors.New("router is already running")
 	}
 	r.running = true
 
@@ -195,7 +194,7 @@ func (r *Handler) Run() (err error) {
 			for msg := range s.messagesCh {
 				r.runningHandlersWg.Add(1)
 
-				go func(msg message.ConsumedMessage) {
+				go func(msg ConsumedMessage) {
 					defer r.runningHandlersWg.Done()
 
 					msgFields := gooddd.LogFields{"message_uuid": msg.UUID()}
@@ -237,13 +236,13 @@ func (r *Handler) Run() (err error) {
 
 	r.Logger.Debug("Waiting for subscriber to close", nil)
 	if err := r.subscriber.CloseSubscriber(); err != nil {
-		return errors.Wrap(err, "cannot close handler")
+		return errors.Wrap(err, "cannot close router")
 	}
 	r.Logger.Debug("Subscriber closed", nil)
 
 	r.Logger.Debug("Waiting for publisher to close", nil)
 	if err := r.publisher.ClosePublisher(); err != nil {
-		return errors.Wrap(err, "cannot close handler")
+		return errors.Wrap(err, "cannot close router")
 	}
 	r.Logger.Debug("Publisher closed", nil)
 
@@ -255,14 +254,14 @@ func (r *Handler) Run() (err error) {
 	return nil
 }
 
-func (r *Handler) Close() error {
-	r.Logger.Info("Closing handler", nil)
-	defer r.Logger.Info("Handler closed", nil)
+func (r *Router) Close() error {
+	r.Logger.Info("Closing router", nil)
+	defer r.Logger.Info("Router closed", nil)
 	r.closeCh <- struct{}{}
 
 	timeouted := sync_internal.WaitGroupTimeout(r.handlersWg, r.config.CloseTimeout)
 	if timeouted {
-		return errors.New("handler close timeouted")
+		return errors.New("router close timeouted")
 	}
 
 	return nil

@@ -5,11 +5,10 @@ import (
 	"time"
 	"fmt"
 	"sync/atomic"
-	"github.com/roblaszczak/gooddd/message/handler/plugin"
-	"github.com/roblaszczak/gooddd/message/handler/middleware"
+	"github.com/roblaszczak/gooddd/message/router/plugin"
+	"github.com/roblaszczak/gooddd/message/router/middleware"
 
 	"github.com/rcrowley/go-metrics"
-	"github.com/roblaszczak/gooddd/message/handler"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/deathowl/go-metrics-prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -160,8 +159,8 @@ func main() {
 
 	pubSub := message.NewPubSub(pub, sub)
 
-	h, err := handler.NewHandler(
-		handler.Config{
+	h, err := message.NewRouter(
+		message.RouterConfig{
 			ServerName:         "example_v2",
 			PublishEventsTopic: "app2_events",
 		},

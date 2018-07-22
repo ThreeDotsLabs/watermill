@@ -1,13 +1,12 @@
 package middleware
 
 import (
-	"github.com/roblaszczak/gooddd/message/handler"
 	"github.com/roblaszczak/gooddd/message"
 )
 
 const CorrelationIDMetadataKey = "correlation_id"
 
-func CorrelationID(h handler.Func) handler.Func {
+func CorrelationID(h message.HandlerFunc) message.HandlerFunc {
 	return func(message message.ConsumedMessage) ([]message.ProducedMessage, error) {
 		producedMessages, err := h(message)
 

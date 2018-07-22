@@ -8,8 +8,8 @@ import (
 	"github.com/roblaszczak/gooddd/message/infrastructure/kafka"
 	"github.com/roblaszczak/gooddd/message"
 	"github.com/renstrom/shortuuid"
-	"github.com/roblaszczak/gooddd/message/handler/middleware"
 	"github.com/roblaszczak/gooddd/message/infrastructure/kafka/marshal"
+	"github.com/roblaszczak/gooddd/message/router/middleware"
 )
 
 type postAdded struct {

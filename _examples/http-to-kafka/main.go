@@ -1,10 +1,9 @@
 package main
 
 import (
-	"github.com/roblaszczak/gooddd/message/handler/plugin"
-	"github.com/roblaszczak/gooddd/message/handler/middleware"
+	"github.com/roblaszczak/gooddd/message/router/plugin"
+	"github.com/roblaszczak/gooddd/message/router/middleware"
 
-	"github.com/roblaszczak/gooddd/message/handler"
 	"github.com/roblaszczak/gooddd/message"
 
 	_ "net/http/pprof"
@@ -48,8 +47,8 @@ func main() {
 		panic(err)
 	}
 
-	h, err := handler.NewHandler(
-		handler.Config{
+	h, err := message.NewRouter(
+		message.RouterConfig{
 			ServerName:         "http_to_kafka",
 			PublishEventsTopic: "http_events",
 		},

@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"github.com/roblaszczak/gooddd/message/handler"
 	"github.com/roblaszczak/gooddd/message"
 	"github.com/throttled/throttled"
 	"time"
@@ -30,7 +29,7 @@ func NewThrottlePerSecond(perSecond int, logger gooddd.LoggerAdapter) (Throttle,
 	return Throttle{rateLimiter, logger}, nil
 }
 
-func (t Throttle) Middleware(h handler.Func) handler.Func {
+func (t Throttle) Middleware(h message.HandlerFunc) message.HandlerFunc {
 	return func(message message.ConsumedMessage) ([]message.ProducedMessage, error) {
 		defer func() {
 			limited, context, err := t.rateLimiter.RateLimit("", 1)

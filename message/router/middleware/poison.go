@@ -1,14 +1,13 @@
 package middleware
 
 import (
-	"github.com/roblaszczak/gooddd/message/handler"
 	"github.com/roblaszczak/gooddd/message"
 )
 
 type poisonQueueHook func(message message.Message, err error)
 
-func PoisonQueueHook(hook poisonQueueHook) handler.Middleware {
-	return func(h handler.Func) handler.Func {
+func PoisonQueueHook(hook poisonQueueHook) message.HandlerMiddleware {
+	return func(h message.HandlerFunc) message.HandlerFunc {
 		return func(message message.ConsumedMessage) ([]message.ProducedMessage, error) {
 			events, err := h(message)
 			if err != nil {
@@ -21,6 +20,6 @@ func PoisonQueueHook(hook poisonQueueHook) handler.Middleware {
 }
 
 // todo
-func PoisonKafkaQueue() handler.Middleware {
+func PoisonKafkaQueue() message.HandlerFunc {
 	return nil
 }

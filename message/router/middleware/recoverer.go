@@ -3,10 +3,9 @@ package middleware
 import (
 	"github.com/pkg/errors"
 	"github.com/roblaszczak/gooddd/message"
-	"github.com/roblaszczak/gooddd/message/handler"
 )
 
-func Recoverer(h handler.Func) handler.Func {
+func Recoverer(h message.HandlerFunc) message.HandlerFunc {
 	return func(event message.ConsumedMessage) (events []message.ProducedMessage, err error) {
 		defer func() {
 			if r := recover(); r != nil {
