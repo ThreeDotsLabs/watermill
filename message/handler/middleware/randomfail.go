@@ -14,7 +14,7 @@ func shouldFail(errorRatio float32) bool {
 
 func RandomFail(errorRatio float32) handler.Middleware {
 	return func(h handler.Func) handler.Func {
-		return func(message message.Message) ([]message.Message, error) {
+		return func(message message.ConsumedMessage) ([]message.ProducedMessage, error) {
 			if shouldFail(errorRatio) {
 				return nil, errors.New("random fail occurred")
 			}
@@ -26,7 +26,7 @@ func RandomFail(errorRatio float32) handler.Middleware {
 
 func RandomPanic(panicRatio float32) handler.Middleware {
 	return func(h handler.Func) handler.Func {
-		return func(message message.Message) ([]message.Message, error) {
+		return func(message message.ConsumedMessage) ([]message.ProducedMessage, error) {
 			if shouldFail(panicRatio) {
 				panic("random panic occurred")
 			}

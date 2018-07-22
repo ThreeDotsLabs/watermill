@@ -10,7 +10,7 @@ import (
 	"github.com/roblaszczak/gooddd"
 )
 
-type Func func(msg message.Message) (producedMessages []message.Message, err error)
+type Func func(msg message.ConsumedMessage) (producedMessages []message.ProducedMessage, err error)
 
 type Middleware func(h Func) Func
 
@@ -117,7 +117,7 @@ type handler struct {
 	topic       string
 	handlerFunc Func
 
-	messagesCh chan message.Message
+	messagesCh chan message.ConsumedMessage
 }
 
 func (r *Handler) AddHandler(handlerName string, topic string, handlerFunc Func) error {
@@ -195,7 +195,7 @@ func (r *Handler) Run() (err error) {
 			for msg := range s.messagesCh {
 				r.runningHandlersWg.Add(1)
 
-				go func(msg message.Message) {
+				go func(msg message.ConsumedMessage) {
 					defer r.runningHandlersWg.Done()
 
 					msgFields := gooddd.LogFields{"message_uuid": msg.UUID()}

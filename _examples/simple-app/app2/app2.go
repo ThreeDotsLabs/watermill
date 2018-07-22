@@ -58,7 +58,7 @@ type PostsCounter struct {
 	countStorage countStorage
 }
 
-func (p PostsCounter) Count(msg message.Message) ([]message.Message, error) {
+func (p PostsCounter) Count(msg message.ConsumedMessage) ([]message.ProducedMessage, error) {
 	newCount, err := p.countStorage.CountAdd()
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot add count")
@@ -71,7 +71,7 @@ func (p PostsCounter) Count(msg message.Message) ([]message.Message, error) {
 	producedMsg := postsCountUpdated{NewCount: newCount}
 	//producedMsg.
 
-	return []message.Message{message.NewDefault(uuid.NewV4().String(), producedMsg)}, nil
+	return []message.ProducedMessage{message.NewDefault(uuid.NewV4().String(), producedMsg)}, nil
 }
 
 // todo - replace with mongo?
@@ -91,7 +91,7 @@ type FeedGenerator struct {
 	feedStorage feedStorage
 }
 
-func (f FeedGenerator) UpdateFeed(message message.Message) ([]message.Message, error) {
+func (f FeedGenerator) UpdateFeed(message message.ConsumedMessage) ([]message.ProducedMessage, error) {
 	event := postAdded{}
 	if err := message.UnmarshalPayload(&event); err != nil {
 		return nil, err
@@ -110,8 +110,8 @@ func main() {
 		log.Println(http.ListenAndServe("localhost:6060", nil))
 	}()
 
-	//logger := gooddd.NewStdLogger(false, false)
-	logger := gooddd.NopLogger{}
+	logger := gooddd.NewStdLogger(true, true)
+	//logger := gooddd.NopLogger{}
 
 	t := metrics.NewTimer()
 	metrics.Register("handler.time", t)
@@ -184,21 +184,21 @@ func main() {
 	retryMiddleware.MaxRetries = 1
 	retryMiddleware.WaitTime = time.Millisecond * 10
 
-	//throttle, err := middleware.NewThrottlePerSecond(1, logger)
-	//if err != nil {
-	//	panic(err)
-	//}
+	throttle, err := middleware.NewThrottlePerSecond(1, logger)
+	if err != nil {
+		panic(err)
+	}
 
 	h.AddMiddleware(
 		metricsMiddleware.Middleware,
 		middleware.AckOnSuccess,
-		//throttle.Middleware,
+		throttle.Middleware,
 		//middleware.PoisonQueueHook(func(message *message.Message, err error) {
 		//	fmt.Println("unable to process", message, "err:", err)
 		//}),
 		retryMiddleware.Middleware,
 		middleware.Recoverer,
-		middleware.CorrelationUUID,
+		middleware.CorrelationID,
 		middleware.RandomFail(0.002),
 		middleware.RandomPanic(0.002),
 	)

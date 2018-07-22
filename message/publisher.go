@@ -1,6 +1,6 @@
 package message
 
 type Publisher interface {
-	Publish(topic string, messages []Message) error
+	Publish(topic string, messages []ProducedMessage) error
 	ClosePublisher() error
 }

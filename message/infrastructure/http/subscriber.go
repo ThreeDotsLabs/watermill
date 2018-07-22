@@ -8,7 +8,7 @@ import (
 	"sync"
 )
 
-type UnmarshalMessageFunc func(topic string, request *http.Request) (message.Message, error)
+type UnmarshalMessageFunc func(topic string, request *http.Request) (message.ConsumedMessage, error)
 
 type Subscriber struct {
 	router chi.Router
@@ -17,7 +17,7 @@ type Subscriber struct {
 
 	unmarshalMessageFunc UnmarshalMessageFunc
 
-	outputChannels     []chan message.Message
+	outputChannels     []chan message.ConsumedMessage
 	outputChannelsLock sync.Locker
 }
 
@@ -31,13 +31,13 @@ func NewSubscriber(addr string, unmarshalMessageFunc UnmarshalMessageFunc, logge
 		s,
 		logger,
 		unmarshalMessageFunc,
-		make([]chan message.Message, 1),
+		make([]chan message.ConsumedMessage, 1),
 		&sync.Mutex{},
 	}, nil
 }
 
-func (s *Subscriber) Subscribe(topic string, consumerGroup message.ConsumerGroup) (chan message.Message, error) {
-	messages := make(chan message.Message)
+func (s *Subscriber) Subscribe(topic string, consumerGroup message.ConsumerGroup) (chan message.ConsumedMessage, error) {
+	messages := make(chan message.ConsumedMessage)
 
 	s.outputChannelsLock.Lock()
 	s.outputChannels = append(s.outputChannels, messages)

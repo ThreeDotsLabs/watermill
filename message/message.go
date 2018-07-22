@@ -1,17 +1,23 @@
 package message
 
-import (
-	"github.com/mitchellh/mapstructure"
-)
-
 type Payload interface{}
 
 type Message interface {
 	UUID() string // todo - change to []byte?, change to type
 
-	SetMetadata(key, value string)
 	GetMetadata(key string) string
 	AllMetadata() map[string]string
+}
+
+type ProducedMessage interface {
+	Message
+
+	SetMetadata(key, value string)
+	Payload() Payload
+}
+
+type ConsumedMessage interface {
+	Message
 
 	UnmarshalPayload(val interface{}) error
 
@@ -20,41 +26,22 @@ type Message interface {
 	Error(err error) error
 }
 
-// Default is default Message implementation.
-type Default struct {
-	MessageUUID     string            `json:"message_uuid"`
-	MessageMetadata map[string]string `json:"message_metadata"`
-	MessagePayload  Payload           `json:"message_payload"`
+type Base struct {
+	MessageUUID     string
+	MessageMetadata map[string]string
 
 	*Ack
 }
 
-func NewDefault(uuid string, payload Payload) Message {
-	return &Default{
-		MessageUUID:     uuid,
-		MessageMetadata: make(map[string]string),
-		MessagePayload:  payload,
-
-		Ack: NewAck(),
-	}
-}
-
-func NewEmptyDefault() Message {
-	return &Default{
-		MessageMetadata: make(map[string]string),
-		Ack:             NewAck(),
-	}
-}
-
-func (m Default) UUID() string {
+func (m Base) UUID() string {
 	return m.MessageUUID
 }
 
-func (m *Default) SetMetadata(key, value string) {
+func (m *Base) SetMetadata(key, value string) {
 	m.MessageMetadata[key] = value
 }
 
-func (m *Default) GetMetadata(key string) string {
+func (m *Base) GetMetadata(key string) string {
 	if val, ok := m.MessageMetadata[key]; ok {
 		return val
 	}
@@ -62,11 +49,30 @@ func (m *Default) GetMetadata(key string) string {
 	return ""
 }
 
-func (m Default) AllMetadata() map[string]string {
+func (m Base) AllMetadata() map[string]string {
 	return m.MessageMetadata
 }
 
-func (m *Default) UnmarshalPayload(val interface{}) error {
-	// todo - detect immutable
-	return mapstructure.Decode(m.MessagePayload, val)
+// defaultImpl is default Message implementation.
+// todo - rename?
+type defaultMessage struct {
+	Base
+
+	payload Payload
+}
+
+func NewDefault(uuid string, payload Payload) ProducedMessage {
+	return &defaultMessage{
+		Base{
+			MessageUUID:     uuid,
+			MessageMetadata: make(map[string]string),
+
+			Ack: NewAck(),
+		},
+		payload,
+	}
+}
+
+func (m *defaultMessage) Payload() Payload {
+	return m.payload
 }

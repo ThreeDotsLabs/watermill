@@ -75,14 +75,14 @@ func main() {
 		}
 		msg := message.NewDefault(msgPayload.UUID(), msgPayload)
 
-		middleware.SetCorrelationUUID(shortuuid.New(), msg)
+		middleware.SetCorrelationID(shortuuid.New(), msg)
 
 		//fmt.Printf("Generated message: %#v\n", msg)
 
 		wg.Add(1)
 		go func() {
 			// todo - how to create messages to send?
-			err := publisher.Publish("test_topic", []message.Message{
+			err := publisher.Publish("test_topic", []message.ProducedMessage{
 				msg,
 			})
 			if err != nil {

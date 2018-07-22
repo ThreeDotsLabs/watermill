@@ -32,7 +32,7 @@ func NewRetry() *Retry {
 }
 
 func (r Retry) Middleware(h handler.Func) handler.Func {
-	return func(message message.Message) ([]message.Message, error) {
+	return func(message message.ConsumedMessage) ([]message.ProducedMessage, error) {
 		retries := 0
 
 		for {

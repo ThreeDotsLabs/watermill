@@ -34,7 +34,7 @@ func NewCustomPublisher(producer sarama.SyncProducer, marshaler Marshaler) (mess
 	return &saramaPublisher{producer, marshaler, false}, nil
 }
 
-func (p saramaPublisher) Publish(topic string, messages []message.Message) error {
+func (p saramaPublisher) Publish(topic string, messages []message.ProducedMessage) error {
 	var saramaMessages []*sarama.ProducerMessage
 
 	for _, msg := range messages {

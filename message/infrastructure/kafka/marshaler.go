@@ -7,11 +7,11 @@ import (
 )
 
 type Marshaler interface {
-	Marshal(topic string, msg message.Message) (*sarama.ProducerMessage, error)
+	Marshal(topic string, msg message.ProducedMessage) (*sarama.ProducerMessage, error)
 }
 
 type Unmarshaler interface {
-	Unmarshal(*kafka.Message) (message.Message, error)
+	Unmarshal(*kafka.Message) (message.ConsumedMessage, error)
 }
 
 type MarshalerUnmarshaler interface {

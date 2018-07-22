@@ -7,7 +7,7 @@ import (
 
 // todo - test
 func AckOnSuccess(h handler.Func) handler.Func {
-	return func(msg message.Message) (_ []message.Message, err error) {
+	return func(msg message.ConsumedMessage) (_ []message.ProducedMessage, err error) {
 		defer func() {
 			if err == nil {
 				msg.Acknowledge()

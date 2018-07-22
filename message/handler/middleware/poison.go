@@ -9,7 +9,7 @@ type poisonQueueHook func(message message.Message, err error)
 
 func PoisonQueueHook(hook poisonQueueHook) handler.Middleware {
 	return func(h handler.Func) handler.Func {
-		return func(message message.Message) ([]message.Message, error) {
+		return func(message message.ConsumedMessage) ([]message.ProducedMessage, error) {
 			events, err := h(message)
 			if err != nil {
 				hook(message, err)

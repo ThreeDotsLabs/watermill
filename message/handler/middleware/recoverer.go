@@ -7,7 +7,7 @@ import (
 )
 
 func Recoverer(h handler.Func) handler.Func {
-	return func(event message.Message) (events []message.Message, err error) {
+	return func(event message.ConsumedMessage) (events []message.ProducedMessage, err error) {
 		defer func() {
 			if r := recover(); r != nil {
 				if err == nil {

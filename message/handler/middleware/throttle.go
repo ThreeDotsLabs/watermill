@@ -31,7 +31,7 @@ func NewThrottlePerSecond(perSecond int, logger gooddd.LoggerAdapter) (Throttle,
 }
 
 func (t Throttle) Middleware(h handler.Func) handler.Func {
-	return func(message message.Message) ([]message.Message, error) {
+	return func(message message.ConsumedMessage) ([]message.ProducedMessage, error) {
 		defer func() {
 			limited, context, err := t.rateLimiter.RateLimit("", 1)
 			if err != nil {

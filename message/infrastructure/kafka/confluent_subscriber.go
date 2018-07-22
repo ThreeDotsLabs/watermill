@@ -100,7 +100,7 @@ func DefaultConfluentConsumerConstructor(brokers []string, consumerGroup message
 }
 
 // todo - review!!
-func (s *confluentSubscriber) Subscribe(topic string, group message.ConsumerGroup) (chan message.Message, error) {
+func (s *confluentSubscriber) Subscribe(topic string, group message.ConsumerGroup) (chan message.ConsumedMessage, error) {
 	if s.closed {
 		return nil, errors.New("subscriber closed")
 	}
@@ -112,7 +112,7 @@ func (s *confluentSubscriber) Subscribe(topic string, group message.ConsumerGrou
 	}
 	s.logger.Info("Subscribing to Kafka topic", logFields)
 
-	output := make(chan message.Message, 0)
+	output := make(chan message.ConsumedMessage, 0)
 
 	s.allSubscribersWg.Add(1)
 
@@ -134,7 +134,7 @@ func (s *confluentSubscriber) Subscribe(topic string, group message.ConsumerGrou
 		s.logger.Debug("Starting messages consumer", consumerLogFields)
 
 		consumersWg.Add(1)
-		go func(events chan<- message.Message, consumer *kafka.Consumer) {
+		go func(events chan<- message.ConsumedMessage, consumer *kafka.Consumer) {
 			defer func() {
 				if err := consumer.Close(); err != nil {
 					s.logger.Error("Cannot close consumer", err, consumerLogFields)
