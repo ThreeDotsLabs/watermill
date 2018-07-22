@@ -245,6 +245,10 @@ func (s *confluentSubscriber) Subscribe(topic string, group message.ConsumerGrou
 						}
 					case kafka.PartitionEOF:
 						s.logger.Trace("Reached end of partition", logFields)
+					case kafka.OffsetsCommitted:
+						s.logger.Trace("Offset committed", logFields.Add(gooddd.LogFields{
+							"offsets": e.String(),
+						}))
 					default:
 						s.logger.Debug(
 							"Unsupported msg",
@@ -285,6 +289,8 @@ func (s *confluentSubscriber) CloseSubscriber() error {
 	}()
 	s.allSubscribersWg.Wait()
 	s.closed = true
+
+	s.logger.Debug("Kafka subscriber closed", nil)
 
 	return nil
 }

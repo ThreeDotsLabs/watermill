@@ -19,7 +19,7 @@ type Plugin func(*Handler) error
 type GenerateConsumerGroup func(serverName, handlerName string) message.ConsumerGroup
 
 func DefaultGenerateConsumerGroup(serverName, handlerName string) message.ConsumerGroup {
-	return message.ConsumerGroup(fmt.Sprintf("gooddd_%s_%s", serverName, handlerName))
+	return message.ConsumerGroup(fmt.Sprintf("%s_%s", serverName, handlerName))
 }
 
 type Config struct {
@@ -226,7 +226,7 @@ func (r *Handler) Run() (err error) {
 			}
 
 			r.handlersWg.Done()
-			r.Logger.Info("Handler stopped", gooddd.LogFields{
+			r.Logger.Info("Subscriber stopped", gooddd.LogFields{
 				"subscriber_name": s.name,
 				"topic":           s.topic,
 			})
@@ -250,10 +250,6 @@ func (r *Handler) Run() (err error) {
 	r.Logger.Info("Waiting for messages", gooddd.LogFields{
 		"timeout": r.config.CloseTimeout,
 	})
-	timeouted := sync_internal.WaitGroupTimeout(r.handlersWg, r.config.CloseTimeout)
-	if timeouted {
-		return errors.New("handler close timeouted")
-	}
 
 	r.Logger.Info("All messages processed", nil)
 	return nil
@@ -261,7 +257,13 @@ func (r *Handler) Run() (err error) {
 
 func (r *Handler) Close() error {
 	r.Logger.Info("Closing handler", nil)
+	defer r.Logger.Info("Handler closed", nil)
 	r.closeCh <- struct{}{}
+
+	timeouted := sync_internal.WaitGroupTimeout(r.handlersWg, r.config.CloseTimeout)
+	if timeouted {
+		return errors.New("handler close timeouted")
+	}
 
 	return nil
 }
