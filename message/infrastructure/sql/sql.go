@@ -44,7 +44,7 @@ func NewDomainEventsPublisher(db db, table string) message.Publisher {
 	return &DomainEventsPublisher{db, table}
 }
 
-func (s DomainEventsPublisher) Publish(topic string, messages []message.Message) error {
+func (s DomainEventsPublisher) Publish(topic string, messages []message.ProducedMessage) error {
 	if len(messages) == 0 {
 		return nil
 	}
