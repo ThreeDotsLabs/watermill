@@ -1,25 +1,25 @@
 package kafka_test
 
 import (
-	"testing"
-	"github.com/stretchr/testify/require"
-	"github.com/roblaszczak/gooddd/message/infrastructure"
-	"github.com/roblaszczak/gooddd/message/infrastructure/kafka/marshal"
 	"github.com/roblaszczak/gooddd"
 	"github.com/roblaszczak/gooddd/message"
-	"fmt"
+	"github.com/roblaszczak/gooddd/message/infrastructure"
 	"github.com/roblaszczak/gooddd/message/infrastructure/kafka"
+	"github.com/roblaszczak/gooddd/message/infrastructure/kafka/marshal"
+	"github.com/stretchr/testify/require"
+	"testing"
 )
 
 var brokers = []string{"localhost:9092"}
 
-func generatePartitionKey(topic string, msg message.Message) (string, error) {
-	payload := infrastructure.MessageWithType{}
-	if err := msg.UnmarshalPayload(&payload); err != nil {
-		return "", nil
-	}
-
-	return fmt.Sprintf("%d", payload.Type), nil
+func generatePartitionKey(topic string, msg message.ProducedMessage) (string, error) {
+	return "", nil // todo - fix
+	//payload := infrastructure.MessageWithType{}
+	//if err := msg.UnmarshalPayload(&payload); err != nil {
+	//	return "", nil
+	//}
+	//
+	//return fmt.Sprintf("%d", payload.Type), nil
 }
 
 func createPubSub(t *testing.T) message.PubSub {
@@ -63,6 +63,24 @@ func createPartitionedPubSub(t *testing.T) message.PubSub {
 	return message.NewPubSub(publisher, subscriber)
 }
 
+func createNoGroupSubscriberConstructor(t *testing.T) message.NoConsumerGroupSubscriber {
+	logger := gooddd.NewStdLogger(true, true)
+
+	marshaler := marshal.Json{}
+
+	sub, err := kafka.NewNoConsumerGroupSubscriber(
+		kafka.SubscriberConfig{
+			Brokers:       brokers,
+			ConsumersCount: 1,
+		},
+		marshaler,
+		logger,
+	)
+	require.NoError(t, err)
+
+	return sub
+}
+
 func TestPublishSubscribe(t *testing.T) {
 	infrastructure.TestPubSub(
 		t,
@@ -85,4 +103,8 @@ func TestPublishSubscribe_ordered(t *testing.T) {
 		},
 		createPartitionedPubSub,
 	)
+}
+
+func TestNoGroupSubscriber(t *testing.T) {
+	infrastructure.TestNoGroupSubscriber(t, createPubSub, createNoGroupSubscriberConstructor)
 }

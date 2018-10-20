@@ -97,7 +97,7 @@ func publishSubscribeTest(t *testing.T, pubSub message.PubSub) {
 	defer closePubSub(t, pubSub)
 	topicName := testTopicName()
 
-	var messagesToPublish []message.Message
+	var messagesToPublish []message.ProducedMessage
 	messagesPayloads := map[string]interface{}{}
 	messagesTestMetadata := map[string]string{}
 
@@ -125,7 +125,7 @@ func publishSubscribeTest(t *testing.T, pubSub message.PubSub) {
 	require.True(t, all)
 
 	tests.AssertAllMessagesReceived(t, messagesToPublish, receivedMessages)
-	tests.AssertMessagesPayloads(t, messagesPayloads, receivedMessages, func(msg message.Message) interface{} {
+	tests.AssertMessagesPayloads(t, messagesPayloads, receivedMessages, func(msg message.ConsumedMessage) interface{} {
 		payload := SimpleMessage{}
 		msg.UnmarshalPayload(&payload)
 		return payload
@@ -137,7 +137,7 @@ func publishSubscribeInOrderTest(t *testing.T, pubSub message.PubSub) {
 	defer closePubSub(t, pubSub)
 	topicName := testTopicName()
 
-	var messagesToPublish []message.Message
+	var messagesToPublish []message.ProducedMessage
 	expectedMessages := map[int][]string{}
 
 	for i := 0; i < 100; i++ {
@@ -192,7 +192,7 @@ func resendOnErrorTest(t *testing.T, pubSub message.PubSub) {
 	messages, err := pubSub.Subscribe(topicName, generateConsumerGroup())
 	require.NoError(t, err)
 
-	var receivedMessages []message.Message
+	var receivedMessages []message.ConsumedMessage
 
 	i := 0
 	errsSent := 0
@@ -229,7 +229,7 @@ func noAckTest(t *testing.T, pubSub message.PubSub) {
 	defer closePubSub(t, pubSub)
 	topicName := testTopicName()
 
-	var messagesToPublish []message.Message
+	var messagesToPublish []message.ProducedMessage
 
 	for i := 0; i < 2; i++ {
 		id := uuid.NewV4().String()
@@ -289,7 +289,7 @@ func continueAfterCloseTest(t *testing.T, createPubSub PubSubConstructor) {
 	closePubSub(t, pubSub)
 
 	receivedMessagesMap := map[string]message.Message{}
-	var receivedMessages []message.Message
+	var receivedMessages []message.ConsumedMessage
 	messagesLeft := totalMessagesCount
 
 	// with at-least-once delivery we cannot assume that 5 (5*20msg=100) clients will be enough
@@ -335,7 +335,7 @@ func continueAfterCloseTest(t *testing.T, createPubSub PubSubConstructor) {
 
 	fmt.Println("received:", len(receivedMessagesMap))
 	fmt.Println("missing:", tests.MissingMessages(messagesToPublish, receivedMessages))
-	fmt.Println("extra:", tests.MissingMessages(receivedMessages, messagesToPublish))
+	fmt.Println("extra:", tests.MissingMessages(messagesToPublish, receivedMessages))
 }
 
 func continueAfterErrors(t *testing.T, createPubSub PubSubConstructor) {
@@ -384,8 +384,8 @@ func continueAfterErrors(t *testing.T, createPubSub PubSubConstructor) {
 	tests.AssertAllMessagesReceived(t, messagesToPublish, receivedMessages)
 }
 
-func addSimpleMessagesMessages(t *testing.T, messagesCount int, pubSub message.PubSub, topicName string) ([]message.Message) {
-	var messagesToPublish []message.Message
+func addSimpleMessagesMessages(t *testing.T, messagesCount int, pubSub message.PubSub, topicName string) ([]message.ProducedMessage) {
+	var messagesToPublish []message.ProducedMessage
 
 	for i := 0; i < messagesCount; i++ {
 		id := uuid.NewV4().String()
@@ -422,7 +422,7 @@ func consumerGroupsTest(t *testing.T, pubSubConstructor PubSubConstructor) {
 	assert.Equal(t, 0, len(receivedMessages))
 }
 
-func assertConsumerGroupReceivedMessages(t *testing.T, pubSubConstructor PubSubConstructor, topicName string, consumerGroup message.ConsumerGroup, expectedMessages []message.Message) {
+func assertConsumerGroupReceivedMessages(t *testing.T, pubSubConstructor PubSubConstructor, topicName string, consumerGroup message.ConsumerGroup, expectedMessages []message.ProducedMessage) {
 	s := pubSubConstructor(t)
 	defer closePubSub(t, s)
 

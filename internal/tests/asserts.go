@@ -22,9 +22,9 @@ func difference(a, b []string) []string {
 	return ab
 }
 
-func MissingMessages(expected, received []message.Message) []string {
-	sentIDs := messagesIDs(expected)
-	receivedIDs := messagesIDs(received)
+func MissingMessages(expected []message.ProducedMessage, received []message.ConsumedMessage) []string {
+	sentIDs := producedMessagesIDs(expected)
+	receivedIDs := consumedMessagesIDs(received)
 
 	sort.Strings(sentIDs)
 	sort.Strings(receivedIDs)
@@ -32,7 +32,7 @@ func MissingMessages(expected, received []message.Message) []string {
 	return difference(sentIDs, receivedIDs)
 }
 
-func messagesIDs(messages []message.Message) []string {
+func consumedMessagesIDs(messages []message.ConsumedMessage) []string {
 	var ids []string
 	for _, msg := range messages {
 		ids = append(ids, msg.UUID())
@@ -41,9 +41,18 @@ func messagesIDs(messages []message.Message) []string {
 	return ids
 }
 
-func AssertAllMessagesReceived(t *testing.T, sent, received []message.Message) bool {
-	sentIDs := messagesIDs(sent)
-	receivedIDs := messagesIDs(received)
+func producedMessagesIDs(messages []message.ProducedMessage) []string {
+	var ids []string
+	for _, msg := range messages {
+		ids = append(ids, msg.UUID())
+	}
+
+	return ids
+}
+
+func AssertAllMessagesReceived(t *testing.T, sent []message.ProducedMessage, received []message.ConsumedMessage) bool {
+	sentIDs := producedMessagesIDs(sent)
+	receivedIDs := consumedMessagesIDs(received)
 
 	sort.Strings(sentIDs)
 	sort.Strings(receivedIDs)
@@ -56,8 +65,8 @@ func AssertAllMessagesReceived(t *testing.T, sent, received []message.Message) b
 func AssertMessagesPayloads(
 	t *testing.T,
 	expectedPayloads map[string]interface{},
-	received []message.Message,
-	unmarshalMsg func(msg message.Message) interface{},
+	received []message.ConsumedMessage,
+	unmarshalMsg func(msg message.ConsumedMessage) interface{},
 ) bool {
 	assert.Len(t, received, len(expectedPayloads))
 
@@ -77,7 +86,7 @@ func AssertMessagesPayloads(
 	return ok
 }
 
-func AssertMessagesMetadata(t *testing.T, key string, expectedValues map[string]string, received []message.Message) bool {
+func AssertMessagesMetadata(t *testing.T, key string, expectedValues map[string]string, received []message.ConsumedMessage) bool {
 	assert.Len(t, received, len(expectedValues))
 
 	ok := true

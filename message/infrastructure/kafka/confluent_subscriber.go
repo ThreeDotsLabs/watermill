@@ -4,6 +4,7 @@ import (
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/pkg/errors"
 	"github.com/roblaszczak/gooddd/message"
+	"github.com/satori/go.uuid"
 	"sync"
 	"github.com/roblaszczak/gooddd"
 	"strings"
@@ -90,12 +91,27 @@ func DefaultConfluentConsumerConstructor(brokers []string, consumerGroup message
 		"bootstrap.servers": strings.Join(brokers, ","),
 		"group.id":          string(consumerGroup),
 
-		"auto.offset.reset":    "earliest",
+		"auto.offset.reset":    "earliest", // todo - how to config it?
 		"default.topic.config": kafka.ConfigMap{"auto.offset.reset": "earliest"},
 
 		"session.timeout.ms":       6000,
 		"enable.auto.commit":       true,
 		"enable.auto.offset.store": false,
+	})
+}
+
+// todo - deduplicate
+// todo - private?
+func NoGroupConfluentConsumerConstructor(brokers []string, _ message.ConsumerGroup) (*kafka.Consumer, error) {
+	return kafka.NewConsumer(&kafka.ConfigMap{
+		"bootstrap.servers": strings.Join(brokers, ","),
+		"group.id":          "no_group_" + uuid.NewV4().String(), // this group will be not committed
+
+		"auto.offset.reset":    "latest",
+		"default.topic.config": kafka.ConfigMap{"auto.offset.reset": "latest"},
+
+		"session.timeout.ms":       6000,
+		"enable.auto.commit":       false,
 	})
 }
 
@@ -208,15 +224,18 @@ func (s *confluentSubscriber) Subscribe(topic string, group message.ConsumerGrou
 								} else {
 									s.logger.Trace("Message acknowledged", receivedMsgLogFields)
 
-									stored, err := consumer.StoreOffsets([]kafka.TopicPartition{e.TopicPartition})
-									if err != nil {
-										s.logger.Error("Cannot store offsets", err, consumerLogFields)
-										s.rollback(consumer, e.TopicPartition)
-									} else {
-										s.logger.Trace(
-											"stored Kafka offsets",
-											receivedMsgLogFields.Add(gooddd.LogFields{"stored_offsets": stored}),
-										)
+									// todo - make it in cleaner way
+									if group != "" {
+										stored, err := consumer.StoreOffsets([]kafka.TopicPartition{e.TopicPartition})
+										if err != nil {
+											s.logger.Error("Cannot store offsets", err, consumerLogFields)
+											s.rollback(consumer, e.TopicPartition)
+										} else {
+											s.logger.Trace(
+												"stored Kafka offsets",
+												receivedMsgLogFields.Add(gooddd.LogFields{"stored_offsets": stored}),
+											)
+										}
 									}
 								}
 								break AckLoop
@@ -293,4 +312,30 @@ func (s *confluentSubscriber) CloseSubscriber() error {
 	s.logger.Debug("Kafka subscriber closed", nil)
 
 	return nil
+}
+
+
+func NewNoConsumerGroupSubscriber(
+	config SubscriberConfig,
+	unmarshaler Unmarshaler,
+	logger gooddd.LoggerAdapter,
+) (message.NoConsumerGroupSubscriber, error) {
+	sub, err := NewCustomConfluentSubscriber(config, unmarshaler, NoGroupConfluentConsumerConstructor, logger)
+	if err != nil {
+		return nil, err
+	}
+
+	return &noGroupconfluentSubscriber{sub}, nil
+}
+
+type noGroupconfluentSubscriber struct {
+	confluentSubscriber message.Subscriber
+}
+
+func (s *noGroupconfluentSubscriber) SubscribeNoGroup(topic string) (chan message.ConsumedMessage, error) {
+	return s.confluentSubscriber.Subscribe(topic, "")
+}
+
+func (s *noGroupconfluentSubscriber) CloseSubscriber() error {
+	return s.confluentSubscriber.CloseSubscriber()
 }

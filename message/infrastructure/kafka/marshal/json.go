@@ -86,7 +86,7 @@ func (Json) Unmarshal(kafkaMsg *confluentKafka.Message) (message.ConsumedMessage
 	return j, nil
 }
 
-type GeneratePartitionKey func(topic string, msg message.Message) (string, error)
+type GeneratePartitionKey func(topic string, msg message.ProducedMessage) (string, error)
 
 type jsonWithPartitioning struct {
 	Json

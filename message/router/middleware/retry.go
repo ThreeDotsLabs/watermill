@@ -14,6 +14,7 @@ type OnRetryHook func(retryNum int, delay time.Duration)
 // todo - constructors (infinite retry, backoff (??), etc.)
 // todo - tests
 // todo - support for invalid messages (to not retry)
+// todo - support for backoff
 type Retry struct {
 	MaxRetries int
 	//MaxDelay    time.Duration todo

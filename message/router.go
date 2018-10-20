@@ -9,7 +9,7 @@ import (
 	"github.com/roblaszczak/gooddd"
 )
 
-type HandlerFunc func(msg ConsumedMessage) (producedMessages []ProducedMessage, err error)
+type HandlerFunc func(msg ConsumedMessage) ([]ProducedMessage, error)
 
 type HandlerMiddleware func(h HandlerFunc) HandlerFunc
 
