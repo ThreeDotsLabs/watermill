@@ -22,11 +22,20 @@ type event struct {
 	AggregateType    string
 
 	Topic string
+	Metadata string
 }
 
 func (e event) Args() []interface{} {
 	return []interface{}{
-		e.ID, e.Name, e.JsonPayload, e.OccurredOn, e.AggregateVersion, e.AggregateID, e.AggregateType, e.Topic,
+		e.ID,
+		e.Name,
+		e.JsonPayload,
+		e.OccurredOn,
+		e.AggregateVersion,
+		e.AggregateID,
+		e.AggregateType,
+		e.Topic,
+		e.Metadata,
 	}
 }
 
@@ -75,6 +84,11 @@ func (s DomainEventsPublisher) PublishDomainEvents(topic string, domainEvents []
 			return errors.Errorf("cannot serialize event '%s'", e.UUID())
 		}
 
+		metadataJson, err := json.Marshal(e.AllMetadata())
+		if err != nil {
+			return errors.Errorf("cannot serialize event metadata '%s'", e.UUID())
+		}
+
 		sqlEvent := event{
 			ID:            e.UUID(),
 			Name:          e.Name(),
@@ -83,6 +97,7 @@ func (s DomainEventsPublisher) PublishDomainEvents(topic string, domainEvents []
 			AggregateID:   e.AggregateID(),
 			AggregateType: e.AggregateType(),
 			Topic:         topic,
+			Metadata: string(metadataJson),
 		}
 		if ve, ok := e.(domain.VersionedEvent); ok {
 			sqlEvent.AggregateVersion = sql.NullInt64{Int64: int64(ve.AggregateVersion()), Valid: true}
@@ -93,8 +108,8 @@ func (s DomainEventsPublisher) PublishDomainEvents(topic string, domainEvents []
 
 	query := "INSERT INTO " +
 		"`" + s.tableName + "` (`event_id`, `event_name`, `event_payload`, `event_occurred_on`, `aggregate_version`, " +
-		"`aggregate_id`, `aggregate_type`, `topic`) VALUES "
-	query += strings.TrimRight(strings.Repeat("(?, ?, ?, ?, ?, ?, ?, ?),", len(domainEvents)), ",")
+		"`aggregate_id`, `aggregate_type`, `topic`, `metadata`) VALUES "
+	query += strings.TrimRight(strings.Repeat("(?, ?, ?, ?, ?, ?, ?, ?, ?),", len(domainEvents)), ",")
 
 	_, err := s.db.Exec(query, args...)
 	if err != nil {

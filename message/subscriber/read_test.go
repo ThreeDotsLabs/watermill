@@ -14,14 +14,42 @@ type SimpleMessage struct {
 	Num int `json:"num"`
 }
 
+type mockConsumedMessage struct {
+	message.Message
+}
+
+func (mockConsumedMessage) SetMetadata(key, value string) {
+	panic("not implemented")
+}
+
+func (mockConsumedMessage) Payload() message.Payload {
+	panic("not implemented")
+}
+
+func (mockConsumedMessage) UnmarshalPayload(val interface{}) error {
+	panic("not implemented")
+}
+
+func (mockConsumedMessage) Acknowledged() (<-chan error) {
+	panic("not implemented")
+}
+
+func (mockConsumedMessage) Acknowledge() error {
+	return nil
+}
+
+func (mockConsumedMessage) Error(err error) error {
+	panic("not implemented")
+}
+
 func TestBulkRead(t *testing.T) {
 	messagesCount := 100
 
-	var messages []message.Message
-	messagesCh := make(chan message.Message, messagesCount)
+	var messages []message.ProducedMessage
+	messagesCh := make(chan message.ConsumedMessage, messagesCount)
 
 	for i := 0; i < messagesCount; i++ {
-		msg := message.NewDefault(uuid.NewV4().String(), SimpleMessage{i})
+		msg := mockConsumedMessage{message.NewDefault(uuid.NewV4().String(), SimpleMessage{i})}
 
 		messages = append(messages, msg)
 		messagesCh <- msg
@@ -37,11 +65,11 @@ func TestBulkRead_timeout(t *testing.T) {
 	messagesCount := 100
 	sendLimit := 90
 
-	var messages []message.Message
-	messagesCh := make(chan message.Message, messagesCount)
+	var messages []message.ProducedMessage
+	messagesCh := make(chan message.ConsumedMessage, messagesCount)
 
 	for i := 0; i < messagesCount; i++ {
-		msg := message.NewDefault(uuid.NewV4().String(), SimpleMessage{i})
+		msg := mockConsumedMessage{message.NewDefault(uuid.NewV4().String(), SimpleMessage{i})}
 
 		messages = append(messages, msg)
 
@@ -62,11 +90,11 @@ func TestBulkRead_with_limit(t *testing.T) {
 	messagesCount := 110
 	limit := 100
 
-	var messages []message.Message
-	messagesCh := make(chan message.Message, messagesCount)
+	var messages []message.ProducedMessage
+	messagesCh := make(chan message.ConsumedMessage, messagesCount)
 
 	for i := 0; i < messagesCount; i++ {
-		msg := message.NewDefault(uuid.NewV4().String(), SimpleMessage{i})
+		msg := mockConsumedMessage{message.NewDefault(uuid.NewV4().String(), SimpleMessage{i})}
 
 		messages = append(messages, msg)
 		messagesCh <- msg
@@ -81,12 +109,12 @@ func TestBulkRead_return_on_channel_close(t *testing.T) {
 	messagesCount := 100
 	sendLimit := 90
 
-	var messages []message.Message
-	messagesCh := make(chan message.Message, messagesCount)
+	var messages []message.ProducedMessage
+	messagesCh := make(chan message.ConsumedMessage, messagesCount)
 	messagesChClosed := false
 
 	for i := 0; i < messagesCount; i++ {
-		msg := message.NewDefault(uuid.NewV4().String(), SimpleMessage{i})
+		msg :=  mockConsumedMessage{message.NewDefault(uuid.NewV4().String(), SimpleMessage{i})}
 		messages = append(messages, msg)
 
 		if i < sendLimit {

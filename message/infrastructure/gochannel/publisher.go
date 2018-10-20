@@ -1,13 +1,13 @@
 package gochannel
 
 import (
-	"github.com/roblaszczak/gooddd/message/handler"
+	"github.com/roblaszczak/gooddd/message"
 	"sync"
 	"time"
 )
 
 type subscriber struct {
-	outputChannel chan handler.Message
+	outputChannel chan message.Message
 }
 
 type GoChannel struct {
@@ -15,7 +15,7 @@ type GoChannel struct {
 	subscribersLock *sync.RWMutex
 }
 
-func (g GoChannel) Save(messages []handler.Message) error {
+func (g GoChannel) Save(messages []message.Message) error {
 	g.subscribersLock.RLock()
 	defer g.subscribersLock.RUnlock()
 
@@ -31,10 +31,12 @@ func (g GoChannel) Save(messages []handler.Message) error {
 			}
 		}
 	}
+
+	return nil
 }
 
 // todo - topics support
-func (g GoChannel) Subscribe(topic string) (chan handler.Message, error) {
+func (g GoChannel) Subscribe(topic string) (chan message.Message, error) {
 	g.subscribersLock.Lock()
 	defer g.subscribersLock.Unlock()
 

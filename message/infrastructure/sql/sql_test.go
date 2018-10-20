@@ -26,13 +26,14 @@ var testSchema = "CREATE TABLE `%s` ( " +
 	"`aggregate_id` BINARY(16) NOT NULL, " +
 	"`aggregate_type` VARCHAR(128) NOT NULL, " +
 	"`topic` VARCHAR(128), " +
+	"`metadata` TEXT, " +
 	"PRIMARY KEY (`event_no`), " +
 	"UNIQUE KEY (`event_id`), " +
 	"UNIQUE KEY `ix_unique_event` (`aggregate_type`, `aggregate_id`, `aggregate_version`) " +
 	");"
 
 type testDomainEvent struct {
-	message.Message
+	message.ProducedMessage
 
 	occurredOn  time.Time
 	aggregateID []byte
@@ -53,6 +54,7 @@ type dbEvent struct {
 	AggregateType    string           `db:"aggregate_type"`
 
 	Topic string `db:"topic"`
+	Metadata string `db:"metadata"`
 }
 
 func (t testDomainEvent) OccurredOn() time.Time {
@@ -92,7 +94,7 @@ func TestDomainEventsPublisher_Publish(t *testing.T) {
 
 	publieher := sql.NewDomainEventsPublisher(conn, tableName)
 
-	var eventsToPublish []message.Message
+	var eventsToPublish []message.ProducedMessage
 	extraValues := map[string]string{}
 
 	for i := 0; i < 100; i++ {
@@ -104,7 +106,7 @@ func TestDomainEventsPublisher_Publish(t *testing.T) {
 
 		occurredOn := time.Date(2009, 11, 17, 20, 34, 13, 0, time.UTC).Add(time.Minute * time.Duration(i))
 		eventsToPublish = append(eventsToPublish, testDomainEvent{
-			Message:     msg,
+			ProducedMessage:     msg,
 			occurredOn:  occurredOn,
 			aggregateID: uuid.NewV4().Bytes(),
 			ExtraValue:  extraValue,
@@ -125,7 +127,7 @@ func TestDomainEventsPublisher_Publish(t *testing.T) {
 			Add(time.Minute * time.Duration(i))
 
 		eventsToPublish = append(eventsToPublish, testDomainEvent{
-			Message:     msg,
+			ProducedMessage:     msg,
 			occurredOn:  occurredOn,
 			aggregateID: sameAggregateID,
 			ExtraValue:  extraValue,
@@ -150,7 +152,7 @@ func TestDomainEventsPublisher_Publish(t *testing.T) {
 		&dbEvents,
 		"SELECT "+
 			"event_id, event_name, event_payload, event_occurred_on, "+
-			"aggregate_version, aggregate_id, aggregate_type, topic "+
+			"aggregate_version, aggregate_id, aggregate_type, topic, metadata "+
 			"FROM `"+ tableName+ "`",
 	)
 	require.NoError(t, err)
@@ -175,14 +177,10 @@ func TestDomainEventsPublisher_Publish(t *testing.T) {
 		assert.Equal(t, topicName, publishedEvent.Topic)
 
 		payload := struct {
-			Message struct {
-				Metadata struct {
-					Test string `json:""`
-				} `json:"message_metadata"`
-			} `json:"Message"`
+			Test string `json:""`
 		}{}
-		json.Unmarshal(publishedEvent.EventPayload, &payload)
+		json.Unmarshal([]byte(publishedEvent.Metadata), &payload)
 
-		assert.Equal(t, eventToPublish.GetMetadata("test"), payload.Message.Metadata.Test)
+		assert.Equal(t, eventToPublish.GetMetadata("test"), payload.Test)
 	}
 }

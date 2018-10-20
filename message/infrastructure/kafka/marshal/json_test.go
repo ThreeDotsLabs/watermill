@@ -45,9 +45,8 @@ func TestJsonWithPartitioning(t *testing.T) {
 		Key string
 	}
 
-	m := marshal.NewJsonWithPartitioning(func(topic string, msg message.Message) (string, error) {
-		p := payload{}
-		msg.UnmarshalPayload(&p)
+	m := marshal.NewJsonWithPartitioning(func(topic string, msg message.ProducedMessage) (string, error) {
+		p := msg.Payload().(payload)
 		return p.Key, nil
 	})
 
