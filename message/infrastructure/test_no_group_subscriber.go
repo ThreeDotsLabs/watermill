@@ -42,6 +42,7 @@ func testNoGroupSubscriberConcurrentSubscribers(
 	topicName := testTopicName()
 
 	receivedMessages := map[int][]message.ConsumedMessage{}
+	receivedMessagesMutex := &sync.Mutex{}
 
 	for i := 0; i < 3; i++ {
 		consumerNum := i
@@ -53,7 +54,9 @@ func testNoGroupSubscriberConcurrentSubscribers(
 
 			consumersStarted.Done()
 
+			receivedMessagesMutex.Lock()
 			receivedMessages[consumerNum], _ = subscriber2.BulkRead(ch, 10, time.Second*10)
+			receivedMessagesMutex.Unlock()
 		}()
 	}
 
