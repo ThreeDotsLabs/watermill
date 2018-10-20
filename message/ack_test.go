@@ -2,10 +2,11 @@ package message_test
 
 import (
 	"testing"
-	"github.com/roblaszczak/gooddd/message"
 	"time"
-	"github.com/stretchr/testify/assert"
+
 	"github.com/pkg/errors"
+	"github.com/roblaszczak/gooddd/message"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestAck_Acknowledged_after_ack(t *testing.T) {
