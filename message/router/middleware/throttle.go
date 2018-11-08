@@ -1,12 +1,13 @@
 package middleware
 
 import (
+	"time"
+
+	"github.com/pkg/errors"
+	"github.com/roblaszczak/gooddd"
 	"github.com/roblaszczak/gooddd/message"
 	"github.com/throttled/throttled"
-	"time"
-	"github.com/roblaszczak/gooddd"
 	"github.com/throttled/throttled/store/memstore"
-	"github.com/pkg/errors"
 )
 
 type Throttle struct {
@@ -30,7 +31,7 @@ func NewThrottlePerSecond(perSecond int, logger gooddd.LoggerAdapter) (Throttle,
 }
 
 func (t Throttle) Middleware(h message.HandlerFunc) message.HandlerFunc {
-	return func(message message.ConsumedMessage) ([]message.ProducedMessage, error) {
+	return func(message *message.Message) ([]*message.Message, error) {
 		defer func() {
 			limited, context, err := t.rateLimiter.RateLimit("", 1)
 			if err != nil {

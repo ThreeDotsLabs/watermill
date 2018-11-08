@@ -3,11 +3,11 @@ package message
 type ConsumerGroup string
 
 type Subscriber interface {
-	Subscribe(topic string, consumerGroup ConsumerGroup) (chan ConsumedMessage, error)
+	Subscribe(topic string, consumerGroup ConsumerGroup) (chan *Message, error)
 	CloseSubscriber() error
 }
 
 type NoConsumerGroupSubscriber interface {
-	SubscribeNoGroup(topic string) (chan ConsumedMessage, error)
+	SubscribeNoGroup(topic string) (chan *Message, error)
 	CloseSubscriber() error
 }

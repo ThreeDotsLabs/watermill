@@ -1,16 +1,17 @@
 package infrastructure
 
 import (
-	"github.com/roblaszczak/gooddd/internal/tests"
-	"github.com/roblaszczak/gooddd/message"
-	subscriber2 "github.com/roblaszczak/gooddd/message/subscriber"
-	"github.com/satori/go.uuid"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"fmt"
 	"log"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/roblaszczak/gooddd/internal/tests"
+	"github.com/roblaszczak/gooddd/message"
+	subscriber2 "github.com/roblaszczak/gooddd/message/subscriber"
+	"github.com/satori/go.uuid"
+	"github.com/stretchr/testify/require"
 )
 
 type NoGroupSubscriberConstructor func(t *testing.T) message.NoConsumerGroupSubscriber
@@ -41,7 +42,7 @@ func testNoGroupSubscriberConcurrentSubscribers(
 
 	topicName := testTopicName()
 
-	receivedMessages := map[int][]message.ConsumedMessage{}
+	receivedMessages := map[int][]*message.Message{}
 	receivedMessagesMutex := &sync.Mutex{}
 
 	for i := 0; i < 3; i++ {
@@ -62,17 +63,16 @@ func testNoGroupSubscriberConcurrentSubscribers(
 
 	consumersStarted.Wait()
 
-	var messagesToPublish []message.ProducedMessage
+	var messagesToPublish []*message.Message
 
 	pubSub := pubSubConstructor(t)
 	for i := 0; i < 10; i++ {
 		id := uuid.NewV4().String()
-		payload := SimpleMessage{i}
 
-		msg := message.NewDefault(id, payload)
+		msg := message.NewMessage(id, []byte(fmt.Sprintf("%d", i)))
 		messagesToPublish = append(messagesToPublish, msg)
 
-		err := pubSub.Publish(topicName, []message.ProducedMessage{msg})
+		err := pubSub.Publish(topicName, msg)
 		require.NoError(t, err)
 	}
 
@@ -86,86 +86,76 @@ func testNoGroupSubscriberJoiningSubscribers(
 	pubSubConstructor PubSubConstructor,
 	noGroupSubscriberConstructor NoGroupSubscriberConstructor,
 ) {
-	consumersCount := 3
-	expectedMessagesCountByConsumer := map[int]int{
-		0: 3,
-		1: 2,
-		2: 1,
-	}
-
-	consumersStarted := &sync.WaitGroup{}
-	consumersStarted.Add(consumersCount)
-
-	consumersReadAll := &sync.WaitGroup{}
-	consumersReadAll.Add(consumersCount)
-
+	subscribersCount := 3
 	topicName := testTopicName()
 
-	receivedMessages := map[int][]message.ConsumedMessage{}
-	receivedMessagesMutex := &sync.Mutex{}
+	createSubscriber := make(chan struct{})
+	subscriberCreated := make(chan struct{})
 
-	createConsumer := make(chan struct{}, 1)
-	consumerCreated := make(chan struct{}, 1)
+	consumersMessages := map[int]chan *message.Message{}
 
 	go func() {
-		for i := 0; i < consumersCount; i++ {
-			<-createConsumer
+		i := 0
+		for range createSubscriber {
+			subscriberNum := i
+			i++
 
-			consumerNum := i
+			consumersMessages[subscriberNum] = make(chan *message.Message, 0)
+			messagesCh := consumersMessages[subscriberNum]
 
 			go func() {
 				subscriber := noGroupSubscriberConstructor(t)
+				defer subscriber.CloseSubscriber()
+
+				subscriberCreated <- struct{}{}
+
 				ch, err := subscriber.SubscribeNoGroup(topicName)
 				require.NoError(t, err)
 
-				consumerCreated <- struct{}{}
-
-				log.Println("consumer created")
-
-				consumersStarted.Done()
-				consumersStarted.Wait()
-
-				msgs, all := subscriber2.BulkRead(ch, expectedMessagesCountByConsumer[consumerNum], time.Second*10)
-				log.Println(consumerNum, all)
-
-				receivedMessagesMutex.Lock()
-				receivedMessages[consumerNum] = msgs
-				receivedMessagesMutex.Unlock()
-
-				consumersReadAll.Done()
+				for msg := range ch {
+					messagesCh <- msg
+					msg.Ack()
+				}
 			}()
 		}
 	}()
 
-	var messagesToPublish []message.ProducedMessage
-
 	pubSub := pubSubConstructor(t)
-	for i := 0; i < consumersCount; i++ {
-		createConsumer <- struct{}{}
-		<- consumerCreated
+	for i := 0; i < subscribersCount; i++ {
+		createSubscriber <- struct{}{}
+		<-subscriberCreated
 
-		// todo - fix
-		// very tricky, but it seems that kafka have some kind of lag
-		time.Sleep(time.Second*5)
+	SendMsgLoop:
+		for {
+			time.Sleep(time.Millisecond * 500)
 
-		id := uuid.NewV4().String()
-		payload := SimpleMessage{i}
+			id := uuid.NewV4().String()
+			err := pubSub.Publish(topicName, message.NewMessage(id, []byte(fmt.Sprintf("%d", i))))
+			require.NoError(t, err)
 
-		msg := message.NewDefault(id, payload)
-		messagesToPublish = append(messagesToPublish, msg)
+			for consumerNum, msgCh := range consumersMessages {
 
-		err := pubSub.Publish(topicName, []message.ProducedMessage{msg})
-		require.NoError(t, err)
+			ConsumerLoop:
+				for {
+					select {
+					case msg := <-msgCh:
+						if msg.UUID != id {
+							log.Printf("expected message: %s, have %s, consumer: %d", id, msg.UUID, consumerNum)
+							continue ConsumerLoop
+						}
 
-		log.Println("sending msg")
-	}
+						log.Printf("received expected message: %s, consumer: %d", id, consumerNum)
+						break ConsumerLoop
+					case <-time.After(time.Second): // todo - make it more robust
+						log.Printf("no messages, consumer: %d", consumerNum)
+						continue SendMsgLoop
+					}
+				}
+			}
 
-	consumersReadAll.Wait()
+			// messages from all consumers received
+			break SendMsgLoop
+		}
 
-	for consumer, expectedCount := range expectedMessagesCountByConsumer {
-		assert.Equal(
-			t, expectedCount, len(receivedMessages[consumer]),
-			"invalid events count for consumer %d", consumer,
-		)
 	}
 }

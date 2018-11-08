@@ -1,26 +1,22 @@
 package message_test
 
 import (
+	"fmt"
 	"testing"
-	"github.com/satori/go.uuid"
-	"github.com/stretchr/testify/require"
 	"time"
+
+	"github.com/roblaszczak/gooddd"
 	"github.com/roblaszczak/gooddd/internal/tests"
+	"github.com/roblaszczak/gooddd/message"
 	"github.com/roblaszczak/gooddd/message/infrastructure/kafka"
 	"github.com/roblaszczak/gooddd/message/infrastructure/kafka/marshal"
-	"github.com/roblaszczak/gooddd"
 	"github.com/roblaszczak/gooddd/message/subscriber"
+	"github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"
-	"github.com/roblaszczak/gooddd/message"
+	"github.com/stretchr/testify/require"
 )
 
-type publisherMsg struct {
-	Num int `json:"num"`
-}
-
-type msgPublishedByHandler struct{}
-
-func TestFunctional(t *testing.T) {
+func TestRouter_Functional(t *testing.T) {
 	testID := uuid.NewV4().String()
 	topicName := "test_topic_" + testID
 
@@ -33,9 +29,9 @@ func TestFunctional(t *testing.T) {
 	messagesCount := 100
 	expectedReceivedMessages := publishMessagesForHandler(t, messagesCount, pubSub, topicName)
 
-	receivedMessagesCh1 := make(chan message.ConsumedMessage, messagesCount)
-	receivedMessagesCh2 := make(chan message.ConsumedMessage, messagesCount)
-	sentByHandlerCh := make(chan message.Message, messagesCount)
+	receivedMessagesCh1 := make(chan *message.Message, messagesCount)
+	receivedMessagesCh2 := make(chan *message.Message, messagesCount)
+	sentByHandlerCh := make(chan *message.Message, messagesCount)
 
 	publishedEventsTopic := "published_events_" + testID
 	h, err := message.NewRouter(
@@ -51,14 +47,14 @@ func TestFunctional(t *testing.T) {
 	err = h.AddHandler(
 		"test_subscriber_1",
 		topicName,
-		func(msg message.ConsumedMessage) (producedMessages []message.ProducedMessage, err error) {
+		func(msg *message.Message) (producedMessages []*message.Message, err error) {
 			receivedMessagesCh1 <- msg
-			msg.Acknowledge()
+			msg.Ack()
 
-			toPublish := message.NewDefault(uuid.NewV4().String(), msgPublishedByHandler{})
+			toPublish := message.NewMessage(uuid.NewV4().String(), nil)
 			sentByHandlerCh <- toPublish
 
-			return []message.ProducedMessage{toPublish}, nil
+			return []*message.Message{toPublish}, nil
 		},
 	)
 	require.NoError(t, err)
@@ -66,9 +62,9 @@ func TestFunctional(t *testing.T) {
 	err = h.AddHandler(
 		"test_subscriber_2",
 		topicName,
-		func(msg message.ConsumedMessage) (producedMessages []message.ProducedMessage, err error) {
+		func(msg *message.Message) (producedMessages []*message.Message, err error) {
 			receivedMessagesCh2 <- msg
-			msg.Acknowledge()
+			msg.Ack()
 			return nil, nil
 		},
 	)
@@ -78,8 +74,6 @@ func TestFunctional(t *testing.T) {
 	defer func() {
 		assert.NoError(t, h.Close())
 	}()
-
-
 
 	expectedSentByHandler, all := readMessages(sentByHandlerCh, len(expectedReceivedMessages), time.Second*10)
 	require.True(t, all)
@@ -99,26 +93,27 @@ func TestFunctional(t *testing.T) {
 	tests.AssertAllMessagesReceived(t, expectedSentByHandler, publishedByHandler)
 }
 
-func publishMessagesForHandler(t *testing.T, messagesCount int, pubSub message.PubSub, topicName string) ([]message.Message) {
-	var messagesToPublish []message.ProducedMessage
-	var messagesToPublishMessage []message.Message
+func publishMessagesForHandler(t *testing.T, messagesCount int, pubSub message.PubSub, topicName string) []*message.Message {
+	var messagesToPublish []*message.Message
+	var messagesToPublishMessage []*message.Message
 	for i := 0; i < messagesCount; i++ {
-		msg := message.NewDefault(uuid.NewV4().String(), publisherMsg{i})
+		msg := message.NewMessage(uuid.NewV4().String(), []byte(fmt.Sprintf("%d", i)))
 
 		messagesToPublish = append(messagesToPublish, msg)
 		messagesToPublishMessage = append(messagesToPublishMessage, msg)
 	}
 
-	err := pubSub.Publish(topicName, messagesToPublish)
-
-	require.NoError(t, err)
+	for _, msg := range messagesToPublish {
+		err := pubSub.Publish(topicName, msg)
+		require.NoError(t, err)
+	}
 
 	return messagesToPublishMessage
 }
 
 func createPubSub() (message.PubSub, error) {
 	brokers := []string{"localhost:9092"}
-	marshaler := marshal.Json{}
+	marshaler := marshal.ConfluentKafka{}
 	logger := gooddd.NewStdLogger(true, true)
 
 	pub, err := kafka.NewPublisher(brokers, marshaler)
@@ -137,7 +132,7 @@ func createPubSub() (message.PubSub, error) {
 	return message.NewPubSub(pub, sub), nil
 }
 
-func readMessages(messagesCh <-chan message.Message, limit int, timeout time.Duration) (receivedMessages []message.Message, all bool) {
+func readMessages(messagesCh <-chan *message.Message, limit int, timeout time.Duration) (receivedMessages []*message.Message, all bool) {
 	allMessagesReceived := make(chan struct{}, 1)
 
 	go func() {

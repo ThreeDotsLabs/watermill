@@ -1,78 +1,91 @@
 package message
 
-type Payload interface{}
+import (
+	"sync"
+)
 
-type Message interface {
-	UUID() string // todo - change to []byte?, change to type
+var closedchan = make(chan struct{})
 
-	GetMetadata(key string) string
-	AllMetadata() map[string]string
+func init() {
+	close(closedchan)
 }
 
-type ProducedMessage interface {
-	Message
+type Payload []byte
 
-	SetMetadata(key, value string)
-	Payload() Payload
+type Message struct {
+	UUID string // todo - change to []byte?, change to type
+
+	Metadata Metadata
+
+	Payload Payload
+
+	ack      chan struct{}
+	noAck    chan struct{}
+	ackMutex sync.Mutex
+	ackSent  ackType
 }
 
-type ConsumedMessage interface {
-	Message
-
-	UnmarshalPayload(val interface{}) error
-
-	Acknowledged() (<-chan error)
-	Acknowledge() error
-	Error(err error) error
-}
-
-type Base struct {
-	MessageUUID     string
-	MessageMetadata map[string]string
-
-	*Ack
-}
-
-func (m Base) UUID() string {
-	return m.MessageUUID
-}
-
-func (m *Base) SetMetadata(key, value string) {
-	m.MessageMetadata[key] = value
-}
-
-func (m *Base) GetMetadata(key string) string {
-	if val, ok := m.MessageMetadata[key]; ok {
-		return val
-	}
-
-	return ""
-}
-
-func (m Base) AllMetadata() map[string]string {
-	return m.MessageMetadata
-}
-
-// defaultImpl is default Message implementation.
-// todo - rename?
-type defaultMessage struct {
-	Base
-
-	payload Payload
-}
-
-func NewDefault(uuid string, payload Payload) ProducedMessage {
-	return &defaultMessage{
-		Base{
-			MessageUUID:     uuid,
-			MessageMetadata: make(map[string]string),
-
-			Ack: NewAck(),
-		},
-		payload,
+func NewMessage(uuid string, payload Payload) *Message {
+	return &Message{
+		UUID:     uuid,
+		Metadata: make(map[string]string),
+		Payload:  payload,
+		ack:      make(chan struct{}),
+		noAck:    make(chan struct{}),
 	}
 }
 
-func (m *defaultMessage) Payload() Payload {
-	return m.payload
+type ackType int
+
+const (
+	noAckSent ackType = iota
+	ack
+	nack
+)
+
+func (m *Message) Ack() {
+	m.ackMutex.Lock()
+	defer m.ackMutex.Unlock()
+
+	if m.ackSent == nack {
+		panic("already Nacked")
+	}
+	if m.ackSent != noAckSent {
+		return
+	}
+
+	m.ackSent = ack
+	if m.noAck == nil {
+		m.ack = closedchan
+	} else {
+		close(m.ack)
+	}
+}
+
+func (m *Message) Nack() {
+	m.ackMutex.Lock()
+	defer m.ackMutex.Unlock()
+
+	if m.ackSent == ack {
+		panic("already Acked")
+	}
+	if m.ackSent != noAckSent {
+		return
+	}
+
+	m.ackSent = nack
+
+	if m.noAck == nil {
+		m.noAck = closedchan
+	} else {
+		close(m.noAck)
+	}
+}
+
+func (m *Message) Acked() <-chan struct{} {
+	return m.ack
+}
+
+func (m *Message) Nacked() <-chan struct{} {
+	return m.noAck
 }

@@ -1,18 +1,19 @@
 package kafka_test
 
 import (
+	"testing"
+
 	"github.com/roblaszczak/gooddd"
 	"github.com/roblaszczak/gooddd/message"
 	"github.com/roblaszczak/gooddd/message/infrastructure"
 	"github.com/roblaszczak/gooddd/message/infrastructure/kafka"
 	"github.com/roblaszczak/gooddd/message/infrastructure/kafka/marshal"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 var brokers = []string{"localhost:9092"}
 
-func generatePartitionKey(topic string, msg message.ProducedMessage) (string, error) {
+func generatePartitionKey(topic string, msg *message.Message) (string, error) {
 	return "", nil // todo - fix
 	//payload := infrastructure.MessageWithType{}
 	//if err := msg.UnmarshalPayload(&payload); err != nil {
@@ -23,7 +24,7 @@ func generatePartitionKey(topic string, msg message.ProducedMessage) (string, er
 }
 
 func createPubSub(t *testing.T) message.PubSub {
-	marshaler := marshal.Json{}
+	marshaler := marshal.ConfluentKafka{}
 
 	publisher, err := kafka.NewPublisher(brokers, marshaler)
 	require.NoError(t, err)
@@ -66,11 +67,11 @@ func createPartitionedPubSub(t *testing.T) message.PubSub {
 func createNoGroupSubscriberConstructor(t *testing.T) message.NoConsumerGroupSubscriber {
 	logger := gooddd.NewStdLogger(true, true)
 
-	marshaler := marshal.Json{}
+	marshaler := marshal.ConfluentKafka{}
 
 	sub, err := kafka.NewNoConsumerGroupSubscriber(
 		kafka.SubscriberConfig{
-			Brokers:       brokers,
+			Brokers:        brokers,
 			ConsumersCount: 1,
 		},
 		marshaler,

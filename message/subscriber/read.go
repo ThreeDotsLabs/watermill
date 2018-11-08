@@ -1,17 +1,18 @@
 package subscriber
 
 import (
-	"github.com/roblaszczak/gooddd/message"
 	"time"
+
+	"github.com/roblaszczak/gooddd/message"
 )
 
-func BulkRead(messagesCh <-chan message.ConsumedMessage, limit int, timeout time.Duration) (receivedMessages []message.ConsumedMessage, all bool) {
+func BulkRead(messagesCh <-chan *message.Message, limit int, timeout time.Duration) (receivedMessages []*message.Message, all bool) {
 	allMessagesReceived := make(chan struct{}, 1)
 
 	go func() {
 		for msg := range messagesCh {
 			receivedMessages = append(receivedMessages, msg)
-			msg.Acknowledge()
+			msg.Ack()
 
 			if len(receivedMessages) == limit {
 				allMessagesReceived <- struct{}{}

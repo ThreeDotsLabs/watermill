@@ -1,11 +1,12 @@
 package tests
 
 import (
+	"fmt"
+	"sort"
+	"testing"
+
 	"github.com/roblaszczak/gooddd/message"
 	"github.com/stretchr/testify/assert"
-	"testing"
-	"sort"
-	"fmt"
 )
 
 func difference(a, b []string) []string {
@@ -22,9 +23,9 @@ func difference(a, b []string) []string {
 	return ab
 }
 
-func MissingMessages(expected []message.ProducedMessage, received []message.ConsumedMessage) []string {
-	sentIDs := producedMessagesIDs(expected)
-	receivedIDs := consumedMessagesIDs(received)
+func MissingMessages(expected message.Messages, received message.Messages) []string {
+	sentIDs := expected.IDs()
+	receivedIDs := received.IDs()
 
 	sort.Strings(sentIDs)
 	sort.Strings(receivedIDs)
@@ -32,27 +33,9 @@ func MissingMessages(expected []message.ProducedMessage, received []message.Cons
 	return difference(sentIDs, receivedIDs)
 }
 
-func consumedMessagesIDs(messages []message.ConsumedMessage) []string {
-	var ids []string
-	for _, msg := range messages {
-		ids = append(ids, msg.UUID())
-	}
-
-	return ids
-}
-
-func producedMessagesIDs(messages []message.ProducedMessage) []string {
-	var ids []string
-	for _, msg := range messages {
-		ids = append(ids, msg.UUID())
-	}
-
-	return ids
-}
-
-func AssertAllMessagesReceived(t *testing.T, sent []message.ProducedMessage, received []message.ConsumedMessage) bool {
-	sentIDs := producedMessagesIDs(sent)
-	receivedIDs := consumedMessagesIDs(received)
+func AssertAllMessagesReceived(t *testing.T, sent message.Messages, received message.Messages) bool {
+	sentIDs := sent.IDs()
+	receivedIDs := received.IDs()
 
 	sort.Strings(sentIDs)
 	sort.Strings(receivedIDs)
@@ -65,15 +48,13 @@ func AssertAllMessagesReceived(t *testing.T, sent []message.ProducedMessage, rec
 func AssertMessagesPayloads(
 	t *testing.T,
 	expectedPayloads map[string]interface{},
-	received []message.ConsumedMessage,
-	unmarshalMsg func(msg message.ConsumedMessage) interface{},
+	received []*message.Message,
 ) bool {
 	assert.Len(t, received, len(expectedPayloads))
 
 	receivedMsgs := map[string]interface{}{}
 	for _, msg := range received {
-		payload := unmarshalMsg(msg)
-		receivedMsgs[msg.UUID()] = payload
+		receivedMsgs[msg.UUID] = string(msg.Payload)
 	}
 
 	ok := true
@@ -86,12 +67,12 @@ func AssertMessagesPayloads(
 	return ok
 }
 
-func AssertMessagesMetadata(t *testing.T, key string, expectedValues map[string]string, received []message.ConsumedMessage) bool {
+func AssertMessagesMetadata(t *testing.T, key string, expectedValues map[string]string, received []*message.Message) bool {
 	assert.Len(t, received, len(expectedValues))
 
 	ok := true
 	for _, msg := range received {
-		if !assert.Equal(t, expectedValues[msg.UUID()], msg.GetMetadata(key)) {
+		if !assert.Equal(t, expectedValues[msg.UUID], msg.Metadata[key]) {
 			ok = false
 		}
 	}

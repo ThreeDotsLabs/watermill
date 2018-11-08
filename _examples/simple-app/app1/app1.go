@@ -1,15 +1,18 @@
 package main
 
 import (
-	"github.com/satori/go.uuid"
-	"github.com/Pallinder/go-randomdata"
+	"encoding/json"
+	"fmt"
 	"sync"
 	"time"
-	"github.com/roblaszczak/gooddd/message/infrastructure/kafka"
-	"github.com/roblaszczak/gooddd/message"
+
+	"github.com/Pallinder/go-randomdata"
 	"github.com/renstrom/shortuuid"
+	"github.com/roblaszczak/gooddd/message"
+	"github.com/roblaszczak/gooddd/message/infrastructure/kafka"
 	"github.com/roblaszczak/gooddd/message/infrastructure/kafka/marshal"
 	"github.com/roblaszczak/gooddd/message/router/middleware"
+	"github.com/satori/go.uuid"
 )
 
 type postAdded struct {
@@ -48,7 +51,7 @@ func (postAdded) AggregateVersion() int {
 }
 
 func main() {
-	publisher, err := kafka.NewPublisher([]string{"localhost:9092"}, marshal.Json{})
+	publisher, err := kafka.NewPublisher([]string{"localhost:9092"}, marshal.ConfluentKafka{})
 	if err != nil {
 		panic(err)
 	}
@@ -73,25 +76,28 @@ func main() {
 
 			Content: randomdata.Paragraph(),
 		}
-		msg := message.NewDefault(msgPayload.UUID(), msgPayload)
+
+		b, err := json.Marshal(msgPayload)
+		if err != nil {
+			panic(err)
+		}
+		msg := message.NewMessage(msgPayload.UUID(), b)
 
 		middleware.SetCorrelationID(shortuuid.New(), msg)
 
-		//fmt.Printf("Generated message: %#v\n", msg)
-
 		wg.Add(1)
-		go func() {
-			// todo - how to create messages to send?
-			err := publisher.Publish("test_topic", []message.ProducedMessage{
-				msg,
-			})
-			if err != nil {
-				panic(err)
-			}
-			wg.Done()
-		}()
+		err = publisher.Publish("test_topic", msg)
+		if err != nil {
+			panic(err)
+		}
+		wg.Done()
 
 		i--
+
+		if i%1000 == 0 {
+			fmt.Println("left ", i)
+		}
+
 		if i == 0 {
 			break
 		}

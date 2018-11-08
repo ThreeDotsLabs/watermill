@@ -1,15 +1,16 @@
 package message
 
 import (
-	"sync"
-	"github.com/pkg/errors"
-	sync_internal "github.com/roblaszczak/gooddd/internal/sync"
-	"time"
 	"fmt"
+	"sync"
+	"time"
+
+	"github.com/pkg/errors"
 	"github.com/roblaszczak/gooddd"
+	sync_internal "github.com/roblaszczak/gooddd/internal/sync"
 )
 
-type HandlerFunc func(msg ConsumedMessage) ([]ProducedMessage, error)
+type HandlerFunc func(msg *Message) ([]*Message, error)
 
 type HandlerMiddleware func(h HandlerFunc) HandlerFunc
 
@@ -116,7 +117,7 @@ type handler struct {
 	topic       string
 	handlerFunc HandlerFunc
 
-	messagesCh chan ConsumedMessage
+	messagesCh chan *Message
 }
 
 func (r *Router) AddHandler(handlerName string, topic string, handlerFunc HandlerFunc) error {
@@ -154,7 +155,7 @@ func (r *Router) Run() (err error) {
 	r.Logger.Debug("Loading plugins", nil)
 	for _, plugin := range r.plugins {
 		if err := plugin(r); err != nil {
-			return errors.Wrapf(err, "cannot initialize plugin %s", plugin)
+			return errors.Wrapf(err, "cannot initialize plugin %v", plugin)
 		}
 	}
 
@@ -194,16 +195,17 @@ func (r *Router) Run() (err error) {
 			for msg := range s.messagesCh {
 				r.runningHandlersWg.Add(1)
 
-				go func(msg ConsumedMessage) {
+				go func(msg *Message) {
 					defer r.runningHandlersWg.Done()
 
-					msgFields := gooddd.LogFields{"message_uuid": msg.UUID()}
+					msgFields := gooddd.LogFields{"message_uuid": msg.UUID}
 
 					r.Logger.Trace("Received message", msgFields)
 
 					producedMessages, err := middlewareHandler(msg)
 					if err != nil {
-						msg.Error(err)
+						// this message should be handled by middlewares, what to do with it? todo
+						msg.Nack()
 						return
 					}
 
@@ -212,11 +214,13 @@ func (r *Router) Run() (err error) {
 							"produced_messages_count": len(producedMessages),
 						}))
 
-						if err := r.publisher.Publish(r.config.PublishEventsTopic, producedMessages); err != nil {
-							// todo - how to deal with it better?
-							r.Logger.Error("cannot publish message", err, msgFields.Add(gooddd.LogFields{
-								"not_sent_message": fmt.Sprintf("%#v", producedMessages),
-							}))
+						for _, msg := range producedMessages {
+							if err := r.publisher.Publish(r.config.PublishEventsTopic, msg); err != nil {
+								// todo - how to deal with it better?
+								r.Logger.Error("cannot publish message", err, msgFields.Add(gooddd.LogFields{
+									"not_sent_message": fmt.Sprintf("%#v", producedMessages),
+								}))
+							}
 						}
 					}
 

@@ -1,14 +1,15 @@
 package http
 
 import (
-	"github.com/roblaszczak/gooddd/message"
-	"github.com/go-chi/chi"
 	"net/http"
-	"github.com/roblaszczak/gooddd"
 	"sync"
+
+	"github.com/go-chi/chi"
+	"github.com/roblaszczak/gooddd"
+	"github.com/roblaszczak/gooddd/message"
 )
 
-type UnmarshalMessageFunc func(topic string, request *http.Request) (message.ConsumedMessage, error)
+type UnmarshalMessageFunc func(topic string, request *http.Request) (*message.Message, error)
 
 type Subscriber struct {
 	router chi.Router
@@ -17,7 +18,7 @@ type Subscriber struct {
 
 	unmarshalMessageFunc UnmarshalMessageFunc
 
-	outputChannels     []chan message.ConsumedMessage
+	outputChannels     []chan *message.Message
 	outputChannelsLock sync.Locker
 }
 
@@ -31,13 +32,13 @@ func NewSubscriber(addr string, unmarshalMessageFunc UnmarshalMessageFunc, logge
 		s,
 		logger,
 		unmarshalMessageFunc,
-		make([]chan message.ConsumedMessage, 1),
+		make([]chan *message.Message, 1),
 		&sync.Mutex{},
 	}, nil
 }
 
-func (s *Subscriber) Subscribe(topic string, consumerGroup message.ConsumerGroup) (chan message.ConsumedMessage, error) {
-	messages := make(chan message.ConsumedMessage)
+func (s *Subscriber) Subscribe(topic string, consumerGroup message.ConsumerGroup) (chan *message.Message, error) {
+	messages := make(chan *message.Message)
 
 	s.outputChannelsLock.Lock()
 	s.outputChannels = append(s.outputChannels, messages)
@@ -57,20 +58,18 @@ func (s *Subscriber) Subscribe(topic string, consumerGroup message.ConsumerGroup
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		logFields := baseLogFields.Add(gooddd.LogFields{"message_id": msg.UUID()})
+		logFields := baseLogFields.Add(gooddd.LogFields{"message_id": msg.UUID})
 
 		s.logger.Trace("Sending msg", logFields)
 		messages <- msg
 
 		s.logger.Trace("Waiting for ACK", logFields)
 		select {
-		case err := <-msg.Acknowledged():
+		case <-msg.Acked():
 			s.logger.Trace("Message acknowledged", logFields.Add(gooddd.LogFields{"err": err}))
-			if err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-			} else {
-				w.WriteHeader(http.StatusOK)
-			}
+			w.WriteHeader(http.StatusOK)
+		case <-msg.Nacked():
+			w.WriteHeader(http.StatusInternalServerError)
 		case <-r.Context().Done():
 			s.logger.Info("Request stopped without ACK received", logFields)
 		}

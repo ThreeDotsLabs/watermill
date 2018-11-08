@@ -7,7 +7,7 @@ import (
 const CorrelationIDMetadataKey = "correlation_id"
 
 func CorrelationID(h message.HandlerFunc) message.HandlerFunc {
-	return func(message message.ConsumedMessage) ([]message.ProducedMessage, error) {
+	return func(message *message.Message) ([]*message.Message, error) {
 		producedMessages, err := h(message)
 
 		correlationID := MessageCorrelationID(message)
@@ -19,14 +19,14 @@ func CorrelationID(h message.HandlerFunc) message.HandlerFunc {
 	}
 }
 
-func MessageCorrelationID(message message.Message) string {
-	return message.GetMetadata(CorrelationIDMetadataKey)
+func MessageCorrelationID(message *message.Message) string {
+	return message.Metadata.Get(CorrelationIDMetadataKey)
 }
 
-func SetCorrelationID(id string, msg message.ProducedMessage) {
+func SetCorrelationID(id string, msg *message.Message) {
 	if MessageCorrelationID(msg) != "" {
 		return
 	}
 
-	msg.SetMetadata(CorrelationIDMetadataKey, id)
+	msg.Metadata.Set(CorrelationIDMetadataKey, id)
 }

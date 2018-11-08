@@ -1,27 +1,31 @@
 package main
 
 import (
-	"github.com/pkg/errors"
-	"time"
+	"encoding/json"
 	"fmt"
 	"sync/atomic"
-	"github.com/roblaszczak/gooddd/message/router/plugin"
-	"github.com/roblaszczak/gooddd/message/router/middleware"
+	"time"
 
-	"github.com/rcrowley/go-metrics"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/deathowl/go-metrics-prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"net/http"
+	"github.com/pkg/errors"
+	"github.com/roblaszczak/gooddd/message/router/middleware"
+	"github.com/roblaszczak/gooddd/message/router/plugin"
+
 	"log"
+	"net/http"
 	"os"
+
+	"github.com/deathowl/go-metrics-prometheus"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/rcrowley/go-metrics"
 	"github.com/roblaszczak/gooddd/message"
 
 	_ "net/http/pprof"
+
 	"github.com/roblaszczak/gooddd"
-	"github.com/satori/go.uuid"
-	"github.com/roblaszczak/gooddd/message/infrastructure/kafka/marshal"
 	kafka2 "github.com/roblaszczak/gooddd/message/infrastructure/kafka"
+	"github.com/roblaszczak/gooddd/message/infrastructure/kafka/marshal"
+	"github.com/satori/go.uuid"
 )
 
 // todo - doc why separated type
@@ -57,7 +61,7 @@ type PostsCounter struct {
 	countStorage countStorage
 }
 
-func (p PostsCounter) Count(msg message.ConsumedMessage) ([]message.ProducedMessage, error) {
+func (p PostsCounter) Count(msg *message.Message) ([]*message.Message, error) {
 	newCount, err := p.countStorage.CountAdd()
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot add count")
@@ -68,9 +72,10 @@ func (p PostsCounter) Count(msg message.ConsumedMessage) ([]message.ProducedMess
 	}
 
 	producedMsg := postsCountUpdated{NewCount: newCount}
+	b, _ := json.Marshal(producedMsg)
 	//producedMsg.
 
-	return []message.ProducedMessage{message.NewDefault(uuid.NewV4().String(), producedMsg)}, nil
+	return []*message.Message{message.NewMessage(uuid.NewV4().String(), b)}, nil
 }
 
 // todo - replace with mongo?
@@ -90,11 +95,9 @@ type FeedGenerator struct {
 	feedStorage feedStorage
 }
 
-func (f FeedGenerator) UpdateFeed(message message.ConsumedMessage) ([]message.ProducedMessage, error) {
+func (f FeedGenerator) UpdateFeed(message *message.Message) ([]*message.Message, error) {
 	event := postAdded{}
-	if err := message.UnmarshalPayload(&event); err != nil {
-		return nil, err
-	}
+	json.Unmarshal(message.Payload, &event)
 
 	err := f.feedStorage.AddToFeed(event.Title, event.Author, event.OccurredOn)
 	if err != nil {
@@ -138,7 +141,7 @@ func main() {
 	counter := PostsCounter{memoryCountStorage{new(int64)}}
 	feedGenerator := FeedGenerator{printFeedStorage{}}
 
-	marshaler := marshal.Json{}
+	marshaler := marshal.ConfluentKafka{}
 	brokers := []string{"localhost:9092"}
 	pub, err := kafka2.NewPublisher(brokers, marshaler)
 	if err != nil {
@@ -147,7 +150,7 @@ func main() {
 
 	sub, err := kafka2.NewConfluentSubscriber(
 		kafka2.SubscriberConfig{
-			Brokers:       brokers,
+			Brokers:        brokers,
 			ConsumersCount: 8,
 		},
 		marshaler,

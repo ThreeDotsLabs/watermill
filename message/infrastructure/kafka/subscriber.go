@@ -1,16 +1,17 @@
 package kafka
 
 import (
-	"github.com/confluentinc/confluent-kafka-go/kafka"
-	"github.com/pkg/errors"
-	"github.com/roblaszczak/gooddd/message"
-	"github.com/satori/go.uuid"
-	"sync"
-	"github.com/roblaszczak/gooddd"
-	"strings"
-	"time"
 	"fmt"
 	"runtime"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/confluentinc/confluent-kafka-go/kafka"
+	"github.com/pkg/errors"
+	"github.com/roblaszczak/gooddd"
+	"github.com/roblaszczak/gooddd/message"
+	"github.com/satori/go.uuid"
 )
 
 type ConfluentConsumerConstructor func(brokers []string, consumerGroup message.ConsumerGroup) (*kafka.Consumer, error)
@@ -97,6 +98,8 @@ func DefaultConfluentConsumerConstructor(brokers []string, consumerGroup message
 		"session.timeout.ms":       6000,
 		"enable.auto.commit":       true,
 		"enable.auto.offset.store": false,
+
+		"debug": ",",
 	})
 }
 
@@ -110,13 +113,15 @@ func NoGroupConfluentConsumerConstructor(brokers []string, _ message.ConsumerGro
 		"auto.offset.reset":    "latest",
 		"default.topic.config": kafka.ConfigMap{"auto.offset.reset": "latest"},
 
-		"session.timeout.ms":       6000,
-		"enable.auto.commit":       false,
+		"session.timeout.ms": 6000,
+		"enable.auto.commit": false,
+
+		"debug": ",",
 	})
 }
 
 // todo - review!!
-func (s *confluentSubscriber) Subscribe(topic string, group message.ConsumerGroup) (chan message.ConsumedMessage, error) {
+func (s *confluentSubscriber) Subscribe(topic string, group message.ConsumerGroup) (chan *message.Message, error) {
 	if s.closed {
 		return nil, errors.New("subscriber closed")
 	}
@@ -128,7 +133,7 @@ func (s *confluentSubscriber) Subscribe(topic string, group message.ConsumerGrou
 	}
 	s.logger.Info("Subscribing to Kafka topic", logFields)
 
-	output := make(chan message.ConsumedMessage, 0)
+	output := make(chan *message.Message, 0)
 
 	s.allSubscribersWg.Add(1)
 
@@ -150,7 +155,7 @@ func (s *confluentSubscriber) Subscribe(topic string, group message.ConsumerGrou
 		s.logger.Debug("Starting messages consumer", consumerLogFields)
 
 		consumersWg.Add(1)
-		go func(events chan<- message.ConsumedMessage, consumer *kafka.Consumer) {
+		go func(events chan<- *message.Message, consumer *kafka.Consumer) {
 			defer func() {
 				if err := consumer.Close(); err != nil {
 					s.logger.Error("Cannot close consumer", err, consumerLogFields)
@@ -192,7 +197,7 @@ func (s *confluentSubscriber) Subscribe(topic string, group message.ConsumerGrou
 						}
 
 						receivedMsgLogFields = receivedMsgLogFields.Add(gooddd.LogFields{
-							"message_id": msg.UUID(),
+							"message_id": msg.UUID,
 						})
 
 						s.logger.Trace("Kafka message unmarshalled, sending to output", receivedMsgLogFields)
@@ -214,30 +219,30 @@ func (s *confluentSubscriber) Subscribe(topic string, group message.ConsumerGrou
 					AckLoop:
 						for {
 							select {
-							case err := <-msg.Acknowledged():
-								if err != nil {
-									s.logger.Info(
-										"Message error from ACK",
-										receivedMsgLogFields.Add(gooddd.LogFields{"err": err}),
-									)
-									s.rollback(consumer, e.TopicPartition)
-								} else {
-									s.logger.Trace("Message acknowledged", receivedMsgLogFields)
+							// todo - make it in cleaner way
+							case <-msg.Acked():
+								s.logger.Trace("Message acknowledged", receivedMsgLogFields)
 
-									// todo - make it in cleaner way
-									if group != "" {
-										stored, err := consumer.StoreOffsets([]kafka.TopicPartition{e.TopicPartition})
-										if err != nil {
-											s.logger.Error("Cannot store offsets", err, consumerLogFields)
-											s.rollback(consumer, e.TopicPartition)
-										} else {
-											s.logger.Trace(
-												"stored Kafka offsets",
-												receivedMsgLogFields.Add(gooddd.LogFields{"stored_offsets": stored}),
-											)
-										}
+								// todo - make it in cleaner way
+								if group != "" {
+									stored, err := consumer.StoreOffsets([]kafka.TopicPartition{e.TopicPartition})
+									if err != nil {
+										s.logger.Error("Cannot store offsets", err, consumerLogFields)
+										s.rollback(consumer, e.TopicPartition)
+									} else {
+										s.logger.Trace(
+											"stored Kafka offsets",
+											receivedMsgLogFields.Add(gooddd.LogFields{"stored_offsets": stored}),
+										)
 									}
 								}
+								break AckLoop
+							case <-msg.Nacked():
+								s.logger.Info(
+									"Message error from ACK",
+									receivedMsgLogFields.Add(gooddd.LogFields{"err": err}),
+								)
+								s.rollback(consumer, e.TopicPartition)
 								break AckLoop
 							case <-time.After(s.config.CloseCheckThreshold):
 								s.logger.Info(
@@ -301,19 +306,18 @@ func (s *confluentSubscriber) rollback(consumer *kafka.Consumer, partition kafka
 }
 
 func (s *confluentSubscriber) CloseSubscriber() error {
-	go func() {
-		for {
-			s.closing <- struct{}{}
-		}
-	}()
-	s.allSubscribersWg.Wait()
+	if s.closed {
+		return nil
+	}
+
 	s.closed = true
+	close(s.closing)
+	s.allSubscribersWg.Wait()
 
 	s.logger.Debug("Kafka subscriber closed", nil)
 
 	return nil
 }
-
 
 func NewNoConsumerGroupSubscriber(
 	config SubscriberConfig,
@@ -332,7 +336,7 @@ type noGroupconfluentSubscriber struct {
 	confluentSubscriber message.Subscriber
 }
 
-func (s *noGroupconfluentSubscriber) SubscribeNoGroup(topic string) (chan message.ConsumedMessage, error) {
+func (s *noGroupconfluentSubscriber) SubscribeNoGroup(topic string) (chan *message.Message, error) {
 	return s.confluentSubscriber.Subscribe(topic, "")
 }
 
