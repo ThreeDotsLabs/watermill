@@ -1,10 +1,10 @@
 package marshal
 
 import (
+	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ThreeDotsLabs/watermill/message/infrastructure/kafka"
 	confluentKafka "github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/pkg/errors"
-	"github.com/roblaszczak/gooddd/message"
-	"github.com/roblaszczak/gooddd/message/infrastructure/kafka"
 )
 
 // todo - rename

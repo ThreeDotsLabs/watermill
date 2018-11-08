@@ -7,8 +7,8 @@ package sql
 //	"time"
 //
 //	"github.com/pkg/errors"
-//	"github.com/roblaszczak/gooddd/message"
-//	"github.com/roblaszczak/gooddd/components/domain"
+//	"github.com/ThreeDotsLabs/watermill/message"
+//	"github.com/ThreeDotsLabs/watermill/components/domain"
 //	"encoding/json"
 //)
 //

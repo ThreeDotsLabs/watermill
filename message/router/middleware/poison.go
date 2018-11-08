@@ -1,8 +1,8 @@
 package middleware
 
 import (
+	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/pkg/errors"
-	"github.com/roblaszczak/gooddd/message"
 )
 
 // ErrInvalidPoisonQueueTopic occurs when the topic supplied to the PoisonQueue constructor is invalid.

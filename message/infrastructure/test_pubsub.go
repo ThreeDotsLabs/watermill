@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/roblaszczak/gooddd/internal/tests"
-	"github.com/roblaszczak/gooddd/message"
-	"github.com/roblaszczak/gooddd/message/subscriber"
+	"github.com/ThreeDotsLabs/watermill/internal/tests"
+	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ThreeDotsLabs/watermill/message/subscriber"
 	"github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

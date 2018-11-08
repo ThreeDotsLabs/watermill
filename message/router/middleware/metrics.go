@@ -3,8 +3,8 @@ package middleware
 import (
 	"time"
 
+	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/rcrowley/go-metrics"
-	"github.com/roblaszczak/gooddd/message"
 )
 
 // todo - rewrite (more universal?)

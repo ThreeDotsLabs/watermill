@@ -1,8 +1,8 @@
 package cart
 
 import (
-	"github.com/roblaszczak/gooddd/domain"
-	"github.com/roblaszczak/gooddd/_examples/enterprise-aggregate-with-events/shop/domain/product"
+	"github.com/ThreeDotsLabs/watermill/_examples/enterprise-aggregate-with-events/shop/domain/product"
+	"github.com/ThreeDotsLabs/watermill/components/domain"
 )
 
 type ID string

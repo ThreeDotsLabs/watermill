@@ -3,7 +3,7 @@ package middleware
 import (
 	"time"
 
-	"github.com/roblaszczak/gooddd/message"
+	"github.com/ThreeDotsLabs/watermill/message"
 )
 
 const RetryForever = -1

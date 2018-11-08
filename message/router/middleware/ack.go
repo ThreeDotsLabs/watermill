@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"github.com/roblaszczak/gooddd/message"
+	"github.com/ThreeDotsLabs/watermill/message"
 )
 
 // todo - test

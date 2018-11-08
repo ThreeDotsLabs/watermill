@@ -1,4 +1,4 @@
-package sql_test
+package sql
 
 // todo - fix
 //import (
@@ -7,12 +7,12 @@ package sql_test
 //	"github.com/stretchr/testify/require"
 //	sqlConn "github.com/jmoiron/sqlx"
 //	"github.com/stretchr/testify/assert"
-//	"github.com/roblaszczak/gooddd/message"
+//	"github.com/ThreeDotsLabs/watermill/message"
 //	"time"
 //	"github.com/satori/go.uuid"
-//	"github.com/roblaszczak/gooddd/message/infrastructure/sql"
+//	"github.com/ThreeDotsLabs/watermill/message/infrastructure/sql"
 //	"fmt"
-//	"github.com/roblaszczak/gooddd/components/domain"
+//	"github.com/ThreeDotsLabs/watermill/components/domain"
 //	"encoding/json"
 //	stdSQL "database/sql"
 //)

@@ -5,8 +5,8 @@ import (
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 
+	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/pkg/errors"
-	"github.com/roblaszczak/gooddd/message"
 )
 
 type confluentPublisher struct {

@@ -7,11 +7,11 @@ import (
 	"time"
 
 	"github.com/Pallinder/go-randomdata"
+	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ThreeDotsLabs/watermill/message/infrastructure/kafka"
+	"github.com/ThreeDotsLabs/watermill/message/infrastructure/kafka/marshal"
+	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
 	"github.com/renstrom/shortuuid"
-	"github.com/roblaszczak/gooddd/message"
-	"github.com/roblaszczak/gooddd/message/infrastructure/kafka"
-	"github.com/roblaszczak/gooddd/message/infrastructure/kafka/marshal"
-	"github.com/roblaszczak/gooddd/message/router/middleware"
 	"github.com/satori/go.uuid"
 )
 

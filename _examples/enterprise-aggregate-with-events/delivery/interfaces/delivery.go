@@ -1,17 +1,17 @@
 package interfaces
 
 import (
-	"github.com/roblaszczak/gooddd/_examples/enterprise-aggregate-with-events/delivery/app"
-	"github.com/roblaszczak/gooddd/pubsub"
-	"github.com/roblaszczak/gooddd/_examples/enterprise-aggregate-with-events/shop/domain/order"
-	"github.com/roblaszczak/gooddd/domain"
-	"github.com/roblaszczak/gooddd/msghandler"
-	"github.com/roblaszczak/gooddd/_examples/enterprise-aggregate-with-events/delivery/infrastructure/address"
-	order2 "github.com/roblaszczak/gooddd/_examples/enterprise-aggregate-with-events/delivery/infrastructure/order"
+	"github.com/ThreeDotsLabs/watermill/_examples/enterprise-aggregate-with-events/delivery/app"
+	"github.com/ThreeDotsLabs/watermill/_examples/enterprise-aggregate-with-events/delivery/infrastructure/address"
+	order2 "github.com/ThreeDotsLabs/watermill/_examples/enterprise-aggregate-with-events/delivery/infrastructure/order"
+	"github.com/ThreeDotsLabs/watermill/_examples/enterprise-aggregate-with-events/shop/domain/order"
+	"github.com/ThreeDotsLabs/watermill/components/domain"
+	"github.com/ThreeDotsLabs/watermill/msghandler"
+	"github.com/ThreeDotsLabs/watermill/pubsub"
 )
 
 // todo - rename
-func SetupInterfaces(r *msghandler.Router) {
+func SetupInterfaces(r *msghandler.Handler) {
 	// todo - move it out
 	//r.AddMiddleware(middleware.AckMiddleware)
 

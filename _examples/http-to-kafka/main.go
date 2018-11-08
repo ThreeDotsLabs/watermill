@@ -1,19 +1,20 @@
 package main
 
 import (
-	"github.com/roblaszczak/gooddd/message/router/plugin"
-	"github.com/roblaszczak/gooddd/message/router/middleware"
+	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
+	"github.com/ThreeDotsLabs/watermill/message/router/plugin"
 
-	"github.com/roblaszczak/gooddd/message"
+	"github.com/ThreeDotsLabs/watermill/message"
 
-	_ "net/http/pprof"
-	"github.com/roblaszczak/gooddd"
-	"github.com/roblaszczak/gooddd/message/infrastructure/kafka/marshal"
-	kafka2 "github.com/roblaszczak/gooddd/message/infrastructure/kafka"
-	"github.com/roblaszczak/gooddd/message/infrastructure/http"
-	stdHttp "net/http"
 	"encoding/json"
 	"io/ioutil"
+	stdHttp "net/http"
+	_ "net/http/pprof"
+
+	"github.com/ThreeDotsLabs/watermill"
+	"github.com/ThreeDotsLabs/watermill/message/infrastructure/http"
+	kafka2 "github.com/ThreeDotsLabs/watermill/message/infrastructure/kafka"
+	"github.com/ThreeDotsLabs/watermill/message/infrastructure/kafka/marshal"
 	"github.com/satori/go.uuid"
 )
 
@@ -23,9 +24,9 @@ type request struct {
 }
 
 func main() {
-	logger := gooddd.NewStdLogger(false, false)
+	logger := watermill.NewStdLogger(false, false)
 
-	pub, err := kafka2.NewPublisher([]string{"localhost:9092"}, marshal.Json{})
+	pub, err := kafka2.NewPublisher([]string{"localhost:9092"}, marshal.ConfluentKafka{})
 	if err != nil {
 		panic(err)
 	}
@@ -41,7 +42,7 @@ func main() {
 			return nil, err
 		}
 
-		return message.NewDefault(uuid.NewV4().String(), p), nil
+		return message.NewMessage(uuid.NewV4().String(), p), nil
 	}, logger)
 	if err != nil {
 		panic(err)

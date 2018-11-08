@@ -1,16 +1,16 @@
-package message_test
+package message
 
 import (
 	"fmt"
 	"testing"
 	"time"
 
-	"github.com/roblaszczak/gooddd"
-	"github.com/roblaszczak/gooddd/internal/tests"
-	"github.com/roblaszczak/gooddd/message"
-	"github.com/roblaszczak/gooddd/message/infrastructure/kafka"
-	"github.com/roblaszczak/gooddd/message/infrastructure/kafka/marshal"
-	"github.com/roblaszczak/gooddd/message/subscriber"
+	"github.com/ThreeDotsLabs/watermill"
+	"github.com/ThreeDotsLabs/watermill/internal/tests"
+	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ThreeDotsLabs/watermill/message/infrastructure/kafka"
+	"github.com/ThreeDotsLabs/watermill/message/infrastructure/kafka/marshal"
+	"github.com/ThreeDotsLabs/watermill/message/subscriber"
 	"github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -114,7 +114,7 @@ func publishMessagesForHandler(t *testing.T, messagesCount int, pubSub message.P
 func createPubSub() (message.PubSub, error) {
 	brokers := []string{"localhost:9092"}
 	marshaler := marshal.ConfluentKafka{}
-	logger := gooddd.NewStdLogger(true, true)
+	logger := watermill.NewStdLogger(true, true)
 
 	pub, err := kafka.NewPublisher(brokers, marshaler)
 	if err != nil {

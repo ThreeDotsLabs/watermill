@@ -3,11 +3,11 @@ package kafka_test
 import (
 	"testing"
 
-	"github.com/roblaszczak/gooddd"
-	"github.com/roblaszczak/gooddd/message"
-	"github.com/roblaszczak/gooddd/message/infrastructure"
-	"github.com/roblaszczak/gooddd/message/infrastructure/kafka"
-	"github.com/roblaszczak/gooddd/message/infrastructure/kafka/marshal"
+	"github.com/ThreeDotsLabs/watermill"
+	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ThreeDotsLabs/watermill/message/infrastructure"
+	"github.com/ThreeDotsLabs/watermill/message/infrastructure/kafka"
+	"github.com/ThreeDotsLabs/watermill/message/infrastructure/kafka/marshal"
 	"github.com/stretchr/testify/require"
 )
 
@@ -29,7 +29,7 @@ func createPubSub(t *testing.T) message.PubSub {
 	publisher, err := kafka.NewPublisher(brokers, marshaler)
 	require.NoError(t, err)
 
-	logger := gooddd.NewStdLogger(true, true)
+	logger := watermill.NewStdLogger(true, true)
 
 	subscriber, err := kafka.NewConfluentSubscriber(
 		kafka.SubscriberConfig{
@@ -50,7 +50,7 @@ func createPartitionedPubSub(t *testing.T) message.PubSub {
 	publisher, err := kafka.NewPublisher(brokers, marshaler)
 	require.NoError(t, err)
 
-	logger := gooddd.NewStdLogger(true, true)
+	logger := watermill.NewStdLogger(true, true)
 
 	subscriber, err := kafka.NewConfluentSubscriber(
 		kafka.SubscriberConfig{
@@ -65,7 +65,7 @@ func createPartitionedPubSub(t *testing.T) message.PubSub {
 }
 
 func createNoGroupSubscriberConstructor(t *testing.T) message.NoConsumerGroupSubscriber {
-	logger := gooddd.NewStdLogger(true, true)
+	logger := watermill.NewStdLogger(true, true)
 
 	marshaler := marshal.ConfluentKafka{}
 

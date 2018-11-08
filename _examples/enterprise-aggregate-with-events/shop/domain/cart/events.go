@@ -1,11 +1,11 @@
 package cart
 
 import (
-	"github.com/roblaszczak/gooddd/_examples/enterprise-aggregate-with-events/shop/domain/product"
+	"github.com/ThreeDotsLabs/watermill/_examples/enterprise-aggregate-with-events/shop/domain/product"
 )
 
 type baseEvent struct {
-	CartID ID
+	CartID  ID
 	version int
 }
 

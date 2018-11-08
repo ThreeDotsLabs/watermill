@@ -3,7 +3,7 @@ package kafka_test
 import (
 	"testing"
 
-	"github.com/roblaszczak/gooddd/message/infrastructure"
+	"github.com/ThreeDotsLabs/watermill/message/infrastructure"
 )
 
 func TestPublishSubscribe_stress(t *testing.T) {

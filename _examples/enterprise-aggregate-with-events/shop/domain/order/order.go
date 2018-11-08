@@ -1,10 +1,10 @@
 package order
 
 import (
-	"github.com/roblaszczak/gooddd/_examples/enterprise-aggregate-with-events/shop/domain/product"
+	"github.com/ThreeDotsLabs/watermill/_examples/enterprise-aggregate-with-events/shop/domain/cart"
+	"github.com/ThreeDotsLabs/watermill/_examples/enterprise-aggregate-with-events/shop/domain/product"
+	"github.com/ThreeDotsLabs/watermill/components/domain"
 	"github.com/pkg/errors"
-	"github.com/roblaszczak/gooddd/domain"
-	"github.com/roblaszczak/gooddd/_examples/enterprise-aggregate-with-events/shop/domain/cart"
 )
 
 var (
@@ -27,7 +27,7 @@ func NewService() *Service {
 	return &Service{&domain.EventProducer{}}
 }
 
-func (s Service) PlaceOrder(id ID, cartID cart.ID, customerID string, products []product.ID) (error) {
+func (s Service) PlaceOrder(id ID, cartID cart.ID, customerID string, products []product.ID) error {
 	if id == "" {
 		return ErrEmptyID
 	}

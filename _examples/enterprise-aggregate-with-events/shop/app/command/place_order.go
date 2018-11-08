@@ -1,10 +1,10 @@
 package command
 
 import (
-	"github.com/roblaszczak/gooddd/_examples/enterprise-aggregate-with-events/shop/domain/cart"
+	"github.com/ThreeDotsLabs/watermill/_examples/enterprise-aggregate-with-events/shop/domain/cart"
+	"github.com/ThreeDotsLabs/watermill/_examples/enterprise-aggregate-with-events/shop/domain/order"
+	"github.com/ThreeDotsLabs/watermill/components/domain"
 	"github.com/pkg/errors"
-	"github.com/roblaszczak/gooddd/_examples/enterprise-aggregate-with-events/shop/domain/order"
-	"github.com/roblaszczak/gooddd/domain"
 )
 
 type PlaceOrder struct {

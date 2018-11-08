@@ -7,10 +7,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ThreeDotsLabs/watermill"
+	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/pkg/errors"
-	"github.com/roblaszczak/gooddd"
-	"github.com/roblaszczak/gooddd/message"
 	"github.com/satori/go.uuid"
 )
 
@@ -21,7 +21,7 @@ type confluentSubscriber struct {
 
 	unmarshaler         Unmarshaler
 	consumerConstructor ConfluentConsumerConstructor
-	logger              gooddd.LoggerAdapter
+	logger              watermill.LoggerAdapter
 
 	closing          chan struct{}
 	allSubscribersWg *sync.WaitGroup
@@ -60,7 +60,7 @@ func (c SubscriberConfig) Validate() error {
 func NewConfluentSubscriber(
 	config SubscriberConfig,
 	unmarshaler Unmarshaler,
-	logger gooddd.LoggerAdapter,
+	logger watermill.LoggerAdapter,
 ) (message.Subscriber, error) {
 	return NewCustomConfluentSubscriber(config, unmarshaler, DefaultConfluentConsumerConstructor, logger)
 }
@@ -69,7 +69,7 @@ func NewCustomConfluentSubscriber(
 	config SubscriberConfig,
 	unmarshaler Unmarshaler,
 	consumerConstructor ConfluentConsumerConstructor,
-	logger gooddd.LoggerAdapter,
+	logger watermill.LoggerAdapter,
 ) (message.Subscriber, error) {
 	config.setDefaults()
 	if err := config.Validate(); err != nil {
@@ -126,7 +126,7 @@ func (s *confluentSubscriber) Subscribe(topic string, group message.ConsumerGrou
 		return nil, errors.New("subscriber closed")
 	}
 
-	logFields := gooddd.LogFields{
+	logFields := watermill.LogFields{
 		"topic":                   topic,
 		"kafka_subscribers_count": s.config.ConsumersCount,
 		"consumer_group":          group,
@@ -149,7 +149,7 @@ func (s *confluentSubscriber) Subscribe(topic string, group message.ConsumerGrou
 			return nil, errors.Wrapf(err, "cannot subscribe topic %s", topic)
 		}
 
-		consumerLogFields := logFields.Add(gooddd.LogFields{
+		consumerLogFields := logFields.Add(watermill.LogFields{
 			"consumer_no": i,
 		})
 		s.logger.Debug("Starting messages consumer", consumerLogFields)
@@ -184,7 +184,7 @@ func (s *confluentSubscriber) Subscribe(topic string, group message.ConsumerGrou
 							return
 						}
 
-						receivedMsgLogFields := consumerLogFields.Add(gooddd.LogFields{
+						receivedMsgLogFields := consumerLogFields.Add(watermill.LogFields{
 							"kafka_partition":        e.TopicPartition.Partition,
 							"kafka_partition_offset": e.TopicPartition.Offset,
 						})
@@ -196,7 +196,7 @@ func (s *confluentSubscriber) Subscribe(topic string, group message.ConsumerGrou
 							continue EventsLoop
 						}
 
-						receivedMsgLogFields = receivedMsgLogFields.Add(gooddd.LogFields{
+						receivedMsgLogFields = receivedMsgLogFields.Add(watermill.LogFields{
 							"message_id": msg.UUID,
 						})
 
@@ -232,7 +232,7 @@ func (s *confluentSubscriber) Subscribe(topic string, group message.ConsumerGrou
 									} else {
 										s.logger.Trace(
 											"stored Kafka offsets",
-											receivedMsgLogFields.Add(gooddd.LogFields{"stored_offsets": stored}),
+											receivedMsgLogFields.Add(watermill.LogFields{"stored_offsets": stored}),
 										)
 									}
 								}
@@ -240,7 +240,7 @@ func (s *confluentSubscriber) Subscribe(topic string, group message.ConsumerGrou
 							case <-msg.Nacked():
 								s.logger.Info(
 									"Message error from ACK",
-									receivedMsgLogFields.Add(gooddd.LogFields{"err": err}),
+									receivedMsgLogFields.Add(watermill.LogFields{"err": err}),
 								)
 								s.rollback(consumer, e.TopicPartition)
 								break AckLoop
@@ -270,13 +270,13 @@ func (s *confluentSubscriber) Subscribe(topic string, group message.ConsumerGrou
 					case kafka.PartitionEOF:
 						s.logger.Trace("Reached end of partition", logFields)
 					case kafka.OffsetsCommitted:
-						s.logger.Trace("Offset committed", logFields.Add(gooddd.LogFields{
+						s.logger.Trace("Offset committed", logFields.Add(watermill.LogFields{
 							"offsets": e.String(),
 						}))
 					default:
 						s.logger.Debug(
 							"Unsupported msg",
-							logFields.Add(gooddd.LogFields{
+							logFields.Add(watermill.LogFields{
 								"msg":      fmt.Sprintf("%#v", e),
 								"msg_type": fmt.Sprintf("%T", e),
 							}),
@@ -322,7 +322,7 @@ func (s *confluentSubscriber) CloseSubscriber() error {
 func NewNoConsumerGroupSubscriber(
 	config SubscriberConfig,
 	unmarshaler Unmarshaler,
-	logger gooddd.LoggerAdapter,
+	logger watermill.LoggerAdapter,
 ) (message.NoConsumerGroupSubscriber, error) {
 	sub, err := NewCustomConfluentSubscriber(config, unmarshaler, NoGroupConfluentConsumerConstructor, logger)
 	if err != nil {

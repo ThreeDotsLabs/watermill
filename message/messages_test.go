@@ -1,9 +1,9 @@
-package message_test
+package message
 
 import (
 	"testing"
 
-	"github.com/roblaszczak/gooddd/message"
+	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/stretchr/testify/assert"
 )
 

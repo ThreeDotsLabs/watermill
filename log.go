@@ -1,10 +1,10 @@
-package gooddd
+package watermill
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"strings"
-	"fmt"
 )
 
 type LogFields map[string]interface{}
@@ -44,7 +44,7 @@ type StdLoggerAdapter struct {
 }
 
 func NewStdLogger(debug, trace bool) LoggerAdapter {
-	l := log.New(os.Stderr, "[gooddd] ", log.LstdFlags|log.Lmicroseconds|log.Lshortfile)
+	l := log.New(os.Stderr, "[watermill] ", log.LstdFlags|log.Lmicroseconds|log.Lshortfile)
 	a := &StdLoggerAdapter{InfoLogger: l}
 
 	if debug {

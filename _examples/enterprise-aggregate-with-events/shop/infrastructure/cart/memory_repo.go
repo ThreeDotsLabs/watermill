@@ -1,6 +1,6 @@
 package cart
 
-import "github.com/roblaszczak/gooddd/_examples/enterprise-aggregate-with-events/shop/domain/cart"
+import "github.com/ThreeDotsLabs/watermill/_examples/enterprise-aggregate-with-events/shop/domain/cart"
 
 type MemoryRepository struct {
 	carts map[cart.ID]cart.Cart

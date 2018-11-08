@@ -2,11 +2,12 @@ package domain
 
 import (
 	"testing"
-	"github.com/roblaszczak/gooddd/components/domainents/domain"
+
+	"github.com/ThreeDotsLabs/watermill/components/domainents/domain"
 	"github.com/stretchr/testify/assert"
 )
 
-type testEvent struct{
+type testEvent struct {
 	Name string
 }
 

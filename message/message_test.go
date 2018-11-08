@@ -1,11 +1,11 @@
-package message_test
+package message
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/roblaszczak/gooddd/message"
+	"github.com/ThreeDotsLabs/watermill/message"
 )
 
 func TestMessage_Ack(t *testing.T) {

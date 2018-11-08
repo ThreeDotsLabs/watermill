@@ -3,7 +3,7 @@ package subscriber
 import (
 	"time"
 
-	"github.com/roblaszczak/gooddd/message"
+	"github.com/ThreeDotsLabs/watermill/message"
 )
 
 func BulkRead(messagesCh <-chan *message.Message, limit int, timeout time.Duration) (receivedMessages []*message.Message, all bool) {

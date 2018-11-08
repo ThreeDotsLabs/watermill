@@ -1,9 +1,10 @@
 package gochannel
 
 import (
-	"github.com/roblaszczak/gooddd/message"
 	"sync"
 	"time"
+
+	"github.com/ThreeDotsLabs/watermill/message"
 )
 
 type subscriber struct {

@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/ThreeDotsLabs/watermill"
+	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/go-chi/chi"
-	"github.com/roblaszczak/gooddd"
-	"github.com/roblaszczak/gooddd/message"
 )
 
 type UnmarshalMessageFunc func(topic string, request *http.Request) (*message.Message, error)
@@ -14,7 +14,7 @@ type UnmarshalMessageFunc func(topic string, request *http.Request) (*message.Me
 type Subscriber struct {
 	router chi.Router
 	server *http.Server
-	logger gooddd.LoggerAdapter
+	logger watermill.LoggerAdapter
 
 	unmarshalMessageFunc UnmarshalMessageFunc
 
@@ -23,7 +23,7 @@ type Subscriber struct {
 }
 
 // todo - test
-func NewSubscriber(addr string, unmarshalMessageFunc UnmarshalMessageFunc, logger gooddd.LoggerAdapter) (message.Subscriber, error) {
+func NewSubscriber(addr string, unmarshalMessageFunc UnmarshalMessageFunc, logger watermill.LoggerAdapter) (message.Subscriber, error) {
 	r := chi.NewRouter()
 	s := &http.Server{Addr: addr, Handler: r}
 
@@ -44,12 +44,12 @@ func (s *Subscriber) Subscribe(topic string, consumerGroup message.ConsumerGroup
 	s.outputChannels = append(s.outputChannels, messages)
 	s.outputChannelsLock.Unlock()
 
-	baseLogFields := gooddd.LogFields{"topic": topic}
+	baseLogFields := watermill.LogFields{"topic": topic}
 
 	s.router.Post(topic, func(w http.ResponseWriter, r *http.Request) {
 		msg, err := s.unmarshalMessageFunc(topic, r)
 		if err != nil {
-			s.logger.Info("Cannot unmarshal message", baseLogFields.Add(gooddd.LogFields{"err": err}))
+			s.logger.Info("Cannot unmarshal message", baseLogFields.Add(watermill.LogFields{"err": err}))
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -58,7 +58,7 @@ func (s *Subscriber) Subscribe(topic string, consumerGroup message.ConsumerGroup
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		logFields := baseLogFields.Add(gooddd.LogFields{"message_id": msg.UUID})
+		logFields := baseLogFields.Add(watermill.LogFields{"message_id": msg.UUID})
 
 		s.logger.Trace("Sending msg", logFields)
 		messages <- msg
@@ -66,7 +66,7 @@ func (s *Subscriber) Subscribe(topic string, consumerGroup message.ConsumerGroup
 		s.logger.Trace("Waiting for ACK", logFields)
 		select {
 		case <-msg.Acked():
-			s.logger.Trace("Message acknowledged", logFields.Add(gooddd.LogFields{"err": err}))
+			s.logger.Trace("Message acknowledged", logFields.Add(watermill.LogFields{"err": err}))
 			w.WriteHeader(http.StatusOK)
 		case <-msg.Nacked():
 			w.WriteHeader(http.StatusInternalServerError)

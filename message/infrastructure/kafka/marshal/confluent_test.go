@@ -4,9 +4,9 @@ import (
 	"testing"
 
 	"github.com/Shopify/sarama"
+	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ThreeDotsLabs/watermill/message/infrastructure/kafka/marshal"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
-	"github.com/roblaszczak/gooddd/message"
-	"github.com/roblaszczak/gooddd/message/infrastructure/kafka/marshal"
 	"github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

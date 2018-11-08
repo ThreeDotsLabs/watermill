@@ -1,11 +1,12 @@
 package plugin
 
 import (
-	"os/signal"
-	"syscall"
 	"fmt"
 	"os"
-	"github.com/roblaszczak/gooddd/message"
+	"os/signal"
+	"syscall"
+
+	"github.com/ThreeDotsLabs/watermill/message"
 )
 
 func SignalsHandler(r *message.Router) error {

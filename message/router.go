@@ -5,9 +5,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ThreeDotsLabs/watermill"
+	sync_internal "github.com/ThreeDotsLabs/watermill/internal/sync"
 	"github.com/pkg/errors"
-	"github.com/roblaszczak/gooddd"
-	sync_internal "github.com/roblaszczak/gooddd/internal/sync"
 )
 
 type HandlerFunc func(msg *Message) ([]*Message, error)
@@ -71,7 +71,7 @@ func NewRouter(config RouterConfig, subscriber Subscriber, publisher Publisher) 
 
 		closeCh: make(chan struct{}),
 
-		Logger: gooddd.NopLogger{},
+		Logger: watermill.NopLogger{},
 	}, nil
 }
 
@@ -92,7 +92,7 @@ type Router struct {
 
 	closeCh chan struct{}
 
-	Logger gooddd.LoggerAdapter
+	Logger watermill.LoggerAdapter
 
 	running bool
 }
@@ -101,13 +101,13 @@ type Router struct {
 //
 // The order of middlewares matters. Middleware added at the beginning is executed first.
 func (r *Router) AddMiddleware(m ...HandlerMiddleware) {
-	r.Logger.Debug("Adding middlewares", gooddd.LogFields{"count": fmt.Sprintf("%d", len(m))})
+	r.Logger.Debug("Adding middlewares", watermill.LogFields{"count": fmt.Sprintf("%d", len(m))})
 
 	r.middlewares = append(r.middlewares, m...)
 }
 
 func (r *Router) AddPlugin(p ...RouterPlugin) {
-	r.Logger.Debug("Adding plugins", gooddd.LogFields{"count": fmt.Sprintf("%d", len(p))})
+	r.Logger.Debug("Adding plugins", watermill.LogFields{"count": fmt.Sprintf("%d", len(p))})
 
 	r.plugins = append(r.plugins, p...)
 }
@@ -121,7 +121,7 @@ type handler struct {
 }
 
 func (r *Router) AddHandler(handlerName string, topic string, handlerFunc HandlerFunc) error {
-	r.Logger.Info("Adding subscriber", gooddd.LogFields{
+	r.Logger.Info("Adding subscriber", watermill.LogFields{
 		"handler_name": handlerName,
 		"topic":        topic,
 	})
@@ -160,7 +160,7 @@ func (r *Router) Run() (err error) {
 	}
 
 	for _, s := range r.handlers {
-		r.Logger.Debug("Subscribing to topic", gooddd.LogFields{
+		r.Logger.Debug("Subscribing to topic", watermill.LogFields{
 			"subscriber_name": s.name,
 			"topic":           s.topic,
 		})
@@ -180,7 +180,7 @@ func (r *Router) Run() (err error) {
 		r.handlersWg.Add(1)
 
 		go func(s *handler) {
-			r.Logger.Info("Starting handler", gooddd.LogFields{
+			r.Logger.Info("Starting handler", watermill.LogFields{
 				"subscriber_name": s.name,
 				"topic":           s.topic,
 			})
@@ -198,7 +198,7 @@ func (r *Router) Run() (err error) {
 				go func(msg *Message) {
 					defer r.runningHandlersWg.Done()
 
-					msgFields := gooddd.LogFields{"message_uuid": msg.UUID}
+					msgFields := watermill.LogFields{"message_uuid": msg.UUID}
 
 					r.Logger.Trace("Received message", msgFields)
 
@@ -210,14 +210,14 @@ func (r *Router) Run() (err error) {
 					}
 
 					if len(producedMessages) > 0 {
-						r.Logger.Trace("Sending produced messages", msgFields.Add(gooddd.LogFields{
+						r.Logger.Trace("Sending produced messages", msgFields.Add(watermill.LogFields{
 							"produced_messages_count": len(producedMessages),
 						}))
 
 						for _, msg := range producedMessages {
 							if err := r.publisher.Publish(r.config.PublishEventsTopic, msg); err != nil {
 								// todo - how to deal with it better?
-								r.Logger.Error("cannot publish message", err, msgFields.Add(gooddd.LogFields{
+								r.Logger.Error("cannot publish message", err, msgFields.Add(watermill.LogFields{
 									"not_sent_message": fmt.Sprintf("%#v", producedMessages),
 								}))
 							}
@@ -229,7 +229,7 @@ func (r *Router) Run() (err error) {
 			}
 
 			r.handlersWg.Done()
-			r.Logger.Info("Subscriber stopped", gooddd.LogFields{
+			r.Logger.Info("Subscriber stopped", watermill.LogFields{
 				"subscriber_name": s.name,
 				"topic":           s.topic,
 			})
@@ -250,7 +250,7 @@ func (r *Router) Run() (err error) {
 	}
 	r.Logger.Debug("Publisher closed", nil)
 
-	r.Logger.Info("Waiting for messages", gooddd.LogFields{
+	r.Logger.Info("Waiting for messages", watermill.LogFields{
 		"timeout": r.config.CloseTimeout,
 	})
 

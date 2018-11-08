@@ -3,8 +3,8 @@ package middleware
 import (
 	"math/rand"
 
+	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/pkg/errors"
-	"github.com/roblaszczak/gooddd/message"
 )
 
 func shouldFail(errorRatio float32) bool {

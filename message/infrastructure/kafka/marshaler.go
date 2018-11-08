@@ -1,8 +1,8 @@
 package kafka
 
 import (
+	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
-	"github.com/roblaszczak/gooddd/message"
 )
 
 type Marshaler interface {

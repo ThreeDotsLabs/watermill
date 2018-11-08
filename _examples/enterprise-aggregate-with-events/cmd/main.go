@@ -1,21 +1,22 @@
 package main
 
 import (
-	"github.com/roblaszczak/gooddd/_examples/enterprise-aggregate-with-events/shop/app/command"
-	"github.com/roblaszczak/gooddd/_examples/enterprise-aggregate-with-events/shop/infrastructure/cart"
-	cart2 "github.com/roblaszczak/gooddd/_examples/enterprise-aggregate-with-events/shop/domain/cart"
-	"github.com/roblaszczak/gooddd/_examples/enterprise-aggregate-with-events/shop/domain/product"
-	"github.com/roblaszczak/gooddd/domain/eventstore"
-	"github.com/roblaszczak/gooddd/domain"
-	"github.com/roblaszczak/gooddd/pubsub/infrastructure/gochannel"
-	"time"
-	"github.com/roblaszczak/gooddd/_examples/enterprise-aggregate-with-events/delivery/interfaces"
-	"github.com/roblaszczak/gooddd/msghandler"
 	"database/sql"
+	"encoding/json"
+	"time"
+
+	"github.com/ThreeDotsLabs/watermill/_examples/enterprise-aggregate-with-events/delivery/interfaces"
+	"github.com/ThreeDotsLabs/watermill/_examples/enterprise-aggregate-with-events/shop/app/command"
+	cart2 "github.com/ThreeDotsLabs/watermill/_examples/enterprise-aggregate-with-events/shop/domain/cart"
+	"github.com/ThreeDotsLabs/watermill/_examples/enterprise-aggregate-with-events/shop/domain/order"
+	"github.com/ThreeDotsLabs/watermill/_examples/enterprise-aggregate-with-events/shop/domain/product"
+	"github.com/ThreeDotsLabs/watermill/_examples/enterprise-aggregate-with-events/shop/infrastructure/cart"
+	"github.com/ThreeDotsLabs/watermill/components/domain"
+	"github.com/ThreeDotsLabs/watermill/components/domain/eventstore"
+	"github.com/ThreeDotsLabs/watermill/msghandler"
+	"github.com/ThreeDotsLabs/watermill/pubsub/infrastructure/gochannel"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/satori/go.uuid"
-	"github.com/roblaszczak/gooddd/_examples/enterprise-aggregate-with-events/shop/domain/order"
-	"encoding/json"
 )
 
 // todo - cleanup imports
@@ -62,9 +63,9 @@ func main() {
 		return uuid.NewV4().String()
 	})
 
-	router := msghandler.NewRouter(pubSub)
-	interfaces.SetupInterfaces(router)
-	go router.Run()
+	handler := msghandler.NewHandler(pubSub)
+	interfaces.SetupInterfaces(handler)
+	go handler.Run()
 
 	time.Sleep(time.Second * 2)
 

@@ -6,25 +6,25 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
+	"github.com/ThreeDotsLabs/watermill/message/router/plugin"
 	"github.com/pkg/errors"
-	"github.com/roblaszczak/gooddd/message/router/middleware"
-	"github.com/roblaszczak/gooddd/message/router/plugin"
 
 	"log"
 	"net/http"
 	"os"
 
+	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/deathowl/go-metrics-prometheus"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rcrowley/go-metrics"
-	"github.com/roblaszczak/gooddd/message"
 
 	_ "net/http/pprof"
 
-	"github.com/roblaszczak/gooddd"
-	kafka2 "github.com/roblaszczak/gooddd/message/infrastructure/kafka"
-	"github.com/roblaszczak/gooddd/message/infrastructure/kafka/marshal"
+	"github.com/ThreeDotsLabs/watermill"
+	kafka2 "github.com/ThreeDotsLabs/watermill/message/infrastructure/kafka"
+	"github.com/ThreeDotsLabs/watermill/message/infrastructure/kafka/marshal"
 	"github.com/satori/go.uuid"
 )
 
@@ -112,8 +112,8 @@ func main() {
 		log.Println(http.ListenAndServe("localhost:6060", nil))
 	}()
 
-	logger := gooddd.NewStdLogger(true, true)
-	//logger := gooddd.NopLogger{}
+	logger := watermill.NewStdLogger(true, true)
+	//logger := watermill.NopLogger{}
 
 	t := metrics.NewTimer()
 	metrics.Register("handler.time", t)

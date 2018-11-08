@@ -1,8 +1,8 @@
 package middleware_test
 
 import (
+	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/pkg/errors"
-	"github.com/roblaszczak/gooddd/message"
 	"github.com/satori/go.uuid"
 )
 

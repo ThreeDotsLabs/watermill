@@ -1,8 +1,8 @@
 package middleware
 
 import (
+	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/pkg/errors"
-	"github.com/roblaszczak/gooddd/message"
 )
 
 func Recoverer(h message.HandlerFunc) message.HandlerFunc {

@@ -1,8 +1,8 @@
 package sync
 
 import (
-	"time"
 	"sync"
+	"time"
 )
 
 func WaitGroupTimeout(wg *sync.WaitGroup, timeout time.Duration) bool {

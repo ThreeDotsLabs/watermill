@@ -1,7 +1,7 @@
 package domain
 
 type EventProducer struct {
-	events  []Event
+	events []Event
 }
 
 func (e *EventProducer) RecordThat(event Event) {

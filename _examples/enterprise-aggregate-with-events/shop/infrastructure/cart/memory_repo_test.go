@@ -2,10 +2,12 @@ package cart
 
 import (
 	"testing"
+
+	cartDomain "github.com/ThreeDotsLabs/watermill/_examples/enterprise-aggregate-with-events/shop/domain/cart"
+	cartInfra "github.com/ThreeDotsLabs/watermill/_examples/enterprise-aggregate-with-events/shop/infrastructurecture/cart"
 	"github.com/stretchr/testify/assert"
-	cartDomain "github.com/roblaszczak/gooddd/_examples/enterprise-aggregate-with-events/shop/domain/cart"
-	cartInfra "github.com/roblaszczak/gooddd/_examples/enterprise-aggregate-with-events/shop/infrastructurecture/cart"
 )
+
 // todo - snake case?
 
 func TestRepository(t *testing.T) {

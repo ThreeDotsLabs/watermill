@@ -5,7 +5,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/roblaszczak/gooddd/message"
+	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -2,10 +2,11 @@ package cart
 
 import (
 	"testing"
+
+	"github.com/ThreeDotsLabs/watermill/_examples/enterprise-aggregate-with-events/shop/domain/cart"
+	"github.com/ThreeDotsLabs/watermill/_examples/enterprise-aggregate-with-events/shop/domain/product"
+	"github.com/ThreeDotsLabs/watermill/components/domain"
 	"github.com/stretchr/testify/assert"
-	"github.com/roblaszczak/gooddd/domain"
-	"github.com/roblaszczak/gooddd/_examples/enterprise-aggregate-with-events/shop/domain/cart"
-	"github.com/roblaszczak/gooddd/_examples/enterprise-aggregate-with-events/shop/domain/product"
 )
 
 func TestNewCart(t *testing.T) {

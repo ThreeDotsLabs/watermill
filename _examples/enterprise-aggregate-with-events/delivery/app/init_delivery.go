@@ -3,8 +3,8 @@ package app
 // todo - doc that we are using only app
 
 import (
+	"github.com/ThreeDotsLabs/watermill/components/domain"
 	"github.com/pkg/errors"
-	"github.com/roblaszczak/gooddd/domain"
 	"github.com/satori/go.uuid"
 )
 
