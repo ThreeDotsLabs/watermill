@@ -32,37 +32,38 @@ func NewCustomPublisher(producer *kafka.Producer, marshaler Marshaler) (message.
 	return &confluentPublisher{producer, marshaler, false}, nil
 }
 
-func (p confluentPublisher) Publish(topic string, msg *message.Message) error {
-	kafkaMsg, err := p.marshaler.Marshal(topic, msg)
-	if err != nil {
-		return errors.Wrapf(err, "cannot marshal message %s", msg.UUID)
-	}
+func (p confluentPublisher) Publish(topic string, msgs ...*message.Message) error {
+	for _, msg := range msgs {
+		kafkaMsg, err := p.marshaler.Marshal(topic, msg)
+		if err != nil {
+			return errors.Wrapf(err, "cannot marshal message %s", msg.UUID)
+		}
 
-	deliveryChan := make(chan kafka.Event)
-	defer close(deliveryChan)
+		deliveryChan := make(chan kafka.Event)
+		defer close(deliveryChan)
 
-	// todo - check that it is blocking?
-	if err := p.producer.Produce(kafkaMsg, deliveryChan); err != nil {
-		return errors.Wrapf(err, "cannot produce message %s", msg.UUID)
-	}
+		if err := p.producer.Produce(kafkaMsg, deliveryChan); err != nil {
+			return errors.Wrapf(err, "cannot produce message %s", msg.UUID)
+		}
 
-	e := <-deliveryChan
-	m := e.(*kafka.Message)
-	//
-	if m.TopicPartition.Error != nil {
-		return errors.Wrapf(m.TopicPartition.Error, "delivery of message %s failed", msg.UUID)
+		e := <-deliveryChan
+		m := e.(*kafka.Message)
+		//
+		if m.TopicPartition.Error != nil {
+			return errors.Wrapf(m.TopicPartition.Error, "delivery of message %s failed", msg.UUID)
+		}
+
 	}
 
 	return nil
 }
 
-func (p *confluentPublisher) ClosePublisher() error {
+func (p *confluentPublisher) Close() error {
 	if p.closed {
 		return nil
 	}
 	p.closed = true
 
-	// todo - test that close ensure that all messages are sent
 	p.producer.Close()
 
 	return nil

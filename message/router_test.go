@@ -1,15 +1,15 @@
-package message
+package message_test
 
 import (
 	"fmt"
 	"testing"
 	"time"
 
+	"github.com/ThreeDotsLabs/watermill/message/infrastructure/gochannel"
+
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/internal/tests"
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure/kafka"
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure/kafka/marshal"
 	"github.com/ThreeDotsLabs/watermill/message/subscriber"
 	"github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"
@@ -27,13 +27,22 @@ func TestRouter_Functional(t *testing.T) {
 	}()
 
 	messagesCount := 100
-	expectedReceivedMessages := publishMessagesForHandler(t, messagesCount, pubSub, topicName)
+
+	var expectedReceivedMessages message.Messages
+	allMessagesSent := make(chan struct{})
+	go func() {
+		expectedReceivedMessages = publishMessagesForHandler(t, messagesCount, pubSub, topicName)
+		allMessagesSent <- struct{}{}
+	}()
 
 	receivedMessagesCh1 := make(chan *message.Message, messagesCount)
 	receivedMessagesCh2 := make(chan *message.Message, messagesCount)
 	sentByHandlerCh := make(chan *message.Message, messagesCount)
 
 	publishedEventsTopic := "published_events_" + testID
+	publishedByHandlerCh, err := pubSub.Subscribe(publishedEventsTopic, "test")
+	require.NoError(t, err)
+
 	h, err := message.NewRouter(
 		message.RouterConfig{
 			ServerName:         "test_" + testID,
@@ -49,7 +58,6 @@ func TestRouter_Functional(t *testing.T) {
 		topicName,
 		func(msg *message.Message) (producedMessages []*message.Message, err error) {
 			receivedMessagesCh1 <- msg
-			msg.Ack()
 
 			toPublish := message.NewMessage(uuid.NewV4().String(), nil)
 			sentByHandlerCh <- toPublish
@@ -64,7 +72,6 @@ func TestRouter_Functional(t *testing.T) {
 		topicName,
 		func(msg *message.Message) (producedMessages []*message.Message, err error) {
 			receivedMessagesCh2 <- msg
-			msg.Ack()
 			return nil, nil
 		},
 	)
@@ -74,6 +81,8 @@ func TestRouter_Functional(t *testing.T) {
 	defer func() {
 		assert.NoError(t, h.Close())
 	}()
+
+	<-allMessagesSent
 
 	expectedSentByHandler, all := readMessages(sentByHandlerCh, len(expectedReceivedMessages), time.Second*10)
 	require.True(t, all)
@@ -86,8 +95,6 @@ func TestRouter_Functional(t *testing.T) {
 	require.True(t, all)
 	tests.AssertAllMessagesReceived(t, expectedReceivedMessages, receivedMessages2)
 
-	publishedByHandlerCh, err := pubSub.Subscribe(publishedEventsTopic, "test")
-	require.NoError(t, err)
 	publishedByHandler, all := subscriber.BulkRead(publishedByHandlerCh, len(expectedReceivedMessages), time.Second*10)
 	require.True(t, all)
 	tests.AssertAllMessagesReceived(t, expectedSentByHandler, publishedByHandler)
@@ -112,24 +119,7 @@ func publishMessagesForHandler(t *testing.T, messagesCount int, pubSub message.P
 }
 
 func createPubSub() (message.PubSub, error) {
-	brokers := []string{"localhost:9092"}
-	marshaler := marshal.ConfluentKafka{}
-	logger := watermill.NewStdLogger(true, true)
-
-	pub, err := kafka.NewPublisher(brokers, marshaler)
-	if err != nil {
-		return nil, err
-	}
-
-	sub, err := kafka.NewConfluentSubscriber(kafka.SubscriberConfig{
-		Brokers:        brokers,
-		ConsumersCount: 8,
-	}, marshaler, logger)
-	if err != nil {
-		return nil, err
-	}
-
-	return message.NewPubSub(pub, sub), nil
+	return gochannel.NewGoChannel(0, watermill.NewStdLogger(true, true), time.Second*10), nil
 }
 
 func readMessages(messagesCh <-chan *message.Message, limit int, timeout time.Duration) (receivedMessages []*message.Message, all bool) {

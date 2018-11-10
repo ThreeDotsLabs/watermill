@@ -2,10 +2,9 @@ package message
 
 import "github.com/pkg/errors"
 
-// todo - pass pubsub only where all methods are needed
 type PubSub interface {
-	Publisher
-	Subscriber
+	publisher
+	subscriber
 
 	Close() error
 }
@@ -16,8 +15,8 @@ type pubSub struct {
 }
 
 func (p pubSub) Close() error {
-	publisherErr := p.Publisher.ClosePublisher()
-	subscriberErr := p.Subscriber.CloseSubscriber()
+	publisherErr := p.Publisher.Close()
+	subscriberErr := p.Subscriber.Close()
 
 	if publisherErr == nil && subscriberErr == nil {
 		return nil

@@ -1,6 +1,10 @@
 package message
 
+type publisher interface {
+	Publish(topic string, messages ...*Message) error
+}
+
 type Publisher interface {
-	Publish(topic string, messages *Message) error
-	ClosePublisher() error
+	publisher
+	Close() error
 }

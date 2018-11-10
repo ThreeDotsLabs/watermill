@@ -3,33 +3,26 @@ package middleware
 import (
 	"time"
 
+	"github.com/ThreeDotsLabs/watermill"
+
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
 const RetryForever = -1
 
-// todo - pass context/metadata
 type OnRetryHook func(retryNum int, delay time.Duration)
 
-// todo - doc
-// todo - constructors (infinite retry, backoff (??), etc.)
-// todo - tests
-// todo - support for invalid messages (to not retry)
-// todo - support for backoff
 type Retry struct {
 	MaxRetries int
-	//MaxDelay    time.Duration todo
-	WaitTime    time.Duration
+
+	WaitTime time.Duration
+	Backoff  int64
+
+	MaxDelay time.Duration
+
 	OnRetryHook OnRetryHook
 
-	// todo - wait time strategy
-}
-
-func NewRetry() *Retry {
-	return &Retry{
-		MaxRetries: RetryForever,
-		WaitTime:   time.Millisecond * 100,
-	}
+	Logger watermill.LoggerAdapter
 }
 
 func (r Retry) Middleware(h message.HandlerFunc) message.HandlerFunc {
@@ -37,17 +30,44 @@ func (r Retry) Middleware(h message.HandlerFunc) message.HandlerFunc {
 		retries := 0
 
 		for {
-			// todo - what if events aren't empty? global error?
 			events, err := h(message)
-			if err != nil && (retries <= r.MaxRetries || r.MaxRetries == RetryForever) {
-				// todo - move to func
+			if r.shouldRetry(err, retries) {
+				waitTime := r.calculateWaitTime()
+
+				if r.Logger != nil {
+					r.Logger.Error("Error occurred, retrying", err, watermill.LogFields{
+						"retry_no":    retries,
+						"max_retries": r.MaxRetries,
+						"wait_time":   waitTime,
+					})
+				}
+
 				retries++
-				time.Sleep(r.WaitTime)
-				r.OnRetryHook(retries, r.WaitTime)
+				time.Sleep(waitTime)
+
+				if r.OnRetryHook != nil {
+					r.OnRetryHook(retries, r.WaitTime)
+
+				}
+
 				continue
 			}
 
 			return events, err
 		}
 	}
+}
+
+func (r Retry) calculateWaitTime() time.Duration {
+	waitTime := r.WaitTime + (r.WaitTime * time.Duration(r.Backoff))
+
+	if r.MaxDelay != 0 && waitTime > r.MaxDelay {
+		return r.MaxDelay
+	}
+
+	return waitTime
+}
+
+func (r Retry) shouldRetry(err error, retries int) bool {
+	return err != nil && (retries <= r.MaxRetries || r.MaxRetries == RetryForever)
 }

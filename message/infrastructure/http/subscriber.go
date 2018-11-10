@@ -22,7 +22,6 @@ type Subscriber struct {
 	outputChannelsLock sync.Locker
 }
 
-// todo - test
 func NewSubscriber(addr string, unmarshalMessageFunc UnmarshalMessageFunc, logger watermill.LoggerAdapter) (message.Subscriber, error) {
 	r := chi.NewRouter()
 	s := &http.Server{Addr: addr, Handler: r}
@@ -58,7 +57,7 @@ func (s *Subscriber) Subscribe(topic string, consumerGroup message.ConsumerGroup
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		logFields := baseLogFields.Add(watermill.LogFields{"message_id": msg.UUID})
+		logFields := baseLogFields.Add(watermill.LogFields{"message_uuid": msg.UUID})
 
 		s.logger.Trace("Sending msg", logFields)
 		messages <- msg
@@ -82,7 +81,7 @@ func (s *Subscriber) Subscribe(topic string, consumerGroup message.ConsumerGroup
 	return messages, nil
 }
 
-func (s Subscriber) CloseSubscriber() error {
+func (s Subscriber) Close() error {
 	defer func() {
 		for _, ch := range s.outputChannels {
 			close(ch)

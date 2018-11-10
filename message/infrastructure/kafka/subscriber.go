@@ -197,7 +197,7 @@ func (s *confluentSubscriber) Subscribe(topic string, group message.ConsumerGrou
 						}
 
 						receivedMsgLogFields = receivedMsgLogFields.Add(watermill.LogFields{
-							"message_id": msg.UUID,
+							"message_uuid": msg.UUID,
 						})
 
 						s.logger.Trace("Kafka message unmarshalled, sending to output", receivedMsgLogFields)
@@ -239,8 +239,8 @@ func (s *confluentSubscriber) Subscribe(topic string, group message.ConsumerGrou
 								break AckLoop
 							case <-msg.Nacked():
 								s.logger.Info(
-									"Message error from ACK",
-									receivedMsgLogFields.Add(watermill.LogFields{"err": err}),
+									"Nack sent",
+									receivedMsgLogFields,
 								)
 								s.rollback(consumer, e.TopicPartition)
 								break AckLoop
@@ -305,7 +305,7 @@ func (s *confluentSubscriber) rollback(consumer *kafka.Consumer, partition kafka
 	}
 }
 
-func (s *confluentSubscriber) CloseSubscriber() error {
+func (s *confluentSubscriber) Close() error {
 	if s.closed {
 		return nil
 	}
@@ -340,6 +340,6 @@ func (s *noGroupconfluentSubscriber) SubscribeNoGroup(topic string) (chan *messa
 	return s.confluentSubscriber.Subscribe(topic, "")
 }
 
-func (s *noGroupconfluentSubscriber) CloseSubscriber() error {
-	return s.confluentSubscriber.CloseSubscriber()
+func (s *noGroupconfluentSubscriber) Close() error {
+	return s.confluentSubscriber.Close()
 }

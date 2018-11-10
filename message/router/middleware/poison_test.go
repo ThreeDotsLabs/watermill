@@ -34,7 +34,7 @@ func TestPoisonQueue_handler_failing(t *testing.T) {
 	poisonQueue, err := middleware.NewPoisonQueue(&poisonPublisher, topic)
 	require.NoError(t, err)
 
-	msg := message.NewMessage("uuid", nil)
+	msg := message.NewMessage("uuid", []byte("payload"))
 	produced, err := poisonQueue.Middleware(handlerFuncAlwaysFailing)(
 		msg,
 	)
@@ -49,7 +49,8 @@ func TestPoisonQueue_handler_failing(t *testing.T) {
 	poisonMsgs := poisonPublisher.PopMessages()
 	require.Len(t, poisonMsgs, 1)
 
-	// todo: no idea how to check if proper payload is passed; see mockConsumedMessage.UnmarshalPayload to see why
+	assert.Equal(t, msg.Payload, poisonMsgs[0].Payload)
+
 	// there should be additional metadata telling why the message was poisoned
 	// it should be the error that the handler failed with
 	assert.Equal(t, errFailed.Error(), poisonMsgs[0].Metadata.Get(middleware.ReasonForPoisonedKey))

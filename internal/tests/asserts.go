@@ -1,7 +1,6 @@
 package tests
 
 import (
-	"fmt"
 	"sort"
 	"testing"
 
@@ -40,9 +39,7 @@ func AssertAllMessagesReceived(t *testing.T, sent message.Messages, received mes
 	sort.Strings(sentIDs)
 	sort.Strings(receivedIDs)
 
-	fmt.Println(difference(sentIDs, receivedIDs))
-
-	return assert.EqualValues(t, receivedIDs, sentIDs)
+	return assert.Equal(t, sentIDs, receivedIDs)
 }
 
 func AssertMessagesPayloads(

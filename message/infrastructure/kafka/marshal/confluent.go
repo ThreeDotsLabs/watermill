@@ -7,12 +7,17 @@ import (
 	"github.com/pkg/errors"
 )
 
-// todo - rename
-type ConfluentKafka struct{}
+const UUIDHeaderKey = "_watermill_message_uuid"
 
-func (ConfluentKafka) Marshal(topic string, msg *message.Message) (*confluentKafka.Message, error) {
+type KafkaJson struct{}
+
+func (KafkaJson) Marshal(topic string, msg *message.Message) (*confluentKafka.Message, error) {
+	if value := msg.Metadata.Get(UUIDHeaderKey); value != "" {
+		return nil, errors.Errorf("metadata %s is reserved by watermil for message UUID", UUIDHeaderKey)
+	}
+
 	headers := []confluentKafka.Header{{
-		Key:   "uuid", // todo - make it reserved
+		Key:   UUIDHeaderKey,
 		Value: []byte(msg.UUID),
 	}}
 	for key, value := range msg.Metadata {
@@ -29,12 +34,12 @@ func (ConfluentKafka) Marshal(topic string, msg *message.Message) (*confluentKaf
 	}, nil
 }
 
-func (ConfluentKafka) Unmarshal(kafkaMsg *confluentKafka.Message) (*message.Message, error) {
+func (KafkaJson) Unmarshal(kafkaMsg *confluentKafka.Message) (*message.Message, error) {
 	var messageID string
 	metadata := make(message.Metadata, len(kafkaMsg.Headers))
 
 	for _, header := range kafkaMsg.Headers {
-		if header.Key == "uuid" {
+		if header.Key == UUIDHeaderKey {
 			messageID = string(header.Value)
 		} else {
 			metadata.Set(header.Key, string(header.Value))
@@ -52,19 +57,18 @@ func (ConfluentKafka) Unmarshal(kafkaMsg *confluentKafka.Message) (*message.Mess
 
 type GeneratePartitionKey func(topic string, msg *message.Message) (string, error)
 
-// todo - check that working and make sense?
-type jsonWithPartitioning struct {
-	ConfluentKafka
+type kafkaJsonWithPartitioning struct {
+	KafkaJson
 
 	generatePartitionKey GeneratePartitionKey
 }
 
-func NewJsonWithPartitioning(generatePartitionKey GeneratePartitionKey) kafka.MarshalerUnmarshaler {
-	return jsonWithPartitioning{generatePartitionKey: generatePartitionKey}
+func NewKafkaJsonWithPartitioning(generatePartitionKey GeneratePartitionKey) kafka.MarshalerUnmarshaler {
+	return kafkaJsonWithPartitioning{generatePartitionKey: generatePartitionKey}
 }
 
-func (j jsonWithPartitioning) Marshal(topic string, msg *message.Message) (*confluentKafka.Message, error) {
-	kafkaMsg, err := j.ConfluentKafka.Marshal(topic, msg)
+func (j kafkaJsonWithPartitioning) Marshal(topic string, msg *message.Message) (*confluentKafka.Message, error) {
+	kafkaMsg, err := j.KafkaJson.Marshal(topic, msg)
 	if err != nil {
 		return nil, err
 	}

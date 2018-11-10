@@ -1,7 +1,9 @@
-package message
+package message_test
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/stretchr/testify/assert"
 
@@ -10,7 +12,7 @@ import (
 
 func TestMessage_Ack(t *testing.T) {
 	msg := &message.Message{}
-	msg.Ack()
+	require.NoError(t, msg.Ack())
 
 	assertAcked(t, msg)
 	assertNoNack(t, msg)
@@ -18,24 +20,22 @@ func TestMessage_Ack(t *testing.T) {
 
 func TestMessage_Ack_idempotent(t *testing.T) {
 	msg := &message.Message{}
-	msg.Ack()
-	msg.Ack()
+	require.NoError(t, msg.Ack())
+	require.NoError(t, msg.Ack())
 
 	assertAcked(t, msg)
 }
 
 func TestMessage_Ack_already_Nack(t *testing.T) {
 	msg := &message.Message{}
-	msg.Nack()
+	require.NoError(t, msg.Nack())
 
-	assert.Panics(t, func() {
-		msg.Ack()
-	})
+	assert.Equal(t, message.ErrAlreadyNacked, msg.Ack())
 }
 
 func TestMessage_Nack(t *testing.T) {
 	msg := &message.Message{}
-	msg.Nack()
+	require.NoError(t, msg.Nack())
 
 	assertNoAck(t, msg)
 	assertNacked(t, msg)
@@ -43,19 +43,17 @@ func TestMessage_Nack(t *testing.T) {
 
 func TestMessage_Nack_idempotent(t *testing.T) {
 	msg := &message.Message{}
-	msg.Nack()
-	msg.Nack()
+	require.NoError(t, msg.Nack())
+	require.NoError(t, msg.Nack())
 
 	assertNacked(t, msg)
 }
 
 func TestMessage_Nack_already_Ack(t *testing.T) {
 	msg := &message.Message{}
-	msg.Ack()
+	require.NoError(t, msg.Ack())
 
-	assert.Panics(t, func() {
-		msg.Nack()
-	})
+	assert.Equal(t, message.ErrAlreadyAcked, msg.Nack())
 }
 
 func assertAcked(t *testing.T, msg *message.Message) {

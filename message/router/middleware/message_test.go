@@ -27,7 +27,7 @@ type mockPublisher struct {
 	produced []*message.Message
 }
 
-func (mp *mockPublisher) Publish(topic string, message *message.Message) error {
+func (mp *mockPublisher) Publish(topic string, messages ...*message.Message) error {
 	if mp.closed {
 		return errClosed
 	}
@@ -40,11 +40,11 @@ func (mp *mockPublisher) Publish(topic string, message *message.Message) error {
 		panic(errPanicked)
 	}
 
-	mp.produced = append(mp.produced, message)
+	mp.produced = append(mp.produced, messages...)
 	return nil
 }
 
-func (mp *mockPublisher) ClosePublisher() error {
+func (mp *mockPublisher) Close() error {
 	mp.closed = true
 	return nil
 }

@@ -2,6 +2,8 @@ package message
 
 import (
 	"sync"
+
+	"github.com/pkg/errors"
 )
 
 var closedchan = make(chan struct{})
@@ -9,6 +11,11 @@ var closedchan = make(chan struct{})
 func init() {
 	close(closedchan)
 }
+
+var (
+	ErrAlreadyAcked  = errors.New("message already acked")
+	ErrAlreadyNacked = errors.New("message already nacked")
+)
 
 type Payload []byte
 
@@ -43,15 +50,15 @@ const (
 	nack
 )
 
-func (m *Message) Ack() {
+func (m *Message) Ack() error {
 	m.ackMutex.Lock()
 	defer m.ackMutex.Unlock()
 
 	if m.ackSent == nack {
-		panic("already Nacked")
+		return ErrAlreadyNacked
 	}
 	if m.ackSent != noAckSent {
-		return
+		return nil
 	}
 
 	m.ackSent = ack
@@ -60,17 +67,19 @@ func (m *Message) Ack() {
 	} else {
 		close(m.ack)
 	}
+
+	return nil
 }
 
-func (m *Message) Nack() {
+func (m *Message) Nack() error {
 	m.ackMutex.Lock()
 	defer m.ackMutex.Unlock()
 
 	if m.ackSent == ack {
-		panic("already Acked")
+		return ErrAlreadyAcked
 	}
 	if m.ackSent != noAckSent {
-		return
+		return nil
 	}
 
 	m.ackSent = nack
@@ -80,6 +89,8 @@ func (m *Message) Nack() {
 	} else {
 		close(m.noAck)
 	}
+
+	return nil
 }
 
 func (m *Message) Acked() <-chan struct{} {

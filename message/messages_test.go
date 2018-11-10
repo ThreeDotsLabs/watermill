@@ -1,4 +1,4 @@
-package message
+package message_test
 
 import (
 	"testing"

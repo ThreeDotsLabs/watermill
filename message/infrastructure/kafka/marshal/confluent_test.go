@@ -3,17 +3,15 @@ package marshal_test
 import (
 	"testing"
 
-	"github.com/Shopify/sarama"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/kafka/marshal"
-	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestJson(t *testing.T) {
-	m := marshal.ConfluentKafka{}
+	m := marshal.KafkaJson{}
 
 	msg := message.NewMessage(uuid.NewV4().String(), []byte("payload"))
 	msg.Metadata.Set("foo", "bar")
@@ -30,52 +28,25 @@ func TestJson(t *testing.T) {
 }
 
 func TestJsonWithPartitioning(t *testing.T) {
-	// todo - fix
-	//type payload struct {
-	//	Foo string
-	//	Key string
-	//}
-	//
-	//m := marshal.NewJsonWithPartitioning(func(topic string, msg message.Message) (string, error) {
-	//	p := msg.Payload().(payload)
-	//	return p.Key, nil
-	//})
-	//
-	//msgPayload := payload{"bar", "1"}
-	//msg := message.NewMessage(uuid.NewV4().String(), msgPayload)
-	//msg.SetMetadata("foo", "bar")
-	//
-	//producerMsg, err := m.Marshal("topic", msg)
-	//require.NoError(t, err)
-	//
-	//confluentMsg := saramaMessageToConfluentMessage(producerMsg)
-	//
-	//unmarshaledMsg, err := m.Unmarshal(confluentMsg)
-	//require.NoError(t, err)
-	//
-	//assert.EqualValues(t, msg.UUID(), unmarshaledMsg.UUID())
-	//assert.EqualValues(t, msg.AllMetadata(), unmarshaledMsg.AllMetadata())
-	//
-	//unmarshaledPayload := payload{}
-	//unmarshaledMsg.UnmarshalPayload(&unmarshaledPayload)
-	//
-	//assert.Equal(t, msgPayload, unmarshaledPayload)
-	//
-	//msgKey, err := producerMsg.Key.Encode()
-	//assert.NoError(t, err)
-	//assert.Equal(t, string(msgKey), msgPayload.Key)
-}
+	m := marshal.NewKafkaJsonWithPartitioning(func(topic string, msg *message.Message) (string, error) {
+		return msg.Metadata.Get("partition"), nil
+	})
 
-func saramaMessageToConfluentMessage(producerMsg *sarama.ProducerMessage) *kafka.Message {
-	value, _ := producerMsg.Value.Encode()
+	partitionKey := "1"
+	msg := message.NewMessage(uuid.NewV4().String(), []byte("payload"))
+	msg.Metadata.Set("partition", partitionKey)
 
-	var key []byte
-	if producerMsg.Key != nil {
-		key, _ = producerMsg.Key.Encode()
-	}
+	producerMsg, err := m.Marshal("topic", msg)
+	require.NoError(t, err)
 
-	return &kafka.Message{
-		Value: value,
-		Key:   key,
-	}
+	unmarshaledMsg, err := m.Unmarshal(producerMsg)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, msg.UUID, unmarshaledMsg.UUID)
+	assert.EqualValues(t, msg.Metadata, unmarshaledMsg.Metadata)
+
+	assert.Equal(t, msg.Payload, unmarshaledMsg.Payload)
+
+	assert.NoError(t, err)
+	assert.Equal(t, string(producerMsg.Key), partitionKey)
 }

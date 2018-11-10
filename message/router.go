@@ -41,12 +41,19 @@ func (c *RouterConfig) setDefaults() {
 }
 
 func (c RouterConfig) Validate() error {
-	if c.ServerName == "" {
-		return errors.New("empty ServerName")
+	if err := c.ValidateNoPublisher(); err != nil {
+		return err
 	}
 	if c.PublishEventsTopic == "" {
-		// todo - create router without PublishEventsTopic
 		return errors.New("empty PublishEventsTopic")
+	}
+
+	return nil
+}
+
+func (c RouterConfig) ValidateNoPublisher() error {
+	if c.ServerName == "" {
+		return errors.New("empty ServerName")
 	}
 
 	return nil
@@ -58,11 +65,25 @@ func NewRouter(config RouterConfig, subscriber Subscriber, publisher Publisher) 
 		return nil, errors.Wrap(err, "invalid config")
 	}
 
+	r, err := NewRouterNoPublisher(config, subscriber)
+	if err != nil {
+		return nil, err
+	}
+	r.publisher = publisher
+
+	return r, nil
+}
+
+func NewRouterNoPublisher(config RouterConfig, subscriber Subscriber) (*Router, error) {
+	config.setDefaults()
+	if err := config.ValidateNoPublisher(); err != nil {
+		return nil, errors.Wrap(err, "invalid config")
+	}
+
 	return &Router{
 		config: config,
 
 		subscriber: subscriber,
-		publisher:  publisher,
 
 		handlers: map[string]*handler{},
 
@@ -193,39 +214,7 @@ func (r *Router) Run() (err error) {
 			}
 
 			for msg := range s.messagesCh {
-				r.runningHandlersWg.Add(1)
-
-				go func(msg *Message) {
-					defer r.runningHandlersWg.Done()
-
-					msgFields := watermill.LogFields{"message_uuid": msg.UUID}
-
-					r.Logger.Trace("Received message", msgFields)
-
-					producedMessages, err := middlewareHandler(msg)
-					if err != nil {
-						// this message should be handled by middlewares, what to do with it? todo
-						msg.Nack()
-						return
-					}
-
-					if len(producedMessages) > 0 {
-						r.Logger.Trace("Sending produced messages", msgFields.Add(watermill.LogFields{
-							"produced_messages_count": len(producedMessages),
-						}))
-
-						for _, msg := range producedMessages {
-							if err := r.publisher.Publish(r.config.PublishEventsTopic, msg); err != nil {
-								// todo - how to deal with it better?
-								r.Logger.Error("cannot publish message", err, msgFields.Add(watermill.LogFields{
-									"not_sent_message": fmt.Sprintf("%#v", producedMessages),
-								}))
-							}
-						}
-					}
-
-					r.Logger.Trace("Message processed", msgFields)
-				}(msg)
+				r.handleMessage(msg, middlewareHandler)
 			}
 
 			r.handlersWg.Done()
@@ -239,13 +228,13 @@ func (r *Router) Run() (err error) {
 	<-r.closeCh
 
 	r.Logger.Debug("Waiting for subscriber to close", nil)
-	if err := r.subscriber.CloseSubscriber(); err != nil {
+	if err := r.subscriber.Close(); err != nil {
 		return errors.Wrap(err, "cannot close router")
 	}
 	r.Logger.Debug("Subscriber closed", nil)
 
 	r.Logger.Debug("Waiting for publisher to close", nil)
-	if err := r.publisher.ClosePublisher(); err != nil {
+	if err := r.publisher.Close(); err != nil {
 		return errors.Wrap(err, "cannot close router")
 	}
 	r.Logger.Debug("Publisher closed", nil)
@@ -269,4 +258,55 @@ func (r *Router) Close() error {
 	}
 
 	return nil
+}
+func (r *Router) handleMessage(msg *Message, handler HandlerFunc) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			r.Logger.Error("Panic recovered in handler", errors.Errorf("%s", recovered), nil)
+			msg.Nack()
+			return
+		}
+
+		msg.Ack()
+	}()
+
+	r.runningHandlersWg.Add(1)
+
+	go func(msg *Message) {
+		defer r.runningHandlersWg.Done()
+
+		msgFields := watermill.LogFields{"message_uuid": msg.UUID}
+
+		r.Logger.Trace("Received message", msgFields)
+
+		producedMessages, err := handler(msg)
+		if err != nil {
+			r.Logger.Error("Handler returned error", err, nil)
+			msg.Nack()
+			return
+		}
+
+		if len(producedMessages) > 0 {
+			if r.config.PublishEventsTopic == "" {
+				r.Logger.Error("Handler returned error", err, nil)
+				msg.Nack()
+				return
+			}
+
+			r.Logger.Trace("Sending produced messages", msgFields.Add(watermill.LogFields{
+				"produced_messages_count": len(producedMessages),
+			}))
+
+			for _, msg := range producedMessages {
+				if err := r.publisher.Publish(r.config.PublishEventsTopic, msg); err != nil {
+					// todo - how to deal with it better/transactional/retry?
+					r.Logger.Error("Cannot publish message", err, msgFields.Add(watermill.LogFields{
+						"not_sent_message": fmt.Sprintf("%#v", producedMessages),
+					}))
+				}
+			}
+		}
+
+		r.Logger.Trace("Message processed", msgFields)
+	}(msg)
 }

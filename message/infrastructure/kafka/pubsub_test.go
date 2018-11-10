@@ -14,17 +14,11 @@ import (
 var brokers = []string{"localhost:9092"}
 
 func generatePartitionKey(topic string, msg *message.Message) (string, error) {
-	return "", nil // todo - fix
-	//payload := infrastructure.MessageWithType{}
-	//if err := msg.UnmarshalPayload(&payload); err != nil {
-	//	return "", nil
-	//}
-	//
-	//return fmt.Sprintf("%d", payload.Type), nil
+	return msg.Metadata.Get("partition_key"), nil
 }
 
 func createPubSub(t *testing.T) message.PubSub {
-	marshaler := marshal.ConfluentKafka{}
+	marshaler := marshal.KafkaJson{}
 
 	publisher, err := kafka.NewPublisher(brokers, marshaler)
 	require.NoError(t, err)
@@ -45,7 +39,7 @@ func createPubSub(t *testing.T) message.PubSub {
 }
 
 func createPartitionedPubSub(t *testing.T) message.PubSub {
-	marshaler := marshal.NewJsonWithPartitioning(generatePartitionKey)
+	marshaler := marshal.NewKafkaJsonWithPartitioning(generatePartitionKey)
 
 	publisher, err := kafka.NewPublisher(brokers, marshaler)
 	require.NoError(t, err)
@@ -67,7 +61,7 @@ func createPartitionedPubSub(t *testing.T) message.PubSub {
 func createNoGroupSubscriberConstructor(t *testing.T) message.NoConsumerGroupSubscriber {
 	logger := watermill.NewStdLogger(true, true)
 
-	marshaler := marshal.ConfluentKafka{}
+	marshaler := marshal.KafkaJson{}
 
 	sub, err := kafka.NewNoConsumerGroupSubscriber(
 		kafka.SubscriberConfig{
@@ -89,6 +83,7 @@ func TestPublishSubscribe(t *testing.T) {
 			ConsumerGroups:      true,
 			ExactlyOnceDelivery: false,
 			GuaranteedOrder:     false,
+			Persistent:          true,
 		},
 		createPubSub,
 	)
@@ -101,6 +96,7 @@ func TestPublishSubscribe_ordered(t *testing.T) {
 			ConsumerGroups:      true,
 			ExactlyOnceDelivery: false,
 			GuaranteedOrder:     false,
+			Persistent:          true,
 		},
 		createPartitionedPubSub,
 	)

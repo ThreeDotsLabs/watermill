@@ -1,3 +1,5 @@
+// +build stress
+
 package kafka_test
 
 import (
@@ -13,6 +15,7 @@ func TestPublishSubscribe_stress(t *testing.T) {
 			ConsumerGroups:      true,
 			ExactlyOnceDelivery: false,
 			GuaranteedOrder:     false,
+			Persistent:          true,
 		},
 		createPubSub,
 	)
@@ -25,6 +28,7 @@ func TestPublishSubscribe_ordered_stress(t *testing.T) {
 			ConsumerGroups:      true,
 			ExactlyOnceDelivery: false,
 			GuaranteedOrder:     false,
+			Persistent:          true,
 		},
 		createPartitionedPubSub,
 	)

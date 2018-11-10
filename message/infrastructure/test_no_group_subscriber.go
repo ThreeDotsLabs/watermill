@@ -105,7 +105,7 @@ func testNoGroupSubscriberJoiningSubscribers(
 
 			go func() {
 				subscriber := noGroupSubscriberConstructor(t)
-				defer subscriber.CloseSubscriber()
+				defer subscriber.Close()
 
 				subscriberCreated <- struct{}{}
 
