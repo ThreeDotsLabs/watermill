@@ -5,7 +5,6 @@ import (
 	"runtime"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
@@ -34,16 +33,12 @@ type SubscriberConfig struct {
 	ConsumerGroup   string
 	AutoOffsetReset string
 
-	ConsumersCount      int
-	CloseCheckThreshold time.Duration
+	ConsumersCount int
 
 	KafkaConfigOverwrite kafka.ConfigMap
 }
 
 func (c *SubscriberConfig) setDefaults() {
-	if c.CloseCheckThreshold == 0 {
-		c.CloseCheckThreshold = time.Second * 1
-	}
 	if c.ConsumersCount == 0 {
 		c.ConsumersCount = runtime.NumCPU()
 	}
@@ -108,6 +103,8 @@ func DefaultConfluentConsumerConstructor(config SubscriberConfig) (*kafka.Consum
 	if config.ConsumerGroup != "" {
 		kafkaConfig.SetKey("group.id", config.ConsumerGroup)
 		kafkaConfig.SetKey("enable.auto.commit", true)
+
+		// to achieve at-least-once delivery we store offsets after processing of the message
 		kafkaConfig.SetKey("enable.auto.offset.store", false)
 
 	} else {
@@ -123,7 +120,6 @@ func DefaultConfluentConsumerConstructor(config SubscriberConfig) (*kafka.Consum
 	return kafka.NewConsumer(kafkaConfig)
 }
 
-// todo - review!!
 func (s *confluentSubscriber) Subscribe(topic string) (chan *message.Message, error) {
 	if s.closed {
 		return nil, errors.New("subscriber closed")
@@ -136,162 +132,39 @@ func (s *confluentSubscriber) Subscribe(topic string) (chan *message.Message, er
 	}
 	s.logger.Info("Subscribing to Kafka topic", logFields)
 
+	// we don't want to have buffered channel to not consume message from Kafka when consumer is not consuming
 	output := make(chan *message.Message, 0)
 
 	s.allSubscribersWg.Add(1)
 
-	consumersWg := &sync.WaitGroup{}
+	subscribersWg := &sync.WaitGroup{}
 
 	for i := 0; i < s.config.ConsumersCount; i++ {
-		consumer, err := s.consumerConstructor(s.config)
+		kafkaConsumer, err := s.createConsumer(topic)
 		if err != nil {
-			return nil, errors.Wrap(err, "cannot create consumer")
+			return nil, err
 		}
 
-		if err := consumer.SubscribeTopics([]string{topic}, nil); err != nil {
-			return nil, errors.Wrapf(err, "cannot subscribe topic %s", topic)
-		}
+		subscribersWg.Add(1)
+		go func() {
+			(&consumer{
+				config:   s.config,
+				consumer: kafkaConsumer,
+				consumerLogFields: logFields.Add(watermill.LogFields{
+					"consumer_no": i,
+				}),
+				outputChannel: output,
+				unmarshaler:   s.unmarshaler,
+				closing:       s.closing,
+				logger:        s.logger,
+			}).consumeMessages()
 
-		consumerLogFields := logFields.Add(watermill.LogFields{
-			"consumer_no": i,
-		})
-		s.logger.Debug("Starting messages consumer", consumerLogFields)
-
-		consumersWg.Add(1)
-		go func(events chan<- *message.Message, consumer *kafka.Consumer) {
-			defer func() {
-				if err := consumer.Close(); err != nil {
-					s.logger.Error("Cannot close consumer", err, consumerLogFields)
-				}
-
-				consumersWg.Done()
-				s.logger.Debug("Messages consumption consumer done", consumerLogFields)
-			}()
-
-		EventsLoop:
-			for {
-				select {
-				case <-s.closing:
-					s.logger.Debug("Closing message consumer", consumerLogFields)
-					return
-				default:
-					ev := consumer.Poll(100)
-					if ev == nil {
-						continue
-					}
-
-					switch e := ev.(type) {
-					case *kafka.Message:
-						if e.TopicPartition.Error != nil {
-							s.logger.Error("Partition error", e.TopicPartition.Error, consumerLogFields)
-							return
-						}
-
-						receivedMsgLogFields := consumerLogFields.Add(watermill.LogFields{
-							"kafka_partition":        e.TopicPartition.Partition,
-							"kafka_partition_offset": e.TopicPartition.Offset,
-						})
-						s.logger.Trace("Received message from Kafka", receivedMsgLogFields)
-
-						msg, err := s.unmarshaler.Unmarshal(e)
-						if err != nil {
-							s.logger.Error("Cannot deserialize message", err, receivedMsgLogFields)
-							continue EventsLoop
-						}
-
-						receivedMsgLogFields = receivedMsgLogFields.Add(watermill.LogFields{
-							"message_uuid": msg.UUID,
-						})
-
-						s.logger.Trace("Kafka message unmarshalled, sending to output", receivedMsgLogFields)
-
-						select {
-						case <-s.closing:
-							s.logger.Info(
-								"Message not sent and close received, making rollback",
-								receivedMsgLogFields,
-							)
-							s.rollback(consumer, e.TopicPartition)
-							continue
-						case events <- msg:
-							// ok
-						}
-
-						s.logger.Trace("Waiting for ACK", receivedMsgLogFields)
-
-					AckLoop:
-						for {
-							select {
-							// todo - make it in cleaner way
-							case <-msg.Acked():
-								s.logger.Trace("Message acknowledged", receivedMsgLogFields)
-
-								// todo - make it in cleaner way
-								if s.config.ConsumerGroup != "" {
-									stored, err := consumer.StoreOffsets([]kafka.TopicPartition{e.TopicPartition})
-									if err != nil {
-										s.logger.Error("Cannot store offsets", err, consumerLogFields)
-										s.rollback(consumer, e.TopicPartition)
-									} else {
-										s.logger.Trace(
-											"stored Kafka offsets",
-											receivedMsgLogFields.Add(watermill.LogFields{"stored_offsets": stored}),
-										)
-									}
-								}
-								break AckLoop
-							case <-msg.Nacked():
-								s.logger.Info(
-									"Nack sent",
-									receivedMsgLogFields,
-								)
-								s.rollback(consumer, e.TopicPartition)
-								break AckLoop
-							case <-time.After(s.config.CloseCheckThreshold):
-								s.logger.Info(
-									fmt.Sprintf("Ack not received after %s", s.config.CloseCheckThreshold),
-									receivedMsgLogFields,
-								)
-							}
-
-							// check close
-							select {
-							case <-s.closing:
-								s.logger.Info(
-									"Ack not received and received close",
-									receivedMsgLogFields,
-								)
-								s.rollback(consumer, e.TopicPartition) // todo - reactor occurance of rollback
-								continue EventsLoop
-							default:
-								s.logger.Trace(
-									"No close received, waiting for ACK",
-									receivedMsgLogFields,
-								)
-							}
-						}
-					case kafka.PartitionEOF:
-						s.logger.Trace("Reached end of partition", logFields)
-					case kafka.OffsetsCommitted:
-						s.logger.Trace("Offset committed", logFields.Add(watermill.LogFields{
-							"offsets": e.String(),
-						}))
-					default:
-						s.logger.Debug(
-							"Unsupported msg",
-							logFields.Add(watermill.LogFields{
-								"msg":      fmt.Sprintf("%#v", e),
-								"msg_type": fmt.Sprintf("%T", e),
-							}),
-						)
-					}
-				}
-			}
-		}(output, consumer)
+			subscribersWg.Done()
+		}()
 	}
 
 	go func() {
-		consumersWg.Wait()
+		subscribersWg.Wait()
 		s.logger.Debug("Closing message consumer", logFields)
 
 		close(output)
@@ -301,11 +174,17 @@ func (s *confluentSubscriber) Subscribe(topic string) (chan *message.Message, er
 	return output, nil
 }
 
-func (s *confluentSubscriber) rollback(consumer *kafka.Consumer, partition kafka.TopicPartition) {
-	if err := consumer.Seek(partition, 1000*60); err != nil {
-		// todo - how to handle?
-		panic(err)
+func (s *confluentSubscriber) createConsumer(topic string) (*kafka.Consumer, error) {
+	consumer, err := s.consumerConstructor(s.config)
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot create consumer")
 	}
+
+	if err := consumer.SubscribeTopics([]string{topic}, nil); err != nil {
+		return nil, errors.Wrapf(err, "cannot subscribe topic %s", topic)
+	}
+
+	return consumer, nil
 }
 
 func (s *confluentSubscriber) Close() error {
@@ -320,4 +199,179 @@ func (s *confluentSubscriber) Close() error {
 	s.logger.Debug("Kafka subscriber closed", nil)
 
 	return nil
+}
+
+var (
+	ErrClosingConsumer = errors.New("closing subscriber")
+	ErrNackReceived    = errors.New("closing subscriber")
+)
+
+type consumer struct {
+	config SubscriberConfig
+
+	consumer          *kafka.Consumer
+	consumerLogFields watermill.LogFields
+	outputChannel     chan<- *message.Message
+
+	unmarshaler Unmarshaler
+	closing     chan struct{}
+
+	logger watermill.LoggerAdapter
+}
+
+func (s *consumer) consumeMessages() {
+	s.logger.Debug("Starting messages consumer", s.consumerLogFields)
+
+	defer func() {
+		if err := s.consumer.Close(); err != nil {
+			s.logger.Error("Cannot close consumer", err, s.consumerLogFields)
+		}
+
+		s.logger.Debug("Messages consumption consumer done", s.consumerLogFields)
+	}()
+
+MessagesLoop:
+	for {
+		select {
+		case <-s.closing:
+			s.logger.Debug("Closing message consumer", s.consumerLogFields)
+			break MessagesLoop
+		default:
+			ev := s.consumer.Poll(100)
+			if ev == nil {
+				continue MessagesLoop
+			}
+
+			switch e := ev.(type) {
+			case *kafka.Message:
+				if err := s.handleMessage(e); err != nil {
+					if err := s.handleMessageError(e, err); err != nil {
+						// something went really wrong, let's die
+						// todo - better handling strategy
+						s.logger.Error("Handling message error failed, stopping consumer", err, s.consumerLogFields)
+						break MessagesLoop
+					}
+				}
+			case kafka.PartitionEOF:
+				s.logger.Trace("Reached end of partition", s.consumerLogFields)
+			case kafka.OffsetsCommitted:
+				s.logger.Trace("Offset committed", s.consumerLogFields.Add(watermill.LogFields{
+					"offsets": e.String(),
+				}))
+			default:
+				s.logger.Debug(
+					"Unsupported msg",
+					s.consumerLogFields.Add(watermill.LogFields{
+						"msg":      fmt.Sprintf("%#v", e),
+						"msg_type": fmt.Sprintf("%T", e),
+					}),
+				)
+			}
+		}
+	}
+}
+
+func (s *consumer) handleMessage(e *kafka.Message) error {
+	if e.TopicPartition.Error != nil {
+		return e.TopicPartition.Error
+	}
+
+	receivedMsgLogFields := s.consumerLogFields.Add(watermill.LogFields{
+		"kafka_partition":        e.TopicPartition.Partition,
+		"kafka_partition_offset": e.TopicPartition.Offset,
+	})
+	s.logger.Trace("Received message from Kafka", receivedMsgLogFields)
+
+	msg, err := s.unmarshaler.Unmarshal(e)
+	if err != nil {
+		return err
+	}
+
+	receivedMsgLogFields = receivedMsgLogFields.Add(watermill.LogFields{
+		"message_uuid": msg.UUID,
+	})
+
+	s.logger.Trace("Kafka message unmarshalled, sending to output", receivedMsgLogFields)
+
+	select {
+	case <-s.closing:
+		s.logger.Info(
+			"Message not sent and close received, making rollback",
+			receivedMsgLogFields,
+		)
+		return ErrClosingConsumer
+	case s.outputChannel <- msg:
+		// message consumed, waiting for ack
+	}
+
+	s.logger.Trace("Waiting for ACK", receivedMsgLogFields)
+	if err := s.waitForAck(msg, receivedMsgLogFields); err != nil {
+		return err
+	}
+
+	if err := s.storeOffsets(e, receivedMsgLogFields); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *consumer) handleMessageError(kafkaMessage *kafka.Message, err error) error {
+	switch err {
+	case ErrNackReceived:
+		s.logger.Debug("Nack received", s.consumerLogFields)
+	case ErrClosingConsumer:
+		s.logger.Debug("Close received during processing message", s.consumerLogFields)
+	default:
+		s.logger.Error("Error during handling message", err, s.consumerLogFields)
+	}
+
+	if err := s.rollback(kafkaMessage); err != nil {
+		return errors.Wrap(err, "rollback failed")
+	}
+
+	return nil
+}
+
+func (s *consumer) waitForAck(msg *message.Message, receivedMsgLogFields watermill.LogFields) error {
+	select {
+	case <-msg.Acked():
+		s.logger.Trace("Message acknowledged", receivedMsgLogFields)
+		return nil
+	case <-msg.Nacked():
+		s.logger.Info(
+			"Nack sent",
+			receivedMsgLogFields,
+		)
+		return ErrNackReceived
+	case <-s.closing:
+		s.logger.Info(
+			"Ack not received and received close",
+			receivedMsgLogFields,
+		)
+		return ErrClosingConsumer
+	}
+}
+
+func (s *consumer) storeOffsets(kafkaMessage *kafka.Message, receivedMsgLogFields watermill.LogFields) error {
+	if s.config.ConsumerGroup == "" {
+		// if we have no consumer group, it is not sense to store offsets
+		return nil
+	}
+
+	stored, err := s.consumer.StoreOffsets([]kafka.TopicPartition{kafkaMessage.TopicPartition})
+	if err != nil {
+		return errors.Wrap(err, "cannot store offsets")
+	}
+
+	s.logger.Trace(
+		"Stored Kafka offsets",
+		receivedMsgLogFields.Add(watermill.LogFields{"stored_offsets": stored}),
+	)
+
+	return nil
+}
+
+func (s *consumer) rollback(kafkaMessage *kafka.Message) error {
+	return s.consumer.Seek(kafkaMessage.TopicPartition, 1000*60)
 }
