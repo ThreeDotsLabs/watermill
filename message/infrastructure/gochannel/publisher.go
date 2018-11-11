@@ -94,7 +94,7 @@ func (g *goChannel) sendMessage(topic string, message *message.Message) error {
 	return nil
 }
 
-func (g *goChannel) Subscribe(topic string, consumerGroup message.ConsumerGroup) (chan *message.Message, error) {
+func (g *goChannel) Subscribe(topic string) (chan *message.Message, error) {
 	g.subscribersLock.Lock()
 	defer g.subscribersLock.Unlock()
 

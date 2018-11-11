@@ -14,7 +14,7 @@ import (
 	"github.com/satori/go.uuid"
 )
 
-type ConfluentConsumerConstructor func(brokers []string, consumerGroup message.ConsumerGroup) (*kafka.Consumer, error)
+type ConfluentConsumerConstructor func(config SubscriberConfig) (*kafka.Consumer, error)
 
 type confluentSubscriber struct {
 	config SubscriberConfig
@@ -30,11 +30,14 @@ type confluentSubscriber struct {
 }
 
 type SubscriberConfig struct {
-	Brokers []string
+	Brokers         []string
+	ConsumerGroup   string
+	AutoOffsetReset string
 
-	ConsumersCount int
-
+	ConsumersCount      int
 	CloseCheckThreshold time.Duration
+
+	KafkaConfigOverwrite kafka.ConfigMap
 }
 
 func (c *SubscriberConfig) setDefaults() {
@@ -43,6 +46,9 @@ func (c *SubscriberConfig) setDefaults() {
 	}
 	if c.ConsumersCount == 0 {
 		c.ConsumersCount = runtime.NumCPU()
+	}
+	if c.AutoOffsetReset == "" {
+		c.AutoOffsetReset = "earliest"
 	}
 }
 
@@ -87,41 +93,38 @@ func NewCustomConfluentSubscriber(
 	}, nil
 }
 
-func DefaultConfluentConsumerConstructor(brokers []string, consumerGroup message.ConsumerGroup) (*kafka.Consumer, error) {
-	return kafka.NewConsumer(&kafka.ConfigMap{
-		"bootstrap.servers": strings.Join(brokers, ","),
-		"group.id":          string(consumerGroup),
+func DefaultConfluentConsumerConstructor(config SubscriberConfig) (*kafka.Consumer, error) {
+	kafkaConfig := &kafka.ConfigMap{
+		"bootstrap.servers": strings.Join(config.Brokers, ","),
 
-		"auto.offset.reset":    "earliest", // todo - how to config it?
-		"default.topic.config": kafka.ConfigMap{"auto.offset.reset": "earliest"},
-
-		"session.timeout.ms":       6000,
-		"enable.auto.commit":       true,
-		"enable.auto.offset.store": false,
-
-		"debug": ",",
-	})
-}
-
-// todo - deduplicate
-// todo - private?
-func NoGroupConfluentConsumerConstructor(brokers []string, _ message.ConsumerGroup) (*kafka.Consumer, error) {
-	return kafka.NewConsumer(&kafka.ConfigMap{
-		"bootstrap.servers": strings.Join(brokers, ","),
-		"group.id":          "no_group_" + uuid.NewV4().String(), // this group will be not committed
-
-		"auto.offset.reset":    "latest",
-		"default.topic.config": kafka.ConfigMap{"auto.offset.reset": "latest"},
+		"auto.offset.reset":    config.AutoOffsetReset,
+		"default.topic.config": kafka.ConfigMap{"auto.offset.reset": config.AutoOffsetReset},
 
 		"session.timeout.ms": 6000,
-		"enable.auto.commit": false,
 
 		"debug": ",",
-	})
+	}
+
+	if config.ConsumerGroup != "" {
+		kafkaConfig.SetKey("group.id", config.ConsumerGroup)
+		kafkaConfig.SetKey("enable.auto.commit", true)
+		kafkaConfig.SetKey("enable.auto.offset.store", false)
+
+	} else {
+		// this group will be not committed, setting just for api requirements
+		kafkaConfig.SetKey("group.id", "no_group_"+uuid.NewV4().String())
+		kafkaConfig.SetKey("enable.auto.commit", false)
+	}
+
+	if err := mergeConfluentConfigs(kafkaConfig, config.KafkaConfigOverwrite); err != nil {
+		return nil, err
+	}
+
+	return kafka.NewConsumer(kafkaConfig)
 }
 
 // todo - review!!
-func (s *confluentSubscriber) Subscribe(topic string, group message.ConsumerGroup) (chan *message.Message, error) {
+func (s *confluentSubscriber) Subscribe(topic string) (chan *message.Message, error) {
 	if s.closed {
 		return nil, errors.New("subscriber closed")
 	}
@@ -129,7 +132,7 @@ func (s *confluentSubscriber) Subscribe(topic string, group message.ConsumerGrou
 	logFields := watermill.LogFields{
 		"topic":                   topic,
 		"kafka_subscribers_count": s.config.ConsumersCount,
-		"consumer_group":          group,
+		"consumer_group":          s.config.ConsumerGroup,
 	}
 	s.logger.Info("Subscribing to Kafka topic", logFields)
 
@@ -140,7 +143,7 @@ func (s *confluentSubscriber) Subscribe(topic string, group message.ConsumerGrou
 	consumersWg := &sync.WaitGroup{}
 
 	for i := 0; i < s.config.ConsumersCount; i++ {
-		consumer, err := s.consumerConstructor(s.config.Brokers, group)
+		consumer, err := s.consumerConstructor(s.config)
 		if err != nil {
 			return nil, errors.Wrap(err, "cannot create consumer")
 		}
@@ -224,7 +227,7 @@ func (s *confluentSubscriber) Subscribe(topic string, group message.ConsumerGrou
 								s.logger.Trace("Message acknowledged", receivedMsgLogFields)
 
 								// todo - make it in cleaner way
-								if group != "" {
+								if s.config.ConsumerGroup != "" {
 									stored, err := consumer.StoreOffsets([]kafka.TopicPartition{e.TopicPartition})
 									if err != nil {
 										s.logger.Error("Cannot store offsets", err, consumerLogFields)
@@ -317,29 +320,4 @@ func (s *confluentSubscriber) Close() error {
 	s.logger.Debug("Kafka subscriber closed", nil)
 
 	return nil
-}
-
-func NewNoConsumerGroupSubscriber(
-	config SubscriberConfig,
-	unmarshaler Unmarshaler,
-	logger watermill.LoggerAdapter,
-) (message.NoConsumerGroupSubscriber, error) {
-	sub, err := NewCustomConfluentSubscriber(config, unmarshaler, NoGroupConfluentConsumerConstructor, logger)
-	if err != nil {
-		return nil, err
-	}
-
-	return &noGroupconfluentSubscriber{sub}, nil
-}
-
-type noGroupconfluentSubscriber struct {
-	confluentSubscriber message.Subscriber
-}
-
-func (s *noGroupconfluentSubscriber) SubscribeNoGroup(topic string) (chan *message.Message, error) {
-	return s.confluentSubscriber.Subscribe(topic, "")
-}
-
-func (s *noGroupconfluentSubscriber) Close() error {
-	return s.confluentSubscriber.Close()
 }

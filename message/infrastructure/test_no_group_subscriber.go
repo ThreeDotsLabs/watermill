@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type NoGroupSubscriberConstructor func(t *testing.T) message.NoConsumerGroupSubscriber
+type NoGroupSubscriberConstructor func(t *testing.T) message.Subscriber
 
 func TestNoGroupSubscriber(
 	t *testing.T,
@@ -50,7 +50,7 @@ func testNoGroupSubscriberConcurrentSubscribers(
 
 		go func() {
 			subscriber := noGroupSubscriberConstructor(t)
-			ch, err := subscriber.SubscribeNoGroup(topicName)
+			ch, err := subscriber.Subscribe(topicName)
 			require.NoError(t, err)
 
 			consumersStarted.Done()
@@ -109,7 +109,7 @@ func testNoGroupSubscriberJoiningSubscribers(
 
 				subscriberCreated <- struct{}{}
 
-				ch, err := subscriber.SubscribeNoGroup(topicName)
+				ch, err := subscriber.Subscribe(topicName)
 				require.NoError(t, err)
 
 				for msg := range ch {

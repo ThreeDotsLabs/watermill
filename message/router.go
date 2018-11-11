@@ -16,27 +16,16 @@ type HandlerMiddleware func(h HandlerFunc) HandlerFunc
 
 type RouterPlugin func(*Router) error
 
-type GenerateConsumerGroup func(serverName, handlerName string) ConsumerGroup
-
-func DefaultGenerateConsumerGroup(serverName, handlerName string) ConsumerGroup {
-	return ConsumerGroup(fmt.Sprintf("%s_%s", serverName, handlerName))
-}
-
 type RouterConfig struct {
 	ServerName         string
 	PublishEventsTopic string
 
 	CloseTimeout time.Duration
-
-	GenerateConsumerGroupFunc GenerateConsumerGroup
 }
 
 func (c *RouterConfig) setDefaults() {
 	if c.CloseTimeout == 0 {
 		c.CloseTimeout = time.Second * 30
-	}
-	if c.GenerateConsumerGroupFunc == nil {
-		c.GenerateConsumerGroupFunc = DefaultGenerateConsumerGroup
 	}
 }
 
@@ -186,10 +175,7 @@ func (r *Router) Run() (err error) {
 			"topic":           s.topic,
 		})
 
-		messages, err := r.subscriber.Subscribe(
-			s.topic,
-			r.config.GenerateConsumerGroupFunc(r.config.ServerName, s.name),
-		)
+		messages, err := r.subscriber.Subscribe(s.topic)
 		if err != nil {
 			return errors.Wrapf(err, "cannot subscribe topic %s", s.topic)
 		}

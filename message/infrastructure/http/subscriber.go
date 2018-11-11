@@ -36,7 +36,7 @@ func NewSubscriber(addr string, unmarshalMessageFunc UnmarshalMessageFunc, logge
 	}, nil
 }
 
-func (s *Subscriber) Subscribe(topic string, consumerGroup message.ConsumerGroup) (chan *message.Message, error) {
+func (s *Subscriber) Subscribe(topic string) (chan *message.Message, error) {
 	messages := make(chan *message.Message)
 
 	s.outputChannelsLock.Lock()

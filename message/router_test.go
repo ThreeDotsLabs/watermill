@@ -40,7 +40,7 @@ func TestRouter_Functional(t *testing.T) {
 	sentByHandlerCh := make(chan *message.Message, messagesCount)
 
 	publishedEventsTopic := "published_events_" + testID
-	publishedByHandlerCh, err := pubSub.Subscribe(publishedEventsTopic, "test")
+	publishedByHandlerCh, err := pubSub.Subscribe(publishedEventsTopic)
 	require.NoError(t, err)
 
 	h, err := message.NewRouter(

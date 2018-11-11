@@ -31,5 +31,6 @@ func TestPublishSubscribe(t *testing.T) {
 			RequireSingleInstance: true,
 		},
 		createPubSub,
+		nil,
 	)
 }

@@ -16,11 +16,17 @@ type confluentPublisher struct {
 	closed bool
 }
 
-func NewPublisher(brokers []string, marshaler Marshaler) (message.Publisher, error) {
-	p, err := kafka.NewProducer(&kafka.ConfigMap{
+func NewPublisher(brokers []string, marshaler Marshaler, kafkaConfigOverwrite kafka.ConfigMap) (message.Publisher, error) {
+	config := &kafka.ConfigMap{
 		"bootstrap.servers": strings.Join(brokers, ","),
 		"debug":             ",",
-	})
+	}
+
+	if err := mergeConfluentConfigs(config, kafkaConfigOverwrite); err != nil {
+		return nil, err
+	}
+
+	p, err := kafka.NewProducer(config)
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot create producer")
 	}

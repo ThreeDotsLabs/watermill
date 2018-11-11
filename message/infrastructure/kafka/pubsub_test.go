@@ -13,14 +13,8 @@ import (
 
 var brokers = []string{"localhost:9092"}
 
-func generatePartitionKey(topic string, msg *message.Message) (string, error) {
-	return msg.Metadata.Get("partition_key"), nil
-}
-
-func createPubSub(t *testing.T) message.PubSub {
-	marshaler := marshal.KafkaJson{}
-
-	publisher, err := kafka.NewPublisher(brokers, marshaler)
+func newPubSub(t *testing.T, marshaler kafka.MarshalerUnmarshaler, consumerGroup string) message.PubSub {
+	publisher, err := kafka.NewPublisher(brokers, marshaler, nil)
 	require.NoError(t, err)
 
 	logger := watermill.NewStdLogger(true, true)
@@ -28,6 +22,7 @@ func createPubSub(t *testing.T) message.PubSub {
 	subscriber, err := kafka.NewConfluentSubscriber(
 		kafka.SubscriberConfig{
 			Brokers:        brokers,
+			ConsumerGroup:  consumerGroup,
 			ConsumersCount: 8,
 		},
 		marshaler,
@@ -38,34 +33,31 @@ func createPubSub(t *testing.T) message.PubSub {
 	return message.NewPubSub(publisher, subscriber)
 }
 
-func createPartitionedPubSub(t *testing.T) message.PubSub {
-	marshaler := marshal.NewKafkaJsonWithPartitioning(generatePartitionKey)
-
-	publisher, err := kafka.NewPublisher(brokers, marshaler)
-	require.NoError(t, err)
-
-	logger := watermill.NewStdLogger(true, true)
-
-	subscriber, err := kafka.NewConfluentSubscriber(
-		kafka.SubscriberConfig{
-			Brokers:        brokers,
-			ConsumersCount: 8,
-		},
-		marshaler, logger,
-	)
-	require.NoError(t, err)
-
-	return message.NewPubSub(publisher, subscriber)
+func generatePartitionKey(topic string, msg *message.Message) (string, error) {
+	return msg.Metadata.Get("partition_key"), nil
 }
 
-func createNoGroupSubscriberConstructor(t *testing.T) message.NoConsumerGroupSubscriber {
+func createPubSubWithConsumerGrup(t *testing.T, consumerGroup string) message.PubSub {
+	return newPubSub(t, marshal.KafkaJson{}, consumerGroup)
+}
+
+func createPubSub(t *testing.T) message.PubSub {
+	return createPubSubWithConsumerGrup(t, "test")
+}
+
+func createPartitionedPubSub(t *testing.T) message.PubSub {
+	return newPubSub(t, marshal.NewKafkaJsonWithPartitioning(generatePartitionKey), "test")
+}
+
+func createNoGroupSubscriberConstructor(t *testing.T) message.Subscriber {
 	logger := watermill.NewStdLogger(true, true)
 
 	marshaler := marshal.KafkaJson{}
 
-	sub, err := kafka.NewNoConsumerGroupSubscriber(
+	sub, err := kafka.NewConfluentSubscriber(
 		kafka.SubscriberConfig{
 			Brokers:        brokers,
+			ConsumerGroup:  "",
 			ConsumersCount: 1,
 		},
 		marshaler,
@@ -86,6 +78,7 @@ func TestPublishSubscribe(t *testing.T) {
 			Persistent:          true,
 		},
 		createPubSub,
+		createPubSubWithConsumerGrup,
 	)
 }
 
@@ -99,6 +92,7 @@ func TestPublishSubscribe_ordered(t *testing.T) {
 			Persistent:          true,
 		},
 		createPartitionedPubSub,
+		createPubSubWithConsumerGrup,
 	)
 }
 
