@@ -33,7 +33,7 @@ func NewSubscriber(addr string, unmarshalMessageFunc UnmarshalMessageFunc, logge
 		s,
 		logger,
 		unmarshalMessageFunc,
-		make([]chan *message.Message, 1),
+		make([]chan *message.Message, 0),
 		&sync.Mutex{},
 		false,
 	}, nil
@@ -84,17 +84,19 @@ func (s *Subscriber) RunHTTPServer() error {
 	return s.server.ListenAndServe()
 }
 
-func (s Subscriber) Close() error {
+func (s *Subscriber) Close() error {
 	if s.closed {
 		return nil
 	}
 	s.closed = true
 
-	defer func() {
-		for _, ch := range s.outputChannels {
-			close(ch)
-		}
-	}()
+	if err := s.server.Close(); err != nil {
+		return err
+	}
 
-	return s.server.Close()
+	for _, ch := range s.outputChannels {
+		close(ch)
+	}
+
+	return nil
 }
