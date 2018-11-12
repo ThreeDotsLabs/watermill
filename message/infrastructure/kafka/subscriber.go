@@ -46,7 +46,7 @@ func (c *SubscriberConfig) setDefaults() {
 		c.ConsumersCount = runtime.NumCPU()
 	}
 	if c.AutoOffsetReset == "" {
-		c.AutoOffsetReset = "earliest"
+		c.AutoOffsetReset = "latest"
 	}
 }
 

@@ -21,9 +21,10 @@ func newPubSub(t *testing.T, marshaler kafka.MarshalerUnmarshaler, consumerGroup
 
 	subscriber, err := kafka.NewConfluentSubscriber(
 		kafka.SubscriberConfig{
-			Brokers:        brokers,
-			ConsumerGroup:  consumerGroup,
-			ConsumersCount: 8,
+			Brokers:         brokers,
+			ConsumerGroup:   consumerGroup,
+			AutoOffsetReset: "earliest",
+			ConsumersCount:  8,
 		},
 		marshaler,
 		logger,
@@ -58,6 +59,7 @@ func createNoGroupSubscriberConstructor(t *testing.T) message.Subscriber {
 		kafka.SubscriberConfig{
 			Brokers:         brokers,
 			NoConsumerGroup: true,
+			AutoOffsetReset: "earliest",
 			ConsumersCount:  1,
 		},
 		marshaler,

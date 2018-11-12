@@ -22,9 +22,10 @@ func BenchmarkSubscriber(b *testing.B) {
 
 		subscriber, err := kafka.NewConfluentSubscriber(
 			kafka.SubscriberConfig{
-				Brokers:        brokers,
-				ConsumerGroup:  "test",
-				ConsumersCount: 8,
+				Brokers:         brokers,
+				ConsumerGroup:   "test",
+				AutoOffsetReset: "earliest",
+				ConsumersCount:  8,
 			},
 			marshaler,
 			logger,
