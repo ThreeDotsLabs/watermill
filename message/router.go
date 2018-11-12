@@ -178,7 +178,6 @@ func (r *Router) Run() (err error) {
 	for i := range r.handlers {
 		handler := r.handlers[i]
 
-		handler.logger = r.logger
 		r.handlersWg.Add(1)
 
 		go func() {

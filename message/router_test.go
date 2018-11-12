@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRouter_Functional(t *testing.T) {
+func TestRouter_functional(t *testing.T) {
 	testID := uuid.NewV4().String()
 	subscribeTopic := "test_topic_" + testID
 
@@ -111,14 +111,63 @@ func TestRouter_Functional(t *testing.T) {
 	tests.AssertAllMessagesReceived(t, expectedSentByHandler, publishedByHandler)
 }
 
+func TestRouter_functional_nack(t *testing.T) {
+	pubSub, err := createPubSub()
+	require.NoError(t, err)
+	defer pubSub.Close()
+
+	testID := uuid.NewV4().String()
+
+	r, err := message.NewRouter(
+		message.RouterConfig{
+			ServerName: "test_" + testID,
+		},
+		watermill.NewStdLogger(true, true),
+	)
+	require.NoError(t, err)
+
+	nackSend := false
+	messageReceived := make(chan *message.Message, 2)
+
+	err = r.AddNoPublisherHandler(
+		"test_subscriber_1",
+		"subscribe_topic",
+		pubSub,
+		func(msg *message.Message) (producedMessages []*message.Message, err error) {
+			messageReceived <- msg
+
+			if !nackSend {
+				msg.Nack()
+				nackSend = true
+			}
+
+			return nil, nil
+		},
+	)
+	require.NoError(t, err)
+
+	go r.Run()
+	defer r.Close()
+
+	// wait for router start
+	time.Sleep(time.Millisecond * 50)
+
+	publishedMsg := message.NewMessage("1", nil)
+	require.NoError(t, pubSub.Publish("subscribe_topic", publishedMsg))
+
+	messages, all := subscriber.BulkRead(messageReceived, 2, time.Second)
+	assert.True(t, all, "not all messages received, probably not ack received, received %d", len(messages))
+
+	tests.AssertAllMessagesReceived(t, []*message.Message{publishedMsg, publishedMsg}, messages)
+}
+
 func publishMessagesForHandler(t *testing.T, messagesCount int, pubSub message.PubSub, topicName string) []*message.Message {
 	var messagesToPublish []*message.Message
-	var messagesToPublishMessage []*message.Message
+
 	for i := 0; i < messagesCount; i++ {
 		msg := message.NewMessage(uuid.NewV4().String(), []byte(fmt.Sprintf("%d", i)))
 
 		messagesToPublish = append(messagesToPublish, msg)
-		messagesToPublishMessage = append(messagesToPublishMessage, msg)
 	}
 
 	for _, msg := range messagesToPublish {
@@ -126,7 +175,7 @@ func publishMessagesForHandler(t *testing.T, messagesCount int, pubSub message.P
 		require.NoError(t, err)
 	}
 
-	return messagesToPublishMessage
+	return messagesToPublish
 }
 
 func createPubSub() (message.PubSub, error) {

@@ -38,7 +38,7 @@ func generatePartitionKey(topic string, msg *message.Message) (string, error) {
 }
 
 func createPubSubWithConsumerGrup(t *testing.T, consumerGroup string) message.PubSub {
-	return newPubSub(t, marshal.KafkaJson{}, consumerGroup)
+	return newPubSub(t, marshal.ConfluentKafka{}, consumerGroup)
 }
 
 func createPubSub(t *testing.T) message.PubSub {
@@ -52,13 +52,13 @@ func createPartitionedPubSub(t *testing.T) message.PubSub {
 func createNoGroupSubscriberConstructor(t *testing.T) message.Subscriber {
 	logger := watermill.NewStdLogger(true, true)
 
-	marshaler := marshal.KafkaJson{}
+	marshaler := marshal.ConfluentKafka{}
 
 	sub, err := kafka.NewConfluentSubscriber(
 		kafka.SubscriberConfig{
-			Brokers:        brokers,
-			ConsumerGroup:  "",
-			ConsumersCount: 1,
+			Brokers:         brokers,
+			NoConsumerGroup: true,
+			ConsumersCount:  1,
 		},
 		marshaler,
 		logger,
