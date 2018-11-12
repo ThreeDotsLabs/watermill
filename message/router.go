@@ -17,8 +17,7 @@ type HandlerMiddleware func(h HandlerFunc) HandlerFunc
 type RouterPlugin func(*Router) error
 
 type RouterConfig struct {
-	ServerName         string
-	PublishEventsTopic string
+	ServerName string
 
 	CloseTimeout time.Duration
 }
@@ -30,17 +29,6 @@ func (c *RouterConfig) setDefaults() {
 }
 
 func (c RouterConfig) Validate() error {
-	if err := c.ValidateNoPublisher(); err != nil {
-		return err
-	}
-	if c.PublishEventsTopic == "" {
-		return errors.New("empty PublishEventsTopic")
-	}
-
-	return nil
-}
-
-func (c RouterConfig) ValidateNoPublisher() error {
 	if c.ServerName == "" {
 		return errors.New("empty ServerName")
 	}
@@ -48,48 +36,29 @@ func (c RouterConfig) ValidateNoPublisher() error {
 	return nil
 }
 
-func NewRouter(config RouterConfig, subscriber Subscriber, publisher Publisher) (*Router, error) {
+func NewRouter(config RouterConfig, logger watermill.LoggerAdapter) (*Router, error) {
 	config.setDefaults()
 	if err := config.Validate(); err != nil {
-		return nil, errors.Wrap(err, "invalid config")
-	}
-
-	r, err := NewRouterNoPublisher(config, subscriber)
-	if err != nil {
-		return nil, err
-	}
-	r.publisher = publisher
-
-	return r, nil
-}
-
-func NewRouterNoPublisher(config RouterConfig, subscriber Subscriber) (*Router, error) {
-	config.setDefaults()
-	if err := config.ValidateNoPublisher(); err != nil {
 		return nil, errors.Wrap(err, "invalid config")
 	}
 
 	return &Router{
 		config: config,
 
-		subscriber: subscriber,
-
 		handlers: map[string]*handler{},
 
 		handlersWg:        &sync.WaitGroup{},
 		runningHandlersWg: &sync.WaitGroup{},
 
-		closeCh: make(chan struct{}),
+		closeCh:  make(chan struct{}),
+		closedCh: make(chan struct{}),
 
-		Logger: watermill.NopLogger{},
+		logger: logger,
 	}, nil
 }
 
 type Router struct {
 	config RouterConfig
-
-	subscriber Subscriber
-	publisher  Publisher
 
 	middlewares []HandlerMiddleware
 
@@ -100,40 +69,59 @@ type Router struct {
 	handlersWg        *sync.WaitGroup
 	runningHandlersWg *sync.WaitGroup
 
-	closeCh chan struct{}
+	closeCh  chan struct{}
+	closedCh chan struct{}
+	closed   bool
 
-	Logger watermill.LoggerAdapter
+	logger watermill.LoggerAdapter
 
 	running bool
+}
+
+func (r *Router) Logger() watermill.LoggerAdapter {
+	return r.logger
 }
 
 // AddMiddleware adds a new middleware to the router.
 //
 // The order of middlewares matters. Middleware added at the beginning is executed first.
 func (r *Router) AddMiddleware(m ...HandlerMiddleware) {
-	r.Logger.Debug("Adding middlewares", watermill.LogFields{"count": fmt.Sprintf("%d", len(m))})
+	r.logger.Debug("Adding middlewares", watermill.LogFields{"count": fmt.Sprintf("%d", len(m))})
 
 	r.middlewares = append(r.middlewares, m...)
 }
 
 func (r *Router) AddPlugin(p ...RouterPlugin) {
-	r.Logger.Debug("Adding plugins", watermill.LogFields{"count": fmt.Sprintf("%d", len(p))})
+	r.logger.Debug("Adding plugins", watermill.LogFields{"count": fmt.Sprintf("%d", len(p))})
 
 	r.plugins = append(r.plugins, p...)
 }
 
-type handler struct {
-	name        string
-	topic       string
-	handlerFunc HandlerFunc
+func (r *Router) AddHandler(
+	handlerName string,
+	subscribeTopic string,
+	publishTopic string,
+	pubSub PubSub,
+	handlerFunc HandlerFunc,
+) error {
+	if err := r.AddNoPublisherHandler(handlerName, subscribeTopic, pubSub, handlerFunc); err != nil {
+		return err
+	}
+	r.handlers[handlerName].publisher = pubSub
+	r.handlers[handlerName].publishTopic = publishTopic
 
-	messagesCh chan *Message
+	return nil
 }
 
-func (r *Router) AddHandler(handlerName string, topic string, handlerFunc HandlerFunc) error {
-	r.Logger.Info("Adding subscriber", watermill.LogFields{
+func (r *Router) AddNoPublisherHandler(
+	handlerName string,
+	subscribeTopic string,
+	subscriber Subscriber,
+	handlerFunc HandlerFunc,
+) error {
+	r.logger.Info("Adding subscriber", watermill.LogFields{
 		"handler_name": handlerName,
-		"topic":        topic,
+		"topic":        subscribeTopic,
 	})
 
 	if _, ok := r.handlers[handlerName]; ok {
@@ -141,9 +129,13 @@ func (r *Router) AddHandler(handlerName string, topic string, handlerFunc Handle
 	}
 
 	r.handlers[handlerName] = &handler{
-		name:        handlerName,
-		topic:       topic,
-		handlerFunc: handlerFunc,
+		name:              handlerName,
+		subscribeTopic:    subscribeTopic,
+		handlerFunc:       handlerFunc,
+		subscriber:        subscriber,
+		logger:            r.logger,
+		runningHandlersWg: r.runningHandlersWg,
+		closeCh:           r.closeCh,
 	}
 
 	return nil
@@ -162,93 +154,144 @@ func (r *Router) Run() (err error) {
 	}
 	r.running = true
 
-	r.Logger.Debug("Loading plugins", nil)
+	r.logger.Debug("Loading plugins", nil)
 	for _, plugin := range r.plugins {
 		if err := plugin(r); err != nil {
 			return errors.Wrapf(err, "cannot initialize plugin %v", plugin)
 		}
 	}
 
-	for _, s := range r.handlers {
-		r.Logger.Debug("Subscribing to topic", watermill.LogFields{
-			"subscriber_name": s.name,
-			"topic":           s.topic,
+	for _, h := range r.handlers {
+		r.logger.Debug("Subscribing to topic", watermill.LogFields{
+			"subscriber_name": h.name,
+			"topic":           h.subscribeTopic,
 		})
 
-		messages, err := r.subscriber.Subscribe(s.topic)
+		messages, err := h.subscriber.Subscribe(h.subscribeTopic)
 		if err != nil {
-			return errors.Wrapf(err, "cannot subscribe topic %s", s.topic)
+			return errors.Wrapf(err, "cannot subscribe topic %s", h.subscribeTopic)
 		}
 
-		s.messagesCh = messages
+		h.messagesCh = messages
 	}
 
 	for i := range r.handlers {
+		handler := r.handlers[i]
+
+		handler.logger = r.logger
 		r.handlersWg.Add(1)
 
-		go func(s *handler) {
-			r.Logger.Info("Starting handler", watermill.LogFields{
-				"subscriber_name": s.name,
-				"topic":           s.topic,
-			})
-
-			middlewareHandler := s.handlerFunc
-
-			// first added middlewares should be executed first (so should be at the top of call stack)
-			for i := len(r.middlewares) - 1; i >= 0; i-- {
-				middlewareHandler = r.middlewares[i](middlewareHandler)
-			}
-
-			for msg := range s.messagesCh {
-				r.handleMessage(msg, middlewareHandler)
-			}
+		go func() {
+			handler.run(r.middlewares)
 
 			r.handlersWg.Done()
-			r.Logger.Info("Subscriber stopped", watermill.LogFields{
-				"subscriber_name": s.name,
-				"topic":           s.topic,
+			r.logger.Info("Subscriber stopped", watermill.LogFields{
+				"subscriber_name": handler.name,
+				"topic":           handler.subscribeTopic,
 			})
-		}(r.handlers[i])
+		}()
 	}
 
 	<-r.closeCh
 
-	r.Logger.Debug("Waiting for subscriber to close", nil)
-	if err := r.subscriber.Close(); err != nil {
-		return errors.Wrap(err, "cannot close router")
-	}
-	r.Logger.Debug("Subscriber closed", nil)
-
-	r.Logger.Debug("Waiting for publisher to close", nil)
-	if err := r.publisher.Close(); err != nil {
-		return errors.Wrap(err, "cannot close router")
-	}
-	r.Logger.Debug("Publisher closed", nil)
-
-	r.Logger.Info("Waiting for messages", watermill.LogFields{
+	r.logger.Info("Waiting for messages", watermill.LogFields{
 		"timeout": r.config.CloseTimeout,
 	})
 
-	r.Logger.Info("All messages processed", nil)
+	<-r.closedCh
+
+	r.logger.Info("All messages processed", nil)
+
 	return nil
 }
 
 func (r *Router) Close() error {
-	r.Logger.Info("Closing router", nil)
-	defer r.Logger.Info("Router closed", nil)
-	r.closeCh <- struct{}{}
+	if r.closed {
+		return nil
+	}
+	r.closed = true
+
+	r.logger.Info("Closing router", nil)
+	defer r.logger.Info("Router closed", nil)
+
+	close(r.closeCh)
 
 	timeouted := sync_internal.WaitGroupTimeout(r.handlersWg, r.config.CloseTimeout)
 	if timeouted {
 		return errors.New("router close timeouted")
 	}
 
+	close(r.closedCh)
+
 	return nil
 }
-func (r *Router) handleMessage(msg *Message, handler HandlerFunc) {
+
+type handler struct {
+	name           string
+	subscribeTopic string
+	publishTopic   string
+	handlerFunc    HandlerFunc
+
+	publisher         Publisher
+	subscriber        Subscriber
+	logger            watermill.LoggerAdapter
+	runningHandlersWg *sync.WaitGroup
+
+	messagesCh chan *Message
+
+	closeCh chan struct{}
+}
+
+func (h *handler) run(middlewares []HandlerMiddleware) {
+	h.logger.Info("Starting handler", watermill.LogFields{
+		"subscriber_name": h.name,
+		"topic":           h.subscribeTopic,
+	})
+
+	middlewareHandler := h.handlerFunc
+
+	// first added middlewares should be executed first (so should be at the top of call stack)
+	for i := len(middlewares) - 1; i >= 0; i-- {
+		middlewareHandler = middlewares[i](middlewareHandler)
+	}
+
+	go h.handleClose()
+
+	for msg := range h.messagesCh {
+		h.runningHandlersWg.Add(1)
+		go h.handleMessage(msg, middlewareHandler)
+	}
+
+	if h.publisher != nil {
+		h.logger.Debug("Waiting for publisher to close", nil)
+		if err := h.publisher.Close(); err != nil {
+			h.logger.Error("Failed to close publisher", err, nil)
+		}
+		h.logger.Debug("Publisher closed", nil)
+	}
+
+	h.logger.Debug("Router handler stopped", nil)
+
+}
+
+func (h *handler) handleClose() {
+	<-h.closeCh
+
+	h.logger.Debug("Waiting for subscriber to close", nil)
+
+	if err := h.subscriber.Close(); err != nil {
+		h.logger.Error("Failed to close subscriber", err, nil)
+	}
+
+	h.logger.Debug("Subscriber closed", nil)
+}
+
+func (h *handler) handleMessage(msg *Message, handler HandlerFunc) {
+	defer h.runningHandlersWg.Done()
+
 	defer func() {
 		if recovered := recover(); recovered != nil {
-			r.Logger.Error("Panic recovered in handler", errors.Errorf("%s", recovered), nil)
+			h.logger.Error("Panic recovered in handler", errors.Errorf("%s", recovered), nil)
 			msg.Nack()
 			return
 		}
@@ -256,43 +299,48 @@ func (r *Router) handleMessage(msg *Message, handler HandlerFunc) {
 		msg.Ack()
 	}()
 
-	r.runningHandlersWg.Add(1)
+	msgFields := watermill.LogFields{"message_uuid": msg.UUID}
+	h.logger.Trace("Received message", msgFields)
 
-	go func(msg *Message) {
-		defer r.runningHandlersWg.Done()
+	producedMessages, err := handler(msg)
+	if err != nil {
+		h.logger.Error("Handler returned error", err, nil)
+		msg.Nack()
+		return
+	}
 
-		msgFields := watermill.LogFields{"message_uuid": msg.UUID}
+	if err := h.publishProducedMessages(producedMessages, msgFields); err != nil {
+		h.logger.Error("Publishing produced messages failed", err, nil)
+		msg.Nack()
+		return
+	}
 
-		r.Logger.Trace("Received message", msgFields)
+	h.logger.Trace("Message processed", msgFields)
+}
 
-		producedMessages, err := handler(msg)
-		if err != nil {
-			r.Logger.Error("Handler returned error", err, nil)
-			msg.Nack()
-			return
-		}
+func (h *handler) publishProducedMessages(producedMessages Messages, msgFields watermill.LogFields) error {
+	if len(producedMessages) == 0 {
+		return nil
+	}
 
-		if len(producedMessages) > 0 {
-			if r.config.PublishEventsTopic == "" {
-				r.Logger.Error("Handler returned error", err, nil)
-				msg.Nack()
-				return
-			}
+	if h.publishTopic == "" {
+		return errors.New("router was created without publisher, cannot publish messages")
+	}
 
-			r.Logger.Trace("Sending produced messages", msgFields.Add(watermill.LogFields{
-				"produced_messages_count": len(producedMessages),
+	h.logger.Trace("Sending produced messages", msgFields.Add(watermill.LogFields{
+		"produced_messages_count": len(producedMessages),
+	}))
+
+	for _, msg := range producedMessages {
+		if err := h.publisher.Publish(h.publishTopic, msg); err != nil {
+			// todo - how to deal with it better/transactional/retry?
+			h.logger.Error("Cannot publish message", err, msgFields.Add(watermill.LogFields{
+				"not_sent_message": fmt.Sprintf("%#v", producedMessages),
 			}))
 
-			for _, msg := range producedMessages {
-				if err := r.publisher.Publish(r.config.PublishEventsTopic, msg); err != nil {
-					// todo - how to deal with it better/transactional/retry?
-					r.Logger.Error("Cannot publish message", err, msgFields.Add(watermill.LogFields{
-						"not_sent_message": fmt.Sprintf("%#v", producedMessages),
-					}))
-				}
-			}
+			return err
 		}
+	}
 
-		r.Logger.Trace("Message processed", msgFields)
-	}(msg)
+	return nil
 }

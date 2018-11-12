@@ -331,6 +331,7 @@ func continueAfterCloseTest(t *testing.T, createPubSub PubSubConstructor) {
 	totalMessagesCount := 500
 
 	pubSub := createPubSub(t)
+	defer pubSub.Close()
 	messagesToPublish := addSimpleMessagesMessages(t, totalMessagesCount, pubSub, topicName)
 	closePubSub(t, pubSub)
 
@@ -390,8 +391,9 @@ func continueAfterErrors(t *testing.T, createPubSub PubSubConstructor) {
 	totalMessagesCount := 50
 
 	pubSub := createPubSub(t)
+	defer closePubSub(t, pubSub)
+
 	messagesToPublish := addSimpleMessagesMessages(t, totalMessagesCount, pubSub, topicName)
-	closePubSub(t, pubSub)
 
 	// sending totalMessagesCount*2 errors from 3 subscribers
 	for i := 0; i < 3; i++ {
@@ -416,9 +418,6 @@ func continueAfterErrors(t *testing.T, createPubSub PubSubConstructor) {
 		closePubSub(t, errorsPubSub)
 	}
 
-	pubSub = createPubSub(t)
-	defer closePubSub(t, pubSub)
-
 	messages, err := pubSub.Subscribe(topicName)
 	require.NoError(t, err)
 
@@ -433,7 +432,7 @@ func consumerGroupsTest(t *testing.T, pubSubConstructor ConsumerGroupPubSubConst
 	topicName := testTopicName()
 	totalMessagesCount := 50
 
-	publisher := pubSubConstructor(t, "")
+	publisher := pubSubConstructor(t, "test")
 	messagesToPublish := addSimpleMessagesMessages(t, totalMessagesCount, publisher, topicName)
 	closePubSub(t, publisher)
 
@@ -443,6 +442,8 @@ func consumerGroupsTest(t *testing.T, pubSubConstructor ConsumerGroupPubSubConst
 	assertConsumerGroupReceivedMessages(t, pubSubConstructor, group2, topicName, messagesToPublish)
 
 	subscriberGroup1 := pubSubConstructor(t, group1)
+	defer closePubSub(t, subscriberGroup1)
+
 	messages, err := subscriberGroup1.Subscribe(topicName)
 	require.NoError(t, err)
 
@@ -451,6 +452,9 @@ func consumerGroupsTest(t *testing.T, pubSubConstructor ConsumerGroupPubSubConst
 }
 
 func publisherCloseTest(t *testing.T, pub message.Publisher, sub message.Subscriber) {
+	defer pub.Close()
+	defer sub.Close()
+
 	topicName := testTopicName()
 
 	messagesCount := 10000
@@ -474,6 +478,8 @@ func publisherCloseTest(t *testing.T, pub message.Publisher, sub message.Subscri
 }
 
 func topicTest(t *testing.T, pubSub message.PubSub) {
+	defer closePubSub(t, pubSub)
+
 	topic1 := testTopicName()
 	topic2 := testTopicName()
 

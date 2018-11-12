@@ -18,7 +18,7 @@ import (
 
 func TestRouter_Functional(t *testing.T) {
 	testID := uuid.NewV4().String()
-	topicName := "test_topic_" + testID
+	subscribeTopic := "test_topic_" + testID
 
 	pubSub, err := createPubSub()
 	require.NoError(t, err)
@@ -31,7 +31,7 @@ func TestRouter_Functional(t *testing.T) {
 	var expectedReceivedMessages message.Messages
 	allMessagesSent := make(chan struct{})
 	go func() {
-		expectedReceivedMessages = publishMessagesForHandler(t, messagesCount, pubSub, topicName)
+		expectedReceivedMessages = publishMessagesForHandler(t, messagesCount, pubSub, subscribeTopic)
 		allMessagesSent <- struct{}{}
 	}()
 
@@ -41,21 +41,32 @@ func TestRouter_Functional(t *testing.T) {
 
 	publishedEventsTopic := "published_events_" + testID
 	publishedByHandlerCh, err := pubSub.Subscribe(publishedEventsTopic)
+
+	var publishedByHandler message.Messages
+	allPublishedByHandler := make(chan struct{}, 0)
+
+	go func() {
+		var all bool
+		publishedByHandler, all = subscriber.BulkRead(publishedByHandlerCh, messagesCount, time.Second*10)
+		assert.True(t, all)
+		allPublishedByHandler <- struct{}{}
+	}()
+
 	require.NoError(t, err)
 
-	h, err := message.NewRouter(
+	r, err := message.NewRouter(
 		message.RouterConfig{
-			ServerName:         "test_" + testID,
-			PublishEventsTopic: publishedEventsTopic,
+			ServerName: "test_" + testID,
 		},
-		pubSub,
-		pubSub,
+		watermill.NewStdLogger(true, true),
 	)
 	require.NoError(t, err)
 
-	err = h.AddHandler(
+	err = r.AddHandler(
 		"test_subscriber_1",
-		topicName,
+		subscribeTopic,
+		publishedEventsTopic,
+		pubSub,
 		func(msg *message.Message) (producedMessages []*message.Message, err error) {
 			receivedMessagesCh1 <- msg
 
@@ -67,9 +78,10 @@ func TestRouter_Functional(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	err = h.AddHandler(
+	err = r.AddNoPublisherHandler(
 		"test_subscriber_2",
-		topicName,
+		subscribeTopic,
+		pubSub,
 		func(msg *message.Message) (producedMessages []*message.Message, err error) {
 			receivedMessagesCh2 <- msg
 			return nil, nil
@@ -77,26 +89,25 @@ func TestRouter_Functional(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	go h.Run()
+	go r.Run()
 	defer func() {
-		assert.NoError(t, h.Close())
+		assert.NoError(t, r.Close())
 	}()
 
 	<-allMessagesSent
 
 	expectedSentByHandler, all := readMessages(sentByHandlerCh, len(expectedReceivedMessages), time.Second*10)
-	require.True(t, all)
+	assert.True(t, all)
 
 	receivedMessages1, all := subscriber.BulkRead(receivedMessagesCh1, len(expectedReceivedMessages), time.Second*10)
-	require.True(t, all)
+	assert.True(t, all)
 	tests.AssertAllMessagesReceived(t, expectedReceivedMessages, receivedMessages1)
 
 	receivedMessages2, all := subscriber.BulkRead(receivedMessagesCh2, len(expectedReceivedMessages), time.Second*10)
-	require.True(t, all)
+	assert.True(t, all)
 	tests.AssertAllMessagesReceived(t, expectedReceivedMessages, receivedMessages2)
 
-	publishedByHandler, all := subscriber.BulkRead(publishedByHandlerCh, len(expectedReceivedMessages), time.Second*10)
-	require.True(t, all)
+	<-allPublishedByHandler
 	tests.AssertAllMessagesReceived(t, expectedSentByHandler, publishedByHandler)
 }
 

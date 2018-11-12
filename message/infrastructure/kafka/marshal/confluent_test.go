@@ -11,7 +11,7 @@ import (
 )
 
 func TestJson(t *testing.T) {
-	m := marshal.KafkaJson{}
+	m := marshal.ConfluentKafka{}
 
 	msg := message.NewMessage(uuid.NewV4().String(), []byte("payload"))
 	msg.Metadata.Set("foo", "bar")

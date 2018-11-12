@@ -29,8 +29,11 @@ type confluentSubscriber struct {
 }
 
 type SubscriberConfig struct {
-	Brokers         []string
+	Brokers []string
+
 	ConsumerGroup   string
+	NoConsumerGroup bool
+
 	AutoOffsetReset string
 
 	ConsumersCount int
@@ -53,6 +56,9 @@ func (c SubscriberConfig) Validate() error {
 	}
 	if c.ConsumersCount <= 0 {
 		return errors.Errorf("ConsumersCount must be greater than 0, have %d", c.ConsumersCount)
+	}
+	if c.ConsumerGroup == "" && !c.NoConsumerGroup {
+		return errors.New("NoConsumerGroup must be true or ConsumerGroup must be set")
 	}
 
 	return nil
@@ -89,6 +95,10 @@ func NewCustomConfluentSubscriber(
 }
 
 func DefaultConfluentConsumerConstructor(config SubscriberConfig) (*kafka.Consumer, error) {
+	if err := config.Validate(); err != nil {
+		return nil, errors.Wrap(err, "invalid config")
+	}
+
 	kafkaConfig := &kafka.ConfigMap{
 		"bootstrap.servers": strings.Join(config.Brokers, ","),
 
@@ -100,7 +110,7 @@ func DefaultConfluentConsumerConstructor(config SubscriberConfig) (*kafka.Consum
 		"debug": ",",
 	}
 
-	if config.ConsumerGroup != "" {
+	if !config.NoConsumerGroup {
 		kafkaConfig.SetKey("group.id", config.ConsumerGroup)
 		kafkaConfig.SetKey("enable.auto.commit", true)
 

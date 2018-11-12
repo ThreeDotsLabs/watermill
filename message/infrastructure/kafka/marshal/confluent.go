@@ -9,9 +9,9 @@ import (
 
 const UUIDHeaderKey = "_watermill_message_uuid"
 
-type KafkaJson struct{}
+type ConfluentKafka struct{}
 
-func (KafkaJson) Marshal(topic string, msg *message.Message) (*confluentKafka.Message, error) {
+func (ConfluentKafka) Marshal(topic string, msg *message.Message) (*confluentKafka.Message, error) {
 	if value := msg.Metadata.Get(UUIDHeaderKey); value != "" {
 		return nil, errors.Errorf("metadata %s is reserved by watermil for message UUID", UUIDHeaderKey)
 	}
@@ -34,7 +34,7 @@ func (KafkaJson) Marshal(topic string, msg *message.Message) (*confluentKafka.Me
 	}, nil
 }
 
-func (KafkaJson) Unmarshal(kafkaMsg *confluentKafka.Message) (*message.Message, error) {
+func (ConfluentKafka) Unmarshal(kafkaMsg *confluentKafka.Message) (*message.Message, error) {
 	var messageID string
 	metadata := make(message.Metadata, len(kafkaMsg.Headers))
 
@@ -58,7 +58,7 @@ func (KafkaJson) Unmarshal(kafkaMsg *confluentKafka.Message) (*message.Message, 
 type GeneratePartitionKey func(topic string, msg *message.Message) (string, error)
 
 type kafkaJsonWithPartitioning struct {
-	KafkaJson
+	ConfluentKafka
 
 	generatePartitionKey GeneratePartitionKey
 }
@@ -68,7 +68,7 @@ func NewKafkaJsonWithPartitioning(generatePartitionKey GeneratePartitionKey) kaf
 }
 
 func (j kafkaJsonWithPartitioning) Marshal(topic string, msg *message.Message) (*confluentKafka.Message, error) {
-	kafkaMsg, err := j.KafkaJson.Marshal(topic, msg)
+	kafkaMsg, err := j.ConfluentKafka.Marshal(topic, msg)
 	if err != nil {
 		return nil, err
 	}

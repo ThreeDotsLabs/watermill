@@ -18,8 +18,10 @@ type confluentPublisher struct {
 
 func NewPublisher(brokers []string, marshaler Marshaler, kafkaConfigOverwrite kafka.ConfigMap) (message.Publisher, error) {
 	config := &kafka.ConfigMap{
-		"bootstrap.servers": strings.Join(brokers, ","),
-		"debug":             ",",
+		"bootstrap.servers":            strings.Join(brokers, ","),
+		"queue.buffering.max.messages": 10000000,
+		"queue.buffering.max.kbytes":   2097151,
+		"debug": ",",
 	}
 
 	if err := mergeConfluentConfigs(config, kafkaConfigOverwrite); err != nil {
@@ -39,6 +41,10 @@ func NewCustomPublisher(producer *kafka.Producer, marshaler Marshaler) (message.
 }
 
 func (p confluentPublisher) Publish(topic string, msgs ...*message.Message) error {
+	if p.closed {
+		return errors.New("publisher closed")
+	}
+
 	for _, msg := range msgs {
 		kafkaMsg, err := p.marshaler.Marshal(topic, msg)
 		if err != nil {
