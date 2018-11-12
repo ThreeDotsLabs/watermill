@@ -20,9 +20,11 @@ type Subscriber struct {
 
 	outputChannels     []chan *message.Message
 	outputChannelsLock sync.Locker
+
+	closed bool
 }
 
-func NewSubscriber(addr string, unmarshalMessageFunc UnmarshalMessageFunc, logger watermill.LoggerAdapter) (message.Subscriber, error) {
+func NewSubscriber(addr string, unmarshalMessageFunc UnmarshalMessageFunc, logger watermill.LoggerAdapter) (*Subscriber, error) {
 	r := chi.NewRouter()
 	s := &http.Server{Addr: addr, Handler: r}
 
@@ -33,6 +35,7 @@ func NewSubscriber(addr string, unmarshalMessageFunc UnmarshalMessageFunc, logge
 		unmarshalMessageFunc,
 		make([]chan *message.Message, 1),
 		&sync.Mutex{},
+		false,
 	}, nil
 }
 
@@ -74,14 +77,19 @@ func (s *Subscriber) Subscribe(topic string) (chan *message.Message, error) {
 		}
 	})
 
-	// todo - how to handle errors?
-	s.server.Close()
-	go s.server.ListenAndServe()
-
 	return messages, nil
 }
 
+func (s *Subscriber) RunHTTPServer() error {
+	return s.server.ListenAndServe()
+}
+
 func (s Subscriber) Close() error {
+	if s.closed {
+		return nil
+	}
+	s.closed = true
+
 	defer func() {
 		for _, ch := range s.outputChannels {
 			close(ch)

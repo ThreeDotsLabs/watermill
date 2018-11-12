@@ -149,8 +149,7 @@ func TestRouter_functional_nack(t *testing.T) {
 	go r.Run()
 	defer r.Close()
 
-	// wait for router start
-	time.Sleep(time.Millisecond * 50)
+	<-r.Running()
 
 	publishedMsg := message.NewMessage("1", nil)
 	require.NoError(t, pubSub.Publish("subscribe_topic", publishedMsg))

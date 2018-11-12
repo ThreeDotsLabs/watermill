@@ -54,6 +54,8 @@ func NewRouter(config RouterConfig, logger watermill.LoggerAdapter) (*Router, er
 		closedCh: make(chan struct{}),
 
 		logger: logger,
+
+		running: make(chan struct{}),
 	}, nil
 }
 
@@ -75,7 +77,8 @@ type Router struct {
 
 	logger watermill.LoggerAdapter
 
-	running bool
+	isRunning bool
+	running   chan struct{}
 }
 
 func (r *Router) Logger() watermill.LoggerAdapter {
@@ -142,17 +145,17 @@ func (r *Router) AddNoPublisherHandler(
 }
 
 func (r *Router) Run() (err error) {
+	if r.isRunning {
+		return errors.New("router is already running")
+	}
+	r.isRunning = true
+
 	defer func() {
 		if r := recover(); r != nil {
 			err = errors.Errorf("panic recovered: %#v", r)
 			return
 		}
 	}()
-
-	if r.running {
-		return errors.New("router is already running")
-	}
-	r.running = true
 
 	r.logger.Debug("Loading plugins", nil)
 	for _, plugin := range r.plugins {
@@ -191,6 +194,8 @@ func (r *Router) Run() (err error) {
 		}()
 	}
 
+	close(r.running)
+
 	<-r.closeCh
 
 	r.logger.Info("Waiting for messages", watermill.LogFields{
@@ -202,6 +207,13 @@ func (r *Router) Run() (err error) {
 	r.logger.Info("All messages processed", nil)
 
 	return nil
+}
+
+// Running is closed when router is running.
+// In other words: you can wait till router is running using
+//     <- r.Running()
+func (r *Router) Running() chan struct{} {
+	return r.running
 }
 
 func (r *Router) Close() error {

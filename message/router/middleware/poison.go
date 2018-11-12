@@ -48,7 +48,6 @@ func NewPoisonQueue(pub message.Publisher, topic string) (PoisonQueue, error) {
 				if err != nil {
 					// handler didn't cope with the message; publish it on the poison topic and carry on as usual
 					err = pq.publishPoisonMessage(msg, err)
-					return
 				}
 			}()
 

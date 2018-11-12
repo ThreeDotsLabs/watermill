@@ -1,80 +1,93 @@
 package main
 
 import (
+	"encoding/json"
+	"io/ioutil"
+
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
 	"github.com/ThreeDotsLabs/watermill/message/router/plugin"
+	"github.com/pkg/errors"
+	"github.com/satori/go.uuid"
 
 	"github.com/ThreeDotsLabs/watermill/message"
 
-	"encoding/json"
-	"io/ioutil"
 	stdHttp "net/http"
 	_ "net/http/pprof"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/http"
-	kafka2 "github.com/ThreeDotsLabs/watermill/message/infrastructure/kafka"
+	"github.com/ThreeDotsLabs/watermill/message/infrastructure/kafka"
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/kafka/marshal"
-	"github.com/satori/go.uuid"
 )
 
-type request struct {
-	Foo string
-	Bar string
+type GitlabWebhook struct {
+	ObjectKind string `json:"object_kind"`
 }
 
 func main() {
-	logger := watermill.NewStdLogger(false, false)
+	logger := watermill.NewStdLogger(true, true)
 
-	pub, err := kafka2.NewPublisher([]string{"localhost:9092"}, marshal.ConfluentKafka{})
+	kafkaPublisher, err := kafka.NewPublisher([]string{"localhost:9092"}, marshal.ConfluentKafka{}, nil)
 	if err != nil {
 		panic(err)
 	}
 
-	sub, err := http.NewSubscriber(":8080", func(topic string, r *stdHttp.Request) (message.Message, error) {
-		b, err := ioutil.ReadAll(r.Body)
+	httpSubscriber, err := http.NewSubscriber(":8080", func(topic string, request *stdHttp.Request) (*message.Message, error) {
+		b, err := ioutil.ReadAll(request.Body)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "cannot read body")
 		}
 
-		p := request{}
-		if err := json.Unmarshal(b, &p); err != nil {
-			return nil, err
-		}
-
-		return message.NewMessage(uuid.NewV4().String(), p), nil
+		return message.NewMessage(uuid.NewV4().String(), b), nil
 	}, logger)
 	if err != nil {
 		panic(err)
 	}
 
-	h, err := message.NewRouter(
+	r, err := message.NewRouter(
 		message.RouterConfig{
-			ServerName:         "http_to_kafka",
-			PublishEventsTopic: "http_events",
+			ServerName: "http_to_kafka",
 		},
-		sub,
-		pub,
+		logger,
 	)
 	if err != nil {
 		panic(err)
 	}
-	h.Logger = logger
 
-	h.AddMiddleware(
-		middleware.AckOnSuccess,
+	r.AddMiddleware(
 		middleware.Recoverer,
 		middleware.CorrelationID,
 	)
-	h.AddPlugin(plugin.SignalsHandler)
+	r.AddPlugin(plugin.SignalsHandler)
 
-	h.AddHandler(
-		"posts_counter",
+	err = r.AddHandler(
+		"http_to_kafka",
 		"/test",
-		func(msg message.Message) (producedMessages []message.Message, err error) {
-			return []message.Message{msg}, nil
+		"webhooks",
+		message.NewPubSub(kafkaPublisher, httpSubscriber),
+		func(msg *message.Message) ([]*message.Message, error) {
+			webhook := GitlabWebhook{}
+
+			// simple validation
+			if err := json.Unmarshal(msg.Payload, &webhook); err != nil {
+				return nil, errors.Wrap(err, "cannot unmarshal message")
+			}
+			if webhook.ObjectKind == "" {
+				return nil, errors.New("empty object kind")
+			}
+
+			// just forward from http subscribert to kafka publisher
+			return []*message.Message{msg}, nil
 		},
 	)
+	if err != nil {
+		panic(err)
+	}
 
-	h.Run()
+	go func() {
+		<-r.Running()
+		httpSubscriber.RunHTTPServer()
+	}()
+
+	r.Run()
 }
