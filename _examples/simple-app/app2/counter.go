@@ -35,6 +35,8 @@ type PostsCounter struct {
 }
 
 func (p PostsCounter) Count(msg *message.Message) ([]*message.Message, error) {
+	// in production use when implementing counter we probably want to make some kind of deduplication here
+
 	newCount, err := p.countStorage.CountAdd()
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot add count")

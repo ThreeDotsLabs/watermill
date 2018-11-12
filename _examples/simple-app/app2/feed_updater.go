@@ -9,6 +9,13 @@ import (
 	"github.com/pkg/errors"
 )
 
+// intentionally not importing type from app1, because we don't need all data and we want to avoid coupling
+type postAdded struct {
+	OccurredOn time.Time `json:"occurred_on"`
+	Author     string    `json:"author"`
+	Title      string    `json:"title"`
+}
+
 type feedStorage interface {
 	AddToFeed(title, author string, time time.Time) error
 }

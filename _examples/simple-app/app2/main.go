@@ -12,12 +12,6 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/kafka"
 )
 
-type postAdded struct {
-	OccurredOn time.Time `json:"occurred_on"`
-	Author     string    `json:"author"`
-	Title      string    `json:"title"`
-}
-
 var (
 	marshaler = kafka.DefaultMarshaler{}
 	brokers   = []string{"localhost:9092"}
@@ -51,16 +45,31 @@ func main() {
 	}
 
 	h.AddMiddleware(
+		// some, simple metrics
 		newMetricsMiddleware().Middleware,
+
+		// retry middleware retries message processing if error occurred in handler
 		poisonQueue.Middleware,
+
+		// if retries limit was exceeded, message is sent to poison queue (poison_queue topic)
 		retryMiddleware.Middleware,
+
+		// recovered recovers panic from handlers
 		middleware.Recoverer,
+
+		// correlation ID middleware adds to every produced message correlation id of consumed message,
+		// useful for debugging
 		middleware.CorrelationID,
+
+		// simulating error or panic from handler
 		middleware.RandomFail(0.1),
 		middleware.RandomPanic(0.1),
 	)
+
+	// close router when SIGTERM is sent
 	h.AddPlugin(plugin.SignalsHandler)
 
+	// handler which just counts added posts
 	h.AddHandler(
 		"posts_counter",
 		"app1-posts_published",
@@ -68,6 +77,11 @@ func main() {
 		message.NewPubSub(pub, createSubscriber("app2-posts_counter_v2", logger)),
 		PostsCounter{memoryCountStorage{new(int64)}}.Count,
 	)
+
+	// handler which generates "feed" from events post
+	//
+	// this implementation just prints it to stdout,
+	// but production ready implementation would save posts to some persistent storage
 	h.AddNoPublisherHandler(
 		"feed_generator",
 		"app1-posts_published",
