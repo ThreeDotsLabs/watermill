@@ -80,7 +80,9 @@ func (s *Subscriber) Subscribe(topic string) (chan *message.Message, error) {
 	return messages, nil
 }
 
-func (s *Subscriber) RunHTTPServer() error {
+// StartHTTPServer starts http server.
+// StartHTTPServer must be called after all subscribe function are called.
+func (s *Subscriber) StartHTTPServer() error {
 	return s.server.ListenAndServe()
 }
 

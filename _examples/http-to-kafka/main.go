@@ -76,7 +76,7 @@ func main() {
 				return nil, errors.New("empty object kind")
 			}
 
-			// just forward from http subscribert to kafka publisher
+			// just forward from http subscriber to kafka publisher
 			return []*message.Message{msg}, nil
 		},
 	)
@@ -85,8 +85,9 @@ func main() {
 	}
 
 	go func() {
+		// HTTP server needs to be started after router is ready.
 		<-r.Running()
-		httpSubscriber.RunHTTPServer()
+		httpSubscriber.StartHTTPServer()
 	}()
 
 	r.Run()
