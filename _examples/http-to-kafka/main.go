@@ -17,7 +17,6 @@ import (
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/http"
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/kafka"
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure/kafka/marshal"
 )
 
 type GitlabWebhook struct {
@@ -27,7 +26,7 @@ type GitlabWebhook struct {
 func main() {
 	logger := watermill.NewStdLogger(true, true)
 
-	kafkaPublisher, err := kafka.NewPublisher([]string{"localhost:9092"}, marshal.ConfluentKafka{}, nil)
+	kafkaPublisher, err := kafka.NewPublisher([]string{"localhost:9092"}, kafka.DefaultMarshaler{}, nil)
 	if err != nil {
 		panic(err)
 	}

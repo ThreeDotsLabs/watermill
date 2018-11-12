@@ -10,7 +10,6 @@ import (
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/kafka"
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure/kafka/marshal"
 )
 
 type postAdded struct {
@@ -20,7 +19,7 @@ type postAdded struct {
 }
 
 var (
-	marshaler = marshal.ConfluentKafka{}
+	marshaler = kafka.DefaultMarshaler{}
 	brokers   = []string{"localhost:9092"}
 
 	logger = watermill.NewStdLogger(false, false)
@@ -64,14 +63,14 @@ func main() {
 
 	h.AddHandler(
 		"posts_counter",
-		"test_topic",
+		"app1-posts_published",
 		"posts_count",
 		message.NewPubSub(pub, createSubscriber("app2-posts_counter_v2", logger)),
 		PostsCounter{memoryCountStorage{new(int64)}}.Count,
 	)
 	h.AddNoPublisherHandler(
 		"feed_generator",
-		"test_topic",
+		"app1-posts_published",
 		createSubscriber("app2-feed_generator_v2", logger),
 		FeedGenerator{printFeedStorage{}}.UpdateFeed,
 	)

@@ -1,17 +1,18 @@
-package marshal_test
+package kafka_test
 
 import (
 	"testing"
 
+	"github.com/ThreeDotsLabs/watermill/message/infrastructure/kafka"
+
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure/kafka/marshal"
 	"github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestJson(t *testing.T) {
-	m := marshal.ConfluentKafka{}
+	m := kafka.DefaultMarshaler{}
 
 	msg := message.NewMessage(uuid.NewV4().String(), []byte("payload"))
 	msg.Metadata.Set("foo", "bar")
@@ -28,7 +29,7 @@ func TestJson(t *testing.T) {
 }
 
 func TestJsonWithPartitioning(t *testing.T) {
-	m := marshal.NewKafkaJsonWithPartitioning(func(topic string, msg *message.Message) (string, error) {
+	m := kafka.NewWithPartitioningMarshaler(func(topic string, msg *message.Message) (string, error) {
 		return msg.Metadata.Get("partition"), nil
 	})
 

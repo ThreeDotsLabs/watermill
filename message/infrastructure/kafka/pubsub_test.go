@@ -7,7 +7,6 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure"
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/kafka"
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure/kafka/marshal"
 	"github.com/stretchr/testify/require"
 )
 
@@ -39,7 +38,7 @@ func generatePartitionKey(topic string, msg *message.Message) (string, error) {
 }
 
 func createPubSubWithConsumerGrup(t *testing.T, consumerGroup string) message.PubSub {
-	return newPubSub(t, marshal.ConfluentKafka{}, consumerGroup)
+	return newPubSub(t, kafka.DefaultMarshaler{}, consumerGroup)
 }
 
 func createPubSub(t *testing.T) message.PubSub {
@@ -47,13 +46,13 @@ func createPubSub(t *testing.T) message.PubSub {
 }
 
 func createPartitionedPubSub(t *testing.T) message.PubSub {
-	return newPubSub(t, marshal.NewKafkaJsonWithPartitioning(generatePartitionKey), "test")
+	return newPubSub(t, kafka.NewWithPartitioningMarshaler(generatePartitionKey), "test")
 }
 
 func createNoGroupSubscriberConstructor(t *testing.T) message.Subscriber {
 	logger := watermill.NewStdLogger(true, true)
 
-	marshaler := marshal.ConfluentKafka{}
+	marshaler := kafka.DefaultMarshaler{}
 
 	sub, err := kafka.NewConfluentSubscriber(
 		kafka.SubscriberConfig{

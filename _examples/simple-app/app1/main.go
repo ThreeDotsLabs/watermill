@@ -11,7 +11,6 @@ import (
 
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/kafka"
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure/kafka/marshal"
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
 	"github.com/renstrom/shortuuid"
 )
@@ -27,6 +26,7 @@ type postAdded struct {
 
 var letters = []rune("abcdefghijklmnopqrstuvwxyz")
 
+// randString generates random string of len n
 func randString(n int) string {
 	b := make([]rune, n)
 	for i := range b {
@@ -36,13 +36,14 @@ func randString(n int) string {
 }
 
 func main() {
-	publisher, err := kafka.NewPublisher([]string{"localhost:9092"}, marshal.ConfluentKafka{}, nil)
+	publisher, err := kafka.NewPublisher([]string{"localhost:9092"}, kafka.DefaultMarshaler{}, nil)
 	if err != nil {
 		panic(err)
 	}
 	defer publisher.Close()
 
 	messagesToAdd := 1000
+	workers := 25
 
 	msgAdded := make(chan struct{})
 	allMessagesAdded := make(chan struct{})
@@ -60,7 +61,7 @@ func main() {
 		}
 	}()
 
-	for num := 0; num < 25; num++ {
+	for num := 0; num < workers; num++ {
 		go func() {
 			var msgPayload postAdded
 			var msg *message.Message
@@ -71,15 +72,17 @@ func main() {
 				msgPayload.Title = randString(15)
 				msgPayload.Content = randString(30)
 
-				b, err := json.Marshal(msgPayload)
+				payload, err := json.Marshal(msgPayload)
 				if err != nil {
 					panic(err)
 				}
-				msg = message.NewMessage(uuid.NewV4().String(), b)
 
+				msg = message.NewMessage(uuid.NewV4().String(), payload)
+
+				// using function from middleware to set correlation id, useful for debugging
 				middleware.SetCorrelationID(shortuuid.New(), msg)
 
-				err = publisher.Publish("test_topic", msg)
+				err = publisher.Publish("app1-posts_published", msg)
 				if err != nil {
 					log.Println("cannot publish message:", err)
 					continue
@@ -89,5 +92,6 @@ func main() {
 		}()
 	}
 
+	// waiting to all being produced
 	<-allMessagesAdded
 }
