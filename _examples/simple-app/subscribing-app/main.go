@@ -72,9 +72,9 @@ func main() {
 	// handler which just counts added posts
 	h.AddHandler(
 		"posts_counter",
-		"app1-posts_published",
+		"posts_published",
 		"posts_count",
-		message.NewPubSub(pub, createSubscriber("app2-posts_counter_v2", logger)),
+		message.NewPubSub(pub, createSubscriber("posts_counter_v2", logger)),
 		PostsCounter{memoryCountStorage{new(int64)}}.Count,
 	)
 
@@ -84,8 +84,8 @@ func main() {
 	// but production ready implementation would save posts to some persistent storage
 	h.AddNoPublisherHandler(
 		"feed_generator",
-		"app1-posts_published",
-		createSubscriber("app2-feed_generator_v2", logger),
+		"posts_published",
+		createSubscriber("feed_generator_v2", logger),
 		FeedGenerator{printFeedStorage{}}.UpdateFeed,
 	)
 
