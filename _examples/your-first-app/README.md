@@ -2,7 +2,7 @@
 
 ## Files
 
-- [main.go](main.go) - example source code, probably the most intresting file for you
+- [main.go](main.go) - example source code, probably the **most intresting file for you**
 - [docker-compose.yml](docker-compose.yml) - local environment Docker configuration, contains Golang, Kafka and Zookeeper
 - [go.mod](go.mod) - Go modules dependencies, more informations you may find  in [Go wiki](https://github.com/golang/go/wiki/Modules)
 - [go.sum](go.sum) - Go modules checksums
