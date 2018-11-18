@@ -113,6 +113,11 @@ func main() {
 			consumedPayload := event{}
 			err := json.Unmarshal(msg.Payload, &consumedPayload)
 			if err != nil {
+				// default behavior when handler returns error is sending Nack (negative-acknowledgement)
+				// the message will be processed again
+				//
+				// you can change default behaviour by using for example middleware.Retry or middleware.PoisonQueue
+				// you can also implement your own
 				return nil, err
 			}
 
