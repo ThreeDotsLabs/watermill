@@ -6,12 +6,10 @@ import (
 	"time"
 
 	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
-	"github.com/stretchr/testify/require"
-
 	"github.com/ThreeDotsLabs/watermill/message"
-
+	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const (

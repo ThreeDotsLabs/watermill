@@ -1,14 +1,15 @@
 package middleware
 
 import (
+	"time"
+
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
-	"time"
 )
 
 type Throttle struct {
 	perSecond int
-	logger      watermill.LoggerAdapter
+	logger    watermill.LoggerAdapter
 }
 
 func NewThrottlePerSecond(perSecond int, logger watermill.LoggerAdapter) (Throttle, error) {
