@@ -2,14 +2,14 @@
 
 ## Files
 
-- [main.go](main.go) - example source code, probably the **most intresting file for you**
-- [docker-compose.yml](docker-compose.yml) - local environment Docker configuration, contains Golang, Kafka and Zookeeper
-- [go.mod](go.mod) - Go modules dependencies, more informations you may find  in [Go wiki](https://github.com/golang/go/wiki/Modules)
+- [main.go](main.go) - example source code, probably the **most interesting file to you**
+- [docker-compose.yml](docker-compose.yml) - local environment Docker Compose configuration, contains Golang, Kafka and Zookeeper
+- [go.mod](go.mod) - Go modules dependencies, you can find more information at [Go wiki](https://github.com/golang/go/wiki/Modules)
 - [go.sum](go.sum) - Go modules checksums
 
 ## Requirements
 
-To run this example you need to have docker-compose and Docker. Installation guide: https://docs.docker.com/compose/install/
+To run this example you will need Docker and docker-compose installed. See installation guide at https://docs.docker.com/compose/install/
 
 ## Running
 
@@ -24,8 +24,7 @@ server_1     | 2018/11/18 11:16:38 received event 1542539798
 server_1     | 2018/11/18 11:16:39 received event 1542539799
 ```
 
-Now it's only left to check in Kafka topics, that all messages are fine:
-
+Now all that's left is to take a look at the Kafka topics to check that all messages are there:
 
 ```bash
 > docker-compose exec kafka kafka-console-consumer --bootstrap-server localhost:9092 --topic deadly-easy-topic

@@ -5,14 +5,13 @@ import (
 	"log"
 	"time"
 
-	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
-
-	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/ThreeDotsLabs/watermill/message/router/plugin"
 	"github.com/satori/go.uuid"
 
 	"github.com/ThreeDotsLabs/watermill"
+	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/kafka"
+	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
+	"github.com/ThreeDotsLabs/watermill/message/router/plugin"
 )
 
 var (
