@@ -11,7 +11,6 @@ import (
 )
 
 type HandlerFunc func(msg *Message) ([]*Message, error)
-type NoPublisherHandlerFunc func(msg *Message) error
 
 type HandlerMiddleware func(h HandlerFunc) HandlerFunc
 
