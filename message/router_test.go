@@ -55,9 +55,7 @@ func TestRouter_functional(t *testing.T) {
 	require.NoError(t, err)
 
 	r, err := message.NewRouter(
-		message.RouterConfig{
-			ServerName: "test_" + testID,
-		},
+		message.RouterConfig{},
 		watermill.NewStdLogger(true, true),
 	)
 	require.NoError(t, err)
@@ -119,9 +117,7 @@ func TestRouter_functional_nack(t *testing.T) {
 	testID := uuid.NewV4().String()
 
 	r, err := message.NewRouter(
-		message.RouterConfig{
-			ServerName: "test_" + testID,
-		},
+		message.RouterConfig{},
 		watermill.NewStdLogger(true, true),
 	)
 	require.NoError(t, err)

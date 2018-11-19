@@ -88,9 +88,7 @@ func main() {
 	// producing events in background
 	go publishEvents(publisher)
 
-	router, err := message.NewRouter(message.RouterConfig{
-		ServerName: "your-first-app",
-	}, logger)
+	router, err := message.NewRouter(message.RouterConfig{}, logger)
 	if err != nil {
 		panic(err)
 	}

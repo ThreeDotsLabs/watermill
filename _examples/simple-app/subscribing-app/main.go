@@ -26,9 +26,7 @@ func main() {
 	}
 
 	h, err := message.NewRouter(
-		message.RouterConfig{
-			ServerName: "simple-app",
-		},
+		message.RouterConfig{},
 		logger,
 	)
 	if err != nil {

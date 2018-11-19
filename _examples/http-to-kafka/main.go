@@ -44,9 +44,7 @@ func main() {
 	}
 
 	r, err := message.NewRouter(
-		message.RouterConfig{
-			ServerName: "http_to_kafka",
-		},
+		message.RouterConfig{},
 		logger,
 	)
 	if err != nil {
