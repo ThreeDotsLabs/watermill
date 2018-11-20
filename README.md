@@ -68,6 +68,10 @@ For local development, you can use [golang-librdkafka](https://hub.docker.com/r/
 
 Starts an HTTP server that listens for messages in a REST fashion.
 
+## Middlewares
+
+You can find all built-in middlewares in [`message/router/middleware`](message/router/middleware).
+
 ## Examples
 
 * [Your first app](_examples/your-first-app) - start here!
@@ -79,6 +83,8 @@ Starts an HTTP server that listens for messages in a REST fashion.
 All contributions are very much welcome. If you'd like to help with Watermill development,
 please see [open issues](https://github.com/ThreeDotsLabs/watermill/issues?utf8=%E2%9C%93&q=is%3Aissue+is%3Aopen+)
 and submit your pull request via GitHub.
+
+## Support
 
 Join us on the `#watermill` channel on the [Gophers slack](https://gophers.slack.com/): https://gophersinvite.herokuapp.com/
 
