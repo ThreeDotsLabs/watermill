@@ -3,11 +3,11 @@ package googlecloud
 import (
 	"context"
 
-	"github.com/pkg/errors"
-
 	"cloud.google.com/go/pubsub"
-	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/pkg/errors"
 	"google.golang.org/api/option"
+
+	"github.com/ThreeDotsLabs/watermill/message"
 )
 
 var (
