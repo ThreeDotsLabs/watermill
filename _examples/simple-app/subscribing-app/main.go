@@ -33,7 +33,7 @@ func main() {
 
 	retryMiddleware := middleware.Retry{}
 	retryMiddleware.MaxRetries = 1
-	retryMiddleware.WaitTime = time.Second
+	retryMiddleware.WaitTime = time.Millisecond * 10
 
 	poisonQueue, err := middleware.NewPoisonQueue(pub, "poison_queue")
 	if err != nil {
@@ -42,7 +42,7 @@ func main() {
 
 	h.AddMiddleware(
 		// limiting processed messages to 10 per second
-		middleware.NewThrottle(10/time.Second).Middleware,
+		middleware.NewThrottle(100, time.Second).Middleware,
 
 		// some, simple metrics
 		newMetricsMiddleware().Middleware,
@@ -61,8 +61,8 @@ func main() {
 		middleware.CorrelationID,
 
 		// simulating error or panic from handler
-		middleware.RandomFail(0.1),
-		middleware.RandomPanic(0.1),
+		middleware.RandomFail(0.01),
+		middleware.RandomPanic(0.01),
 	)
 
 	// close router when SIGTERM is sent
@@ -97,6 +97,7 @@ func createSubscriber(consumerGroup string, logger watermill.LoggerAdapter) mess
 			Brokers:        brokers,
 			ConsumerGroup:  consumerGroup,
 			ConsumersCount: 8,
+			AutoOffsetReset: "earliest",
 		},
 		marshaler,
 		logger,

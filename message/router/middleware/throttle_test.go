@@ -19,7 +19,7 @@ const (
 )
 
 func TestThrottle_Middleware(t *testing.T) {
-	throttle := middleware.NewThrottle(testTimeout / perSecond)
+	throttle := middleware.NewThrottle(perSecond, testTimeout)
 
 	ctx, _ := context.WithTimeout(context.Background(), testTimeout)
 
@@ -73,4 +73,5 @@ CounterLoop:
 	)
 
 	assert.True(t, producedMessagesCounter <= int(perSecond*testTimeout.Seconds()))
+	assert.True(t, producedMessagesCounter > 0)
 }

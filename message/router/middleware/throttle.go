@@ -11,9 +11,9 @@ type Throttle struct {
 }
 
 // NewThrottle creates new Throttle instance.
-// Example rate: 10/time.Second
-func NewThrottle(rate time.Duration) *Throttle {
-	return &Throttle{time.Tick(rate)}
+// Example duration and count: NewThrottle(10, time.Second) for 10 messages per second
+func NewThrottle(count int64, duration time.Duration) *Throttle {
+	return &Throttle{time.Tick(duration/time.Duration(count))}
 }
 
 func (t Throttle) Middleware(h message.HandlerFunc) message.HandlerFunc {
