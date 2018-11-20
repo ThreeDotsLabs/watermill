@@ -17,8 +17,6 @@ type HandlerMiddleware func(h HandlerFunc) HandlerFunc
 type RouterPlugin func(*Router) error
 
 type RouterConfig struct {
-	ServerName string
-
 	CloseTimeout time.Duration
 }
 
@@ -29,10 +27,6 @@ func (c *RouterConfig) setDefaults() {
 }
 
 func (c RouterConfig) Validate() error {
-	if c.ServerName == "" {
-		return errors.New("empty ServerName")
-	}
-
 	return nil
 }
 
