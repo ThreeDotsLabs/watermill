@@ -34,18 +34,45 @@ an error. What happens next is up to the middlewares you've chosen.
 * **Extendable** with middlewares and plugins.
 * **Resillient** - using proven technologies and passing stress tests *(results coming soon)*.
 
-## Dependencies
+## Pub/Subs
 
-Watermill uses the [confluent-kafka-go](https://github.com/confluentinc/confluent-kafka-go) as Apache Kafka
+All publishers and subscribers have to implement an interface:
+
+```go
+type Publisher interface {
+	Publish(topic string, messages ...*Message) error
+	Close() error
+}
+
+type Subscriber interface {
+	Subscribe(topic string) (chan *Message, error)
+	Close() error
+}
+```
+
+### [Go channel Pub/Sub](https://github.com/ThreeDotsLabs/watermill/tree/master/message/infrastructure/gochannel)
+
+Uses go channels for communication within the same process.
+
+### [Kafka Pub/Sub](https://github.com/ThreeDotsLabs/watermill/tree/master/message/infrastructure/kafka)
+
+Uses Apache Kafka as the broker: Publishes messages to chosen topics and subscribes on topics for incoming messages.
+
+This implementation uses [confluent-kafka-go](https://github.com/confluentinc/confluent-kafka-go) as Kafka
 client, which depends on [librdkafka](https://github.com/edenhill/librdkafka), so you will need it installed.
+Version 0.11.6 is recommended.
 
 For local development, you can use [golang-librdkafka](https://hub.docker.com/r/threedotslabs/golang-librdkafka/) docker image.
+
+### [HTTP subscriber](https://github.com/ThreeDotsLabs/watermill/tree/master/message/infrastructure/http)
+
+Starts an HTTP server that listens for messages in a REST fashion.
 
 ## Examples
 
 * [Your first app](_examples/your-first-app) - start here!
+* [Simple application with publisher and subscriber](_examples/simple-app)
 * [HTTP to Kafka](_examples/http-to-kafka)
-* [Simple application with published and subscriber](_examples/simple-app)
 
 ## Contributing
 
@@ -53,7 +80,7 @@ All contributions are very much welcome. If you'd like to help with Watermill de
 please see [open issues](https://github.com/ThreeDotsLabs/watermill/issues?utf8=%E2%9C%93&q=is%3Aissue+is%3Aopen+)
 and submit your pull request via GitHub.
 
-Join us on the `#watermill` channel on the Gophers slack: https://gophersinvite.herokuapp.com/
+Join us on the `#watermill` channel on the [Gophers slack](https://gophers.slack.com/): https://gophersinvite.herokuapp.com/
 
 ## Why the name?
 
