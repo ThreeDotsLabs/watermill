@@ -13,8 +13,9 @@ import (
 )
 
 const (
-	perSecond   = 10
-	testTimeout = time.Second
+	perSecond          = 10
+	testTimeout        = time.Second
+	concurrentHandlers = 10
 )
 
 func TestThrottle_Middleware(t *testing.T) {
@@ -26,7 +27,7 @@ func TestThrottle_Middleware(t *testing.T) {
 
 	producedMessagesCounter := 0
 
-	for i := 0; i < 10; i++ {
+	for i := 0; i < concurrentHandlers; i++ {
 		go func() {
 			for {
 				producedMessages := []*message.Message{message.NewMessage("produced", nil)}
