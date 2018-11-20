@@ -1,0 +1,28 @@
+version: '3'
+services:
+  server:
+    image: threedotslabs/golang-librdkafka:1.11.2-stretch
+    restart: on-failure
+    depends_on:
+    - kafka
+    volumes:
+    - .:/app
+    working_dir: /app
+    command: go run main.go
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    restart: on-failure
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    restart: on-failure
+    depends_on:
+    - zookeeper
+    environment:
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"

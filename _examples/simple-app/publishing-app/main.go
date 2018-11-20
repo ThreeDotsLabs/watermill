@@ -82,7 +82,7 @@ func main() {
 				// using function from middleware to set correlation id, useful for debugging
 				middleware.SetCorrelationID(shortuuid.New(), msg)
 
-				err = publisher.Publish("app1-posts_published", msg)
+				err = publisher.Publish("posts_published", msg)
 				if err != nil {
 					log.Println("cannot publish message:", err)
 					continue
