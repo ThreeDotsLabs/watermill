@@ -113,9 +113,7 @@ func TestRouter_functional_nack(t *testing.T) {
 	pubSub, err := createPubSub()
 	require.NoError(t, err)
 	defer pubSub.Close()
-
-	testID := uuid.NewV4().String()
-
+	
 	r, err := message.NewRouter(
 		message.RouterConfig{},
 		watermill.NewStdLogger(true, true),
