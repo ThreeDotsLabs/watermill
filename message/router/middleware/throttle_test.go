@@ -5,11 +5,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ThreeDotsLabs/watermill"
+	"github.com/pkg/errors"
+
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -18,25 +18,25 @@ const (
 )
 
 func TestThrottle_Middleware(t *testing.T) {
-	throttle, err := middleware.NewThrottlePerSecond(perSecond, watermill.NewStdLogger(true, true))
-	require.NoError(t, err)
+	throttle := middleware.Throttle{perSecond}
 
-	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+	ctx, _ := context.WithTimeout(context.Background(), testTimeout)
 
 	producedMessagesCounter := 0
 	productionDone := false
 	for {
-		produced, err := throttle.Middleware(handlerFuncAlwaysOK)(
+		producedMessages := []*message.Message{message.NewMessage("produced", nil)}
+		producedErr := errors.New("produced err")
+
+		produced, err := throttle.Middleware(func(msg *message.Message) ([]*message.Message, error) {
+			return producedMessages, producedErr
+		})(
 			message.NewMessage("uuid", nil),
 		)
-		if err != nil {
-			cancel()
-			t.Fail()
-			return
-		}
 
-		assert.NoError(t, err)
-		assert.Equal(t, handlerFuncAlwaysOKMessages, produced)
+		assert.Equal(t, producedMessages, produced)
+		assert.Equal(t, producedErr, err)
+
 		producedMessagesCounter++
 
 		select {
@@ -55,5 +55,6 @@ func TestThrottle_Middleware(t *testing.T) {
 		int(testTimeout.Seconds()),
 		perSecond,
 	)
+
 	assert.True(t, producedMessagesCounter <= int(perSecond*testTimeout.Seconds()))
 }
