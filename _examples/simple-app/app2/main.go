@@ -45,6 +45,9 @@ func main() {
 	}
 
 	h.AddMiddleware(
+		// limiting processed messages to 10 per second
+		middleware.NewThrottle(10/time.Second).Middleware,
+
 		// some, simple metrics
 		newMetricsMiddleware().Middleware,
 

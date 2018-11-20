@@ -7,18 +7,21 @@ import (
 )
 
 type Throttle struct {
-	PerSecond int
+	throttle <-chan time.Time
+}
+
+// NewThrottle creates new Throttle instance.
+// Example rate: 10/time.Second
+func NewThrottle(rate time.Duration) *Throttle {
+	return &Throttle{time.Tick(rate)}
 }
 
 func (t Throttle) Middleware(h message.HandlerFunc) message.HandlerFunc {
 	return func(message *message.Message) ([]*message.Message, error) {
-		defer func() {
-			if t.PerSecond <= 0 {
-				return
-			}
-
-			time.Sleep(time.Duration(int(time.Second) / t.PerSecond))
-		}()
+		select {
+		case <-t.throttle:
+			// throttle is shared by multiple handlers, which will wait for their "tick"
+		}
 
 		return h(message)
 	}

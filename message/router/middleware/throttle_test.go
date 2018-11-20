@@ -18,35 +18,50 @@ const (
 )
 
 func TestThrottle_Middleware(t *testing.T) {
-	throttle := middleware.Throttle{perSecond}
+	throttle := middleware.NewThrottle(testTimeout / perSecond)
 
 	ctx, _ := context.WithTimeout(context.Background(), testTimeout)
 
+	producedMessagesChannel := make(chan struct{})
+
 	producedMessagesCounter := 0
-	productionDone := false
+
+	for i := 0; i < 10; i++ {
+		go func() {
+			for {
+				producedMessages := []*message.Message{message.NewMessage("produced", nil)}
+				producedErr := errors.New("produced err")
+
+				produced, err := throttle.Middleware(func(msg *message.Message) ([]*message.Message, error) {
+					return producedMessages, producedErr
+				})(
+					message.NewMessage("uuid", nil),
+				)
+
+				assert.Equal(t, producedMessages, produced)
+				assert.Equal(t, producedErr, err)
+
+				go func() {
+					// non blocking counting
+					producedMessagesChannel <- struct{}{}
+				}()
+
+				select {
+				case <-ctx.Done():
+					break
+				default:
+				}
+			}
+		}()
+	}
+
+CounterLoop:
 	for {
-		producedMessages := []*message.Message{message.NewMessage("produced", nil)}
-		producedErr := errors.New("produced err")
-
-		produced, err := throttle.Middleware(func(msg *message.Message) ([]*message.Message, error) {
-			return producedMessages, producedErr
-		})(
-			message.NewMessage("uuid", nil),
-		)
-
-		assert.Equal(t, producedMessages, produced)
-		assert.Equal(t, producedErr, err)
-
-		producedMessagesCounter++
-
 		select {
 		case <-ctx.Done():
-			productionDone = true
-		default:
-		}
-
-		if productionDone {
-			break
+			break CounterLoop
+		case <-producedMessagesChannel:
+			producedMessagesCounter++
 		}
 	}
 
