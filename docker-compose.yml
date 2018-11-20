@@ -33,6 +33,13 @@ services:
     volumes:
       - ./tests/sql/schema:/docker-entrypoint-initdb.d
 
+  googlecloud:
+    image: google/cloud-sdk:latest
+    entrypoint: gcloud beta emulators pubsub start --host-port=googlecloud:8085 --verbosity=debug --log-http
+    restart: always
+    ports:
+      - "8085:8085"
+
 #  app:
 #    build: .
 #    entrypoint: sleep infinity
