@@ -2,6 +2,7 @@ package googlecloud
 
 import (
 	"cloud.google.com/go/pubsub"
+	"github.com/pkg/errors"
 
 	"github.com/ThreeDotsLabs/watermill/message"
 )
@@ -19,8 +20,27 @@ type MarshalerUnmarshaler interface {
 	Unmarshaler
 }
 
+const UUIDHeaderKey = "_watermill_message_uuid"
+
 type DefaultMarshaler struct{}
 
 func (m DefaultMarshaler) Marshal(topic string, msg *message.Message) (*pubsub.Message, error) {
-	panic("not implemented")
+	if value := msg.Metadata.Get(UUIDHeaderKey); value != "" {
+		return nil, errors.Errorf("metadata %s is reserved by watermill for message UUID", UUIDHeaderKey)
+	}
+
+	attributes := map[string]string{
+		UUIDHeaderKey: msg.UUID,
+	}
+
+	for k, v := range msg.Metadata {
+		attributes[k] = v
+	}
+
+	marshaledMsg := &pubsub.Message{
+		Data:       []byte(msg.Payload),
+		Attributes: attributes,
+	}
+
+	return marshaledMsg, nil
 }
