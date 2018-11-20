@@ -65,6 +65,8 @@ func (p *publisher) Close() error {
 		return nil
 	}
 
+	p.closed = true
+
 	return p.client.Close()
 }
 
