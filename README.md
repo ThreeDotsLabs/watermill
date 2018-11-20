@@ -26,6 +26,8 @@ func(Message) ([]Message, error)
 Your handler receives a message and decides whether to publish new message(s) or return
 an error. What happens next is up to the middlewares you've chosen.
 
+You can find more about our motivations in our [*Introducing Watermill* blog post](https://threedots.tech/post/introducing-watermill/).
+
 ## Features
 
 * **Easy** to understand (see examples below).
