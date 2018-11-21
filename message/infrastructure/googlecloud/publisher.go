@@ -2,6 +2,7 @@ package googlecloud
 
 import (
 	"context"
+	"sync"
 
 	"cloud.google.com/go/pubsub"
 	"github.com/pkg/errors"
@@ -16,7 +17,7 @@ var (
 )
 
 type publisher struct {
-	topics map[string]*pubsub.Topic
+	topics sync.Map
 	closed bool
 
 	client *pubsub.Client
@@ -46,6 +47,27 @@ func (c PublisherConfig) Validate() error {
 	}
 
 	return nil
+}
+
+func NewPublisher(ctx context.Context, config PublisherConfig) (message.Publisher, error) {
+	config.setDefaults()
+	if err := config.Validate(); err != nil {
+		return nil, errors.Wrap(err, "invalid config")
+	}
+
+	pub := &publisher{
+		publishSettings:    config.PublishSettings,
+		createMissingTopic: config.CreateMissingTopic,
+		marshaler:          config.Marshaler,
+	}
+
+	var err error
+	pub.client, err = pubsub.NewClient(ctx, config.ProjectID, config.ClientOptions...)
+	if err != nil {
+		return nil, err
+	}
+
+	return pub, nil
 }
 
 func (p *publisher) Publish(topic string, messages ...*message.Message) error {
@@ -89,31 +111,9 @@ func (p *publisher) Close() error {
 	return p.client.Close()
 }
 
-func NewPublisher(ctx context.Context, config PublisherConfig) (message.Publisher, error) {
-	config.setDefaults()
-	if err := config.Validate(); err != nil {
-		return nil, errors.Wrap(err, "invalid config")
-	}
-
-	pub := &publisher{
-		topics:             make(map[string]*pubsub.Topic),
-		publishSettings:    config.PublishSettings,
-		createMissingTopic: config.CreateMissingTopic,
-		marshaler:          config.Marshaler,
-	}
-
-	var err error
-	pub.client, err = pubsub.NewClient(ctx, config.ProjectID, config.ClientOptions...)
-	if err != nil {
-		return nil, err
-	}
-
-	return pub, nil
-}
-
 func (p *publisher) topic(ctx context.Context, topic string) (*pubsub.Topic, error) {
-	if t, ok := p.topics[topic]; ok {
-		return t, nil
+	if t, ok := p.topics.Load(topic); ok {
+		return t.(*pubsub.Topic), nil
 	}
 
 	t := p.client.Topic(topic)
@@ -136,7 +136,6 @@ func (p *publisher) topic(ctx context.Context, topic string) (*pubsub.Topic, err
 		t.PublishSettings = *p.publishSettings
 	}
 
-	p.topics[topic] = t
-
+	p.topics.Store(topic, t)
 	return t, nil
 }
