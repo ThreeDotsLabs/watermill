@@ -18,7 +18,9 @@ import (
 func TestNewPublisher(t *testing.T) {
 	pub, err := googlecloud.NewPublisher(
 		context.Background(),
-		googlecloud.CreateTopicIfMissing(),
+		googlecloud.PublisherConfig{
+			CreateMissingTopic: true,
+		},
 	)
 	require.NoError(t, err)
 
@@ -29,7 +31,10 @@ func TestNewPublisher(t *testing.T) {
 }
 
 func TestPublisher_Close(t *testing.T) {
-	pub, err := googlecloud.NewPublisher(context.Background())
+	pub, err := googlecloud.NewPublisher(
+		context.Background(),
+		googlecloud.PublisherConfig{},
+	)
 	require.NoError(t, err)
 
 	err = pub.Close()

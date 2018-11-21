@@ -15,18 +15,36 @@ var (
 	ErrPublisherClosed   = errors.New("publisher is closed")
 )
 
-type PublisherOption func(*publisher)
-
 type publisher struct {
 	closed bool
 
 	client *pubsub.Client
 
-	clientOptions      []option.ClientOption
 	publishSettings    *pubsub.PublishSettings
-	projectID          string
 	createMissingTopic bool
 	marshaler          Marshaler
+}
+
+type PublisherConfig struct {
+	ClientOptions      []option.ClientOption
+	PublishSettings    *pubsub.PublishSettings
+	ProjectID          string
+	CreateMissingTopic bool
+	Marshaler          Marshaler
+}
+
+func (c *PublisherConfig) setDefaults() {
+	if c.Marshaler == nil {
+		c.Marshaler = DefaultMarshaler{}
+	}
+}
+
+func (c PublisherConfig) Validate() error {
+	if c.Marshaler == nil {
+		return errors.New("empty googlecloud message marshaler")
+	}
+
+	return nil
 }
 
 func (p *publisher) Publish(topic string, messages ...*message.Message) error {
@@ -70,55 +88,25 @@ func (p *publisher) Close() error {
 	return p.client.Close()
 }
 
-func NewPublisher(ctx context.Context, opts ...PublisherOption) (message.Publisher, error) {
-	pub := &publisher{}
-
-	for _, opt := range opts {
-		opt(pub)
+func NewPublisher(ctx context.Context, config PublisherConfig) (message.Publisher, error) {
+	config.setDefaults()
+	if err := config.Validate(); err != nil {
+		return nil, errors.Wrap(err, "invalid config")
 	}
 
-	if pub.marshaler == nil {
-		pub.marshaler = DefaultMarshaler{}
+	pub := &publisher{
+		publishSettings:    config.PublishSettings,
+		createMissingTopic: config.CreateMissingTopic,
+		marshaler:          config.Marshaler,
 	}
 
 	var err error
-	pub.client, err = pubsub.NewClient(ctx, pub.projectID, pub.clientOptions...)
+	pub.client, err = pubsub.NewClient(ctx, config.ProjectID, config.ClientOptions...)
 	if err != nil {
 		return nil, err
 	}
 
 	return pub, nil
-}
-
-func ProjectID(projectID string) PublisherOption {
-	return func(pub *publisher) {
-		pub.projectID = projectID
-	}
-}
-
-func ClientOptions(opts ...option.ClientOption) PublisherOption {
-	return func(pub *publisher) {
-		pub.clientOptions = opts
-	}
-}
-
-func PublishSettings(settings pubsub.PublishSettings) PublisherOption {
-	return func(pub *publisher) {
-		pub.publishSettings = new(pubsub.PublishSettings)
-		*pub.publishSettings = settings
-	}
-}
-
-func CreateTopicIfMissing() PublisherOption {
-	return func(pub *publisher) {
-		pub.createMissingTopic = true
-	}
-}
-
-func WithMarshaler(marshaler Marshaler) PublisherOption {
-	return func(pub *publisher) {
-		pub.marshaler = marshaler
-	}
 }
 
 func (p *publisher) topic(ctx context.Context, topic string) (*pubsub.Topic, error) {
