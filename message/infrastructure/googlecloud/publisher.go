@@ -127,7 +127,7 @@ func (p *publisher) topic(ctx context.Context, topic string) (*pubsub.Topic, err
 	t = p.client.Topic(topic)
 	exists, err := t.Exists(ctx)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "could not check if topic %s exists", topic)
 	}
 
 	if !exists && !p.createMissingTopic {
@@ -135,7 +135,7 @@ func (p *publisher) topic(ctx context.Context, topic string) (*pubsub.Topic, err
 	} else if !exists {
 		t, err = p.client.CreateTopic(ctx, topic)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrapf(err, "could not create topic %s", topic)
 		}
 	}
 
