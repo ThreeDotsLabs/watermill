@@ -17,8 +17,9 @@ var (
 )
 
 type publisher struct {
-	topics sync.Map
-	closed bool
+	topics     map[string]*pubsub.Topic
+	topicsLock sync.RWMutex
+	closed     bool
 
 	client *pubsub.Client
 
@@ -56,6 +57,7 @@ func NewPublisher(ctx context.Context, config PublisherConfig) (message.Publishe
 	}
 
 	pub := &publisher{
+		topics:             map[string]*pubsub.Topic{},
 		publishSettings:    config.PublishSettings,
 		createMissingTopic: config.CreateMissingTopic,
 		marshaler:          config.Marshaler,
@@ -112,11 +114,17 @@ func (p *publisher) Close() error {
 }
 
 func (p *publisher) topic(ctx context.Context, topic string) (*pubsub.Topic, error) {
-	if t, ok := p.topics.Load(topic); ok {
-		return t.(*pubsub.Topic), nil
+	p.topicsLock.RLock()
+	t, ok := p.topics[topic]
+	p.topicsLock.RUnlock()
+	if ok {
+		return t, nil
 	}
 
-	t := p.client.Topic(topic)
+	p.topicsLock.Lock()
+	defer p.topicsLock.Unlock()
+
+	t = p.client.Topic(topic)
 	exists, err := t.Exists(ctx)
 	if err != nil {
 		return nil, err
@@ -136,6 +144,6 @@ func (p *publisher) topic(ctx context.Context, topic string) (*pubsub.Topic, err
 		t.PublishSettings = *p.publishSettings
 	}
 
-	p.topics.Store(topic, t)
+	p.topics[topic] = t
 	return t, nil
 }
