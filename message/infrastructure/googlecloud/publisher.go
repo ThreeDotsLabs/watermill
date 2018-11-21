@@ -16,6 +16,7 @@ var (
 )
 
 type publisher struct {
+	topics map[string]*pubsub.Topic
 	closed bool
 
 	client *pubsub.Client
@@ -95,6 +96,7 @@ func NewPublisher(ctx context.Context, config PublisherConfig) (message.Publishe
 	}
 
 	pub := &publisher{
+		topics:             make(map[string]*pubsub.Topic),
 		publishSettings:    config.PublishSettings,
 		createMissingTopic: config.CreateMissingTopic,
 		marshaler:          config.Marshaler,
@@ -110,6 +112,10 @@ func NewPublisher(ctx context.Context, config PublisherConfig) (message.Publishe
 }
 
 func (p *publisher) topic(ctx context.Context, topic string) (*pubsub.Topic, error) {
+	if t, ok := p.topics[topic]; ok {
+		return t, nil
+	}
+
 	t := p.client.Topic(topic)
 	exists, err := t.Exists(ctx)
 	if err != nil {
@@ -125,9 +131,12 @@ func (p *publisher) topic(ctx context.Context, topic string) (*pubsub.Topic, err
 		}
 	}
 
+	// todo: theoretically, one could want different publish settings per topic, which is supported by the client lib
 	if p.publishSettings != nil {
 		t.PublishSettings = *p.publishSettings
 	}
+
+	p.topics[topic] = t
 
 	return t, nil
 }
