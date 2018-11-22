@@ -1,6 +1,7 @@
 package googlecloud_test
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"math/rand"
@@ -17,10 +18,12 @@ import (
 // Run `docker-compose up` and set PUBSUB_EMULATOR_HOST=localhost:8085 for this to work
 
 const (
-	msgText   = "this is a test message"
-	projectID = "googlecloud-test"
+	msgText        = "this is a test message"
+	projectID      = "googlecloud-test"
+	subscriptionID = "test-sub"
 )
 
+// TestPubsub tests if the PubSub emulator is up and running correctly.
 func TestPubsub(t *testing.T) {
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 
@@ -46,10 +49,39 @@ func TestPubsub(t *testing.T) {
 		Data: []byte(msgText),
 	}
 
+	msgReceived := make(chan struct{})
+	sub := client.Subscription(subscriptionID)
+	exists, err := sub.Exists(ctx)
+	require.NoError(t, err)
+
+	if !exists {
+		sub, err = client.CreateSubscription(ctx, "test-sub", pubsub.SubscriptionConfig{
+			Topic: topic,
+		})
+		require.NoError(t, err)
+	}
+
+	go func() {
+		err := sub.Receive(ctx, func(ctx context.Context, receivedMsg *pubsub.Message) {
+			if bytes.Equal(receivedMsg.Data, msg.Data) {
+				msgReceived <- struct{}{}
+			}
+		})
+		require.NoError(t, err)
+	}()
+
 	result := topic.Publish(ctx, msg)
 	id, err := result.Get(ctx)
 	require.NoError(t, err)
 	t.Logf("Published a message with id %s on topic %s", id, topicName)
+
+	select {
+	case <-msgReceived:
+		t.Logf("Message received")
+		break
+	case <-ctx.Done():
+		t.Fatal("test timeout")
+	}
 }
 
 func testMessage() *message.Message {

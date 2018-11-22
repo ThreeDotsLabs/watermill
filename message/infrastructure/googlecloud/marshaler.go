@@ -15,14 +15,10 @@ type Unmarshaler interface {
 	Unmarshal(*pubsub.Message) (*message.Message, error)
 }
 
-type MarshalerUnmarshaler interface {
-	Marshaler
-	Unmarshaler
-}
-
 const UUIDHeaderKey = "_watermill_message_uuid"
 
 type DefaultMarshaler struct{}
+type DefaultUnmarshaler struct{}
 
 func (m DefaultMarshaler) Marshal(topic string, msg *message.Message) (*pubsub.Message, error) {
 	if value := msg.Metadata.Get(UUIDHeaderKey); value != "" {
@@ -43,4 +39,8 @@ func (m DefaultMarshaler) Marshal(topic string, msg *message.Message) (*pubsub.M
 	}
 
 	return marshaledMsg, nil
+}
+
+func (u DefaultUnmarshaler) Unmarshal(*pubsub.Message) (*message.Message, error) {
+	panic("implement me")
 }

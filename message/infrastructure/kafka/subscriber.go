@@ -10,7 +10,6 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/pkg/errors"
-	"github.com/satori/go.uuid"
 )
 
 type ConfluentConsumerConstructor func(config SubscriberConfig) (*kafka.Consumer, error)
@@ -136,6 +135,7 @@ func (s *confluentSubscriber) Subscribe(topic string) (chan *message.Message, er
 	}
 
 	logFields := watermill.LogFields{
+		"provider":                ProviderName,
 		"topic":                   topic,
 		"kafka_subscribers_count": s.config.ConsumersCount,
 		"consumer_group":          s.config.ConsumerGroup,
