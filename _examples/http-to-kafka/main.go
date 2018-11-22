@@ -3,20 +3,18 @@ package main
 import (
 	"encoding/json"
 	"io/ioutil"
-
-	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
-	"github.com/ThreeDotsLabs/watermill/message/router/plugin"
-	"github.com/pkg/errors"
-	"github.com/satori/go.uuid"
-
-	"github.com/ThreeDotsLabs/watermill/message"
-
 	stdHttp "net/http"
 	_ "net/http/pprof"
 
+	"github.com/pkg/errors"
+	uuid "github.com/satori/go.uuid"
+
 	"github.com/ThreeDotsLabs/watermill"
+	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/http"
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/kafka"
+	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
+	"github.com/ThreeDotsLabs/watermill/message/router/plugin"
 )
 
 type GitlabWebhook struct {
@@ -44,9 +42,7 @@ func main() {
 	}
 
 	r, err := message.NewRouter(
-		message.RouterConfig{
-			ServerName: "http_to_kafka",
-		},
+		message.RouterConfig{},
 		logger,
 	)
 	if err != nil {
@@ -61,7 +57,7 @@ func main() {
 
 	err = r.AddHandler(
 		"http_to_kafka",
-		"/test",
+		"/gitlab-webhooks", // this is the URL of our API
 		"webhooks",
 		message.NewPubSub(kafkaPublisher, httpSubscriber),
 		func(msg *message.Message) ([]*message.Message, error) {

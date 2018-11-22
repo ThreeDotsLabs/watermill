@@ -3,13 +3,11 @@ package main
 import (
 	"time"
 
+	"github.com/ThreeDotsLabs/watermill"
+	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ThreeDotsLabs/watermill/message/infrastructure/kafka"
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
 	"github.com/ThreeDotsLabs/watermill/message/router/plugin"
-
-	"github.com/ThreeDotsLabs/watermill/message"
-
-	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure/kafka"
 )
 
 var (
@@ -26,9 +24,7 @@ func main() {
 	}
 
 	h, err := message.NewRouter(
-		message.RouterConfig{
-			ServerName: "simple-app",
-		},
+		message.RouterConfig{},
 		logger,
 	)
 	if err != nil {
@@ -37,7 +33,7 @@ func main() {
 
 	retryMiddleware := middleware.Retry{}
 	retryMiddleware.MaxRetries = 1
-	retryMiddleware.WaitTime = time.Second
+	retryMiddleware.WaitTime = time.Millisecond * 10
 
 	poisonQueue, err := middleware.NewPoisonQueue(pub, "poison_queue")
 	if err != nil {
@@ -45,6 +41,9 @@ func main() {
 	}
 
 	h.AddMiddleware(
+		// limiting processed messages to 10 per second
+		middleware.NewThrottle(100, time.Second).Middleware,
+
 		// some, simple metrics
 		newMetricsMiddleware().Middleware,
 
@@ -62,8 +61,8 @@ func main() {
 		middleware.CorrelationID,
 
 		// simulating error or panic from handler
-		middleware.RandomFail(0.1),
-		middleware.RandomPanic(0.1),
+		middleware.RandomFail(0.01),
+		middleware.RandomPanic(0.01),
 	)
 
 	// close router when SIGTERM is sent
@@ -72,9 +71,9 @@ func main() {
 	// handler which just counts added posts
 	h.AddHandler(
 		"posts_counter",
-		"app1-posts_published",
+		"posts_published",
 		"posts_count",
-		message.NewPubSub(pub, createSubscriber("app2-posts_counter_v2", logger)),
+		message.NewPubSub(pub, createSubscriber("posts_counter_v2", logger)),
 		PostsCounter{memoryCountStorage{new(int64)}}.Count,
 	)
 
@@ -84,8 +83,8 @@ func main() {
 	// but production ready implementation would save posts to some persistent storage
 	h.AddNoPublisherHandler(
 		"feed_generator",
-		"app1-posts_published",
-		createSubscriber("app2-feed_generator_v2", logger),
+		"posts_published",
+		createSubscriber("feed_generator_v2", logger),
 		FeedGenerator{printFeedStorage{}}.UpdateFeed,
 	)
 
@@ -98,6 +97,7 @@ func createSubscriber(consumerGroup string, logger watermill.LoggerAdapter) mess
 			Brokers:        brokers,
 			ConsumerGroup:  consumerGroup,
 			ConsumersCount: 8,
+			AutoOffsetReset: "earliest",
 		},
 		marshaler,
 		logger,
