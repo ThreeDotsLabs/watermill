@@ -1,0 +1,14 @@
+language: go
+go:
+  - "1.11"
+jobs:
+  include:
+    - stage: "Build"
+      name: "Build"
+      script: go build ./...
+
+before_script:
+  - sudo ./.travis-librdkafka.sh 0.11.6
+
+env:
+  - GO111MODULE=on
