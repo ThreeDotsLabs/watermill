@@ -8,8 +8,10 @@ import (
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
+
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/pkg/errors"
+	uuid "github.com/satori/go.uuid"
 )
 
 type ConfluentConsumerConstructor func(config SubscriberConfig) (*kafka.Consumer, error)
