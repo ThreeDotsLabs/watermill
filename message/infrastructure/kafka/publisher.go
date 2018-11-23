@@ -21,7 +21,7 @@ func NewPublisher(brokers []string, marshaler Marshaler, kafkaConfigOverwrite ka
 		"bootstrap.servers":            strings.Join(brokers, ","),
 		"queue.buffering.max.messages": 10000000,
 		"queue.buffering.max.kbytes":   2097151,
-		"debug": ",",
+		"debug":                        ",",
 	}
 
 	if err := mergeConfluentConfigs(config, kafkaConfigOverwrite); err != nil {

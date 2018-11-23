@@ -4,12 +4,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/satori/go.uuid"
 
-	"github.com/pkg/errors"
-
 	"github.com/ThreeDotsLabs/watermill"
-
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
@@ -131,7 +129,7 @@ func (g *goChannel) Close() error {
 
 func resetMessage(oldMsg *message.Message) *message.Message {
 	m := message.NewMessage(oldMsg.UUID, oldMsg.Payload)
-	m.Metadata = m.Metadata
+	m.Metadata = oldMsg.Metadata
 
 	return m
 }
