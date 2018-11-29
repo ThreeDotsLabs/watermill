@@ -84,6 +84,7 @@ func (p *publisher) Publish(topic string, messages ...*message.Message) error {
 	if err != nil {
 		return err
 	}
+	defer t.Stop()
 
 	for _, msg := range messages {
 		googlecloudMsg, err := p.marshaler.Marshal(topic, msg)
