@@ -2,7 +2,6 @@ package googlecloud
 
 import (
 	"context"
-	"fmt"
 	"sync"
 
 	"google.golang.org/api/option"
@@ -14,7 +13,8 @@ import (
 )
 
 var (
-	ErrSubscriberClosed = errors.New("subscriber is closed")
+	ErrSubscriberClosed         = errors.New("subscriber is closed")
+	ErrSubscriptionDoesNotExist = errors.New("subscription does not exist")
 )
 
 type subscriber struct {
@@ -22,7 +22,7 @@ type subscriber struct {
 	closed  bool
 
 	allSubscriptionsWaitGroup sync.WaitGroup
-	activeSubscriptions       map[string]struct{}
+	activeSubscriptions       map[string]*pubsub.Subscription
 	activeSubscriptionsLock   sync.RWMutex
 
 	client *pubsub.Client
@@ -33,9 +33,9 @@ type subscriber struct {
 }
 
 type SubscriberConfig struct {
-	SubscriptionName            string
-	ProjectID                   string
-	CreateSubscriptionIfMissing bool
+	SubscriptionName                 string
+	ProjectID                        string
+	DoNotCreateSubscriptionIfMissing bool
 
 	SubscriptionConfig pubsub.SubscriptionConfig
 	ClientOptions      []option.ClientOption
@@ -80,7 +80,7 @@ func NewSubscriber(
 		closed:  false,
 
 		allSubscriptionsWaitGroup: sync.WaitGroup{},
-		activeSubscriptions:       map[string]struct{}{},
+		activeSubscriptions:       map[string]*pubsub.Subscription{},
 		activeSubscriptionsLock:   sync.RWMutex{},
 
 		client: client,
@@ -179,38 +179,29 @@ func (s *subscriber) Close() error {
 	return nil
 }
 
-const subscriptionIDTemplate = "watermill_%s_%d"
-
-// subscription obtains a subscription object. If subscription doesn't exist on PubSub, create it.
-// subsequent calls to `subscription` with the same `topic` return separate subscriptions,
-// with ids according to `subscriptionIDTemplate`.
+// subscription obtains a subscription object.
+// If subscription doesn't exist on PubSub, create it, unless config variable DoNotCreateSubscriptionWhenMissing is set.
 func (s *subscriber) subscription(ctx context.Context, topic string) (sub *pubsub.Subscription, err error) {
+	subscriptionName := s.config.SubscriptionName
+
 	s.activeSubscriptionsLock.RLock()
-	var subscriptionID string
-	for i := 0; ; i++ {
-		subscriptionID = fmt.Sprintf(subscriptionIDTemplate, topic, i)
-		if _, ok := s.activeSubscriptions[subscriptionID]; ok {
-			continue
-		}
+	if sub, ok := s.activeSubscriptions[subscriptionName]; ok {
+		return sub, nil
 	}
 	s.activeSubscriptionsLock.RUnlock()
 
-	defer func() {
-		if err != nil {
-			s.activeSubscriptionsLock.Lock()
-			s.activeSubscriptions[sub.ID()] = struct{}{}
-			s.activeSubscriptionsLock.Unlock()
-		}
-	}()
-
-	sub = s.client.Subscription(subscriptionID)
+	sub = s.client.Subscription(subscriptionName)
 	exists, err := sub.Exists(ctx)
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not check if subscription %s exists", subscriptionID)
+		return nil, errors.Wrapf(err, "could not check if subscription %s exists", subscriptionName)
 	}
 
 	if exists {
 		return sub, nil
+	}
+
+	if s.config.DoNotCreateSubscriptionIfMissing {
+		return nil, errors.Wrap(ErrSubscriptionDoesNotExist, subscriptionName)
 	}
 
 	t := s.client.Topic(topic)
@@ -220,11 +211,11 @@ func (s *subscriber) subscription(ctx context.Context, topic string) (sub *pubsu
 	}
 
 	if !exists {
-		return nil, ErrTopicDoesNotExist
+		return nil, errors.Wrap(ErrTopicDoesNotExist, topic)
 	}
 
 	config := s.config.SubscriptionConfig
 	config.Topic = t
 
-	return s.client.CreateSubscription(ctx, subscriptionID, s.config.SubscriptionConfig)
+	return s.client.CreateSubscription(ctx, subscriptionName, s.config.SubscriptionConfig)
 }
