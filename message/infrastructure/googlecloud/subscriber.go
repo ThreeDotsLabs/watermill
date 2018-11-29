@@ -118,11 +118,31 @@ func (s *subscriber) Subscribe(topic string) (chan *message.Message, error) {
 	err = sub.Receive(ctx, func(ctx context.Context, pubsubMsg *pubsub.Message) {
 		msg, err := s.unmarshaler.Unmarshal(pubsubMsg)
 		if err != nil {
-			s.logger.Error("could not unmarshal Google Cloud PubSub message", err, nil)
+			s.logger.Error("Could not unmarshal Google Cloud PubSub message", err, nil)
+			pubsubMsg.Nack()
 			return
 		}
 
-		output <- msg
+		select {
+		case <-s.closing:
+			s.logger.Info(
+				"Message not consumed, subscriber is closing",
+				logFields,
+			)
+			pubsubMsg.Nack()
+			return
+		case output <- msg:
+			// message consumed, wait for ack (or nack)
+		}
+
+		select {
+		case <-msg.Acked():
+			pubsubMsg.Ack()
+		case <-msg.Nacked():
+			pubsubMsg.Nack()
+		case <-s.closing:
+			pubsubMsg.Nack()
+		}
 	})
 
 	if err != nil {
