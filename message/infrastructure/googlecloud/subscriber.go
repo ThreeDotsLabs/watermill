@@ -3,7 +3,6 @@ package googlecloud
 import (
 	"context"
 	"fmt"
-	"runtime"
 	"sync"
 
 	"google.golang.org/api/option"
@@ -38,27 +37,18 @@ type SubscriberConfig struct {
 	ProjectID                   string
 	CreateSubscriptionIfMissing bool
 
-	ConsumersCount int
-
 	SubscriptionConfig pubsub.SubscriptionConfig
 	ClientOptions      []option.ClientOption
 	Unmarshaler        Unmarshaler
 }
 
 func (c *SubscriberConfig) setDefaults() {
-	if c.ConsumersCount == 0 {
-		c.ConsumersCount = runtime.NumCPU()
-	}
-
 	if c.Unmarshaler == nil {
 		c.Unmarshaler = DefaultUnmarshaler{}
 	}
 }
 
 func (c SubscriberConfig) Validate() error {
-	if c.ConsumersCount <= 0 {
-		return errors.Errorf("ConsumersCount must be greater than 0, have %d", c.ConsumersCount)
-	}
 	if c.SubscriptionName == "" {
 		return errors.New("SubscriptionName must be set")
 	}
@@ -112,7 +102,6 @@ func (s *subscriber) Subscribe(topic string) (chan *message.Message, error) {
 	logFields := watermill.LogFields{
 		"provider":          ProviderName,
 		"topic":             topic,
-		"consumers_count":   s.config.ConsumersCount,
 		"subscription_name": s.config.SubscriptionName,
 	}
 	s.logger.Info("Subscribing to Google Cloud PubSub topic", logFields)
