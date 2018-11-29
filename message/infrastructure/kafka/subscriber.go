@@ -158,7 +158,7 @@ func (s *confluentSubscriber) Subscribe(topic string) (chan *message.Message, er
 		}
 
 		subscribersWg.Add(1)
-		go func() {
+		go func(i int) {
 			(&consumer{
 				config:   s.config,
 				consumer: kafkaConsumer,
@@ -172,7 +172,7 @@ func (s *confluentSubscriber) Subscribe(topic string) (chan *message.Message, er
 			}).consumeMessages()
 
 			subscribersWg.Done()
-		}()
+		}(i)
 	}
 
 	go func() {

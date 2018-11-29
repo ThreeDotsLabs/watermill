@@ -24,7 +24,7 @@ on the go.
 
 At the heart of Watermill there is one simple interface:
 ```go
-func(Message) ([]Message, error)
+func(*Message) ([]*Message, error)
 ```
 
 Your handler receives a message and decides whether to publish new message(s) or return
