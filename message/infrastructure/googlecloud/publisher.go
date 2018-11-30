@@ -38,7 +38,7 @@ type PublisherConfig struct {
 
 func (c *PublisherConfig) setDefaults() {
 	if c.Marshaler == nil {
-		c.Marshaler = DefaultMarshaler{}
+		c.Marshaler = DefaultMarshalerUnmarshaler{}
 	}
 }
 

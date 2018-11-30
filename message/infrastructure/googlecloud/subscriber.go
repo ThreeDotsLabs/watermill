@@ -44,7 +44,7 @@ type SubscriberConfig struct {
 
 func (c *SubscriberConfig) setDefaults() {
 	if c.Unmarshaler == nil {
-		c.Unmarshaler = DefaultUnmarshaler{}
+		c.Unmarshaler = DefaultMarshalerUnmarshaler{}
 	}
 }
 

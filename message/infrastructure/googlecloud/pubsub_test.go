@@ -1,89 +1,69 @@
 package googlecloud_test
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"math/rand"
 	"testing"
-	"time"
 
 	"cloud.google.com/go/pubsub"
-	uuid "github.com/satori/go.uuid"
-	"github.com/stretchr/testify/require"
 
+	"github.com/ThreeDotsLabs/watermill/message/infrastructure"
+
+	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ThreeDotsLabs/watermill/message/infrastructure/googlecloud"
+	"github.com/stretchr/testify/require"
 )
 
 // Run `docker-compose up` and set PUBSUB_EMULATOR_HOST=localhost:8085 for this to work
 
-const (
-	msgText        = "this is a test message"
-	projectID      = "googlecloud-test"
-	subscriptionID = "test-sub"
-)
-
-// TestPubsub tests if the PubSub emulator is up and running correctly.
-func TestPubsub(t *testing.T) {
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-
-	client, err := pubsub.NewClient(
+func newPubSub(t *testing.T, marshaler googlecloud.MarshalerUnmarshaler, subscriptionName string) message.PubSub {
+	ctx := context.Background()
+	publisher, err := googlecloud.NewPublisher(
 		ctx,
-		projectID,
+		googlecloud.PublisherConfig{
+			Marshaler: marshaler,
+		},
 	)
 	require.NoError(t, err)
 
-	topicName := fmt.Sprintf("test-topic-%d", rand.Int())
+	logger := watermill.NewStdLogger(true, true)
 
-	topic, err := client.CreateTopic(ctx, topicName)
+	subscriber, err := googlecloud.NewSubscriber(
+		ctx,
+		googlecloud.SubscriberConfig{
+			SubscriptionName: subscriptionName,
+			SubscriptionConfig: pubsub.SubscriptionConfig{
+				RetainAckedMessages: false,
+			},
+			Unmarshaler: marshaler,
+		},
+		logger,
+	)
 	require.NoError(t, err)
 
-	defer func() {
-		err := topic.Delete(ctx)
-		if err != nil {
-			panic(err)
-		}
-	}()
-
-	msg := &pubsub.Message{
-		Data: []byte(msgText),
-	}
-
-	msgReceived := make(chan struct{})
-	sub := client.Subscription(subscriptionID)
-	exists, err := sub.Exists(ctx)
-	require.NoError(t, err)
-
-	if !exists {
-		sub, err = client.CreateSubscription(ctx, "test-sub", pubsub.SubscriptionConfig{
-			Topic: topic,
-		})
-		require.NoError(t, err)
-	}
-
-	go func() {
-		err := sub.Receive(ctx, func(ctx context.Context, receivedMsg *pubsub.Message) {
-			if bytes.Equal(receivedMsg.Data, msg.Data) {
-				msgReceived <- struct{}{}
-			}
-		})
-		require.NoError(t, err)
-	}()
-
-	result := topic.Publish(ctx, msg)
-	id, err := result.Get(ctx)
-	require.NoError(t, err)
-	t.Logf("Published a message with id %s on topic %s", id, topicName)
-
-	select {
-	case <-msgReceived:
-		t.Logf("Message received")
-		break
-	case <-ctx.Done():
-		t.Fatal("test timeout")
-	}
+	return message.NewPubSub(publisher, subscriber)
 }
 
-func testMessage() *message.Message {
-	return message.NewMessage(uuid.NewV4().String(), message.Payload(msgText))
+func createPubSubWithSubscriptionName(t *testing.T, subscriptionName string) message.PubSub {
+	return newPubSub(t, googlecloud.DefaultMarshalerUnmarshaler{}, subscriptionName)
+}
+
+func createPubSub(t *testing.T) message.PubSub {
+	return createPubSubWithSubscriptionName(t, fmt.Sprintf("test_%d", rand.Int()))
+}
+
+func TestPublishSubscribe(t *testing.T) {
+	infrastructure.TestPubSub(
+		t,
+		infrastructure.Features{
+			ConsumerGroups:      true,
+			ExactlyOnceDelivery: false,
+			GuaranteedOrder:     false,
+			Persistent:          true,
+		},
+		createPubSub,
+		createPubSubWithSubscriptionName,
+	)
 }
