@@ -9,7 +9,6 @@ import (
 	"github.com/ThreeDotsLabs/watermill/internal/tests"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/subscriber"
-	"github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -527,7 +526,7 @@ func assertConsumerGroupReceivedMessages(
 }
 
 func testTopicName() string {
-	return "_test_" + uuid.NewV4().String()
+	return "test_" + uuid.NewV4().String()
 }
 
 func closePubSub(t *testing.T, pubSub message.PubSub) {
