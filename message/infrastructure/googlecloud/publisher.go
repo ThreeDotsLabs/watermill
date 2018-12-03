@@ -17,6 +17,8 @@ var (
 )
 
 type publisher struct {
+	ctx context.Context
+
 	topics     map[string]*pubsub.Topic
 	topicsLock sync.RWMutex
 	closed     bool
@@ -57,6 +59,7 @@ func NewPublisher(ctx context.Context, config PublisherConfig) (message.Publishe
 	}
 
 	pub := &publisher{
+		ctx:                     ctx,
 		topics:                  map[string]*pubsub.Topic{},
 		publishSettings:         config.PublishSettings,
 		doNotCreateMissingTopic: config.DoNotCreateMissingTopic,
@@ -77,8 +80,7 @@ func (p *publisher) Publish(topic string, messages ...*message.Message) error {
 		return ErrPublisherClosed
 	}
 
-	// todo: pass context somehow?
-	ctx := context.Background()
+	ctx := p.ctx
 
 	t, err := p.topic(ctx, topic)
 	if err != nil {

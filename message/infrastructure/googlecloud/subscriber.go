@@ -18,6 +18,7 @@ var (
 )
 
 type subscriber struct {
+	ctx     context.Context
 	closing chan struct{}
 	closed  bool
 
@@ -33,7 +34,7 @@ type subscriber struct {
 }
 
 type SubscriberConfig struct {
-	SubscriptionName string
+	SubscriptionName SubscriptionNameFn
 	ProjectID        string
 
 	DoNotCreateSubscriptionIfMissing bool
@@ -44,15 +45,24 @@ type SubscriberConfig struct {
 	Unmarshaler        Unmarshaler
 }
 
+type SubscriptionNameFn func(ctx context.Context, topic string) string
+
+func DefaultSubscriptionName(ctx context.Context, topic string) string {
+	return topic
+}
+
 func (c *SubscriberConfig) setDefaults() {
+	if c.SubscriptionName == nil {
+		c.SubscriptionName = DefaultSubscriptionName
+	}
 	if c.Unmarshaler == nil {
 		c.Unmarshaler = DefaultMarshalerUnmarshaler{}
 	}
 }
 
 func (c SubscriberConfig) Validate() error {
-	if c.SubscriptionName == "" {
-		return errors.New("SubscriptionName must be set")
+	if c.SubscriptionName == nil {
+		return errors.New("SubscriptionName generator must be set")
 	}
 
 	if c.Unmarshaler == nil {
@@ -78,6 +88,7 @@ func NewSubscriber(
 	}
 
 	return &subscriber{
+		ctx:     ctx,
 		closing: make(chan struct{}, 1),
 		closed:  false,
 
@@ -94,8 +105,7 @@ func NewSubscriber(
 }
 
 func (s *subscriber) Subscribe(topic string) (chan *message.Message, error) {
-	// todo: pass root ctx from somewhere?
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(s.ctx)
 
 	if s.closed {
 		return nil, ErrSubscriberClosed
@@ -192,7 +202,7 @@ func (s *subscriber) receive(
 // subscription obtains a subscription object.
 // If subscription doesn't exist on PubSub, create it, unless config variable DoNotCreateSubscriptionWhenMissing is set.
 func (s *subscriber) subscription(ctx context.Context, topic string) (sub *pubsub.Subscription, err error) {
-	subscriptionName := s.config.SubscriptionName
+	subscriptionName := s.config.SubscriptionName(ctx, topic)
 
 	s.activeSubscriptionsLock.RLock()
 	if sub, ok := s.activeSubscriptions[subscriptionName]; ok {
