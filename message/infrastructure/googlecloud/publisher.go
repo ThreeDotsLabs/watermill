@@ -86,7 +86,6 @@ func (p *publisher) Publish(topic string, messages ...*message.Message) error {
 	if err != nil {
 		return err
 	}
-	defer t.Stop()
 
 	for _, msg := range messages {
 		googlecloudMsg, err := p.marshaler.Marshal(topic, msg)
@@ -112,6 +111,13 @@ func (p *publisher) Close() error {
 	}
 
 	p.closed = true
+
+	p.topicsLock.Lock()
+	for name, t := range p.topics {
+		t.Stop()
+		delete(p.topics, name)
+	}
+	p.topicsLock.Unlock()
 
 	return p.client.Close()
 }
