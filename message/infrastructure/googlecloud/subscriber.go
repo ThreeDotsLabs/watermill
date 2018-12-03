@@ -119,9 +119,15 @@ func (s *subscriber) Subscribe(topic string) (chan *message.Message, error) {
 	s.logger.Info("Subscribing to Google Cloud PubSub topic", logFields)
 
 	output := make(chan *message.Message, 0)
-	s.allSubscriptionsWaitGroup.Add(1)
 
-	go s.receive(ctx, topic, logFields, output)
+	sub, err := s.subscription(ctx, topic)
+	if err != nil {
+		s.logger.Error("Could not obtain subscription", err, logFields)
+		return nil, err
+	}
+
+	s.allSubscriptionsWaitGroup.Add(1)
+	go s.receive(ctx, sub, logFields, output)
 
 	go func() {
 		<-s.closing
@@ -155,16 +161,11 @@ func (s *subscriber) Close() error {
 
 func (s *subscriber) receive(
 	ctx context.Context,
-	topic string,
+	sub *pubsub.Subscription,
 	logFields watermill.LogFields,
 	output chan *message.Message,
-) {
-	sub, err := s.subscription(ctx, topic)
-	if err != nil {
-		s.logger.Error("Could not obtain subscription", err, logFields)
-	}
-
-	err = sub.Receive(ctx, func(ctx context.Context, pubsubMsg *pubsub.Message) {
+) error {
+	err := sub.Receive(ctx, func(ctx context.Context, pubsubMsg *pubsub.Message) {
 		msg, err := s.unmarshaler.Unmarshal(pubsubMsg)
 		if err != nil {
 			s.logger.Error("Could not unmarshal Google Cloud PubSub message", err, logFields)
@@ -196,7 +197,10 @@ func (s *subscriber) receive(
 
 	if err != nil && !s.closed {
 		s.logger.Error("Receive failed", err, logFields)
+		return err
 	}
+
+	return nil
 }
 
 // subscription obtains a subscription object.
@@ -246,7 +250,7 @@ func (s *subscriber) subscription(ctx context.Context, topic string) (sub *pubsu
 	if !exists {
 		t, err = s.client.CreateTopic(ctx, topic)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "could not create topic for subscription")
 		}
 	}
 
