@@ -23,17 +23,17 @@ type publisher struct {
 
 	client *pubsub.Client
 
-	publishSettings    *pubsub.PublishSettings
-	createMissingTopic bool
-	marshaler          Marshaler
+	publishSettings         *pubsub.PublishSettings
+	doNotCreateMissingTopic bool
+	marshaler               Marshaler
 }
 
 type PublisherConfig struct {
-	ClientOptions      []option.ClientOption
-	PublishSettings    *pubsub.PublishSettings
-	ProjectID          string
-	CreateMissingTopic bool
-	Marshaler          Marshaler
+	ClientOptions           []option.ClientOption
+	PublishSettings         *pubsub.PublishSettings
+	ProjectID               string
+	DoNotCreateMissingTopic bool
+	Marshaler               Marshaler
 }
 
 func (c *PublisherConfig) setDefaults() {
@@ -57,10 +57,10 @@ func NewPublisher(ctx context.Context, config PublisherConfig) (message.Publishe
 	}
 
 	pub := &publisher{
-		topics:             map[string]*pubsub.Topic{},
-		publishSettings:    config.PublishSettings,
-		createMissingTopic: config.CreateMissingTopic,
-		marshaler:          config.Marshaler,
+		topics:                  map[string]*pubsub.Topic{},
+		publishSettings:         config.PublishSettings,
+		doNotCreateMissingTopic: config.DoNotCreateMissingTopic,
+		marshaler:               config.Marshaler,
 	}
 
 	var err error
@@ -114,7 +114,7 @@ func (p *publisher) Close() error {
 	return p.client.Close()
 }
 
-func (p *publisher) topic(ctx context.Context, topic string) (*pubsub.Topic, error) {
+func (p *publisher) topic(ctx context.Context, topic string) (t *pubsub.Topic, err error) {
 	p.topicsLock.RLock()
 	t, ok := p.topics[topic]
 	p.topicsLock.RUnlock()
@@ -123,28 +123,38 @@ func (p *publisher) topic(ctx context.Context, topic string) (*pubsub.Topic, err
 	}
 
 	p.topicsLock.Lock()
-	defer p.topicsLock.Unlock()
+	defer func() {
+		p.topicsLock.Unlock()
+		if err == nil {
+			p.topics[topic] = t
+		}
+	}()
 
 	t = p.client.Topic(topic)
+
+	// todo: theoretically, one could want different publish settings per topic, which is supported by the client lib
+	// different instances of publisher may be used then
+	if p.publishSettings != nil {
+		t.PublishSettings = *p.publishSettings
+	}
+
 	exists, err := t.Exists(ctx)
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not check if topic %s exists", topic)
 	}
 
-	if !exists && !p.createMissingTopic {
+	if exists {
+		return t, nil
+	}
+
+	if p.doNotCreateMissingTopic {
 		return nil, errors.Wrap(ErrTopicDoesNotExist, topic)
-	} else if !exists {
-		t, err = p.client.CreateTopic(ctx, topic)
-		if err != nil {
-			return nil, errors.Wrapf(err, "could not create topic %s", topic)
-		}
 	}
 
-	// todo: theoretically, one could want different publish settings per topic, which is supported by the client lib
-	if p.publishSettings != nil {
-		t.PublishSettings = *p.publishSettings
+	t, err = p.client.CreateTopic(ctx, topic)
+	if err != nil {
+		return nil, errors.Wrapf(err, "could not create topic %s", topic)
 	}
 
-	p.topics[topic] = t
 	return t, nil
 }
