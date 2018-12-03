@@ -333,6 +333,13 @@ func continueAfterCloseTest(t *testing.T, createPubSub PubSubConstructor) {
 
 	pubSub := createPubSub(t)
 	defer pubSub.Close()
+
+	// call subscribe once for those pubsubs which require subscribe before publish
+	_, err := pubSub.Subscribe(topicName)
+	require.NoError(t, err)
+	closePubSub(t, pubSub)
+
+	pubSub = createPubSub(t)
 	messagesToPublish := addSimpleMessagesMessages(t, totalMessagesCount, pubSub, topicName)
 	closePubSub(t, pubSub)
 
