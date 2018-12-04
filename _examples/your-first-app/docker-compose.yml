@@ -15,6 +15,8 @@ services:
     restart: on-failure
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
+    logging:
+      driver: "none"
 
   kafka:
     image: confluentinc/cp-kafka:latest
@@ -26,3 +28,5 @@ services:
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    logging:
+      driver: "none"

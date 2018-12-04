@@ -27,7 +27,7 @@ server_1     | 2018/11/18 11:16:39 received event 1542539799
 Now all that's left is to take a look at the Kafka topics to check that all messages are there:
 
 ```bash
-> docker-compose exec kafka kafka-console-consumer --bootstrap-server localhost:9092 --topic deadly-easy-topic
+> docker-compose exec kafka kafka-console-consumer --bootstrap-server localhost:9092 --topic your-first-app_events
 
 {"num":1542539605}
 {"num":1542539606}
@@ -38,7 +38,7 @@ Now all that's left is to take a look at the Kafka topics to check that all mess
 ```
 
 ```bash
-> docker-compose exec kafka kafka-console-consumer --bootstrap-server localhost:9092 --topic deadly-easy-topic_processed
+> docker-compose exec kafka kafka-console-consumer --bootstrap-server localhost:9092 --topic your-first-app_events_processed
 
 {"event_num":1542539642,"time":"2018-11-18T11:14:02.26452706Z"}
 {"event_num":1542539643,"time":"2018-11-18T11:14:03.26633757Z"}
