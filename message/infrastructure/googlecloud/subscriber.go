@@ -114,7 +114,7 @@ func (s *subscriber) Subscribe(topic string) (chan *message.Message, error) {
 	logFields := watermill.LogFields{
 		"provider":          ProviderName,
 		"topic":             topic,
-		"subscription_name": s.config.SubscriptionName,
+		"subscription_name": s.config.SubscriptionName(ctx, topic),
 	}
 	s.logger.Info("Subscribing to Google Cloud PubSub topic", logFields)
 
