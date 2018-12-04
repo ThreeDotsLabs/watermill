@@ -105,11 +105,11 @@ func NewSubscriber(
 }
 
 func (s *subscriber) Subscribe(topic string) (chan *message.Message, error) {
-	ctx, cancel := context.WithCancel(s.ctx)
-
 	if s.closed {
 		return nil, ErrSubscriberClosed
 	}
+
+	ctx, cancel := context.WithCancel(s.ctx)
 
 	logFields := watermill.LogFields{
 		"provider":          ProviderName,
@@ -209,18 +209,18 @@ func (s *subscriber) subscription(ctx context.Context, topic string) (sub *pubsu
 	subscriptionName := s.config.SubscriptionName(ctx, topic)
 
 	s.activeSubscriptionsLock.RLock()
-	if sub, ok := s.activeSubscriptions[subscriptionName]; ok {
-		s.activeSubscriptionsLock.RUnlock()
+	sub, ok := s.activeSubscriptions[subscriptionName]
+	s.activeSubscriptionsLock.RUnlock()
+	if ok {
 		return sub, nil
 	}
-	s.activeSubscriptionsLock.RUnlock()
 
 	s.activeSubscriptionsLock.Lock()
 	defer func() {
-		s.activeSubscriptionsLock.Unlock()
 		if err == nil {
 			s.activeSubscriptions[subscriptionName] = sub
 		}
+		s.activeSubscriptionsLock.Unlock()
 	}()
 
 	sub = s.client.Subscription(subscriptionName)
