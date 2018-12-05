@@ -38,5 +38,6 @@ func publishMessages(publisher message.Publisher) {
 func process(messages chan *message.Message) {
 	for msg := range messages {
 		log.Printf("received message: %s, payload: %s", msg.UUID, string(msg.Payload))
+		msg.Ack()
 	}
 }
