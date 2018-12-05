@@ -37,7 +37,7 @@ You can find more about our motivations in our [*Introducing Watermill* blog pos
 * **Easy** to understand (see examples below).
 * **Universal** - event-driven architecture, messaging, stream processing, CQRS - use it for whatever you need.
 * **Fast** - *(benchmarks coming soon)*
-* **Extendable** with middlewares and plugins.
+* **Flexible** with middlewares and plugins.
 * **Resillient** - using proven technologies and passing stress tests *(results coming soon)*.
 
 ## Pub/Subs
