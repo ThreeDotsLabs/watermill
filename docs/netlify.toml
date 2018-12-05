@@ -1,0 +1,3 @@
+[build]
+  command = "./build.sh"
+  publish = "docs/public/"

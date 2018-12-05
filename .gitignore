@@ -1,3 +1,4 @@
 .idea
 vendor
-docs/themes/*
+docs/themes/
+docs/public/
