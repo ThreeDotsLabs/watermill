@@ -92,7 +92,7 @@ and submit your pull request via GitHub.
 
 ## Support
 
-Join us on the `#watermill` channel on the [Gophers slack](https://gophers.slack.com/): https://gophersinvite.herokuapp.com/
+Please join us on the `#watermill` channel on the [Gophers slack](https://gophers.slack.com/): You can get invite [here](https://gophersinvite.herokuapp.com/).
 
 ## Why the name?
 

@@ -5,10 +5,10 @@ description = "We create apps and websites since 2009. We aim for minimalism and
 
 ### Community Support
 
-Please join us on the `#watermill` channel on the [Gophers slack](https://gophers.slack.com/): https://gophersinvite.herokuapp.com/
+Please join us on the `#watermill` channel on the [Gophers slack](https://gophers.slack.com/): You can get invite [here](https://gophersinvite.herokuapp.com/).
 
 ### Professional Support
 
-For enterprise support please contact us by e-mail: **robert.laszczak@threedotslabs.com**.
+For enterprise support please contact us by the e-mail: **{{% contact-email %}}**.
 
 You can also use [contact form](https://threedotslabs.com/#contact-form) in our website.

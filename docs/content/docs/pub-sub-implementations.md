@@ -1,5 +1,5 @@
 +++
-title = "Built-in Pub/Sub's"
+title = "Pub/Sub's implementations"
 description = ""
 date = 2018-12-05T12:47:48+01:00
 weight = -800
@@ -27,7 +27,7 @@ bla bla bla
 | Feature | Implements | Note |
 | ------- | ---------- | ---- |
 | ConsumerGroups | no | |
-| ExactlyOnceDelivery | true |  |
+| ExactlyOnceDelivery | yes |  |
 | GuaranteedOrder | yes |  |
 | Persistent | no| |
 
@@ -50,6 +50,10 @@ bla bla bla
 ##### Configuration
 
 ##### Using partition key
+
+##### No consumer group
+
+[config info]
 
 ### HTTP
 

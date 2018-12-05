@@ -8,15 +8,42 @@ bref = "todo"
 type = "docs"
 +++
 
-### Setup
+### Install
 
-#### Docker
+```bash
+go get -u github.com/ThreeDotsLabs/watermill/
+```
 
-#### Standalone
+### Subscribing for messages
+
+{{% tabs id="subscribing" tabs="go-channel,kafka" labels="Go Channel,Kafka" %}}
+
+{{% tabs-tab id="go-channel"%}}
+{{% load-snippet-partial file="content/docs/getting-started/go-channel.go" first_line_contains="import (" last_line_contains="process(messages)" %}}
+{{% load-snippet-partial file="content/docs/getting-started/go-channel.go" first_line_contains="func process" %}}
+{{% /tabs-tab %}}
+
+{{% tabs-tab id="kafka" %}}
+{{% load-snippet-partial file="content/docs/getting-started/kafka.go" first_line_contains="import (" last_line_contains="process(messages)" %}}
+{{% load-snippet-partial file="content/docs/getting-started/kafka.go" first_line_contains="func process" %}}
+{{% /tabs-tab %}}
+
+{{% /tabs %}}
 
 ### Publishing messages
 
-### Subscribing for messages
+{{% tabs id="publishing" tabs="go-channel,kafka" labels="Go Channel,Kafka" %}}
+
+{{% tabs-tab id="go-channel"%}}
+{{% load-snippet-partial file="content/docs/getting-started/go-channel.go" first_line_contains="go process(messages)" last_line_contains="func process(messages" %}}
+{{% /tabs-tab %}}
+
+{{% tabs-tab id="kafka" %}}
+{{% load-snippet-partial file="content/docs/getting-started/kafka.go" first_line_contains="go process(messages)" last_line_contains="func process(messages" %}}
+{{% /tabs-tab %}}
+
+{{% /tabs %}}
+
 
 ### Using *Messages Router*
 

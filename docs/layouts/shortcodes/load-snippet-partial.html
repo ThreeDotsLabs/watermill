@@ -1,0 +1,25 @@
+{{ $file := (.Get "file") }}
+{{ $content := readFile (.Get "file") }}
+
+{{ $first_line_contains := (.Get "first_line_contains") }}
+{{ $last_line_contains := (.Get "last_line_contains") }}
+
+{{ $show_line := false }}
+
+{{/*if true, first or last line was not found*/}}
+{{ $no_first_line := true}}
+{{ $no_last_line := true}}
+
+<small class="smaller">Full source: [{{ .Get "file" }}](https://github.com/ThreeDotsLabs/watermill/tree/master/{{ .Get "file" }})</small>
+
+```go
+{{ range $elem_key, $elem_val := split $content "\n" }}{{ if in $elem_val $first_line_contains }}{{ $show_line = true }}{{"// ...\n"|safeHTML}}{{ $no_first_line = false}}{{ end }}{{ if $show_line }}{{$elem_val|safeHTML}}{{"\n"|safeHTML}}{{ end }}{{ if and (in $elem_val $last_line_contains) (ne $last_line_contains "") }}{{ $show_line = false }}{{ $no_last_line = false }}{{"//... \n"|safeHTML}}{{ end }}{{ end }}
+```
+
+{{if $no_first_line}}
+    {{ errorf "`first_line_contains` %s not found in %s snippet" $first_line_contains $file }}
+{{end}}
+
+{{if and ($no_last_line) (ne $last_line_contains "")}}
+    {{ errorf "`last_line_contains` %s not found in %s snippet" $last_line_contains $file }}
+{{end}}
