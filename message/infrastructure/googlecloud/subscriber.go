@@ -127,14 +127,24 @@ func (s *subscriber) Subscribe(topic string) (chan *message.Message, error) {
 	}
 
 	s.allSubscriptionsWaitGroup.Add(1)
-	go s.receive(ctx, sub, logFields, output)
+	lock := sync.Mutex{}
+	lock.Lock()
+	go func() {
+		err := s.receive(ctx, sub, logFields, output)
+		if err != nil {
+			s.logger.Error("Receiving messages failed", err, logFields)
+		}
+		lock.Unlock()
+	}()
 
 	go func() {
 		<-s.closing
 		s.logger.Debug("Closing message consumer", logFields)
 		cancel()
 
+		lock.Lock()
 		close(output)
+		lock.Unlock()
 		s.allSubscriptionsWaitGroup.Done()
 	}()
 
