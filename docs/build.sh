@@ -9,4 +9,12 @@ if [ ! -d themes/kube ]; then
     popd
 fi
 
+pushd ../
+mkdir -p docs/content/src-link/message/infrastructure/kafka
+mkdir -p docs/content/src-link/message/infrastructure/gochannel
+
+ln -rsf message/infrastructure/kafka/subscriber.go docs/content/src-link/message/infrastructure/kafka/
+ln -rsf message/infrastructure/gochannel/pubsub.go docs/content/src-link/message/infrastructure/gochannel/
+popd
+
 hugo --gc --minify
