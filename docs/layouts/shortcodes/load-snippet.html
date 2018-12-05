@@ -3,8 +3,8 @@
 {{ $start_line := (.Get "start_line") | default "0" }}
 {{ $end_line := (.Get "end_line") | default "0" }}
 
-{{ $has_start_line := (ne ($.Get $start_line) "0") }}
-{{ $has_end_line := (ne (.Get $end_line) "0") }}
+{{ $has_start_line := (ne $start_line "0") }}
+{{ $has_end_line := (ne $end_line "0") }}
 
 ```go
 // {{ .Get "file" }}{{if or $has_start_line $has_end_line }}:{{end}}{{ $start_line }}{{if $has_end_line }}-{{end}}{{ $end_line }}

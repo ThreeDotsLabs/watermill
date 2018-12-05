@@ -34,6 +34,12 @@ bla bla bla
 
 ##### Configuration
 
+All configuration is injected via constructor
+
+{{% render-md %}}
+{{% load-snippet-partial file="src-link/message/infrastructure/gochannel/pubsub.go" first_line_contains="func NewGoChannel" last_line_contains="logger:" %}}
+{{% /render-md %}}
+
 ### Kafka
 
 bla bla bla
@@ -48,6 +54,10 @@ bla bla bla
 | Persistent | yes| |
 
 ##### Configuration
+
+{{% render-md %}}
+{{% load-snippet-partial file="src-link/message/infrastructure/kafka/subscriber.go" first_line_contains="type SubscriberConfig struct" last_line_contains="func (c SubscriberConfig)" %}}
+{{% /render-md %}}
 
 ##### Using partition key
 
