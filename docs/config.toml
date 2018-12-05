@@ -8,7 +8,7 @@ theme = "kube"
 Paginate = 4
 
 pygmentsUseClassic=true
-pygmentsStyle="borland"
+pygmentsStyle="autumn"
 pygmentsCodefences=true
 
 [Params]
