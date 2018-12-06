@@ -4,6 +4,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hashicorp/go-multierror"
+
 	internalSync "github.com/ThreeDotsLabs/watermill/internal/sync"
 
 	"github.com/ThreeDotsLabs/watermill"
@@ -165,12 +167,19 @@ func (s *Subscriber) Close() error {
 	s.logger.Debug("Closing subscriber", nil)
 	defer s.logger.Debug("Subscriber closed", nil)
 
+	var result error
+	for _, sub := range s.subs {
+		if err := sub.Close(); err != nil {
+			result = multierror.Append(result, errors.Wrap(err, "cannot close sub"))
+		}
+	}
+
 	if err := s.conn.Close(); err != nil {
-		return errors.Wrap(err, "cannot close conn")
+		result = multierror.Append(result, errors.Wrap(err, "cannot close conn"))
 	}
 
 	close(s.closing)
 	internalSync.WaitGroupTimeout(&s.outputsWg, s.config.CloseTimeout)
 
-	return nil
+	return result
 }
