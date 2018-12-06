@@ -9,7 +9,6 @@ import (
 	"github.com/ThreeDotsLabs/watermill"
 
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/hashicorp/go-multierror"
 	"github.com/nats-io/go-nats-streaming"
 	"github.com/pkg/errors"
 )
@@ -51,7 +50,9 @@ func (c *SubscriberConfig) setDefaults() {
 
 	c.StanSubscriptionOptions = append(
 		c.StanSubscriptionOptions,
-		stan.SetManualAckMode(), // manual AckMode is required to support acking/nacking by client
+		stan.SetManualAckMode(),        // manual AckMode is required to support acking/nacking by client
+		stan.AckWait(time.Second*10),   // todo  doc it? config?
+		stan.DurableName("my-durable"), // todo - config it?
 	)
 }
 
@@ -86,10 +87,18 @@ func (s *Subscriber) Subscribe(topic string) (chan *message.Message, error) {
 	}()
 
 	for i := 0; i < s.config.SubscribersCount; i++ {
-		sub, err := s.conn.Subscribe(
+		subscriberLogFields := watermill.LogFields{
+			"subscriber_num": i,
+			"topic":          topic,
+		}
+
+		s.logger.Debug("Starting subscriber", subscriberLogFields)
+
+		sub, err := s.conn.QueueSubscribe(
 			topic,
+			"foo", // todo - change
 			func(m *stan.Msg) {
-				s.processMessage(m, output)
+				s.processMessage(m, output, subscriberLogFields)
 			},
 			s.config.StanSubscriptionOptions...,
 		)
@@ -105,37 +114,41 @@ func (s *Subscriber) Subscribe(topic string) (chan *message.Message, error) {
 	return output, nil
 }
 
-func (s *Subscriber) processMessage(m *stan.Msg, output chan *message.Message) {
-	s.logger.Trace("Received message", nil)
-
-	msg, err := s.config.Unmarshaler.Unmarshal(m)
-	if err != nil {
-		s.logger.Error("Cannot unmarshal message", err, nil)
+func (s *Subscriber) processMessage(m *stan.Msg, output chan *message.Message, logFields watermill.LogFields) {
+	if s.closed {
 		return
 	}
 
-	logFields := watermill.LogFields{"message_uuid": msg.UUID}
-	s.logger.Trace("Unmarshaled message", logFields)
+	s.logger.Trace("Received message", logFields)
+
+	msg, err := s.config.Unmarshaler.Unmarshal(m)
+	if err != nil {
+		s.logger.Error("Cannot unmarshal message", err, logFields)
+		return
+	}
+
+	messageLogFields := logFields.Add(watermill.LogFields{"message_uuid": msg.UUID})
+	s.logger.Trace("Unmarshaled message", messageLogFields)
 
 	select {
 	case output <- msg:
-		s.logger.Trace("Message sent to consumer", logFields)
+		s.logger.Trace("Message sent to consumer", messageLogFields)
 	case <-s.closing:
-		s.logger.Trace("Closing, message discarded", logFields)
+		s.logger.Trace("Closing, message discarded", messageLogFields)
 		return
 	}
 
 	select {
 	case <-msg.Acked():
 		if err := m.Ack(); err != nil {
-			s.logger.Error("Cannot send ack", err, nil)
+			s.logger.Error("Cannot send ack", err, messageLogFields)
 		}
-		s.logger.Trace("Message Acked", logFields)
+		s.logger.Trace("Message Acked", messageLogFields)
 	case <-msg.Nacked():
-		s.logger.Trace("Message Nacked", logFields)
+		s.logger.Trace("Message Nacked", messageLogFields)
 		return
 	case <-s.closing:
-		s.logger.Trace("Closing, message discarded before ack", logFields)
+		s.logger.Trace("Closing, message discarded before ack", messageLogFields)
 		return
 	}
 }
@@ -149,19 +162,15 @@ func (s *Subscriber) Close() error {
 	}
 	s.closed = true
 
-	var result error
-	for _, sub := range s.subs {
-		if err := sub.Unsubscribe(); err != nil {
-			result = multierror.Append(result, errors.Wrap(err, "cannot close sub"))
-		}
-	}
+	s.logger.Debug("Closing subscriber", nil)
+	defer s.logger.Debug("Subscriber closed", nil)
 
 	if err := s.conn.Close(); err != nil {
-		result = multierror.Append(result, errors.Wrap(err, "cannot close conn"))
+		return errors.Wrap(err, "cannot close conn")
 	}
 
 	close(s.closing)
 	internalSync.WaitGroupTimeout(&s.outputsWg, s.config.CloseTimeout)
 
-	return result
+	return nil
 }

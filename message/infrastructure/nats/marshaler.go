@@ -3,7 +3,6 @@ package nats
 import (
 	"bytes"
 	"encoding/gob"
-	"sync"
 
 	"github.com/pkg/errors"
 
@@ -24,17 +23,11 @@ type MarshalerUnmarshaler interface {
 	Unmarshaler
 }
 
-var gobBuffers = sync.Pool{
-	New: func() interface{} {
-		return new(bytes.Buffer)
-	},
-}
-
 type GobMarshaler struct{}
 
 func (GobMarshaler) Marshal(topic string, msg *message.Message) ([]byte, error) {
-	buf := gobBuffers.Get().(*bytes.Buffer)
-	defer gobBuffers.Put(buf)
+	// todo - use pool
+	buf := new(bytes.Buffer)
 
 	encoder := gob.NewEncoder(buf)
 	if err := encoder.Encode(msg); err != nil {
@@ -45,9 +38,8 @@ func (GobMarshaler) Marshal(topic string, msg *message.Message) ([]byte, error) 
 }
 
 func (GobMarshaler) Unmarshal(stanMsg *stan.Msg) (*message.Message, error) {
-	buf := gobBuffers.Get().(*bytes.Buffer)
-	defer gobBuffers.Put(buf)
-	buf.Reset()
+	// todo - use pool
+	buf := new(bytes.Buffer)
 
 	_, err := buf.Write(stanMsg.Data)
 	if err != nil {

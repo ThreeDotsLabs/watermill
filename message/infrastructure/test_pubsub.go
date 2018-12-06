@@ -332,7 +332,6 @@ func continueAfterCloseTest(t *testing.T, createPubSub PubSubConstructor) {
 	totalMessagesCount := 500
 
 	pubSub := createPubSub(t)
-	defer pubSub.Close()
 
 	// call subscribe once for those pubsubs which require subscribe before publish
 	_, err := pubSub.Subscribe(topicName)

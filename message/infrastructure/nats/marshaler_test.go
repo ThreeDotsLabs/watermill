@@ -1,6 +1,8 @@
 package nats_test
 
 import (
+	"fmt"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -37,4 +39,30 @@ func TestGobMarshaler(t *testing.T) {
 	default:
 		t.Fatal("ack is not working")
 	}
+}
+
+func TestGobMarshaler_multiple_messages_async(t *testing.T) {
+	marshaler := nats.GobMarshaler{}
+
+	messagesCount := 1000
+	wg := sync.WaitGroup{}
+	wg.Add(messagesCount)
+
+	for i := 0; i < messagesCount; i++ {
+		go func(msgNum int) {
+			defer wg.Done()
+
+			msg := message.NewMessage(fmt.Sprintf("%d", msgNum), nil)
+
+			b, err := marshaler.Marshal("topic", msg)
+			require.NoError(t, err)
+
+			unmarshaledMsg, err := marshaler.Unmarshal(&stan.Msg{MsgProto: pb.MsgProto{Data: b}})
+			require.NoError(t, err)
+
+			assert.Equal(t, msg.UUID, unmarshaledMsg.UUID)
+		}(i)
+	}
+
+	wg.Wait()
 }

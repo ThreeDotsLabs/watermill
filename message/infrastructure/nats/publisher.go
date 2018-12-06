@@ -37,7 +37,12 @@ func NewPublisher(config PublisherConfig, logger watermill.LoggerAdapter) (*Publ
 
 func (p Publisher) Publish(topic string, messages ...*message.Message) error {
 	for _, msg := range messages {
-		p.logger.Trace("Publishing message", watermill.LogFields{"message_uuid": msg.UUID})
+		messageFields := watermill.LogFields{
+			"message_uuid": msg.UUID,
+			"topic_name":   topic,
+		}
+
+		p.logger.Trace("Publishing message", messageFields)
 
 		b, err := p.config.Marshaler.Marshal(topic, msg)
 		if err != nil {
