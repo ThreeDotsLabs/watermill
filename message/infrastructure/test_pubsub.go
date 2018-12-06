@@ -9,7 +9,8 @@ import (
 	"github.com/ThreeDotsLabs/watermill/internal/tests"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/subscriber"
-	"github.com/satori/go.uuid"
+
+	uuid "github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -332,6 +333,13 @@ func continueAfterCloseTest(t *testing.T, createPubSub PubSubConstructor) {
 
 	pubSub := createPubSub(t)
 	defer pubSub.Close()
+
+	// call subscribe once for those pubsubs which require subscribe before publish
+	_, err := pubSub.Subscribe(topicName)
+	require.NoError(t, err)
+	closePubSub(t, pubSub)
+
+	pubSub = createPubSub(t)
 	messagesToPublish := addSimpleMessagesMessages(t, totalMessagesCount, pubSub, topicName)
 	closePubSub(t, pubSub)
 
@@ -391,6 +399,13 @@ func continueAfterErrors(t *testing.T, createPubSub PubSubConstructor) {
 	totalMessagesCount := 50
 
 	pubSub := createPubSub(t)
+
+	// call subscribe once for those pubsubs which require subscribe before publish
+	_, err := pubSub.Subscribe(topicName)
+	require.NoError(t, err)
+	closePubSub(t, pubSub)
+
+	pubSub = createPubSub(t)
 	defer closePubSub(t, pubSub)
 
 	messagesToPublish := addSimpleMessagesMessages(t, totalMessagesCount, pubSub, topicName)
@@ -432,12 +447,13 @@ func consumerGroupsTest(t *testing.T, pubSubConstructor ConsumerGroupPubSubConst
 	topicName := testTopicName()
 	totalMessagesCount := 50
 
+	group1 := generateConsumerGroup(t, pubSubConstructor, topicName)
+	group2 := generateConsumerGroup(t, pubSubConstructor, topicName)
+
 	publisher := pubSubConstructor(t, "test")
 	messagesToPublish := addSimpleMessagesMessages(t, totalMessagesCount, publisher, topicName)
 	closePubSub(t, publisher)
 
-	group1 := generateConsumerGroup()
-	group2 := generateConsumerGroup()
 	assertConsumerGroupReceivedMessages(t, pubSubConstructor, group1, topicName, messagesToPublish)
 	assertConsumerGroupReceivedMessages(t, pubSubConstructor, group2, topicName, messagesToPublish)
 
@@ -527,7 +543,7 @@ func assertConsumerGroupReceivedMessages(
 }
 
 func testTopicName() string {
-	return "_test_" + uuid.NewV4().String()
+	return "topic_" + uuid.NewV4().String()
 }
 
 func closePubSub(t *testing.T, pubSub message.PubSub) {
@@ -535,8 +551,17 @@ func closePubSub(t *testing.T, pubSub message.PubSub) {
 	assert.NoError(t, err)
 }
 
-func generateConsumerGroup() string {
-	return uuid.NewV4().String()
+func generateConsumerGroup(t *testing.T, pubSubConstructor ConsumerGroupPubSubConstructor, topicName string) string {
+	groupName := "cg_" + uuid.NewV4().String()
+
+	// create a pubsub to ensure that the consumer group exists
+	// for those providers that require subscription before publishing messages (e.g. Google Cloud PubSub)
+	pubSub := pubSubConstructor(t, groupName)
+	_, err := pubSub.Subscribe(topicName)
+	require.NoError(t, err)
+	closePubSub(t, pubSub)
+
+	return groupName
 }
 
 func addSimpleMessagesMessages(t *testing.T, messagesCount int, publisher message.Publisher, topicName string) message.Messages {

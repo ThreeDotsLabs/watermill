@@ -15,6 +15,11 @@ func BenchSubscriber(b *testing.B, pubSubConstructor BenchmarkPubSubConstructor)
 	pubSub := pubSubConstructor(b.N)
 	topicName := testTopicName()
 
+	messages, err := pubSub.Subscribe(topicName)
+	if err != nil {
+		b.Fatal(err)
+	}
+
 	go func() {
 		for i := 0; i < b.N; i++ {
 			msg := message.NewMessage("1", nil)
@@ -24,11 +29,6 @@ func BenchSubscriber(b *testing.B, pubSubConstructor BenchmarkPubSubConstructor)
 			}
 		}
 	}()
-
-	messages, err := pubSub.Subscribe(topicName)
-	if err != nil {
-		b.Fatal(err)
-	}
 
 	b.ResetTimer()
 
