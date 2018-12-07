@@ -16,7 +16,7 @@ var (
 	ErrPublisherClosed   = errors.New("publisher is closed")
 )
 
-type publisher struct {
+type Publisher struct {
 	ctx context.Context
 
 	topics     map[string]*pubsub.Topic
@@ -49,13 +49,13 @@ func (c PublisherConfig) Validate() error {
 	return nil
 }
 
-func NewPublisher(ctx context.Context, config PublisherConfig) (message.Publisher, error) {
+func NewPublisher(ctx context.Context, config PublisherConfig) (*Publisher, error) {
 	config.setDefaults()
 	if err := config.Validate(); err != nil {
 		return nil, errors.Wrap(err, "invalid config")
 	}
 
-	pub := &publisher{
+	pub := &Publisher{
 		ctx:    ctx,
 		topics: map[string]*pubsub.Topic{},
 		config: config,
@@ -70,7 +70,7 @@ func NewPublisher(ctx context.Context, config PublisherConfig) (message.Publishe
 	return pub, nil
 }
 
-func (p *publisher) Publish(topic string, messages ...*message.Message) error {
+func (p *Publisher) Publish(topic string, messages ...*message.Message) error {
 	if p.closed {
 		return ErrPublisherClosed
 	}
@@ -100,7 +100,7 @@ func (p *publisher) Publish(topic string, messages ...*message.Message) error {
 	return nil
 }
 
-func (p *publisher) Close() error {
+func (p *Publisher) Close() error {
 	if p.closed {
 		return nil
 	}
@@ -116,7 +116,7 @@ func (p *publisher) Close() error {
 	return p.client.Close()
 }
 
-func (p *publisher) topic(ctx context.Context, topic string) (t *pubsub.Topic, err error) {
+func (p *Publisher) topic(ctx context.Context, topic string) (t *pubsub.Topic, err error) {
 	p.topicsLock.RLock()
 	t, ok := p.topics[topic]
 	p.topicsLock.RUnlock()

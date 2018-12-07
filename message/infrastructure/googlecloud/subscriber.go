@@ -17,7 +17,7 @@ var (
 	ErrSubscriptionDoesNotExist = errors.New("subscription does not exist")
 )
 
-type subscriber struct {
+type Subscriber struct {
 	ctx     context.Context
 	closing chan struct{}
 	closed  bool
@@ -63,7 +63,7 @@ func NewSubscriber(
 	ctx context.Context,
 	config SubscriberConfig,
 	logger watermill.LoggerAdapter,
-) (message.Subscriber, error) {
+) (*Subscriber, error) {
 	config.setDefaults()
 
 	client, err := pubsub.NewClient(ctx, config.ProjectID, config.ClientOptions...)
@@ -71,7 +71,7 @@ func NewSubscriber(
 		return nil, err
 	}
 
-	return &subscriber{
+	return &Subscriber{
 		ctx:     ctx,
 		closing: make(chan struct{}, 1),
 		closed:  false,
@@ -87,7 +87,7 @@ func NewSubscriber(
 	}, nil
 }
 
-func (s *subscriber) Subscribe(topic string) (chan *message.Message, error) {
+func (s *Subscriber) Subscribe(topic string) (chan *message.Message, error) {
 	if s.closed {
 		return nil, ErrSubscriberClosed
 	}
@@ -133,7 +133,7 @@ func (s *subscriber) Subscribe(topic string) (chan *message.Message, error) {
 	return output, nil
 }
 
-func (s *subscriber) Close() error {
+func (s *Subscriber) Close() error {
 	if s.closed {
 		return nil
 	}
@@ -151,7 +151,7 @@ func (s *subscriber) Close() error {
 	return nil
 }
 
-func (s *subscriber) receive(
+func (s *Subscriber) receive(
 	ctx context.Context,
 	sub *pubsub.Subscription,
 	logFields watermill.LogFields,
@@ -197,7 +197,7 @@ func (s *subscriber) receive(
 
 // subscription obtains a subscription object.
 // If subscription doesn't exist on PubSub, create it, unless config variable DoNotCreateSubscriptionWhenMissing is set.
-func (s *subscriber) subscription(ctx context.Context, subscriptionName, topicName string) (sub *pubsub.Subscription, err error) {
+func (s *Subscriber) subscription(ctx context.Context, subscriptionName, topicName string) (sub *pubsub.Subscription, err error) {
 	s.activeSubscriptionsLock.RLock()
 	sub, ok := s.activeSubscriptions[subscriptionName]
 	s.activeSubscriptionsLock.RUnlock()
