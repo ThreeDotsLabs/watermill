@@ -24,10 +24,7 @@ type publisher struct {
 	closed     bool
 
 	client *pubsub.Client
-
-	publishSettings         *pubsub.PublishSettings
-	doNotCreateMissingTopic bool
-	marshaler               Marshaler
+	config PublisherConfig
 }
 
 type PublisherConfig struct {
@@ -59,11 +56,9 @@ func NewPublisher(ctx context.Context, config PublisherConfig) (message.Publishe
 	}
 
 	pub := &publisher{
-		ctx:                     ctx,
-		topics:                  map[string]*pubsub.Topic{},
-		publishSettings:         config.PublishSettings,
-		doNotCreateMissingTopic: config.DoNotCreateMissingTopic,
-		marshaler:               config.Marshaler,
+		ctx:    ctx,
+		topics: map[string]*pubsub.Topic{},
+		config: config,
 	}
 
 	var err error
@@ -88,7 +83,7 @@ func (p *publisher) Publish(topic string, messages ...*message.Message) error {
 	}
 
 	for _, msg := range messages {
-		googlecloudMsg, err := p.marshaler.Marshal(topic, msg)
+		googlecloudMsg, err := p.config.Marshaler.Marshal(topic, msg)
 		if err != nil {
 			return errors.Wrapf(err, "cannot marshal message %s", msg.UUID)
 		}
@@ -142,8 +137,8 @@ func (p *publisher) topic(ctx context.Context, topic string) (t *pubsub.Topic, e
 
 	// todo: theoretically, one could want different publish settings per topic, which is supported by the client lib
 	// different instances of publisher may be used then
-	if p.publishSettings != nil {
-		t.PublishSettings = *p.publishSettings
+	if p.config.PublishSettings != nil {
+		t.PublishSettings = *p.config.PublishSettings
 	}
 
 	exists, err := t.Exists(ctx)
@@ -155,7 +150,7 @@ func (p *publisher) topic(ctx context.Context, topic string) (t *pubsub.Topic, e
 		return t, nil
 	}
 
-	if p.doNotCreateMissingTopic {
+	if p.config.DoNotCreateMissingTopic {
 		return nil, errors.Wrap(ErrTopicDoesNotExist, topic)
 	}
 
