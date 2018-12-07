@@ -59,6 +59,8 @@ bla bla bla
 {{% load-snippet-partial file="src-link/message/infrastructure/kafka/subscriber.go" first_line_contains="type SubscriberConfig struct" last_line_contains="func (c SubscriberConfig)" %}}
 {{% /render-md %}}
 
+##### Serializer
+
 ##### Using partition key
 
 ##### No consumer group
@@ -81,6 +83,8 @@ bla bla bla
 ##### Configuration
 
 ### Google Cloud Pub/Sub
+
+##### Serializer
 
 ### Implementing your own Pub/Sub
 
