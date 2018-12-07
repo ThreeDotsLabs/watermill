@@ -108,9 +108,8 @@ func (p *publisher) Close() error {
 	p.closed = true
 
 	p.topicsLock.Lock()
-	for name, t := range p.topics {
+	for _, t := range p.topics {
 		t.Stop()
-		delete(p.topics, name)
 	}
 	p.topicsLock.Unlock()
 

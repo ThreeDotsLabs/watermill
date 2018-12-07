@@ -29,8 +29,7 @@ type subscriber struct {
 	client *pubsub.Client
 	config SubscriberConfig
 
-	unmarshaler Unmarshaler
-	logger      watermill.LoggerAdapter
+	logger watermill.LoggerAdapter
 }
 
 type SubscriberConfig struct {
@@ -45,9 +44,9 @@ type SubscriberConfig struct {
 	Unmarshaler        Unmarshaler
 }
 
-type SubscriptionNameFn func(ctx context.Context, topic string) string
+type SubscriptionNameFn func(topic string) string
 
-func DefaultSubscriptionName(ctx context.Context, topic string) string {
+func DefaultSubscriptionName(topic string) string {
 	return topic
 }
 
@@ -60,27 +59,12 @@ func (c *SubscriberConfig) setDefaults() {
 	}
 }
 
-func (c SubscriberConfig) Validate() error {
-	if c.SubscriptionName == nil {
-		return errors.New("SubscriptionName generator must be set")
-	}
-
-	if c.Unmarshaler == nil {
-		return errors.New("empty googlecloud message unmarshaler")
-	}
-
-	return nil
-}
-
 func NewSubscriber(
 	ctx context.Context,
 	config SubscriberConfig,
 	logger watermill.LoggerAdapter,
 ) (message.Subscriber, error) {
 	config.setDefaults()
-	if err := config.Validate(); err != nil {
-		return nil, errors.Wrap(err, "invalid config")
-	}
 
 	client, err := pubsub.NewClient(ctx, config.ProjectID, config.ClientOptions...)
 	if err != nil {
@@ -99,8 +83,7 @@ func NewSubscriber(
 		client: client,
 		config: config,
 
-		unmarshaler: config.Unmarshaler,
-		logger:      logger,
+		logger: logger,
 	}, nil
 }
 
@@ -110,17 +93,18 @@ func (s *subscriber) Subscribe(topic string) (chan *message.Message, error) {
 	}
 
 	ctx, cancel := context.WithCancel(s.ctx)
+	subscriptionName := s.config.SubscriptionName(topic)
 
 	logFields := watermill.LogFields{
 		"provider":          ProviderName,
 		"topic":             topic,
-		"subscription_name": s.config.SubscriptionName(ctx, topic),
+		"subscription_name": subscriptionName,
 	}
 	s.logger.Info("Subscribing to Google Cloud PubSub topic", logFields)
 
 	output := make(chan *message.Message, 0)
 
-	sub, err := s.subscription(ctx, topic)
+	sub, err := s.subscription(ctx, subscriptionName, topic)
 	if err != nil {
 		s.logger.Error("Could not obtain subscription", err, logFields)
 		return nil, err
@@ -174,7 +158,7 @@ func (s *subscriber) receive(
 	output chan *message.Message,
 ) error {
 	err := sub.Receive(ctx, func(ctx context.Context, pubsubMsg *pubsub.Message) {
-		msg, err := s.unmarshaler.Unmarshal(pubsubMsg)
+		msg, err := s.config.Unmarshaler.Unmarshal(pubsubMsg)
 		if err != nil {
 			s.logger.Error("Could not unmarshal Google Cloud PubSub message", err, logFields)
 			pubsubMsg.Nack()
@@ -213,9 +197,7 @@ func (s *subscriber) receive(
 
 // subscription obtains a subscription object.
 // If subscription doesn't exist on PubSub, create it, unless config variable DoNotCreateSubscriptionWhenMissing is set.
-func (s *subscriber) subscription(ctx context.Context, topic string) (sub *pubsub.Subscription, err error) {
-	subscriptionName := s.config.SubscriptionName(ctx, topic)
-
+func (s *subscriber) subscription(ctx context.Context, subscriptionName, topicName string) (sub *pubsub.Subscription, err error) {
 	s.activeSubscriptionsLock.RLock()
 	sub, ok := s.activeSubscriptions[subscriptionName]
 	s.activeSubscriptionsLock.RUnlock()
@@ -245,18 +227,18 @@ func (s *subscriber) subscription(ctx context.Context, topic string) (sub *pubsu
 		return nil, errors.Wrap(ErrSubscriptionDoesNotExist, subscriptionName)
 	}
 
-	t := s.client.Topic(topic)
+	t := s.client.Topic(topicName)
 	exists, err = t.Exists(ctx)
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not check if topic %s exists", topic)
+		return nil, errors.Wrapf(err, "could not check if topic %s exists", topicName)
 	}
 
 	if !exists && s.config.DoNotCreateTopicIfMissing {
-		return nil, errors.Wrap(ErrTopicDoesNotExist, topic)
+		return nil, errors.Wrap(ErrTopicDoesNotExist, topicName)
 	}
 
 	if !exists {
-		t, err = s.client.CreateTopic(ctx, topic)
+		t, err = s.client.CreateTopic(ctx, topicName)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not create topic for subscription")
 		}
