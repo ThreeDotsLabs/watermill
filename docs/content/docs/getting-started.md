@@ -226,4 +226,6 @@ Watermill is not a framework. We don't enforce any type of deployment and it's t
 
 For more detailed documentation you should check [documentation topics list]({{< ref "/docs" >}}).
 
+For more advanced examples you should visit [`_examples` directory](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples).
+
 If anything is not clear feel free to use any of our [support channels]({{< ref "/support" >}}), we will we'll be glad to help.
