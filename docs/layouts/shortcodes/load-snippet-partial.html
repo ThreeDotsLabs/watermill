@@ -18,8 +18,11 @@
 
 {{ range $elem_key, $elem_val := split $content "\n" }}
     {{ if in $elem_val $first_line_contains }}
+        {{ if ne $elem_key 0 }}
+            {{ $lines = $lines | append "// ..." }}
+        {{ end }}
+
         {{ $show_line = true }}
-        {{ $lines = $lines | append "// ..." }}
         {{ $first_line_found = true}}
     {{ end }}
 
@@ -27,7 +30,7 @@
         {{ $lines = $lines | append $elem_val }}
     {{ end }}
 
-    {{ if and (in $elem_val $last_line_contains) (ne $last_line_contains "") }}
+    {{ if and ($first_line_found) (in $elem_val $last_line_contains) (ne $last_line_contains "") }}
         {{ $last_line_found = true }}
     {{ end }}
 
