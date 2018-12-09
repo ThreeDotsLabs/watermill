@@ -1,9 +1,7 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/satori/go.uuid"
@@ -32,6 +30,9 @@ func main() {
 	router.AddPlugin(plugin.SignalsHandler)
 
 	router.AddMiddleware(
+		// correlation ID will copy correlation id from consumed message metadata to produced messages
+		middleware.CorrelationID,
+
 		// when error occurred, function will be retried,
 		// after max retries (or if no Retry middleware is added) Nack is send and message will be resent
 		middleware.Retry{
@@ -50,44 +51,35 @@ func main() {
 	// you can replace it with any Pub/Sub implementation, it will work the same
 	pubSub := gochannel.NewGoChannel(0, logger, time.Second)
 
-	// producing some mock events in background
-	go produceEvents(pubSub)
+	// producing some messages in background
+	go publishMessages(pubSub)
 
-	// this handler will send e-mail after placing an order
-	// we are using `AddNoPublisherHandler`, because this handler won't emit any eventss
-	if err := router.AddNoPublisherHandler(
-		"send_order_placed_email", // handler name, must be unique
-		"shop.events",             // topic from which we will read events
-		pubSub,
-		sendOrderPlacedEmail{}.Handler,
-	); err != nil {
-		panic(err)
-	}
-
-	// this handler will send shipping request to delivery company
-	// here we are using AddHandler, because this handler will emit events
 	if err := router.AddHandler(
-		"request_order_shipping",
-		"shop.events",
-		"shop.events",
+		"struct_handler",  // handler name, must be unique
+		"example.topic_1", // topic from which we will read events
+		"example.topic_2", // topic to which we will publish event
 		pubSub,
-		requestOrderShipping{}.Handler,
+		structHandler{}.Handler,
 	); err != nil {
 		panic(err)
 	}
 
-	// just for debug, we are printing all events sent to `shop.events`
+	// just for debug, we are printing all events sent to `example.topic_1`
 	if err := router.AddNoPublisherHandler(
-		"print_events",
-		"shop.events",
+		"print_events_topic_1",
+		"example.topic_1",
 		pubSub,
-		func(msg *message.Message) ([]*message.Message, error) {
-			fmt.Printf(
-				"\n> Received message: %s\n> %s\n> metadata: %v\n\n",
-				msg.UUID, string(msg.Payload), msg.Metadata,
-			)
-			return nil, nil
-		},
+		printMessages,
+	); err != nil {
+		panic(err)
+	}
+
+	// just for debug, we are printing all events sent to `example.topic_2`
+	if err := router.AddNoPublisherHandler(
+		"print_events_topic_2",
+		"example.topic_2",
+		pubSub,
+		printMessages,
 	); err != nil {
 		panic(err)
 	}
@@ -99,148 +91,36 @@ func main() {
 	}
 }
 
-type OrderPlaced struct {
-	OrderID         string `json:"order_id"`
-	ClientEmail     string `json:"client_email"`
-	ClientAddress   string `json:"client_address"`
-	DeliveryCompany string `json:"delivery_company"`
-}
-
-func (OrderPlaced) EventName() string {
-	return "order_placed"
-}
-
-func produceEvents(publisher message.Publisher) {
+func publishMessages(publisher message.Publisher) {
 	for {
-		msg, err := marshalEvent(
-			OrderPlaced{
-				OrderID:         uuid.NewV4().String(),
-				ClientEmail:     fmt.Sprintf("%s@gmail.com", uuid.NewV4().String()),
-				ClientAddress:   "308 Negra Arroyo Lane, Albuquerque, New Mexico, 87104",
-				DeliveryCompany: "Los Pollos Hermanos",
-			},
-		)
-		if err != nil {
-			panic(err)
-		}
+		msg := message.NewMessage(uuid.NewV4().String(), []byte("Hello, world!"))
+		middleware.SetCorrelationID(uuid.NewV4().String(), msg)
 
-		// event will be send to every subscribed subscriber
-		if err := publisher.Publish("shop.events", msg); err != nil {
-			log.Printf("cannot send message: %s", err.Error())
+		fmt.Printf("sending message %s, correlation id: %s\n", msg.UUID, middleware.MessageCorrelationID(msg))
+
+		if err := publisher.Publish("example.topic_1", msg); err != nil {
+			panic(err)
 		}
 
 		time.Sleep(time.Second)
 	}
 }
 
-type sendOrderPlacedEmail struct {
-	// here will be some dependencies, like API client or DB connection
-}
-
-func (c sendOrderPlacedEmail) Handler(msg *message.Message) ([]*message.Message, error) {
-	event := OrderPlaced{}
-
-	if ok, err := unmarshalEvent(msg, &event); err != nil {
-		return nil, err
-	} else if !ok {
-		// this is not OrderPlaced, skipping
-		return nil, nil
-	}
-
-	log.Printf("sending confirmation e-mail for order to: %s\n", event.ClientEmail)
-
+func printMessages(msg *message.Message) ([]*message.Message, error) {
+	fmt.Printf(
+		"\n> Received message: %s\n> %s\n> metadata: %v\n\n",
+		msg.UUID, string(msg.Payload), msg.Metadata,
+	)
 	return nil, nil
 }
 
-type requestOrderShipping struct {
-	// here will be some dependencies, like API client or DB connection
+type structHandler struct {
+	// we can add some dependencies here
 }
 
-func (o requestOrderShipping) Handler(msg *message.Message) ([]*message.Message, error) {
-	event := OrderPlaced{}
+func (s structHandler) Handler(msg *message.Message) ([]*message.Message, error) {
+	fmt.Println("structHandler received message", msg.UUID)
 
-	if ok, err := unmarshalEvent(msg, &event); err != nil {
-		// something is wrong with payload,
-		// in this router configuration message will be redelivered until unmarshal is fixed,
-		//
-		// behaviour for these kind of errors is different for many cases, but you should:
-		//   - monitor errors like this, and when it occurs fix unmarshaler error
-		//   - skip these types of error by using middleware
-		//   - add poison queue middleware, which will send errors to separated topic which you should monitor
-		return nil, err
-	} else if !ok {
-		// this is not OrderPlaced, skipping
-		return nil, nil
-	}
-
-	log.Printf("sending shipping request to delivery company: %s\n", event.DeliveryCompany)
-
-	// here should go call to external API or whatever should be used to requesting shipping
-	// ...
-
-	// all went fine, we are emitting `ShippingRequested` event
-	shippingRequestedMessage, err := marshalEvent(ShippingRequested{
-		OrderID:         event.OrderID,
-		DeliveryCompany: event.DeliveryCompany,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return message.Messages{shippingRequestedMessage}, nil
-}
-
-type ShippingRequested struct {
-	OrderID         string `json:"order_id"`
-	DeliveryCompany string `json:"delivery_company"`
-}
-
-func (ShippingRequested) EventName() string {
-	return "shipping_requested"
-}
-
-// Event is something like transport type, which contains EventName and EventPayload.
-type Event struct {
-	EventName    string       `json:"event_name"`
-	EventPayload EventPayload `json:"event_payload"`
-}
-
-type EventPayload interface {
-	EventName() string
-}
-
-const eventNameMetadataKey = "event_name"
-
-func marshalEvent(payload EventPayload) (*message.Message, error) {
-	event := Event{
-		EventName:    payload.EventName(),
-		EventPayload: payload,
-	}
-
-	b, err := json.Marshal(event)
-	if err != nil {
-		return nil, err
-	}
-
-	msg := message.NewMessage(uuid.NewV4().String(), b)
-	// it's good idea to save event name to metadata,
-	// it allows us to check event type without deserialize
-	msg.Metadata.Set(eventNameMetadataKey, event.EventName)
-
-	return msg, nil
-}
-
-func unmarshalEvent(msg *message.Message, payload EventPayload) (ok bool, err error) {
-	if msg.Metadata.Get(eventNameMetadataKey) != payload.EventName() {
-		// this is not event type which in we are interested in
-		return false, nil
-	}
-
-	event := Event{EventPayload: payload}
-
-	if err := json.Unmarshal(msg.Payload, &event); err != nil {
-		return false, err
-	}
-
-	return true, nil
+	msg = message.NewMessage(uuid.NewV4().String(), []byte("message produced by structHandler"))
+	return message.Messages{msg}, nil
 }

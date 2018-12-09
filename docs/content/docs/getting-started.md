@@ -170,7 +170,14 @@ In production use we want usually use something which is higher level and provid
 
 We also don't want to manually send Ack when processing was successful. Sometimes, we also want send a message after processing another.
 
-To handle these requirements we created component named [*Router*]({{< ref "docs/messages-router" >}}). In this example, we also will implement more common business case: sending order confirmation and requesting shipping.
+To handle these requirements we created component named [*Router*]({{< ref "docs/messages-router" >}}).
+
+Flow of our application looks like this:
+
+1. We are producing messages to topic `example.topic_1` every second.
+2. `struct_handler` handler is listening to `example.topic_1`. When message is received, UUID is printed and a new message is produced to to `example.topic_2`.
+3. `print_events_topic_1` handler is listening to `example.topic_1` and printing message UUID, payload and metadata. Correlation ID should be the same like in message in `example.topic_1`.
+4. `print_events_topic_2` handler is listening to `example.topic_2` and printing message UUID, payload and metadata. Correlation ID should be the same like in message in `example.topic_2`.
 
 #### Router configuration
 
@@ -182,12 +189,13 @@ We also will set up handlers which this router will support. Every handler will 
 {{% load-snippet-partial file="content/docs/getting-started/router/main.go" first_line_contains="package" last_line_contains="router.Run()" padding_after="4" %}}
 {{% /render-md %}}
 
-#### Producing events
+#### Producing messages
 
-We need some events, which may simulate work of real shop:
+Producing messasges works just like before. We only has added `middleware.SetCorrelationID` to set correlation ID.
+Correlation ID will be added to all messages produced by router (`middleware.CorrelationID`).
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/docs/getting-started/router/main.go" first_line_contains="type OrderPlaced struct {" last_line_contains="time.Sleep(time.Second)" padding_after="2" %}}
+{{% load-snippet-partial file="content/docs/getting-started/router/main.go" first_line_contains="func publishMessages" last_line_contains="time.Sleep(time.Second)" padding_after="2" %}}
 {{% /render-md %}}
 
 #### Handlers
@@ -195,25 +203,16 @@ We need some events, which may simulate work of real shop:
 You may notice that we have two types of *handler functions*:
 
 1. function `func(msg *message.Message) ([]*message.Message, error)`
-2. method `func (c sendOrderPlacedEmail) Handler(msg *message.Message) ([]*message.Message, error)`
+2. method `func (c structHandler) Handler(msg *message.Message) ([]*message.Message, error)`
 
 Second option is useful, when our function requires some dependencies like database, logger etc.
 When we have just function without dependencies, it's fine to use just a function.
 
-Let's take a look for `requestOrderShipping` handler:
+Let's take a look for `structHandler` handler:
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/docs/getting-started/router/main.go" first_line_contains="type requestOrderShipping struct {" last_line_contains="(ShippingRequested) EventName()" padding_after="3" %}}
+{{% load-snippet-partial file="content/docs/getting-started/router/main.go" first_line_contains="type structHandler struct {" last_line_contains="return message.Messages{msg}, nil" padding_after="3" %}}
 {{% /render-md %}}
-
-#### Event marshalers
-
-Watermill doesn't enforce any event format - it's up to you how you will represent them. Here is one of the possible implementations:
-
-{{% render-md %}}
-{{% load-snippet-partial file="content/docs/getting-started/router/main.go" first_line_contains="type Event struct {" last_line_contains="return true, nil" padding_after="2" %}}
-{{% /render-md %}}
-
 
 #### Done!
 
