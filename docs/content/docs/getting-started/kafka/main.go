@@ -2,27 +2,41 @@ package main
 
 import (
 	"log"
-	"time"
+
+	"github.com/ThreeDotsLabs/watermill"
 
 	"github.com/satori/go.uuid"
 
 	"github.com/ThreeDotsLabs/watermill/message"
-
-	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure/gochannel"
+	"github.com/ThreeDotsLabs/watermill/message/infrastructure/kafka"
 )
 
 func main() {
-	pubSub := gochannel.NewGoChannel(0, watermill.NopLogger{}, time.Second)
+	subscriber, err := kafka.NewConfluentSubscriber(
+		kafka.SubscriberConfig{
+			Brokers:       []string{"kafka:9092"},
+			ConsumerGroup: "test_consumer_group",
+		},
+		kafka.DefaultMarshaler{},
+		watermill.NewStdLogger(false, false),
+	)
+	if err != nil {
+		panic(err)
+	}
 
-	messages, err := pubSub.Subscribe("example.topic")
+	messages, err := subscriber.Subscribe("example.topic")
 	if err != nil {
 		panic(err)
 	}
 
 	go process(messages)
 
-	publishMessages(pubSub)
+	publisher, err := kafka.NewPublisher([]string{"kafka:9092"}, kafka.DefaultMarshaler{}, nil)
+	if err != nil {
+		panic(err)
+	}
+
+	publishMessages(publisher)
 }
 
 func publishMessages(publisher message.Publisher) {

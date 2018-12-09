@@ -2,39 +2,31 @@ package main
 
 import (
 	"log"
+	"time"
 
 	"github.com/satori/go.uuid"
 
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure/kafka"
+
+	"github.com/ThreeDotsLabs/watermill"
+	"github.com/ThreeDotsLabs/watermill/message/infrastructure/gochannel"
 )
 
 func main() {
-	subscriber, err := kafka.NewConfluentSubscriber(
-		kafka.SubscriberConfig{
-			Brokers:       []string{"localhost:9092"},
-			ConsumerGroup: "test_consumer_group",
-		},
-		kafka.DefaultMarshaler{},
-		nil,
+	pubSub := gochannel.NewGoChannel(
+		0, // buffer (channel) size
+		watermill.NewStdLogger(false, false),
+		time.Second, // send timeout
 	)
-	if err != nil {
-		panic(err)
-	}
 
-	messages, err := subscriber.Subscribe("example.topic")
+	messages, err := pubSub.Subscribe("example.topic")
 	if err != nil {
 		panic(err)
 	}
 
 	go process(messages)
 
-	publisher, err := kafka.NewPublisher([]string{"localhost:9092"}, kafka.DefaultMarshaler{}, nil)
-	if err != nil {
-		panic(err)
-	}
-
-	publishMessages(publisher)
+	publishMessages(pubSub)
 }
 
 func publishMessages(publisher message.Publisher) {

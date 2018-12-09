@@ -7,9 +7,7 @@ description = "Go library for building event-driven applications."
 theme = "kube"
 Paginate = 4
 
-pygmentsUseClassic=true
 pygmentsStyle="autumn"
-pygmentsCodefences=true
 
 [Params]
   RSSLink = "/index.xml"

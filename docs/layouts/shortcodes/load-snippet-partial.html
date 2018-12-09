@@ -7,19 +7,46 @@
 {{ $show_line := false }}
 
 {{/*if true, first or last line was not found*/}}
-{{ $no_first_line := true}}
-{{ $no_last_line := true}}
+{{ $first_line_found := false}}
+{{ $last_line_found := false}}
+
+{{ $padding_after := (.Get "padding_after" | default "0" | int) }}
 
 <small class="smaller">Full source: [{{ .Get "file" }}](https://github.com/ThreeDotsLabs/watermill/tree/master/{{ .Get "file" }})</small>
 
-```go
-{{ range $elem_key, $elem_val := split $content "\n" }}{{ if in $elem_val $first_line_contains }}{{ $show_line = true }}{{"// ...\n"|safeHTML}}{{ $no_first_line = false}}{{ end }}{{ if $show_line }}{{$elem_val|safeHTML}}{{"\n"|safeHTML}}{{ end }}{{ if and (in $elem_val $last_line_contains) (ne $last_line_contains "") }}{{ $show_line = false }}{{ $no_last_line = false }}{{"//... \n"|safeHTML}}{{ end }}{{ end }}
-```
+{{ $lines := slice }}
 
-{{if $no_first_line}}
+{{ range $elem_key, $elem_val := split $content "\n" }}
+    {{ if in $elem_val $first_line_contains }}
+        {{ $show_line = true }}
+        {{ $lines = $lines | append "// ..." }}
+        {{ $first_line_found = true}}
+    {{ end }}
+
+    {{ if $show_line }}
+        {{ $lines = $lines | append $elem_val }}
+    {{ end }}
+
+    {{ if and (in $elem_val $last_line_contains) (ne $last_line_contains "") }}
+        {{ $last_line_found = true }}
+    {{ end }}
+
+    {{ if and $last_line_found $show_line }}
+        {{ if gt $padding_after 0 }}
+            {{ $padding_after = sub $padding_after 1}}
+        {{ else }}
+            {{ $lines = $lines | append "// ..." }}
+            {{ $show_line = false }}
+        {{ end }}
+    {{ end }}
+{{ end }}
+
+{{ highlight (delimit $lines "\n") (.Get "type" | default "go") "" }}
+
+{{if not $first_line_found}}
     {{ errorf "`first_line_contains` %s not found in %s snippet" $first_line_contains $file }}
 {{end}}
 
-{{if and ($no_last_line) (ne $last_line_contains "")}}
+{{if and (not $last_line_found) (ne $last_line_contains "")}}
     {{ errorf "`last_line_contains` %s not found in %s snippet" $last_line_contains $file }}
 {{end}}
