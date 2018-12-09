@@ -16,6 +16,14 @@ go get -u github.com/ThreeDotsLabs/watermill/
 
 ### Subscribing for messages
 
+One of the most important parts of the Watermill is [*Message*](/docs/message). It is as important as `http.Request` for `http` package.
+Almost every part of Watermill use this type in some part.
+
+When we are building reactive/event-driven application/[insert your buzzword here] we always want to listen of incomming messages to react for them.
+Watermill is supporting multiple [publishers and subscribers implementations](/docs/pub-sub-implementations), with compatible interface and abstraction which provide similar behaviour.
+
+Lets start with subscribing for messages.
+
 {{% tabs id="subscribing" tabs="go-channel,kafka" labels="Go Channel,Kafka" %}}
 
 {{% tabs-tab id="go-channel"%}}
@@ -130,26 +138,35 @@ cd "librdkafka"
 
 {{% /tabs %}}
 
-### Ack
-
-???? todo
-
 ### Publishing messages
 
 {{% tabs id="publishing" tabs="go-channel,kafka" labels="Go Channel,Kafka" %}}
 
 {{% tabs-tab id="go-channel"%}}
-{{% load-snippet-partial file="content/docs/getting-started/go-channel/main.go" first_line_contains="go process(messages)" last_line_contains="func process(messages" %}}
+{{% load-snippet-partial file="content/docs/getting-started/go-channel/main.go" first_line_contains="go process(messages)" last_line_contains="publisher.Publish" padding_after="4" %}}
 {{% /tabs-tab %}}
 
 {{% tabs-tab id="kafka" %}}
-{{% load-snippet-partial file="content/docs/getting-started/kafka/main.go" first_line_contains="go process(messages)" last_line_contains="func process(messages" %}}
+{{% load-snippet-partial file="content/docs/getting-started/kafka/main.go" first_line_contains="go process(messages)" last_line_contains="publisher.Publish" padding_after="4" %}}
 {{% /tabs-tab %}}
 
 {{% /tabs %}}
 
 
 ### Using *Messages Router*
+
+[*Publishers and subscribers*](/docs/pub-sub) are rather low-level parts of Watermill.
+In production use we want usually use something which is higher level and provides some features like [correlation, metrics, poison queue, retrying, throttling etc](/docs/messages-router-middleware).
+
+We also don't want to manually send Ack when processing was successful. Sometimes, we also want send a message after processing another.
+
+To handle these requirements we created component named [*Router*](/docs/messages-router).
+
+Simple configuration of the router will look like this:
+
+{{% render-md %}}
+{{% load-snippet-partial file="content/docs/getting-started/router.go" first_line_contains="import (" last_line_contains="middleware.Recoverer," padding_after="2" %}}
+{{% /render-md %}}
 
 ### Deployment
 
