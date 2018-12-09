@@ -208,10 +208,8 @@ You may notice that we have two types of *handler functions*:
 Second option is useful, when our function requires some dependencies like database, logger etc.
 When we have just function without dependencies, it's fine to use just a function.
 
-Let's take a look for `structHandler` handler:
-
 {{% render-md %}}
-{{% load-snippet-partial file="content/docs/getting-started/router/main.go" first_line_contains="type structHandler struct {" last_line_contains="return message.Messages{msg}, nil" padding_after="3" %}}
+{{% load-snippet-partial file="content/docs/getting-started/router/main.go" first_line_contains="func printMessages" last_line_contains="return message.Messages{msg}, nil" padding_after="3" %}}
 {{% /render-md %}}
 
 #### Done!
