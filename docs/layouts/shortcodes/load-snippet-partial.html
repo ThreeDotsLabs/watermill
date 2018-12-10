@@ -1,5 +1,5 @@
 {{ $file := (.Get "file") }}
-{{ $content := readFile (.Get "file") }}
+{{ $content := readFile $file }}
 
 {{ $first_line_contains := (.Get "first_line_contains") }}
 {{ $last_line_contains := (.Get "last_line_contains") }}
@@ -12,16 +12,19 @@
 
 {{ $padding_after := (.Get "padding_after" | default "0" | int) }}
 
+{{ $first_line_num := 0 }}
+{{ $last_line_num := 0 }}
+
 {{ $linkFile := $file }}
 {{ if in $file "content/src-link/" }}
     {{ $linkFile = replace $linkFile "content/src-link/" "" }}
 {{ end }}
 
-<small class="smaller">Full source: [{{ $linkFile }}](https://github.com/ThreeDotsLabs/watermill/tree/master/{{ $linkFile }})</small>
-
 {{ $lines := slice }}
 
 {{ range $elem_key, $elem_val := split $content "\n" }}
+    {{ $line_num := (add $elem_key 1) }}
+
     {{ if and (not $first_line_found) (in $elem_val $first_line_contains) }}
         {{ if ne $elem_key 0 }}
             {{ $lines = $lines | append "// ..." }}
@@ -29,6 +32,7 @@
 
         {{ $show_line = true }}
         {{ $first_line_found = true}}
+        {{ $first_line_num = $line_num }}
     {{ end }}
 
     {{ if $show_line }}
@@ -45,9 +49,12 @@
         {{ else }}
             {{ $lines = $lines | append "// ..." }}
             {{ $show_line = false }}
+            {{ $last_line_num = $line_num }}
         {{ end }}
     {{ end }}
 {{ end }}
+
+<small class="smaller">Full source: [{{ $linkFile }}](https://github.com/ThreeDotsLabs/watermill/tree/master/{{ $linkFile }}{{ if ne $first_line_num 0 }}#L{{ $first_line_num }}{{ end }})</small>
 
 {{ highlight (delimit $lines "\n") (.Get "type" | default "go") "" }}
 
