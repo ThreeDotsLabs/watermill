@@ -9,6 +9,8 @@ Paginate = 4
 
 pygmentsStyle="autumn"
 
+googleAnalytics = "UA-128588911-2"
+
 [blackfriday]
     hrefTargetBlank = true
 
