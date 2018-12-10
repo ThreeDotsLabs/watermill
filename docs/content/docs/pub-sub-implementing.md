@@ -33,3 +33,7 @@ But they are some things about which you cannot forget:
 6. Use [Universal Pub/Sub tests]({{< ref "/docs/pub-sub#universal-tests" >}})
 7. Performance optimizations
 8. godoc's and [Markdown docs]({{< ref "/docs/pub-sub-implementations" >}})
+
+We will be also thankful for submitting [merge requests](https://github.com/ThreeDotsLabs/watermill/pulls) with new Pub/Subs implementation.
+
+If anything is not clear feel free to use any of our [support channels]({{< ref "/support" >}}), we will we'll be glad to help.
