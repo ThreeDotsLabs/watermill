@@ -1,10 +1,10 @@
 +++
 title = "Getting started"
-description = "Up and running in under a minute"
+description = "Up and running Watermill"
 weight = -9999
 draft = false
 toc = true
-bref = "todo"
+bref = ""
 type = "docs"
 +++
 
@@ -162,6 +162,9 @@ cd "librdkafka"
 
 {{% /tabs %}}
 
+##### Message format
+
+We don't enforce any message format. You can use strings, JSON, protobuf, Avro, gob or anything else what serializes to `[]byte`.
 
 ### Using *Messages Router*
 
@@ -174,7 +177,7 @@ To handle these requirements we created component named [*Router*]({{< ref "docs
 
 Flow of our application looks like this:
 
-1. We are producing messages to topic `example.topic_1` every second.
+1. We are producing message to topic `example.topic_1` every second.
 2. `struct_handler` handler is listening to `example.topic_1`. When message is received, UUID is printed and a new message is produced to to `example.topic_2`.
 3. `print_events_topic_1` handler is listening to `example.topic_1` and printing message UUID, payload and metadata. Correlation ID should be the same like in message in `example.topic_1`.
 4. `print_events_topic_2` handler is listening to `example.topic_2` and printing message UUID, payload and metadata. Correlation ID should be the same like in message in `example.topic_2`.

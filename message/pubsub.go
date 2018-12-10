@@ -9,6 +9,10 @@ type PubSub interface {
 	Close() error
 }
 
+func NewPubSub(publisher Publisher, subscriber Subscriber) PubSub {
+	return pubSub{publisher, subscriber}
+}
+
 type pubSub struct {
 	Publisher
 	Subscriber
@@ -31,8 +35,4 @@ func (p pubSub) Close() error {
 	}
 
 	return errors.New(errMsg)
-}
-
-func NewPubSub(publisher Publisher, subscriber Subscriber) PubSub {
-	return pubSub{publisher, subscriber}
 }

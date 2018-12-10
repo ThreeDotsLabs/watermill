@@ -12,12 +12,17 @@
 
 {{ $padding_after := (.Get "padding_after" | default "0" | int) }}
 
-<small class="smaller">Full source: [{{ .Get "file" }}](https://github.com/ThreeDotsLabs/watermill/tree/master/{{ .Get "file" }})</small>
+{{ $linkFile := $file }}
+{{ if in $file "content/src-link/" }}
+    {{ $linkFile = replace $linkFile "content/src-link/" "" }}
+{{ end }}
+
+<small class="smaller">Full source: [{{ $linkFile }}](https://github.com/ThreeDotsLabs/watermill/tree/master/{{ $linkFile }})</small>
 
 {{ $lines := slice }}
 
 {{ range $elem_key, $elem_val := split $content "\n" }}
-    {{ if in $elem_val $first_line_contains }}
+    {{ if and (not $first_line_found) (in $elem_val $first_line_contains) }}
         {{ if ne $elem_key 0 }}
             {{ $lines = $lines | append "// ..." }}
         {{ end }}
@@ -46,10 +51,10 @@
 
 {{ highlight (delimit $lines "\n") (.Get "type" | default "go") "" }}
 
-{{if not $first_line_found}}
+{{if not $first_line_found }}
     {{ errorf "`first_line_contains` %s not found in %s snippet" $first_line_contains $file }}
 {{end}}
 
-{{if and (not $last_line_found) (ne $last_line_contains "")}}
+{{if and (not $last_line_found) (ne $last_line_contains "") }}
     {{ errorf "`last_line_contains` %s not found in %s snippet" $last_line_contains $file }}
 {{end}}

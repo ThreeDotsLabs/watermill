@@ -9,12 +9,26 @@ if [ ! -d themes/kube ]; then
     popd
 fi
 
-pushd ../
-mkdir -p docs/content/src-link/message/infrastructure/kafka
-mkdir -p docs/content/src-link/message/infrastructure/gochannel
+declare -a files_to_link=(
+    "message/infrastructure/kafka/subscriber.go"
+    "message/infrastructure/gochannel/pubsub.go"
+    "message/message.go"
+    "message/publisher.go"
+    "message/subscriber.go"
+    "message/router.go"
+)
 
-ln -rsf message/infrastructure/kafka/subscriber.go docs/content/src-link/message/infrastructure/kafka/
-ln -rsf message/infrastructure/gochannel/pubsub.go docs/content/src-link/message/infrastructure/gochannel/
+pushd ../
+
+for i in "${files_to_link[@]}"
+do
+    DIR=$(dirname "${i}")
+    DEST_DIR="docs/content/src-link/${DIR}"
+
+    mkdir -p "${DEST_DIR}"
+    ln -rsf "${i}" "${DEST_DIR}"
+done
+
 popd
 
 hugo --gc --minify

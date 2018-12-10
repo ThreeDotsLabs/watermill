@@ -11,9 +11,6 @@ pygmentsStyle="autumn"
 
 googleAnalytics = "UA-128588911-2"
 
-[blackfriday]
-    hrefTargetBlank = true
-
 [Params]
   RSSLink = "/index.xml"
   author = "Three Dots Labs"

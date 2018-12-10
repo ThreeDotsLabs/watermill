@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/satori/go.uuid"
@@ -96,7 +97,7 @@ func publishMessages(publisher message.Publisher) {
 		msg := message.NewMessage(uuid.NewV4().String(), []byte("Hello, world!"))
 		middleware.SetCorrelationID(uuid.NewV4().String(), msg)
 
-		fmt.Printf("sending message %s, correlation id: %s\n", msg.UUID, middleware.MessageCorrelationID(msg))
+		log.Printf("sending message %s, correlation id: %s\n", msg.UUID, middleware.MessageCorrelationID(msg))
 
 		if err := publisher.Publish("example.topic_1", msg); err != nil {
 			panic(err)
@@ -119,7 +120,7 @@ type structHandler struct {
 }
 
 func (s structHandler) Handler(msg *message.Message) ([]*message.Message, error) {
-	fmt.Println("structHandler received message", msg.UUID)
+	log.Println("structHandler received message", msg.UUID)
 
 	msg = message.NewMessage(uuid.NewV4().String(), []byte("message produced by structHandler"))
 	return message.Messages{msg}, nil

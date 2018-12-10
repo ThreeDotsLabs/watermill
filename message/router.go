@@ -10,6 +10,15 @@ import (
 	"github.com/pkg/errors"
 )
 
+// HandlerFunc is function called when message is received.
+//
+// msg.Ack() is called automatically when HandlerFunc doesn't return error.
+// When HandlerFunc returns error, msg.Nack() is called.
+// When msg.Ack() was called in handler and HandlerFunc returns error,
+// msg.Nack() will be not sent because Ack was already sent.
+//
+// HandlerFunc's are executed parallel when multiple messages was received
+// (because msg.Ack() was sent in HandlerFunc or Subscriber supports multiple consumers).
 type HandlerFunc func(msg *Message) ([]*Message, error)
 
 type HandlerMiddleware func(h HandlerFunc) HandlerFunc
@@ -17,6 +26,7 @@ type HandlerMiddleware func(h HandlerFunc) HandlerFunc
 type RouterPlugin func(*Router) error
 
 type RouterConfig struct {
+	// CloseTimeout determines how long router should work for handlers when closing.
 	CloseTimeout time.Duration
 }
 
@@ -94,6 +104,20 @@ func (r *Router) AddPlugin(p ...RouterPlugin) {
 	r.plugins = append(r.plugins, p...)
 }
 
+// AddHandler adds a new handler.
+//
+// handlerName must be unique. For now, it is used only for debugging.
+//
+// subscribeTopic is a topic from which handler will receive messages.
+//
+// publishTopic is a topic to which router will produce messages retuened by handlerFunc.
+// When handler needs to publish to multiple topics,
+// it is recommended to just inject Publisher to Handler or implement middleware
+// which will catch messages and publish to topic based on metadata for example.
+//
+// pubSub is PubSub from which messages will be consumed and to which created messages will be published.
+// If you have separated Publisher and Subscriber object,
+// you can create PubSub object by calling message.NewPubSub(publisher, subscriber).
 func (r *Router) AddHandler(
 	handlerName string,
 	subscribeTopic string,
@@ -110,6 +134,15 @@ func (r *Router) AddHandler(
 	return nil
 }
 
+// AddNoPublisherHandler adds a new handler.
+// This handler cannot return messages.
+// When message is returned it will occur an error and Nack will be sent.
+//
+// handlerName must be unique. For now, it is used only for debugging.
+//
+// subscribeTopic is a topic from which handler will receive messages.
+//
+// subscriber is Subscriber from which messages will be consumed.
 func (r *Router) AddNoPublisherHandler(
 	handlerName string,
 	subscribeTopic string,
