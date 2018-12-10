@@ -206,11 +206,11 @@ func (s *Subscriber) subscription(ctx context.Context, subscriptionName, topicNa
 	}
 
 	s.activeSubscriptionsLock.Lock()
+	defer s.activeSubscriptionsLock.Unlock()
 	defer func() {
 		if err == nil {
 			s.activeSubscriptions[subscriptionName] = sub
 		}
-		s.activeSubscriptionsLock.Unlock()
 	}()
 
 	sub = s.client.Subscription(subscriptionName)
