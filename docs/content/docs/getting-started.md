@@ -28,7 +28,7 @@ One of the most important parts of the Watermill is [*Message*]({{< ref "/docs/m
 Almost every part of Watermill use this type in some part.
 
 When we are building reactive/event-driven application/[insert your buzzword here] we always want to listen of incomming messages to react for them.
-Watermill is supporting multiple [publishers and subscribers implementations]({{< ref "docs/pub-sub-implementations" >}}), with compatible interface and abstraction which provide similar behaviour.
+Watermill is supporting multiple [publishers and subscribers implementations]({{< ref "/docs/pub-sub-implementations" >}}), with compatible interface and abstraction which provide similar behaviour.
 
 Lets start with subscribing for messages.
 
@@ -168,12 +168,12 @@ We don't enforce any message format. You can use strings, JSON, protobuf, Avro, 
 
 ### Using *Messages Router*
 
-[*Publishers and subscribers*]({{< ref "docs/pub-sub" >}}) are rather low-level parts of Watermill.
-In production use we want usually use something which is higher level and provides some features like [correlation, metrics, poison queue, retrying, throttling etc]({{< ref "/docs/messages-router-middleware" >}}).
+[*Publishers and subscribers*]({{< ref "/docs/pub-sub" >}}) are rather low-level parts of Watermill.
+In production use we want usually use something which is higher level and provides some features like [correlation, metrics, poison queue, retrying, throttling etc]({{< ref "/docs/messages-router#middleware" >}}).
 
 We also don't want to manually send Ack when processing was successful. Sometimes, we also want send a message after processing another.
 
-To handle these requirements we created component named [*Router*]({{< ref "docs/messages-router" >}}).
+To handle these requirements we created component named [*Router*]({{< ref "/docs/messages-router" >}}).
 
 Flow of our application looks like this:
 

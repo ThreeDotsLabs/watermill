@@ -26,6 +26,7 @@ Publish can be synchronous or asynchronous - it depends of implementation.
 #### `Close()`
 
 Close should flush unsent messages, if publisher is async.
+**It's important to not forget to close subscriber**, in other hand you may lose some of the messages.
 
 ### Subscriber
 
@@ -44,7 +45,7 @@ If it wouldn't, it is possibility to lose messages when process will die before 
 
 #### `Close()`
 
-Close closes all subscriptions with their output channels and flush offsets etc. when needed
+Close closes all subscriptions with their output channels and flush offsets etc. when needed.
 
 ### At-least-once delivery
 
@@ -53,7 +54,7 @@ That means, that when some error with occur when processing message and Ack cann
 
 You need to keep it in mind and build your application to be [idempotent](http://www.cloudcomputingpatterns.org/idempotent_processor/) or implement deduplication mechanism.
 
-Unfortunately, it's not possible to create universal [*middleware*]({{< ref "/docs/messages-router-middleware" >}}) for deduplication but we encourage you to make your own.
+Unfortunately, it's not possible to create universal [*middleware*]({{< ref "/docs/messages-router#middleware" >}}) for deduplication but we encourage you to make your own.
 
 ### Universal tests
 
@@ -76,4 +77,4 @@ You can also request new Pub/Sub implementation by submitting a [new issue](http
 
 ### Keep going!
 
-When you already know, how Pub/Sub is working we recommend to check [*Message Router component*]({{< ref "docs/messages-router" >}}).
+When you already know, how Pub/Sub is working we recommend to check [*Message Router component*]({{< ref "/docs/messages-router" >}}).

@@ -10,11 +10,15 @@ if [ ! -d themes/kube ]; then
 fi
 
 declare -a files_to_link=(
+    "message/infrastructure/kafka/publisher.go"
     "message/infrastructure/kafka/subscriber.go"
+    "message/infrastructure/kafka/marshaler.go"
     "message/infrastructure/gochannel/pubsub.go"
+    "message/infrastructure/http/subscriber.go"
     "message/message.go"
     "message/publisher.go"
     "message/subscriber.go"
+    "message/pubsub.go"
     "message/router.go"
 )
 
@@ -26,7 +30,7 @@ do
     DEST_DIR="docs/content/src-link/${DIR}"
 
     mkdir -p "${DEST_DIR}"
-    ln -rsf "${i}" "${DEST_DIR}"
+    ln -rsf "./${i}" "./${DEST_DIR}"
 done
 
 popd

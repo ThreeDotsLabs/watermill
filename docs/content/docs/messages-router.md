@@ -8,12 +8,12 @@ bref = ""
 toc = true
 +++
 
-[*Publishers and subscribers*]({{< ref "docs/pub-sub" >}}) are rather low-level parts of Watermill.
-In production use we want usually use something which is higher level and provides some features like [correlation, metrics, poison queue, retrying, throttling etc]({{< ref "/docs/messages-router-middleware" >}}).
+[*Publishers and subscribers*]({{< ref "/docs/pub-sub" >}}) are rather low-level parts of Watermill.
+In production use we want usually use something which is higher level and provides some features like [correlation, metrics, poison queue, retrying, throttling etc]({{< ref "/docs/messages-router#middleware" >}}).
 
 We also don't want to manually send Ack when processing was successful. Sometimes, we also want send a message after processing another.
 
-To handle these requirements we created component named [*Router*]({{< ref "docs/messages-router" >}}).
+To handle these requirements we created component named [*Router*]({{< ref "/docs/messages-router" >}}).
 
 [todo - schema]
 
@@ -37,12 +37,12 @@ Next we need to add a new handler with `Router.AddHandler`:
 {{% load-snippet-partial file="content/src-link/message/router.go" first_line_contains="// AddHandler" last_line_contains=") error" padding_after="0" %}}
 {{% /render-md %}}
 
-And example usage from [Getting Started]({{< ref "docs/getting-started#using-messages-router" >}}):
+And example usage from [Getting Started]({{< ref "/docs/getting-started#using-messages-router" >}}):
 {{% render-md %}}
 {{% load-snippet-partial file="content/docs/getting-started/router/main.go" first_line_contains="if err := router.AddHandler(" last_line_contains="panic(err)" padding_after="1" %}}
 {{% /render-md %}}
 
-#### No publisher handler
+### No publisher handler
 
 Not every handler needs to publish messages.
 You can add this kind of handler by using `Router.AddNoPublisherHandler`:
@@ -51,31 +51,57 @@ You can add this kind of handler by using `Router.AddNoPublisherHandler`:
 {{% load-snippet-partial file="content/src-link/message/router.go" first_line_contains="// AddNoPublisherHandler" last_line_contains=") error" padding_after="0" %}}
 {{% /render-md %}}
 
-#### Ack
+### Ack
 
 You don't need to manually call `msg.Ack()` or `msg.Nack()` after message is processed (but you can, of course).
 `msg.Ack()` is called when `HanderFunc` doesn't return error. If error was returned, `msg.Nack()` will be called.
 
-#### Producing messages
+### Producing messages
 
 When returning multiple messages in router,
-you should be aware that most of Publisher's implementations doesn't support [atomically publishing of the messages]({{< ref "docs/pub-sub#publishing-multiple-messages" >}}).
+you should be aware that most of Publisher's implementations doesn't support [atomically publishing of the messages]({{< ref "/docs/pub-sub#publishing-multiple-messages" >}}).
 
 It may lead to producing only part of the messages and sending `msg.Nack()` when broker or storage is not available.
 
 When it is a problem, you should consider publishing maximum one message with one handler.
 
-#### Execution model
+### Running router
+
+To run router, you need to call `Run()`.
+
+{{% render-md %}}
+{{% load-snippet-partial file="content/src-link/message/router.go" first_line_contains="// Run" last_line_contains="func (r *Router) Run() (err error) {" padding_after="0" %}}
+{{% /render-md %}}
+
+#### Ensuring that router is running
+
+Sometimes, you want to do something after router was started. You can use `Running()` method for this.
+
+{{% render-md %}}
+{{% load-snippet-partial file="content/src-link/message/router.go" first_line_contains="// Running" last_line_contains="func (r *Router) Running()" padding_after="0" %}}
+{{% /render-md %}}
+
+### Execution model
 
 Some *Consumers* may support only single stream of messages - that means that until `msg.Ack()` is sent you will not receive more messages.
 
 But some *Consumers* can for example subscribe to multiple partitions in parallel and multiple messages will be sent even previous was not Acked (Kafka Consumer for example).
 Router can handle this case and spawn multiple HandlerFunc in parallel.
 
+[todo - schema]
+
 ### Middleware
 
-[todo - list link]
+{{% render-md %}}
+{{% load-snippet-partial file="content/src-link/message/router.go" first_line_contains="// HandlerMiddleware" last_line_contains="type HandlerMiddleware" padding_after="1" %}}
+{{% /render-md %}}
+
+Full list of standard middlewares can be found in [message/router/middleware](https://github.com/ThreeDotsLabs/watermill/tree/master/message/router/middleware).
 
 ### Plugin
 
-[todo - list link]
+{{% render-md %}}
+{{% load-snippet-partial file="content/src-link/message/router.go" first_line_contains="// RouterPlugin" last_line_contains="type RouterPlugin" padding_after="1" %}}
+{{% /render-md %}}
+
+Full list of standard plugins can be found in [message/router/plugin](https://github.com/ThreeDotsLabs/watermill/tree/master/message/router/plugin).

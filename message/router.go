@@ -21,8 +21,25 @@ import (
 // (because msg.Ack() was sent in HandlerFunc or Subscriber supports multiple consumers).
 type HandlerFunc func(msg *Message) ([]*Message, error)
 
+// HandlerMiddleware allows us to write something like decorators to HandlerFunc.
+// It can execute something before handler (for example: modify consumed message)
+// or after (modify produced messages, ack/nack on consumed message, handle errors, logging, etc.).
+//
+// It can be attached to the router by using `AddMiddleware` method.
+//
+// Example:
+//		func ExampleMiddleware(h message.HandlerFunc) message.HandlerFunc {
+//			return func(message *message.Message) ([]*message.Message, error) {
+//				fmt.Println("executed before handler")
+//				producedMessages, err := h(message)
+//				fmt.Println("executed after handler")
+//
+//				return producedMessages, err
+//			}
+//		}
 type HandlerMiddleware func(h HandlerFunc) HandlerFunc
 
+// RouterPlugin is function which is executed on Router start.
 type RouterPlugin func(*Router) error
 
 type RouterConfig struct {
@@ -171,6 +188,10 @@ func (r *Router) AddNoPublisherHandler(
 	return nil
 }
 
+// Run runs all plugins and handlers and starts subscribing to provided topics.
+// This call is blocking until router is running.
+//
+// To stop Run() you should call Close() on the router.
 func (r *Router) Run() (err error) {
 	if r.isRunning {
 		return errors.New("router is already running")
@@ -238,7 +259,10 @@ func (r *Router) Run() (err error) {
 
 // Running is closed when router is running.
 // In other words: you can wait till router is running using
-//     <- r.Running()
+//		fmt.Println("Starting router")
+//		go r.Run()
+//		<- r.Running()
+//		fmt.Println("Router is running")
 func (r *Router) Running() chan struct{} {
 	return r.running
 }

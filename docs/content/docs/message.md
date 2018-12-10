@@ -10,7 +10,7 @@ toc = true
 
 ### Message
 
-Message is one of core parts of the Watermill. Messages are emmitted by [*Publishers*]({{< ref "docs/pub-sub#publisher" >}}) and received by [*Subscribers*]({{< ref "docs/pub-sub#subscriber" >}}).
+Message is one of core parts of the Watermill. Messages are emmitted by [*Publishers*]({{< ref "/docs/pub-sub#publisher" >}}) and received by [*Subscribers*]({{< ref "/docs/pub-sub#subscriber" >}}).
 When message is processed, you should send [`Ack()`]({{< ref "#ack" >}}) or [`Nack()`]({{< ref "#ack" >}}) when processing failed.
 
 `Acks` and `Nacks` are processed by Subscribers (in default implementations subscribers are waiting for `Ack` or `Nack`).

@@ -6,10 +6,14 @@ import (
 	"github.com/pkg/errors"
 )
 
+const UUIDHeaderKey = "_watermill_message_uuid"
+
+// Marshaler marshals Watermill's message to Kafka message.
 type Marshaler interface {
 	Marshal(topic string, msg *message.Message) (*confluentKafka.Message, error)
 }
 
+// Unmarshaler unmarshals Kafka's message to Watermill's message.
 type Unmarshaler interface {
 	Unmarshal(*confluentKafka.Message) (*message.Message, error)
 }
@@ -18,8 +22,6 @@ type MarshalerUnmarshaler interface {
 	Marshaler
 	Unmarshaler
 }
-
-const UUIDHeaderKey = "_watermill_message_uuid"
 
 type DefaultMarshaler struct{}
 
