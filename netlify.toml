@@ -3,5 +3,5 @@
   base = "docs/"
   publish = "docs/public/"
 
-HUGO_VERSION = "0.52"
-HUGO_ENABLEGITINFO = "true"
+  HUGO_VERSION = "0.52"
+  HUGO_ENABLEGITINFO = "true"
