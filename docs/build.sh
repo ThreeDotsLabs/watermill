@@ -35,4 +35,4 @@ done
 
 popd
 
-hugo --minify
+hugo --gc --minify
