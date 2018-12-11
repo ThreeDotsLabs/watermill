@@ -4,7 +4,7 @@ description = "When something went wrong"
 weight = 0
 draft = false
 toc = true
-bref = ""
+bref = "When something went wrong"
 type = "docs"
 +++
 

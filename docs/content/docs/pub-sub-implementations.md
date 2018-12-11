@@ -4,7 +4,7 @@ description = "Golang channel, Kafka, HTTP, Google Cloud Pub/Sub and more!"
 date = 2018-12-05T12:47:48+01:00
 weight = -800
 draft = false
-bref = ""
+bref = "Golang channel, Kafka, HTTP, Google Cloud Pub/Sub and more!"
 toc = false
 +++
 

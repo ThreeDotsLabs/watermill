@@ -4,7 +4,7 @@ description = "Publishers and Subscribers"
 date = 2018-12-05T12:47:30+01:00
 weight = -900
 draft = false
-bref = ""
+bref = "Publishers and Subscribers"
 toc = true
 +++
 
