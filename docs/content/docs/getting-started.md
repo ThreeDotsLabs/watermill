@@ -10,11 +10,11 @@ type = "docs"
 
 ### What is Watermill?
 
-Watermill is a Golang library for working efficiently with message streams. It is intended for building event driven applications, enabling event sourcing, RPC over messages, sagas and basically whatever else comes to your mind. You can use conventional pub/sub implementations like Kafka or RabbitMQ, but also HTTP or MySQL binlog if that fits your use case.
+Watermill is a Golang library for working efficiently with message streams. It is intended for building event-driven applications, enabling event sourcing, RPC over messages, sagas and basically whatever else comes to your mind. You can use conventional pub/sub implementations like Kafka or RabbitMQ, but also HTTP or MySQL binlog if that fits your use case.
 
-It's comes with set of Pub/Sub,  implementations which can be easily replaced by your own implementation
+It comes with a set of Pub/Sub,  implementations which can be easily replaced by your own implementation
 
-Watermill is also shipped by set of standard tools (middlewares) like instrumentation, poison queue, throttling, correlation and other tools used by every message-driven application.
+Watermill is also shipped with the set of standard tools (middlewares) like instrumentation, poison queue, throttling, correlation and other tools used by every message-driven application.
 
 ### Install
 
@@ -25,12 +25,12 @@ go get -u github.com/ThreeDotsLabs/watermill/
 ### Subscribing for messages
 
 One of the most important parts of the Watermill is [*Message*]({{< ref "/docs/message" >}}). It is as important as `http.Request` for `http` package.
-Almost every part of Watermill use this type in some part.
+Almost every part of Watermill uses this type in some part.
 
-When we are building reactive/event-driven application/[insert your buzzword here] we always want to listen of incomming messages to react for them.
+When we are building reactive/event-driven application/[insert your buzzword here] we always want to listen of incoming messages to react for them.
 Watermill is supporting multiple [publishers and subscribers implementations]({{< ref "/docs/pub-sub-implementations" >}}), with compatible interface and abstraction which provide similar behaviour.
 
-Lets start with subscribing for messages.
+Let's start with subscribing for messages.
 
 {{% tabs id="subscribing" tabs="go-channel,kafka" labels="Go Channel,Kafka" %}}
 
@@ -56,9 +56,9 @@ Easiest way to run Watermill with Kafka locally is using Docker.
 
 The source should go to `main.go`.
 
-To run please executute `docker-compose up` command.
+To run please execute `docker-compose up` command.
 
-More detailed explonation of how it is running, and how to add live reload you can find in [our [...] article](todo).
+More detailed explanation of how it is running, and how to add live reload you can find in [our [...] article](todo).
 
 {{% /collapse-box %}}
 {{< collapse-toggle box_id="ubuntu" >}}
@@ -173,22 +173,22 @@ We don't enforce any message format. You can use strings, JSON, protobuf, Avro, 
 ### Using *Messages Router*
 
 [*Publishers and subscribers*]({{< ref "/docs/pub-sub" >}}) are rather low-level parts of Watermill.
-In production use we want usually use something which is higher level and provides some features like [correlation, metrics, poison queue, retrying, throttling etc]({{< ref "/docs/messages-router#middleware" >}}).
+In production use, we want usually use something which is higher level and provides some features like [correlation, metrics, poison queue, retrying, throttling etc]({{< ref "/docs/messages-router#middleware" >}}).
 
-We also don't want to manually send Ack when processing was successful. Sometimes, we also want send a message after processing another.
+We also don't want to manually send Ack when processing was successful. Sometimes, we also want to send a message after processing another.
 
 To handle these requirements we created component named [*Router*]({{< ref "/docs/messages-router" >}}).
 
-Flow of our application looks like this:
+The flow of our application looks like this:
 
-1. We are producing message to topic `example.topic_1` every second.
-2. `struct_handler` handler is listening to `example.topic_1`. When message is received, UUID is printed and a new message is produced to to `example.topic_2`.
-3. `print_events_topic_1` handler is listening to `example.topic_1` and printing message UUID, payload and metadata. Correlation ID should be the same like in message in `example.topic_1`.
-4. `print_events_topic_2` handler is listening to `example.topic_2` and printing message UUID, payload and metadata. Correlation ID should be the same like in message in `example.topic_2`.
+1. We are producing a message to the topic `example.topic_1` every second.
+2. `struct_handler` handler is listening to `example.topic_1`. When a message is received, UUID is printed and a new message is produced to `example.topic_2`.
+3. `print_events_topic_1` handler is listening to `example.topic_1` and printing message UUID, payload and metadata. Correlation ID should be the same as in message in `example.topic_1`.
+4. `print_events_topic_2` handler is listening to `example.topic_2` and printing message UUID, payload and metadata. Correlation ID should be the same as in message in `example.topic_2`.
 
 #### Router configuration
 
-For the beginning we should start with configuration of the router. We will configure which plugins and middlewares we want to use.
+For the beginning, we should start with the configuration of the router. We will configure which plugins and middlewares we want to use.
 
 We also will set up handlers which this router will support. Every handler will independently handle the messages.
 
@@ -198,8 +198,8 @@ We also will set up handlers which this router will support. Every handler will 
 
 #### Producing messages
 
-Producing messasges works just like before. We only has added `middleware.SetCorrelationID` to set correlation ID.
-Correlation ID will be added to all messages produced by router (`middleware.CorrelationID`).
+Producing messages work just like before. We only have added `middleware.SetCorrelationID` to set correlation ID.
+Correlation ID will be added to all messages produced by the router (`middleware.CorrelationID`).
 
 {{% render-md %}}
 {{% load-snippet-partial file="content/docs/getting-started/router/main.go" first_line_contains="func publishMessages" last_line_contains="time.Sleep(time.Second)" padding_after="2" %}}
@@ -212,7 +212,7 @@ You may notice that we have two types of *handler functions*:
 1. function `func(msg *message.Message) ([]*message.Message, error)`
 2. method `func (c structHandler) Handler(msg *message.Message) ([]*message.Message, error)`
 
-Second option is useful, when our function requires some dependencies like database, logger etc.
+The second option is useful when our function requires some dependencies like database, logger etc.
 When we have just function without dependencies, it's fine to use just a function.
 
 {{% render-md %}}

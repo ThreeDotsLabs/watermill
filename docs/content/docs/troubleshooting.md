@@ -10,8 +10,8 @@ type = "docs"
 
 ### Logging
 
-In most cases, you will find answer to your problems in log.
-Watermill offers big amount of logs of different severity levels.
+In most cases, you will find the answer to your problems in a log.
+Watermill offers a significant amount of logs of different severity levels.
 
 If you are using `StdLoggerAdapter`, just change `debug`, and `trace` options to true:
 
@@ -24,11 +24,11 @@ logger := watermill.NewStdLogger(true, true)
 When running locally, you can run:
 
 - `CTRL + \` for Linux
-- `kill -s SIGQUIT [pid]` for another unix systems
+- `kill -s SIGQUIT [pid]` for another UNIX systems
 
 
 to send `SIGQUIT` to the process.
-It will kill the process and print all goroutines with line on which they are now.
+It will kill the process and print all goroutines with the line on which they are now.
 
 ```
 SIGQUIT: quit
@@ -47,7 +47,7 @@ main.main()
 // ...
 ```
 
-When running in production, and you don't want to kill entire process it is good idea to use [pprof](https://golang.org/pkg/net/http/pprof/).
+When running in production, and you don't want to kill the entire process it is a good idea to use [pprof](https://golang.org/pkg/net/http/pprof/).
 
 You can visit [http://localhost:6060/debug/pprof/goroutine?debug=1](http://localhost:6060/debug/pprof/goroutine?debug=1) to find all goroutines status.
 

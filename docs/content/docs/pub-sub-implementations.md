@@ -35,7 +35,7 @@ All built-in implementations can be found in [message/infrastructure](https://gi
 
 ##### Configuration
 
-All configuration is injected via constructor
+You can inject configuration via the constructor.
 
 {{% render-md %}}
 {{% load-snippet-partial file="content/src-link/message/infrastructure/gochannel/pubsub.go" first_line_contains="func NewGoChannel" last_line_contains="logger:" %}}
@@ -82,7 +82,7 @@ Kafka is one of the most popular Pub/Subs. We are providing Pub/Sub implementati
 
 You can pass custom config parameters (for example SSL Configuration) via `KafkaConfigOverwrite` in `SubscriberConfig` and `kafkaConfigOverwrite` to `NewPublisher`.
 
-You can find list of available options in [librdkafka documentation](https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md).
+You can find a list of available options in [librdkafka documentation](https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md).
 
 #### Publishing
 
@@ -98,7 +98,7 @@ You can find list of available options in [librdkafka documentation](https://git
 
 #### Marshaler
 
-Watermill's messages cannot be directly sent to Kafka - they need to be marshaled. You can implement your own marshaler or use default implementation.
+Watermill's messages cannot be directly sent to Kafka - they need to be marshaled. You can implement your marshaler or use default implementation.
 
 {{% render-md %}}
 {{% load-snippet-partial file="content/src-link/message/infrastructure/kafka/marshaler.go" first_line_contains="// Marshaler" last_line_contains="func (DefaultMarshaler)" padding_after="0" %}}
@@ -115,7 +115,7 @@ It can be done with special Marshaler implementation:
 {{% /render-md %}}
 
 When using, you need to pass your function to generate partition key.
-It's good idea to pass this partition key with metadata to not unmarshal entire message.
+It's a good idea to pass this partition key with metadata to not unmarshal entire message.
 
 {{< highlight >}}
 marshaler := kafka.NewWithPartitioningMarshaler(func(topic string, msg *message.Message) (string, error) {
@@ -128,7 +128,7 @@ marshaler := kafka.NewWithPartitioningMarshaler(func(topic string, msg *message.
 For this moment only HTTP subscriber is available. There is an issue for a [HTTP publisher](https://github.com/ThreeDotsLabs/watermill/issues/17).
 
 HTTP subscriber allows us to send messages received by HTTP request (for example - webhooks).
-You can them post them to any Publisher. Here is an example with [sending HTTP messages to Kafka](https://github.com/ThreeDotsLabs/watermill/blob/master/_examples/http-to-kafka/main.go).
+You can then post them to any Publisher. Here is an example with [sending HTTP messages to Kafka](https://github.com/ThreeDotsLabs/watermill/blob/master/_examples/http-to-kafka/main.go).
 
 When implemented, HTTP publisher can be used as webhooks sender.
 
@@ -143,7 +143,7 @@ When implemented, HTTP publisher can be used as webhooks sender.
 
 #### Configuration
 
-Configuration of HTTP subscriber is done via the constructor.
+The configuration of HTTP subscriber is done via the constructor.
 
 {{% render-md %}}
 {{% load-snippet-partial file="content/src-link/message/infrastructure/http/subscriber.go" first_line_contains="// NewSubscriber" last_line_contains="func NewSubscriber(" %}}
@@ -151,9 +151,9 @@ Configuration of HTTP subscriber is done via the constructor.
 
 #### Running
 
-To run HTTP subscriber you need to run `StartHTTPServer()`. It need to be run after `Subscribe()`.
+To run HTTP subscriber you need to run `StartHTTPServer()`. It needs to be run after `Subscribe()`.
 
-When using with router, you should wait for the router to start.
+When using with the router, you should wait for the router to start.
 
 {{< highlight >}}
 <-r.Running()

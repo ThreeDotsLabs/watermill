@@ -16,17 +16,17 @@ toc = true
 
 #### Publishing multiple messages
 
-Most publishers implementations doesn't support atomic publishing of messages.
-That means, that when publishing one of messages failed next messages will be not published.
+Most publishers implementations don't support atomic publishing of messages.
+That means, that when publishing one of the messages failed the next messages will be not published.
 
 #### Async publish
 
-Publish can be synchronous or asynchronous - it depends of implementation.
+Publish can be synchronous or asynchronous - it depends on implementation.
 
 #### `Close()`
 
-Close should flush unsent messages, if publisher is async.
-**It's important to not forget to close subscriber**, in other hand you may lose some of the messages.
+Close should flush unsent messages if the publisher is async.
+**It's important to not forget to close subscriber**, in the other hand you may lose some of the messages.
 
 ### Subscriber
 
@@ -36,12 +36,12 @@ Close should flush unsent messages, if publisher is async.
 
 #### Ack/Nack mechanism
 
-It is *Subscriber's* responsibility to handle `Ack` and `Nack` from message.
-Proper implementation should wait for `Ack` or `Nack` before consuming next message.
+It is *Subscriber's* responsibility to handle `Ack` and `Nack` from a message.
+A proper implementation should wait for `Ack` or `Nack` before consuming the next message.
 
 **Important Subscriber's implementation notice**:
 Ack/offset to message's storage/broker **must** be sent after Ack from Watermill's message.
-If it wouldn't, it is possibility to lose messages when process will die before messages was processed.
+If it wouldn't, it is a possibility to lose messages when the process will die before messages were processed.
 
 #### `Close()`
 
@@ -58,7 +58,7 @@ Unfortunately, it's not possible to create universal [*middleware*]({{< ref "/do
 
 ### Universal tests
 
-Every Pub/Sub is similar in large extent.
+Every Pub/Sub is similar.
 To don't implement separated tests for every Pub/Sub we create test suite which should be passed by any Pub/Sub implementation.
 
 These tests can be found in `message/infrastructure/test_pubsub.go`.
