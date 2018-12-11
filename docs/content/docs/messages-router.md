@@ -13,9 +13,9 @@ In production use we want usually use something which is higher level and provid
 
 We also don't want to manually send Ack when processing was successful. Sometimes, we also want send a message after processing another.
 
-To handle these requirements we created component named [*Router*]({{< ref "/docs/messages-router" >}}).
+To handle these requirements we created component named Router.
 
-[todo - schema]
+<img src="/img/watermill-router.svg" alt="Kiwi standing on oval" style="width:100%;">
 
 ### Configuration
 
@@ -85,10 +85,9 @@ Sometimes, you want to do something after router was started. You can use `Runni
 
 Some *Consumers* may support only single stream of messages - that means that until `msg.Ack()` is sent you will not receive more messages.
 
-But some *Consumers* can for example subscribe to multiple partitions in parallel and multiple messages will be sent even previous was not Acked (Kafka Consumer for example).
+But soe *Consumers* can for example subscribe to multiple partitions in parallel and multiple messages will be sent even previous was not Acked (Kafka Consumer for example).
 Router can handle this case and spawn multiple HandlerFunc in parallel.
 
-[todo - schema]
 
 ### Middleware
 
