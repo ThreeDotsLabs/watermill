@@ -1,7 +1,20 @@
 package main
 
 import (
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"sync/atomic"
 	"time"
+
+	"github.com/deathowl/go-metrics-prometheus"
+	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/rcrowley/go-metrics"
+	"github.com/satori/go.uuid"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
@@ -12,7 +25,7 @@ import (
 
 var (
 	marshaler = kafka.DefaultMarshaler{}
-	brokers   = []string{"localhost:9092"}
+	brokers   = []string{"kafka:9092"}
 
 	logger = watermill.NewStdLogger(false, false)
 )
@@ -94,9 +107,9 @@ func main() {
 func createSubscriber(consumerGroup string, logger watermill.LoggerAdapter) message.Subscriber {
 	sub, err := kafka.NewConfluentSubscriber(
 		kafka.SubscriberConfig{
-			Brokers:        brokers,
-			ConsumerGroup:  consumerGroup,
-			ConsumersCount: 8,
+			Brokers:         brokers,
+			ConsumerGroup:   consumerGroup,
+			ConsumersCount:  8,
 			AutoOffsetReset: "earliest",
 		},
 		marshaler,
@@ -107,4 +120,107 @@ func createSubscriber(consumerGroup string, logger watermill.LoggerAdapter) mess
 	}
 
 	return sub
+}
+
+type postsCountUpdated struct {
+	NewCount int64 `json:"new_count"`
+}
+
+type countStorage interface {
+	CountAdd() (int64, error)
+	Count() (int64, error)
+}
+
+type memoryCountStorage struct {
+	count *int64
+}
+
+func (m memoryCountStorage) CountAdd() (int64, error) {
+	return atomic.AddInt64(m.count, 1), nil
+}
+
+func (m memoryCountStorage) Count() (int64, error) {
+	return atomic.LoadInt64(m.count), nil
+}
+
+type PostsCounter struct {
+	countStorage countStorage
+}
+
+func (p PostsCounter) Count(msg *message.Message) ([]*message.Message, error) {
+	// in production use when implementing counter we probably want to make some kind of deduplication here
+
+	newCount, err := p.countStorage.CountAdd()
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot add count")
+	}
+
+	producedMsg := postsCountUpdated{NewCount: newCount}
+	b, err := json.Marshal(producedMsg)
+	if err != nil {
+		return nil, err
+	}
+
+	return []*message.Message{message.NewMessage(uuid.NewV4().String(), b)}, nil
+}
+
+// intentionally not importing type from app1, because we don't need all data and we want to avoid coupling
+type postAdded struct {
+	OccurredOn time.Time `json:"occurred_on"`
+	Author     string    `json:"author"`
+	Title      string    `json:"title"`
+}
+
+type feedStorage interface {
+	AddToFeed(title, author string, time time.Time) error
+}
+
+type printFeedStorage struct{}
+
+func (printFeedStorage) AddToFeed(title, author string, time time.Time) error {
+	fmt.Printf("Adding to feed: %s by %s @%s\n", title, author, time)
+	return nil
+}
+
+type FeedGenerator struct {
+	feedStorage feedStorage
+}
+
+func (f FeedGenerator) UpdateFeed(message *message.Message) ([]*message.Message, error) {
+	event := postAdded{}
+	json.Unmarshal(message.Payload, &event)
+
+	err := f.feedStorage.AddToFeed(event.Title, event.Author, event.OccurredOn)
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot update feed")
+	}
+
+	return nil, nil
+}
+
+func newMetricsMiddleware() middleware.Metrics {
+	t := metrics.NewTimer()
+	metrics.Register("handler.time", t)
+
+	errs := metrics.NewCounter()
+	metrics.Register("handler.errors", errs)
+
+	success := metrics.NewCounter()
+	metrics.Register("handler.success", success)
+
+	pClient := prometheusmetrics.NewPrometheusProvider(
+		metrics.DefaultRegistry,
+		"test",
+		"subsys",
+		prometheus.DefaultRegisterer,
+		1*time.Second,
+	)
+	go pClient.UpdatePrometheusMetrics()
+	http.Handle("/metrics", promhttp.Handler())
+
+	go http.ListenAndServe(":9000", nil)
+	metricsMiddleware := middleware.NewMetrics(t, errs, success)
+	metricsMiddleware.ShowStats(time.Second*5, log.New(os.Stderr, "metrics: ", log.Lmicroseconds))
+
+	return metricsMiddleware
 }
