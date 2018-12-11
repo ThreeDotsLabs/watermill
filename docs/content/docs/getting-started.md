@@ -117,11 +117,15 @@ sudo yum -y install librdkafka1 librdkafka-dev
 ```
 
 {{% /collapse-box %}}
-{{< collapse-toggle box_id="osx" >}}
-Installing librdkafka on OSX
+{{< collapse-toggle box_id="macOS" >}}
+Installing librdkafka on macOS
 {{% /collapse-toggle %}}
-{{% collapse-box id="osx" %}}
-todo
+{{% collapse-box id="macOS" %}}
+On macOS, you can install `librdkafka` via [Homebrew](https://brew.sh/):
+
+```bash
+brew install librdkafka
+```
 {{% /collapse-box %}}
 {{< collapse-toggle box_id="building" >}}
 Building from sources (for other distros)
