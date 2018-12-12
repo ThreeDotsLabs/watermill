@@ -11,6 +11,7 @@ import (
 
 type UnmarshalMessageFunc func(topic string, request *http.Request) (*message.Message, error)
 
+// Subscriber can subscribe to HTTP requests and create Watermill's messages based on them.
 type Subscriber struct {
 	router chi.Router
 	server *http.Server
@@ -24,6 +25,13 @@ type Subscriber struct {
 	closed bool
 }
 
+// NewSubscriber creates new Subscriber.
+//
+// addr is TCP address to listen on
+//
+// unmarshalMessageFunc is function which converts HTTP request to Watermill's message.
+//
+// logger is Watermill's logger.
 func NewSubscriber(addr string, unmarshalMessageFunc UnmarshalMessageFunc, logger watermill.LoggerAdapter) (*Subscriber, error) {
 	r := chi.NewRouter()
 	s := &http.Server{Addr: addr, Handler: r}
@@ -39,17 +47,23 @@ func NewSubscriber(addr string, unmarshalMessageFunc UnmarshalMessageFunc, logge
 	}, nil
 }
 
-func (s *Subscriber) Subscribe(topic string) (chan *message.Message, error) {
+// Subscribe adds HTTP handler which will listen in provided url for messages.
+//
+// Subscribe needs to be called before `StartHTTPServer`.
+//
+// When request is sent, it will wait for the `Ack`. When Ack is received 200 HTTP status wil be sent.
+// When Nack is sent, 500 HTTP status will be sent.
+func (s *Subscriber) Subscribe(url string) (chan *message.Message, error) {
 	messages := make(chan *message.Message)
 
 	s.outputChannelsLock.Lock()
 	s.outputChannels = append(s.outputChannels, messages)
 	s.outputChannelsLock.Unlock()
 
-	baseLogFields := watermill.LogFields{"topic": topic}
+	baseLogFields := watermill.LogFields{"url": url}
 
-	s.router.Post(topic, func(w http.ResponseWriter, r *http.Request) {
-		msg, err := s.unmarshalMessageFunc(topic, r)
+	s.router.Post(url, func(w http.ResponseWriter, r *http.Request) {
+		msg, err := s.unmarshalMessageFunc(url, r)
 		if err != nil {
 			s.logger.Info("Cannot unmarshal message", baseLogFields.Add(watermill.LogFields{"err": err}))
 			w.WriteHeader(http.StatusBadRequest)

@@ -29,15 +29,25 @@ type confluentSubscriber struct {
 }
 
 type SubscriberConfig struct {
+	// Kafka brokers list.
 	Brokers []string
 
-	ConsumerGroup   string
+	// Kafka consumer group.
+	ConsumerGroup string
+	// When we want to consume without consumer group, you should set it to true.
+	// In practice you will receive all messages sent to the topic.
 	NoConsumerGroup bool
 
+	// Action to take when there is no initial offset in offset store or the desired offset is out of range.
+	// Available options: smallest, earliest, beginning, largest, latest, end, error.
 	AutoOffsetReset string
 
+	// How much consumers should be spawned.
+	// Every consumer will receive messages for their own partition so messages order will be preserved.
 	ConsumersCount int
 
+	// Passing librdkafka options.
+	// Available options: https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md
 	KafkaConfigOverwrite kafka.ConfigMap
 }
 
@@ -130,6 +140,9 @@ func DefaultConfluentConsumerConstructor(config SubscriberConfig) (*kafka.Consum
 	return kafka.NewConsumer(kafkaConfig)
 }
 
+// Subscribe subscribers for messages in Kafka.
+//
+// They are multiple subscribers spawned
 func (s *confluentSubscriber) Subscribe(topic string) (chan *message.Message, error) {
 	if s.closed {
 		return nil, errors.New("subscriber closed")

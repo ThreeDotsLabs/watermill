@@ -37,8 +37,8 @@ You can find more about our motivations in our [*Introducing Watermill* blog pos
 * **Easy** to understand (see examples below).
 * **Universal** - event-driven architecture, messaging, stream processing, CQRS - use it for whatever you need.
 * **Fast** - *(benchmarks coming soon)*
-* **Extendable** with middlewares and plugins.
-* **Resillient** - using proven technologies and passing stress tests *(results coming soon)*.
+* **Flexible** with middlewares and plugins.
+* **Resilient** - using proven technologies and passing stress tests *(results coming soon)*.
 
 ## Pub/Subs
 
@@ -92,7 +92,7 @@ and submit your pull request via GitHub.
 
 ## Support
 
-Join us on the `#watermill` channel on the [Gophers slack](https://gophers.slack.com/): https://gophersinvite.herokuapp.com/
+Please join us on the `#watermill` channel on the [Gophers slack](https://gophers.slack.com/): You can get invite [here](https://gophersinvite.herokuapp.com/).
 
 ## Why the name?
 
