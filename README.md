@@ -11,6 +11,8 @@ implementations like Kafka or RabbitMQ, but also HTTP or MySQL binlog if that fi
 
 **Note:** Watermill is still under heavy development. The public API can change before the 1.0.0 release.
 
+Documentation: https://watermill.io/
+
 ## Background
 
 Building distributed and scalable services is rarely as easy as some may suggest. There is a
