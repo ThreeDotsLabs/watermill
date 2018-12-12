@@ -233,6 +233,17 @@ Watermill is not a framework. We don't enforce any type of deployment and it's t
 
 For more detailed documentation you should check [documentation topics list]({{< ref "/docs" >}}).
 
-For more advanced examples you should visit [`_examples` directory](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples).
+#### Examples
+
+We also created some examples, which will show you how you can start using Watermill.
+The recommended entry point is [Your first Watermill application](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/your-first-app). It contains the entire environment in `docker-compose.yml`, including Golang and Kafka which you can run with one command.
+
+After that, you could check the [Simple app](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/simple-app) example. It uses more middlewares and contains two handlers. There is also a separate application for publishing messages.
+
+The [third example](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/http-to-kafka)  showcases the use of a different Subscriber implementation, namely **HTTP**. It is a very simple application, which can save GitLab webhooks to Kafka.
+
+You may also find some useful informations in our [README](https://github.com/ThreeDotsLabs/watermill#readme) .
+
+#### Support
 
 If anything is not clear feel free to use any of our [support channels]({{< ref "/support" >}}), we will we'll be glad to help.
