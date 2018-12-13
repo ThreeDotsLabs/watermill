@@ -51,6 +51,12 @@ func DefaultSubscriptionName(topic string) string {
 	return topic
 }
 
+func DefaultSubscriptionNameWithSuffix(suffix string) SubscriptionNameFn {
+	return func(topic string) string {
+		return topic + suffix
+	}
+}
+
 func (c *SubscriberConfig) setDefaults() {
 	if c.SubscriptionName == nil {
 		c.SubscriptionName = DefaultSubscriptionName
