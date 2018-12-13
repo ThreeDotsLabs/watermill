@@ -39,6 +39,7 @@ type SubscriberConfig struct {
 	DoNotCreateSubscriptionIfMissing bool
 	DoNotCreateTopicIfMissing        bool
 
+	ReceiveSettings    pubsub.ReceiveSettings
 	SubscriptionConfig pubsub.SubscriptionConfig
 	ClientOptions      []option.ClientOption
 	Unmarshaler        Unmarshaler
@@ -246,6 +247,8 @@ func (s *Subscriber) subscription(ctx context.Context, subscriptionName, topicNa
 
 	config := s.config.SubscriptionConfig
 	config.Topic = t
+	sub, err = s.client.CreateSubscription(ctx, subscriptionName, config)
+	sub.ReceiveSettings = s.config.ReceiveSettings
 
-	return s.client.CreateSubscription(ctx, subscriptionName, config)
+	return sub, err
 }
