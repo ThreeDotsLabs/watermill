@@ -1,0 +1,26 @@
+{{ $file := (.Get "file") }}
+{{ $content := readFile $file }}
+
+{{ $start_line := (.Get "start_line") | default "0" }}
+{{ $end_line := (.Get "end_line") | default "0" }}
+
+{{ $has_start_line := (ne $start_line "0") }}
+{{ $has_end_line := (ne $end_line "0") }}
+
+{{ $lines := slice }}
+
+{{ $linkFile := $file }}
+{{ if in $file "content/src-link/" }}
+    {{ $linkFile = replace $linkFile "content/src-link/" "" }}
+{{ end }}
+
+<small class="smaller">Full source: [{{ $linkFile }}](https://github.com/ThreeDotsLabs/watermill/tree/master/{{ $linkFile }})</small>
+
+{{ range $elem_key, $elem_val := split $content "\n" }}
+    {{if and (or (not $has_start_line) (ge (add $elem_key 1) ($start_line | int))) (or (not $has_end_line) (le (add $elem_key 1) ($end_line | int)))}}
+        {{ $lines = $lines | append $elem_val }}
+    {{ end }}
+{{ end }}
+
+
+{{ highlight (delimit $lines "\n") (.Get "type" | default "go") "" }}

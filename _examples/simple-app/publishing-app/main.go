@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"math/rand"
 	"time"
@@ -15,34 +14,20 @@ import (
 	"github.com/renstrom/shortuuid"
 )
 
-type postAdded struct {
-	OccurredOn time.Time `json:"occurred_on"`
-
-	Author string `json:"author"`
-	Title  string `json:"title"`
-
-	Content string `json:"content"`
-}
-
-var letters = []rune("abcdefghijklmnopqrstuvwxyz")
-
-// randString generates random string of len n
-func randString(n int) string {
-	b := make([]rune, n)
-	for i := range b {
-		b[i] = letters[rand.Intn(len(letters))]
-	}
-	return string(b)
-}
+var (
+	brokers = []string{"kafka:9092"}
+)
 
 func main() {
-	publisher, err := kafka.NewPublisher([]string{"localhost:9092"}, kafka.DefaultMarshaler{}, nil)
+	log.Println("Starting publishing app")
+
+	publisher, err := kafka.NewPublisher(brokers, kafka.DefaultMarshaler{}, nil)
 	if err != nil {
 		panic(err)
 	}
 	defer publisher.Close()
 
-	messagesToAdd := 1000
+	messagesToAdd := 10000
 	workers := 25
 
 	msgAdded := make(chan struct{})
@@ -52,8 +37,8 @@ func main() {
 		for range msgAdded {
 			messagesToAdd--
 
-			if messagesToAdd%100000 == 0 {
-				fmt.Println("left ", messagesToAdd)
+			if messagesToAdd%1000 == 0 {
+				log.Println("left ", messagesToAdd)
 			}
 			if messagesToAdd == 0 {
 				allMessagesAdded <- struct{}{}
@@ -94,4 +79,24 @@ func main() {
 
 	// waiting to all being produced
 	<-allMessagesAdded
+}
+
+type postAdded struct {
+	OccurredOn time.Time `json:"occurred_on"`
+
+	Author string `json:"author"`
+	Title  string `json:"title"`
+
+	Content string `json:"content"`
+}
+
+var letters = []rune("abcdefghijklmnopqrstuvwxyz")
+
+// randString generates random string of len n
+func randString(n int) string {
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letters[rand.Intn(len(letters))]
+	}
+	return string(b)
 }

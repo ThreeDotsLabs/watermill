@@ -1,0 +1,4 @@
+<div class="message {{ .Get "type" }}" data-component="message">
+    {{ if ne (.Get "title") "" }}<h5>{{ .Get "title" }}</h5>{{ end }}
+    {{ .Inner }}
+</div>

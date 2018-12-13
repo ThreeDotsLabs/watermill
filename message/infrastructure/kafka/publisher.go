@@ -21,7 +21,7 @@ func NewPublisher(brokers []string, marshaler Marshaler, kafkaConfigOverwrite ka
 		"bootstrap.servers":            strings.Join(brokers, ","),
 		"queue.buffering.max.messages": 10000000,
 		"queue.buffering.max.kbytes":   2097151,
-		"debug":                        ",",
+		"debug": ",",
 	}
 
 	if err := mergeConfluentConfigs(config, kafkaConfigOverwrite); err != nil {
@@ -40,6 +40,10 @@ func NewCustomPublisher(producer *kafka.Producer, marshaler Marshaler) (message.
 	return &confluentPublisher{producer, marshaler, false}, nil
 }
 
+// Publish publishes message to Kafka.
+//
+// Publish is blocking and wait for ack from Kafka.
+// When one of messages delivery fails - function is interrupted.
 func (p confluentPublisher) Publish(topic string, msgs ...*message.Message) error {
 	if p.closed {
 		return errors.New("publisher closed")

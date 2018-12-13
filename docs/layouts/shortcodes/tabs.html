@@ -1,0 +1,13 @@
+<div class="example">
+    <nav class="tabs" data-component="tabs">
+        <ul>
+            {{ $tabs_labels := split (.Get "labels") "," }}
+            {{ range $elem_key, $elem_val := split (.Get "tabs") "," }}
+                <li>
+                    <a href="#{{ ($.Get "id") }}_{{ $elem_val }}" onclick="ga('send', 'event', 'watermill', 'tab_{{ ($.Get "id") }}_{{ $elem_val }}');">{{ index $tabs_labels $elem_key }}</a>
+                </li>
+            {{ end }}
+        </ul>
+    </nav>
+    {{.Inner}}
+</div>
