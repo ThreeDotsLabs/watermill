@@ -45,7 +45,7 @@ type StdLoggerAdapter struct {
 
 func NewStdLogger(debug, trace bool) LoggerAdapter {
 	l := log.New(os.Stderr, "[watermill] ", log.LstdFlags|log.Lmicroseconds|log.Lshortfile)
-	a := &StdLoggerAdapter{InfoLogger: l}
+	a := &StdLoggerAdapter{InfoLogger: l, ErrorLogger: l}
 
 	if debug {
 		a.DebugLogger = l
@@ -58,7 +58,7 @@ func NewStdLogger(debug, trace bool) LoggerAdapter {
 }
 
 func (l *StdLoggerAdapter) Error(msg string, err error, fields LogFields) {
-	l.log(l.TraceLogger, "ERROR", msg, fields.Add(LogFields{"err": err}))
+	l.log(l.ErrorLogger, "ERROR", msg, fields.Add(LogFields{"err": err}))
 }
 
 func (l *StdLoggerAdapter) Info(msg string, fields LogFields) {

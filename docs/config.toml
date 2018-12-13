@@ -1,0 +1,35 @@
+baseURL = "/"
+languageCode = "en-us"
+
+title = "Watermill"
+description = "Go library for building event-driven applications."
+
+theme = "kube"
+Paginate = 4
+
+pygmentsStyle="autumn"
+
+googleAnalytics = "UA-128588911-2"
+
+[Params]
+  RSSLink = "/index.xml"
+  author = "Three Dots Labs"
+  github = "https://github.com/ThreeDotsLabs/"
+  email = "robert.laszczak@threedotslabs.com"
+
+[[menu.main]]
+    name = "Getting Started"
+    weight = -300
+    url = "/docs/getting-started/"
+[[menu.main]]
+    name = "Docs"
+    weight = -200
+    url = "/docs/"
+[[menu.main]]
+    name = "Examples"
+    weight = 100
+    url = "https://github.com/ThreeDotsLabs/watermill/tree/master/_examples"
+[[menu.main]]
+    name = "Support"
+    weight = 0
+    url = "/support/"

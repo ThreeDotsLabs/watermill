@@ -16,7 +16,12 @@ type subscriber struct {
 	outputChannel chan *message.Message
 }
 
-type goChannel struct {
+// GoChannel is the simplest Pub/Sub implementation.
+// It is based on Golang's channels which are sent within the process.
+//
+// GoChannel has no global state,
+// that means that you need to use the same instance for Publishing and Subscribing!
+type GoChannel struct {
 	sendTimeout time.Duration
 	buffer      int64
 
@@ -29,7 +34,7 @@ type goChannel struct {
 }
 
 func NewGoChannel(buffer int64, logger watermill.LoggerAdapter, sendTimeout time.Duration) message.PubSub {
-	return &goChannel{
+	return &GoChannel{
 		sendTimeout: sendTimeout,
 		buffer:      buffer,
 
@@ -39,7 +44,11 @@ func NewGoChannel(buffer int64, logger watermill.LoggerAdapter, sendTimeout time
 	}
 }
 
-func (g *goChannel) Publish(topic string, messages ...*message.Message) error {
+// Publish in GoChannel is blocking until all consumers consume and acknowledge the message.
+// Sending message to one subscriber has timeout equal to GoChannel.sendTimeout configured via constructor.
+//
+// Messages are not persisted. If there are no subscribers and message is produced it will be gone.
+func (g *GoChannel) Publish(topic string, messages ...*message.Message) error {
 	for _, msg := range messages {
 		if err := g.sendMessage(topic, msg); err != nil {
 			return err
@@ -49,7 +58,7 @@ func (g *goChannel) Publish(topic string, messages ...*message.Message) error {
 	return nil
 }
 
-func (g *goChannel) sendMessage(topic string, message *message.Message) error {
+func (g *GoChannel) sendMessage(topic string, message *message.Message) error {
 	messageLogFields := watermill.LogFields{
 		"message_uuid": message.UUID,
 	}
@@ -92,7 +101,11 @@ func (g *goChannel) sendMessage(topic string, message *message.Message) error {
 	return nil
 }
 
-func (g *goChannel) Subscribe(topic string) (chan *message.Message, error) {
+// Subscribe returns channel to which all published messages are sent.
+// Messages are not persisted. If there are no subscribers and message is produced it will be gone.
+//
+// There are no consumer groups support etc. Every consumer will receive every produced message.
+func (g *GoChannel) Subscribe(topic string) (chan *message.Message, error) {
 	g.subscribersLock.Lock()
 	defer g.subscribersLock.Unlock()
 
@@ -109,7 +122,7 @@ func (g *goChannel) Subscribe(topic string) (chan *message.Message, error) {
 	return s.outputChannel, nil
 }
 
-func (g *goChannel) Close() error {
+func (g *GoChannel) Close() error {
 	g.subscribersLock.Lock()
 	defer g.subscribersLock.Unlock()
 
