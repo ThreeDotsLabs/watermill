@@ -7,16 +7,22 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
+// Marshaler transforms a Waterfall Message into the Google Cloud client library Message.
 type Marshaler interface {
 	Marshal(topic string, msg *message.Message) (*pubsub.Message, error)
 }
 
+// Unmarshaler transforms a Google Cloud client library Message into the Waterfall Message.
 type Unmarshaler interface {
 	Unmarshal(*pubsub.Message) (*message.Message, error)
 }
 
+// UUIDHeaderKey is the key of the Pub/Sub attribute that carries Waterfall UUID.
 const UUIDHeaderKey = "_watermill_message_uuid"
 
+// DefaultMarshalerUnmarshaler implements Marshaler and Unmarshaler in the following way:
+// All Google Cloud Pub/Sub attributes are equivalent to Waterfall Message metadata.
+// Waterfall Message UUID is equivalent to an attribute with `UUIDHeaderKey` as key.
 type DefaultMarshalerUnmarshaler struct{}
 
 type MarshalerUnmarshaler interface {

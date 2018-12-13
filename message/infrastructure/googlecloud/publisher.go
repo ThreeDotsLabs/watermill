@@ -12,8 +12,10 @@ import (
 )
 
 var (
+	// ErrPublisherClosed happens when trying to publish to a topic while the publisher is closed or closing.
+	ErrPublisherClosed = errors.New("publisher is closed")
+	// ErrTopicDoesNotExist happens when trying to publish or subscribe to a topic that doesn't exist.
 	ErrTopicDoesNotExist = errors.New("topic does not exist")
-	ErrPublisherClosed   = errors.New("publisher is closed")
 )
 
 type Publisher struct {
@@ -28,11 +30,18 @@ type Publisher struct {
 }
 
 type PublisherConfig struct {
-	ClientOptions           []option.ClientOption
-	PublishSettings         *pubsub.PublishSettings
-	ProjectID               string
-	DoNotCreateMissingTopic bool
-	Marshaler               Marshaler
+	// ProjectID is the Google Cloud Engine project ID.
+	ProjectID string
+
+	// If false (default), `Publisher` tries to create a topic if there is none with the requested name.
+	// Otherwise, trying to subscribe to non-existent subscription results in `ErrTopicDoesNotExist`.
+	DoNotCreateTopicIfMissing bool
+
+	// Settings for cloud.google.com/go/pubsub client library.
+	PublishSettings *pubsub.PublishSettings
+	ClientOptions   []option.ClientOption
+
+	Marshaler Marshaler
 }
 
 func (c *PublisherConfig) setDefaults() {
@@ -41,19 +50,8 @@ func (c *PublisherConfig) setDefaults() {
 	}
 }
 
-func (c PublisherConfig) Validate() error {
-	if c.Marshaler == nil {
-		return errors.New("empty googlecloud message marshaler")
-	}
-
-	return nil
-}
-
 func NewPublisher(ctx context.Context, config PublisherConfig) (*Publisher, error) {
 	config.setDefaults()
-	if err := config.Validate(); err != nil {
-		return nil, errors.Wrap(err, "invalid config")
-	}
 
 	pub := &Publisher{
 		ctx:    ctx,
@@ -70,6 +68,10 @@ func NewPublisher(ctx context.Context, config PublisherConfig) (*Publisher, erro
 	return pub, nil
 }
 
+// Publish publishes a set of messages on a Google Cloud Pub/Sub topic.
+// It blocks until all the messages are successfully published or an error occurred.
+//
+// See https://cloud.google.com/pubsub/docs/publisher to find out more about how Google Cloud Pub/Sub Publishers work.
 func (p *Publisher) Publish(topic string, messages ...*message.Message) error {
 	if p.closed {
 		return ErrPublisherClosed
@@ -100,6 +102,7 @@ func (p *Publisher) Publish(topic string, messages ...*message.Message) error {
 	return nil
 }
 
+// Close notifies the Publisher to stop processing messages, send all the remaining messages and close the connection.
 func (p *Publisher) Close() error {
 	if p.closed {
 		return nil
@@ -149,7 +152,7 @@ func (p *Publisher) topic(ctx context.Context, topic string) (t *pubsub.Topic, e
 		return t, nil
 	}
 
-	if p.config.DoNotCreateMissingTopic {
+	if p.config.DoNotCreateTopicIfMissing {
 		return nil, errors.Wrap(ErrTopicDoesNotExist, topic)
 	}
 

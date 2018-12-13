@@ -13,10 +13,16 @@ import (
 )
 
 var (
-	ErrSubscriberClosed         = errors.New("subscriber is closed")
+	// ErrSubscriberClosed happens when trying to subscribe to a new topic while the subscriber is closed or closing.
+	ErrSubscriberClosed = errors.New("subscriber is closed")
+	// ErrSubscriptionDoesNotExist happens when trying to use a subscription that does not exist.
 	ErrSubscriptionDoesNotExist = errors.New("subscription does not exist")
 )
 
+// Subscriber attaches to a Google Cloud Pub/Sub subscription and returns a Go channel with messages from the topic.
+// Be aware that in Google Cloud Pub/Sub, only messages sent after the subscription was created can be consumed.
+//
+// For more info on how Google Cloud Pub/Sub Subscribers work, check https://cloud.google.com/pubsub/docs/subscriber.
 type Subscriber struct {
 	ctx     context.Context
 	closing chan struct{}
@@ -33,24 +39,37 @@ type Subscriber struct {
 }
 
 type SubscriberConfig struct {
+	// SubscriptionName generates subscription name for a given topic.
 	SubscriptionName SubscriptionNameFn
-	ProjectID        string
+	// ProjectID is the Google Cloud Engine project ID.
+	ProjectID string
 
+	// If false (default), `Subscriber` tries to create a subscription if there is none with the requested name.
+	// Otherwise, trying to use non-existent subscription results in `ErrSubscriptionDoesNotExist`.
 	DoNotCreateSubscriptionIfMissing bool
-	DoNotCreateTopicIfMissing        bool
+	// If false (default), `Subscriber` tries to create a topic if there is none with the requested name
+	// and it is trying to create a new subscription with this topic name.
+	// Otherwise, trying to create a subscription on non-existent topic results in `ErrTopicDoesNotExist`.
+	DoNotCreateTopicIfMissing bool
 
+	// Settings for cloud.google.com/go/pubsub client library.
 	ReceiveSettings    pubsub.ReceiveSettings
 	SubscriptionConfig pubsub.SubscriptionConfig
 	ClientOptions      []option.ClientOption
-	Unmarshaler        Unmarshaler
+
+	// Unmarshaler transforms the client library format into watermill/message.Message.
+	// Use a custom unmarshaler if needed, otherwise the default Unmarshaler should cover most use cases.
+	Unmarshaler Unmarshaler
 }
 
 type SubscriptionNameFn func(topic string) string
 
+// DefaultSubscriptionName uses the topic name as the subscription name.
 func DefaultSubscriptionName(topic string) string {
 	return topic
 }
 
+// DefaultSubscriptionNameWithSuffix uses the topic name with a chosen suffix as the subscription name.
 func DefaultSubscriptionNameWithSuffix(suffix string) SubscriptionNameFn {
 	return func(topic string) string {
 		return topic + suffix
@@ -94,6 +113,17 @@ func NewSubscriber(
 	}, nil
 }
 
+// Subscribe consumes Google Cloud Pub/Sub and outputs them as Waterfall Message objects on the returned channel.
+//
+// In Google Cloud Pub/Sub, it is impossible to subscribe directly to a topic. Instead, a *subscription* is used.
+// Each subscription has one topic, but there may be multiple subscriptions to one topic (with different names).
+//
+// The `topic` argument is transformed into subscription name with the configured `SubscriptionName` function.
+// By default, if the subscription or topic don't exist, the are created. This behavior may be changed in the config.
+//
+// Be aware that in Google Cloud Pub/Sub, only messages sent after the subscription was created can be consumed.
+//
+// See https://cloud.google.com/pubsub/docs/subscriber to find out more about how Google Cloud Pub/Sub Subscriptions work.
 func (s *Subscriber) Subscribe(topic string) (chan *message.Message, error) {
 	if s.closed {
 		return nil, ErrSubscriberClosed
@@ -140,6 +170,8 @@ func (s *Subscriber) Subscribe(topic string) (chan *message.Message, error) {
 	return output, nil
 }
 
+// Close notifies the Subscriber to stop processing messages on all subscriptions, close all the output channels
+// and terminate the connection.
 func (s *Subscriber) Close() error {
 	if s.closed {
 		return nil
