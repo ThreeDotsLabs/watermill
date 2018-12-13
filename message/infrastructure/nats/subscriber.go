@@ -24,17 +24,23 @@ type Subscriber struct {
 	subs     []stan.Subscription
 	subsLock sync.Mutex
 
-	closed    bool
-	closing   chan struct{}
-	outputsWg sync.WaitGroup
+	closed  bool
+	closing chan struct{}
+
+	outputsWg            sync.WaitGroup
+	processingMessagesWg sync.WaitGroup
 }
 
 type SubscriberConfig struct {
-	ClusterID string
-	ClientID  string
+	ClusterID   string
+	ClientID    string
+	QueueGroup  string // todo - validate?
+	DurableName string
 
 	SubscribersCount int
 	CloseTimeout     time.Duration
+
+	AckWaitTimeout time.Duration
 
 	StanOptions             []stan.Option
 	StanSubscriptionOptions []stan.SubscriptionOption
@@ -52,10 +58,15 @@ func (c *SubscriberConfig) setDefaults() {
 
 	c.StanSubscriptionOptions = append(
 		c.StanSubscriptionOptions,
-		stan.SetManualAckMode(),        // manual AckMode is required to support acking/nacking by client
-		stan.AckWait(time.Second*10),   // todo  doc it? config?
-		stan.DurableName("my-durable"), // todo - config it?
+		stan.SetManualAckMode(), // manual AckMode is required to support acking/nacking by client
 	)
+
+	if c.AckWaitTimeout != 0 {
+		c.StanSubscriptionOptions = append(c.StanSubscriptionOptions, stan.AckWait(c.AckWaitTimeout))
+	}
+	if c.DurableName != "" {
+		c.StanSubscriptionOptions = append(c.StanSubscriptionOptions, stan.DurableName(c.DurableName))
+	}
 }
 
 func NewSubscriber(config SubscriberConfig, logger watermill.LoggerAdapter) (*Subscriber, error) {
@@ -84,6 +95,8 @@ func (s *Subscriber) Subscribe(topic string) (chan *message.Message, error) {
 
 	go func() {
 		<-s.closing
+		s.processingMessagesWg.Wait()
+
 		close(output)
 		s.outputsWg.Done()
 	}()
@@ -98,8 +111,11 @@ func (s *Subscriber) Subscribe(topic string) (chan *message.Message, error) {
 
 		sub, err := s.conn.QueueSubscribe(
 			topic,
-			"foo", // todo - change
+			s.config.QueueGroup,
 			func(m *stan.Msg) {
+				s.processingMessagesWg.Add(1)
+				defer s.processingMessagesWg.Done()
+
 				s.processMessage(m, output, subscriberLogFields)
 			},
 			s.config.StanSubscriptionOptions...,

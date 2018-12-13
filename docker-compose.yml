@@ -1,4 +1,5 @@
-# for development, please check https://watermill.io/docs/getting-started/
+# for Watermill development pourpses,
+# For Watermill based application docker plase check check https://watermill.io/docs/getting-started/
 
 version: '3'
 services:

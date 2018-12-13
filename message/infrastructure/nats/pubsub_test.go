@@ -2,6 +2,9 @@ package nats_test
 
 import (
 	"testing"
+	"time"
+
+	"github.com/satori/go.uuid"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/stretchr/testify/require"
@@ -12,7 +15,7 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/nats"
 )
 
-func newPubSub(t *testing.T, clientID string) message.PubSub {
+func newPubSub(t *testing.T, clientID string, queueName string) message.PubSub {
 	logger := watermill.NewStdLogger(true, true)
 	pub, err := nats.NewPublisher(nats.PublisherConfig{
 		ClusterID: "test-cluster",
@@ -24,7 +27,10 @@ func newPubSub(t *testing.T, clientID string) message.PubSub {
 	sub, err := nats.NewSubscriber(nats.SubscriberConfig{
 		ClusterID:        "test-cluster",
 		ClientID:         clientID + "_sub", // todo - change
+		QueueGroup:       queueName,
+		DurableName:      "durable-name",
 		SubscribersCount: 1,
+		AckWaitTimeout:   time.Second, // AckTiemout < 5 required for continueAfterErrors
 		Unmarshaler:      nats.GobMarshaler{},
 	}, logger)
 	require.NoError(t, err)
@@ -33,7 +39,11 @@ func newPubSub(t *testing.T, clientID string) message.PubSub {
 }
 
 func createPubSub(t *testing.T) message.PubSub {
-	return newPubSub(t, "foo")
+	return newPubSub(t, uuid.NewV4().String(), "test-queue")
+}
+
+func createPubSubWithDurable(t *testing.T, consumerGroup string) message.PubSub {
+	return newPubSub(t, consumerGroup, consumerGroup)
 }
 
 func TestPublishSubscribe(t *testing.T) {
@@ -46,6 +56,6 @@ func TestPublishSubscribe(t *testing.T) {
 			Persistent:          true,
 		},
 		createPubSub,
-		nil,
+		createPubSubWithDurable,
 	)
 }
