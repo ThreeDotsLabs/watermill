@@ -32,7 +32,7 @@ Watermill is supporting multiple [publishers and subscribers implementations]({{
 
 Let's start with subscribing for messages.
 
-{{% tabs id="subscribing" tabs="go-channel,kafka" labels="Go Channel,Kafka" %}}
+{{% tabs id="subscribing" tabs="go-channel,kafka,nats-streaming" labels="Go Channel,Kafka,NATS Streaming" %}}
 
 {{% tabs-tab id="go-channel"%}}
 {{% load-snippet-partial file="content/docs/getting-started/go-channel/main.go" first_line_contains="import (" last_line_contains="process(messages)" %}}
@@ -150,11 +150,35 @@ cd "librdkafka"
 {{% load-snippet-partial file="content/docs/getting-started/kafka/main.go" first_line_contains="func process" %}}
 {{% /tabs-tab %}}
 
+{{% tabs-tab id="nats-streaming"%}}
+
+{{< collapse id="running_nats" >}}
+
+{{< collapse-toggle box_id="nats-streaming-docker" >}}
+Running in Docker
+{{% /collapse-toggle %}}
+{{% collapse-box id="nats-streaming-docker" %}}
+Easiest way to run Watermill with NATS locally is using Docker.
+
+{{% load-snippet file="content/docs/getting-started/nats-streaming/docker-compose.yml" type="yaml" %}}
+
+The source should go to `main.go`.
+
+To run please execute `docker-compose up` command.
+
+More detailed explanation of how it is running, and how to add live reload you can find in [our [...] article](todo).
+{{% /collapse-box %}}
+{{< /collapse >}}
+
+{{% load-snippet-partial file="content/docs/getting-started/nats-streaming/main.go" first_line_contains="import (" last_line_contains="process(messages)" %}}
+{{% load-snippet-partial file="content/docs/getting-started/nats-streaming/main.go" first_line_contains="func process" %}}
+{{% /tabs-tab %}}
+
 {{% /tabs %}}
 
 ### Publishing messages
 
-{{% tabs id="publishing" tabs="go-channel,kafka" labels="Go Channel,Kafka" %}}
+{{% tabs id="publishing" tabs="go-channel,kafka,nats-streaming" labels="Go Channel,Kafka,NATS Streaming" %}}
 
 {{% tabs-tab id="go-channel"%}}
 {{% load-snippet-partial file="content/docs/getting-started/go-channel/main.go" first_line_contains="go process(messages)" last_line_contains="publisher.Publish" padding_after="4" %}}
@@ -162,6 +186,10 @@ cd "librdkafka"
 
 {{% tabs-tab id="kafka" %}}
 {{% load-snippet-partial file="content/docs/getting-started/kafka/main.go" first_line_contains="go process(messages)" last_line_contains="publisher.Publish" padding_after="4" %}}
+{{% /tabs-tab %}}
+
+{{% tabs-tab id="nats-streaming" %}}
+{{% load-snippet-partial file="content/docs/getting-started/nats-streaming/main.go" first_line_contains="go process(messages)" last_line_contains="publisher.Publish" padding_after="4" %}}
 {{% /tabs-tab %}}
 
 {{% /tabs %}}

@@ -350,6 +350,7 @@ func (h *handler) handleClose() {
 
 func (h *handler) handleMessage(msg *Message, handler HandlerFunc) {
 	defer h.runningHandlersWg.Done()
+	msgFields := watermill.LogFields{"message_uuid": msg.UUID}
 
 	defer func() {
 		if recovered := recover(); recovered != nil {
@@ -359,9 +360,9 @@ func (h *handler) handleMessage(msg *Message, handler HandlerFunc) {
 		}
 
 		msg.Ack()
+		h.logger.Trace("Message acked", msgFields)
 	}()
 
-	msgFields := watermill.LogFields{"message_uuid": msg.UUID}
 	h.logger.Trace("Received message", msgFields)
 
 	producedMessages, err := handler(msg)

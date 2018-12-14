@@ -17,7 +17,10 @@ func SignalsHandler(r *message.Router) error {
 		sig := <-sigs
 		r.Logger().Info(fmt.Sprintf("Received %s signal, closing\n", sig), nil)
 
-		r.Close()
+		err := r.Close()
+		if err != nil {
+			r.Logger().Error("Router close failed", err, nil)
+		}
 	}()
 	return nil
 }

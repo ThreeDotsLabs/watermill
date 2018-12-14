@@ -1,0 +1,15 @@
+version: '3'
+services:
+  server:
+    image: golang:1.11
+    restart: on-failure
+    depends_on:
+      - nats-streaming
+    volumes:
+      - .:/app
+    working_dir: /app
+    command: go run main.go
+
+  nats-streaming:
+    image: nats-streaming:0.11.2
+    restart: on-failure
