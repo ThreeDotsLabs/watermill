@@ -10,7 +10,7 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/subscriber"
 
-	"github.com/satori/go.uuid"
+	uuid "github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -22,6 +22,10 @@ type Features struct {
 	ExactlyOnceDelivery bool
 	GuaranteedOrder     bool
 	Persistent          bool
+
+	// RequireSingleInstance should be true,
+	// if subscriber doesn't use external storage and to work publisher and subscriber needs to be one instance.
+	RequireSingleInstance bool
 }
 
 type PubSubConstructor func(t *testing.T) message.PubSub
@@ -97,9 +101,14 @@ func TestPubSub(
 		var publisher message.Publisher
 		var subscriber message.Subscriber
 
-		pubsub := pubSubConstructor(t)
-		publisher = pubsub
-		subscriber = pubsub
+		if features.RequireSingleInstance {
+			pubsub := pubSubConstructor(t)
+			publisher = pubsub
+			subscriber = pubsub
+		} else {
+			publisher = pubSubConstructor(t)
+			subscriber = pubSubConstructor(t)
+		}
 
 		publisherCloseTest(t, publisher, subscriber)
 	})
@@ -323,6 +332,7 @@ func continueAfterCloseTest(t *testing.T, createPubSub PubSubConstructor) {
 	totalMessagesCount := 500
 
 	pubSub := createPubSub(t)
+	defer pubSub.Close()
 
 	// call subscribe once for those pubsubs which require subscribe before publish
 	_, err := pubSub.Subscribe(topicName)
@@ -346,7 +356,7 @@ func continueAfterCloseTest(t *testing.T, createPubSub PubSubConstructor) {
 		messages, err := pubSub.Subscribe(topicName)
 		require.NoError(t, err)
 
-		receivedMessagesPart, _ := subscriber.BulkRead(messages, 100, defaultTimeout/2)
+		receivedMessagesPart, _ := subscriber.BulkRead(messages, 100, defaultTimeout)
 
 		for _, msg := range receivedMessagesPart {
 			// we assume at at-least-once delivery, so we ignore duplicates
@@ -396,8 +406,9 @@ func continueAfterErrors(t *testing.T, createPubSub PubSubConstructor) {
 	closePubSub(t, pubSub)
 
 	pubSub = createPubSub(t)
+	defer closePubSub(t, pubSub)
+
 	messagesToPublish := addSimpleMessagesMessages(t, totalMessagesCount, pubSub, topicName)
-	closePubSub(t, pubSub)
 
 	// sending totalMessagesCount*2 errors from 3 subscribers
 	for i := 0; i < 3; i++ {
@@ -422,8 +433,6 @@ func continueAfterErrors(t *testing.T, createPubSub PubSubConstructor) {
 		closePubSub(t, errorsPubSub)
 	}
 
-	pubSub = createPubSub(t)
-	defer closePubSub(t, pubSub)
 	messages, err := pubSub.Subscribe(topicName)
 	require.NoError(t, err)
 

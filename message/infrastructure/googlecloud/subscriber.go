@@ -2,22 +2,31 @@ package googlecloud
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
+	"cloud.google.com/go/pubsub"
+	"github.com/pkg/errors"
 	"google.golang.org/api/option"
 
-	"cloud.google.com/go/pubsub"
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/pkg/errors"
 )
 
 var (
-	ErrSubscriberClosed         = errors.New("subscriber is closed")
+	// ErrSubscriberClosed happens when trying to subscribe to a new topic while the subscriber is closed or closing.
+	ErrSubscriberClosed = errors.New("subscriber is closed")
+	// ErrSubscriptionDoesNotExist happens when trying to use a subscription that does not exist.
 	ErrSubscriptionDoesNotExist = errors.New("subscription does not exist")
+	// ErrUnexpectedTopic happens when the subscription resolved from SubscriptionNameFn is for a different topic than expected.
+	ErrUnexpectedTopic = errors.New("requested subscription already exists, but for other topic than expected")
 )
 
-type subscriber struct {
+// Subscriber attaches to a Google Cloud Pub/Sub subscription and returns a Go channel with messages from the topic.
+// Be aware that in Google Cloud Pub/Sub, only messages sent after the subscription was created can be consumed.
+//
+// For more info on how Google Cloud Pub/Sub Subscribers work, check https://cloud.google.com/pubsub/docs/subscriber.
+type Subscriber struct {
 	ctx     context.Context
 	closing chan struct{}
 	closed  bool
@@ -29,26 +38,45 @@ type subscriber struct {
 	client *pubsub.Client
 	config SubscriberConfig
 
-	unmarshaler Unmarshaler
-	logger      watermill.LoggerAdapter
+	logger watermill.LoggerAdapter
 }
 
 type SubscriberConfig struct {
+	// SubscriptionName generates subscription name for a given topic.
 	SubscriptionName SubscriptionNameFn
-	ProjectID        string
+	// ProjectID is the Google Cloud Engine project ID.
+	ProjectID string
 
+	// If false (default), `Subscriber` tries to create a subscription if there is none with the requested name.
+	// Otherwise, trying to use non-existent subscription results in `ErrSubscriptionDoesNotExist`.
 	DoNotCreateSubscriptionIfMissing bool
-	DoNotCreateTopicIfMissing        bool
+	// If false (default), `Subscriber` tries to create a topic if there is none with the requested name
+	// and it is trying to create a new subscription with this topic name.
+	// Otherwise, trying to create a subscription on non-existent topic results in `ErrTopicDoesNotExist`.
+	DoNotCreateTopicIfMissing bool
 
+	// Settings for cloud.google.com/go/pubsub client library.
+	ReceiveSettings    pubsub.ReceiveSettings
 	SubscriptionConfig pubsub.SubscriptionConfig
 	ClientOptions      []option.ClientOption
-	Unmarshaler        Unmarshaler
+
+	// Unmarshaler transforms the client library format into watermill/message.Message.
+	// Use a custom unmarshaler if needed, otherwise the default Unmarshaler should cover most use cases.
+	Unmarshaler Unmarshaler
 }
 
-type SubscriptionNameFn func(ctx context.Context, topic string) string
+type SubscriptionNameFn func(topic string) string
 
-func DefaultSubscriptionName(ctx context.Context, topic string) string {
+// DefaultSubscriptionName uses the topic name as the subscription name.
+func DefaultSubscriptionName(topic string) string {
 	return topic
+}
+
+// DefaultSubscriptionNameWithSuffix uses the topic name with a chosen suffix as the subscription name.
+func DefaultSubscriptionNameWithSuffix(suffix string) SubscriptionNameFn {
+	return func(topic string) string {
+		return topic + suffix
+	}
 }
 
 func (c *SubscriberConfig) setDefaults() {
@@ -60,34 +88,19 @@ func (c *SubscriberConfig) setDefaults() {
 	}
 }
 
-func (c SubscriberConfig) Validate() error {
-	if c.SubscriptionName == nil {
-		return errors.New("SubscriptionName generator must be set")
-	}
-
-	if c.Unmarshaler == nil {
-		return errors.New("empty googlecloud message unmarshaler")
-	}
-
-	return nil
-}
-
 func NewSubscriber(
 	ctx context.Context,
 	config SubscriberConfig,
 	logger watermill.LoggerAdapter,
-) (message.Subscriber, error) {
+) (*Subscriber, error) {
 	config.setDefaults()
-	if err := config.Validate(); err != nil {
-		return nil, errors.Wrap(err, "invalid config")
-	}
 
 	client, err := pubsub.NewClient(ctx, config.ProjectID, config.ClientOptions...)
 	if err != nil {
 		return nil, err
 	}
 
-	return &subscriber{
+	return &Subscriber{
 		ctx:     ctx,
 		closing: make(chan struct{}, 1),
 		closed:  false,
@@ -99,28 +112,39 @@ func NewSubscriber(
 		client: client,
 		config: config,
 
-		unmarshaler: config.Unmarshaler,
-		logger:      logger,
+		logger: logger,
 	}, nil
 }
 
-func (s *subscriber) Subscribe(topic string) (chan *message.Message, error) {
+// Subscribe consumes Google Cloud Pub/Sub and outputs them as Waterfall Message objects on the returned channel.
+//
+// In Google Cloud Pub/Sub, it is impossible to subscribe directly to a topic. Instead, a *subscription* is used.
+// Each subscription has one topic, but there may be multiple subscriptions to one topic (with different names).
+//
+// The `topic` argument is transformed into subscription name with the configured `SubscriptionName` function.
+// By default, if the subscription or topic don't exist, the are created. This behavior may be changed in the config.
+//
+// Be aware that in Google Cloud Pub/Sub, only messages sent after the subscription was created can be consumed.
+//
+// See https://cloud.google.com/pubsub/docs/subscriber to find out more about how Google Cloud Pub/Sub Subscriptions work.
+func (s *Subscriber) Subscribe(topic string) (chan *message.Message, error) {
 	if s.closed {
 		return nil, ErrSubscriberClosed
 	}
 
 	ctx, cancel := context.WithCancel(s.ctx)
+	subscriptionName := s.config.SubscriptionName(topic)
 
 	logFields := watermill.LogFields{
 		"provider":          ProviderName,
 		"topic":             topic,
-		"subscription_name": s.config.SubscriptionName(ctx, topic),
+		"subscription_name": subscriptionName,
 	}
 	s.logger.Info("Subscribing to Google Cloud PubSub topic", logFields)
 
 	output := make(chan *message.Message, 0)
 
-	sub, err := s.subscription(ctx, topic)
+	sub, err := s.subscription(ctx, subscriptionName, topic)
 	if err != nil {
 		s.logger.Error("Could not obtain subscription", err, logFields)
 		return nil, err
@@ -149,7 +173,9 @@ func (s *subscriber) Subscribe(topic string) (chan *message.Message, error) {
 	return output, nil
 }
 
-func (s *subscriber) Close() error {
+// Close notifies the Subscriber to stop processing messages on all subscriptions, close all the output channels
+// and terminate the connection.
+func (s *Subscriber) Close() error {
 	if s.closed {
 		return nil
 	}
@@ -167,14 +193,14 @@ func (s *subscriber) Close() error {
 	return nil
 }
 
-func (s *subscriber) receive(
+func (s *Subscriber) receive(
 	ctx context.Context,
 	sub *pubsub.Subscription,
 	logFields watermill.LogFields,
 	output chan *message.Message,
 ) error {
 	err := sub.Receive(ctx, func(ctx context.Context, pubsubMsg *pubsub.Message) {
-		msg, err := s.unmarshaler.Unmarshal(pubsubMsg)
+		msg, err := s.config.Unmarshaler.Unmarshal(pubsubMsg)
 		if err != nil {
 			s.logger.Error("Could not unmarshal Google Cloud PubSub message", err, logFields)
 			pubsubMsg.Nack()
@@ -213,9 +239,7 @@ func (s *subscriber) receive(
 
 // subscription obtains a subscription object.
 // If subscription doesn't exist on PubSub, create it, unless config variable DoNotCreateSubscriptionWhenMissing is set.
-func (s *subscriber) subscription(ctx context.Context, topic string) (sub *pubsub.Subscription, err error) {
-	subscriptionName := s.config.SubscriptionName(ctx, topic)
-
+func (s *Subscriber) subscription(ctx context.Context, subscriptionName, topicName string) (sub *pubsub.Subscription, err error) {
 	s.activeSubscriptionsLock.RLock()
 	sub, ok := s.activeSubscriptions[subscriptionName]
 	s.activeSubscriptionsLock.RUnlock()
@@ -224,11 +248,11 @@ func (s *subscriber) subscription(ctx context.Context, topic string) (sub *pubsu
 	}
 
 	s.activeSubscriptionsLock.Lock()
+	defer s.activeSubscriptionsLock.Unlock()
 	defer func() {
 		if err == nil {
 			s.activeSubscriptions[subscriptionName] = sub
 		}
-		s.activeSubscriptionsLock.Unlock()
 	}()
 
 	sub = s.client.Subscription(subscriptionName)
@@ -238,25 +262,25 @@ func (s *subscriber) subscription(ctx context.Context, topic string) (sub *pubsu
 	}
 
 	if exists {
-		return sub, nil
+		return s.existingSubscription(ctx, sub, topicName)
 	}
 
 	if s.config.DoNotCreateSubscriptionIfMissing {
 		return nil, errors.Wrap(ErrSubscriptionDoesNotExist, subscriptionName)
 	}
 
-	t := s.client.Topic(topic)
+	t := s.client.Topic(topicName)
 	exists, err = t.Exists(ctx)
 	if err != nil {
-		return nil, errors.Wrapf(err, "could not check if topic %s exists", topic)
+		return nil, errors.Wrapf(err, "could not check if topic %s exists", topicName)
 	}
 
 	if !exists && s.config.DoNotCreateTopicIfMissing {
-		return nil, errors.Wrap(ErrTopicDoesNotExist, topic)
+		return nil, errors.Wrap(ErrTopicDoesNotExist, topicName)
 	}
 
 	if !exists {
-		t, err = s.client.CreateTopic(ctx, topic)
+		t, err = s.client.CreateTopic(ctx, topicName)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not create topic for subscription")
 		}
@@ -264,6 +288,26 @@ func (s *subscriber) subscription(ctx context.Context, topic string) (sub *pubsu
 
 	config := s.config.SubscriptionConfig
 	config.Topic = t
+	sub, err = s.client.CreateSubscription(ctx, subscriptionName, config)
+	sub.ReceiveSettings = s.config.ReceiveSettings
 
-	return s.client.CreateSubscription(ctx, subscriptionName, config)
+	return sub, err
+}
+
+func (s Subscriber) existingSubscription(ctx context.Context, sub *pubsub.Subscription, topic string) (*pubsub.Subscription, error) {
+	config, err := sub.Config(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not fetch config for existing subscription")
+	}
+
+	fullyQualifiedTopicName := fmt.Sprintf("projects/%s/topics/%s", s.config.ProjectID, topic)
+
+	if config.Topic.String() != fullyQualifiedTopicName {
+		return nil, errors.Wrap(
+			ErrUnexpectedTopic,
+			fmt.Sprintf("topic of existing sub: %s; expecting: %s", config.Topic.String(), fullyQualifiedTopicName),
+		)
+	}
+
+	return sub, nil
 }

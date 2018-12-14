@@ -12,11 +12,13 @@ import (
 )
 
 var (
+	// ErrPublisherClosed happens when trying to publish to a topic while the publisher is closed or closing.
+	ErrPublisherClosed = errors.New("publisher is closed")
+	// ErrTopicDoesNotExist happens when trying to publish or subscribe to a topic that doesn't exist.
 	ErrTopicDoesNotExist = errors.New("topic does not exist")
-	ErrPublisherClosed   = errors.New("publisher is closed")
 )
 
-type publisher struct {
+type Publisher struct {
 	ctx context.Context
 
 	topics     map[string]*pubsub.Topic
@@ -24,18 +26,22 @@ type publisher struct {
 	closed     bool
 
 	client *pubsub.Client
-
-	publishSettings         *pubsub.PublishSettings
-	doNotCreateMissingTopic bool
-	marshaler               Marshaler
+	config PublisherConfig
 }
 
 type PublisherConfig struct {
-	ClientOptions           []option.ClientOption
-	PublishSettings         *pubsub.PublishSettings
-	ProjectID               string
-	DoNotCreateMissingTopic bool
-	Marshaler               Marshaler
+	// ProjectID is the Google Cloud Engine project ID.
+	ProjectID string
+
+	// If false (default), `Publisher` tries to create a topic if there is none with the requested name.
+	// Otherwise, trying to subscribe to non-existent subscription results in `ErrTopicDoesNotExist`.
+	DoNotCreateTopicIfMissing bool
+
+	// Settings for cloud.google.com/go/pubsub client library.
+	PublishSettings *pubsub.PublishSettings
+	ClientOptions   []option.ClientOption
+
+	Marshaler Marshaler
 }
 
 func (c *PublisherConfig) setDefaults() {
@@ -44,26 +50,13 @@ func (c *PublisherConfig) setDefaults() {
 	}
 }
 
-func (c PublisherConfig) Validate() error {
-	if c.Marshaler == nil {
-		return errors.New("empty googlecloud message marshaler")
-	}
-
-	return nil
-}
-
-func NewPublisher(ctx context.Context, config PublisherConfig) (message.Publisher, error) {
+func NewPublisher(ctx context.Context, config PublisherConfig) (*Publisher, error) {
 	config.setDefaults()
-	if err := config.Validate(); err != nil {
-		return nil, errors.Wrap(err, "invalid config")
-	}
 
-	pub := &publisher{
-		ctx:                     ctx,
-		topics:                  map[string]*pubsub.Topic{},
-		publishSettings:         config.PublishSettings,
-		doNotCreateMissingTopic: config.DoNotCreateMissingTopic,
-		marshaler:               config.Marshaler,
+	pub := &Publisher{
+		ctx:    ctx,
+		topics: map[string]*pubsub.Topic{},
+		config: config,
 	}
 
 	var err error
@@ -75,7 +68,11 @@ func NewPublisher(ctx context.Context, config PublisherConfig) (message.Publishe
 	return pub, nil
 }
 
-func (p *publisher) Publish(topic string, messages ...*message.Message) error {
+// Publish publishes a set of messages on a Google Cloud Pub/Sub topic.
+// It blocks until all the messages are successfully published or an error occurred.
+//
+// See https://cloud.google.com/pubsub/docs/publisher to find out more about how Google Cloud Pub/Sub Publishers work.
+func (p *Publisher) Publish(topic string, messages ...*message.Message) error {
 	if p.closed {
 		return ErrPublisherClosed
 	}
@@ -88,7 +85,7 @@ func (p *publisher) Publish(topic string, messages ...*message.Message) error {
 	}
 
 	for _, msg := range messages {
-		googlecloudMsg, err := p.marshaler.Marshal(topic, msg)
+		googlecloudMsg, err := p.config.Marshaler.Marshal(topic, msg)
 		if err != nil {
 			return errors.Wrapf(err, "cannot marshal message %s", msg.UUID)
 		}
@@ -105,7 +102,8 @@ func (p *publisher) Publish(topic string, messages ...*message.Message) error {
 	return nil
 }
 
-func (p *publisher) Close() error {
+// Close notifies the Publisher to stop processing messages, send all the remaining messages and close the connection.
+func (p *Publisher) Close() error {
 	if p.closed {
 		return nil
 	}
@@ -113,16 +111,15 @@ func (p *publisher) Close() error {
 	p.closed = true
 
 	p.topicsLock.Lock()
-	for name, t := range p.topics {
+	for _, t := range p.topics {
 		t.Stop()
-		delete(p.topics, name)
 	}
 	p.topicsLock.Unlock()
 
 	return p.client.Close()
 }
 
-func (p *publisher) topic(ctx context.Context, topic string) (t *pubsub.Topic, err error) {
+func (p *Publisher) topic(ctx context.Context, topic string) (t *pubsub.Topic, err error) {
 	p.topicsLock.RLock()
 	t, ok := p.topics[topic]
 	p.topicsLock.RUnlock()
@@ -142,8 +139,8 @@ func (p *publisher) topic(ctx context.Context, topic string) (t *pubsub.Topic, e
 
 	// todo: theoretically, one could want different publish settings per topic, which is supported by the client lib
 	// different instances of publisher may be used then
-	if p.publishSettings != nil {
-		t.PublishSettings = *p.publishSettings
+	if p.config.PublishSettings != nil {
+		t.PublishSettings = *p.config.PublishSettings
 	}
 
 	exists, err := t.Exists(ctx)
@@ -155,7 +152,7 @@ func (p *publisher) topic(ctx context.Context, topic string) (t *pubsub.Topic, e
 		return t, nil
 	}
 
-	if p.doNotCreateMissingTopic {
+	if p.config.DoNotCreateTopicIfMissing {
 		return nil, errors.Wrap(ErrTopicDoesNotExist, topic)
 	}
 
