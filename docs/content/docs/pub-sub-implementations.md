@@ -125,7 +125,7 @@ marshaler := kafka.NewWithPartitioningMarshaler(func(topic string, msg *message.
 
 ### HTTP
 
-For this moment only HTTP subscriber is available. There is an issue for a [HTTP publisher](https://github.com/ThreeDotsLabs/watermill/issues/17).
+At this moment only HTTP subscriber is available. There is an issue for a [HTTP publisher](https://github.com/ThreeDotsLabs/watermill/issues/17).
 
 HTTP subscriber allows us to send messages received by HTTP request (for example - webhooks).
 You can then post them to any Publisher. Here is an example with [sending HTTP messages to Kafka](https://github.com/ThreeDotsLabs/watermill/blob/master/_examples/http-to-kafka/main.go).
@@ -147,6 +147,13 @@ The configuration of HTTP subscriber is done via the constructor.
 
 {{% render-md %}}
 {{% load-snippet-partial file="content/src-link/message/infrastructure/http/subscriber.go" first_line_contains="// NewSubscriber" last_line_contains="func NewSubscriber(" %}}
+{{% /render-md %}}
+
+You can also use `NewSubscriberWithRouter` constructor to pass your own `chi.Router` (see [chi](https://github.com/go-chi/chi)).
+This may be helpful if you'd like to add your own HTTP handlers (e.g. a health check endpoint).
+
+{{% render-md %}}
+{{% load-snippet-partial file="content/src-link/message/infrastructure/http/subscriber.go" first_line_contains="// NewSubscriberWithRouter" last_line_contains="(*Subscriber, error)" %}}
 {{% /render-md %}}
 
 #### Running
