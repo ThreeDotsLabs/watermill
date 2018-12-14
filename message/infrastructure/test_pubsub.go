@@ -22,10 +22,6 @@ type Features struct {
 	ExactlyOnceDelivery bool
 	GuaranteedOrder     bool
 	Persistent          bool
-
-	// RequireSingleInstance should be true,
-	// if subscriber doesn't use external storage and to work publisher and subscriber needs to be one instance.
-	RequireSingleInstance bool // todo - remove?
 }
 
 type PubSubConstructor func(t *testing.T) message.PubSub
