@@ -5,8 +5,14 @@ require (
 	github.com/confluentinc/confluent-kafka-go v0.11.6
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/go-chi/chi v3.3.3+incompatible
+	github.com/gogo/protobuf v1.2.0 // indirect
 	github.com/googleapis/gax-go v2.0.2+incompatible // indirect
+	github.com/hashicorp/go-multierror v1.0.0
 	github.com/kr/pretty v0.1.0 // indirect
+	github.com/nats-io/go-nats v1.7.0 // indirect
+	github.com/nats-io/go-nats-streaming v0.4.0
+	github.com/nats-io/nkeys v0.0.2 // indirect
+	github.com/nats-io/nuid v1.0.0 // indirect
 	github.com/pkg/errors v0.8.0
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20181016184325-3113b8401b8a
