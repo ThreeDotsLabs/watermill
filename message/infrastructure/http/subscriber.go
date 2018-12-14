@@ -33,11 +33,25 @@ type Subscriber struct {
 //
 // logger is Watermill's logger.
 func NewSubscriber(addr string, unmarshalMessageFunc UnmarshalMessageFunc, logger watermill.LoggerAdapter) (*Subscriber, error) {
-	r := chi.NewRouter()
-	s := &http.Server{Addr: addr, Handler: r}
+	return NewSubscriberWithRouter(addr, chi.NewRouter(), unmarshalMessageFunc, logger)
+}
+
+// NewSubscriberWithRouter creates new Subscriber with provided router.
+//
+// addr is TCP address to listen on
+//
+// unmarshalMessageFunc is function which converts HTTP request to Watermill's message.
+//
+// logger is Watermill's logger.
+func NewSubscriberWithRouter(
+	addr string,
+	router chi.Router,
+	unmarshalMessageFunc UnmarshalMessageFunc,
+	logger watermill.LoggerAdapter) (*Subscriber, error) {
+	s := &http.Server{Addr: addr, Handler: router}
 
 	return &Subscriber{
-		r,
+		router,
 		s,
 		logger,
 		unmarshalMessageFunc,
