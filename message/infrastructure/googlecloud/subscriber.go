@@ -2,14 +2,15 @@ package googlecloud
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
+	"cloud.google.com/go/pubsub"
+	"github.com/pkg/errors"
 	"google.golang.org/api/option"
 
-	"cloud.google.com/go/pubsub"
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/pkg/errors"
 )
 
 var (
@@ -17,6 +18,8 @@ var (
 	ErrSubscriberClosed = errors.New("subscriber is closed")
 	// ErrSubscriptionDoesNotExist happens when trying to use a subscription that does not exist.
 	ErrSubscriptionDoesNotExist = errors.New("subscription does not exist")
+	// ErrUnexpectedTopic happens when the subscription resolved from SubscriptionNameFn is for a different topic than expected.
+	ErrUnexpectedTopic = errors.New("requested subscription already exists, but for other topic than expected")
 )
 
 // Subscriber attaches to a Google Cloud Pub/Sub subscription and returns a Go channel with messages from the topic.
@@ -259,7 +262,7 @@ func (s *Subscriber) subscription(ctx context.Context, subscriptionName, topicNa
 	}
 
 	if exists {
-		return sub, nil
+		return s.existingSubscription(ctx, sub, topicName)
 	}
 
 	if s.config.DoNotCreateSubscriptionIfMissing {
@@ -289,4 +292,22 @@ func (s *Subscriber) subscription(ctx context.Context, subscriptionName, topicNa
 	sub.ReceiveSettings = s.config.ReceiveSettings
 
 	return sub, err
+}
+
+func (s Subscriber) existingSubscription(ctx context.Context, sub *pubsub.Subscription, topic string) (*pubsub.Subscription, error) {
+	config, err := sub.Config(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not fetch config for existing subscription")
+	}
+
+	fullyQualifiedTopicName := fmt.Sprintf("projects/%s/topics/%s", s.config.ProjectID, topic)
+
+	if config.Topic.String() != fullyQualifiedTopicName {
+		return nil, errors.Wrap(
+			ErrUnexpectedTopic,
+			fmt.Sprintf("topic of existing sub: %s; expecting: %s", config.Topic.String(), fullyQualifiedTopicName),
+		)
+	}
+
+	return sub, nil
 }
