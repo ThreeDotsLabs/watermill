@@ -36,6 +36,14 @@ type StreamingPublisher struct {
 	logger watermill.LoggerAdapter
 }
 
+// NewStreamingPublisher creates a new StreamingPublisher.
+//
+// When using custom NATS hostname, you should pass it by options StreamingPublisherConfig.StanOptions:
+//		// ...
+//		StanOptions: []stan.Option{
+//			stan.NatsURL("nats://your-nats-hostname:4222"),
+//		}
+//		// ...
 func NewStreamingPublisher(config StreamingPublisherConfig, logger watermill.LoggerAdapter) (*StreamingPublisher, error) {
 	if err := config.Validate(); err != nil {
 		return nil, err

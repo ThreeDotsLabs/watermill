@@ -21,6 +21,9 @@ type StreamingSubscriberConfig struct {
 
 	// ClientID is the NATS Streaming client ID to connect with.
 	// ClientID can contain only alphanumeric and `-` or `_` characters.
+	//
+	// Using DurableName causes the NATS Streaming server to track
+	// the last acknowledged message for that ClientID + DurableName.
 	ClientID string
 
 	// QueueGroup is the NATS Streaming queue group.
@@ -44,6 +47,9 @@ type StreamingSubscriberConfig struct {
 	// sequence number for a client and durable name. When the client restarts/resubscribes,
 	// and uses the same client ID and durable name, the server will resume delivery beginning
 	// with the earliest unacknowledged message for this durable subscription.
+	//
+	// Doing this causes the NATS Streaming server to track
+	// the last acknowledged message for that ClientID + DurableName.
 	DurableName string
 
 	// SubscribersCount determines wow much concurrent subscribers should be started.
@@ -58,6 +64,8 @@ type StreamingSubscriberConfig struct {
 	AckWaitTimeout time.Duration
 
 	// StanOptions are custom []stan.Option passed to the connection.
+	// It is also used to provide connection parameters, for example:
+	// 		stan.NatsURL("nats://localhost:4222")
 	StanOptions []stan.Option
 
 	// StanSubscriptionOptions are custom []stan.SubscriptionOption passed to subscription.
@@ -120,6 +128,14 @@ type StreamingSubscriber struct {
 	processingMessagesWg sync.WaitGroup
 }
 
+// NewStreamingSubscriber creates a new StreamingSubscriber.
+//
+// When using custom NATS hostname, you should pass it by options StreamingSubscriberConfig.StanOptions:
+//		// ...
+//		StanOptions: []stan.Option{
+//			stan.NatsURL("nats://your-nats-hostname:4222"),
+//		}
+//		// ...
 func NewStreamingSubscriber(config StreamingSubscriberConfig, logger watermill.LoggerAdapter) (*StreamingSubscriber, error) {
 	config.setDefaults()
 

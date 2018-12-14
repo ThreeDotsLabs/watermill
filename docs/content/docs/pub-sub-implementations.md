@@ -202,6 +202,18 @@ NATS Streaming is a data streaming system powered by NATS, and written in the Go
 {{% load-snippet-partial file="content/src-link/message/infrastructure/nats/subscriber.go" first_line_contains="type StreamingSubscriberConfig struct" last_line_contains="type StreamingSubscriber struct" %}}
 {{% /render-md %}}
 
+#### Connecting
+
+By default NATS client will try to connect to `localhost:4222`. If you are using different hostname or port you should pass custom `stan.Option`: `stan.NatsURL("nats://your-nats-hostname:4222")` to `StreamingSubscriberConfig` and `StreamingPublisherConfig`.
+
+{{% render-md %}}
+{{% load-snippet-partial file="content/src-link/message/infrastructure/nats/publisher.go" first_line_contains="// NewStreamingPublisher" last_line_contains="func NewStreamingPublisher" %}}
+{{% /render-md %}}
+
+{{% render-md %}}
+{{% load-snippet-partial file="content/src-link/message/infrastructure/nats/subscriber.go" first_line_contains="// NewStreamingSubscriber" last_line_contains="func NewStreamingSubscriber" %}}
+{{% /render-md %}}
+
 #### Publishing
 
 {{% render-md %}}
