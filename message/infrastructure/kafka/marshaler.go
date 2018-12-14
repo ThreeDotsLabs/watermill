@@ -27,7 +27,7 @@ type DefaultMarshaler struct{}
 
 func (DefaultMarshaler) Marshal(topic string, msg *message.Message) (*confluentKafka.Message, error) {
 	if value := msg.Metadata.Get(UUIDHeaderKey); value != "" {
-		return nil, errors.Errorf("metadata %s is reserved by watermil for message UUID", UUIDHeaderKey)
+		return nil, errors.Errorf("metadata %s is reserved by watermill for message UUID", UUIDHeaderKey)
 	}
 
 	headers := []confluentKafka.Header{{
