@@ -15,40 +15,59 @@ import (
 	"github.com/pkg/errors"
 )
 
-type Subscriber struct {
-	conn   stan.Conn
-	logger watermill.LoggerAdapter
+type StreamingSubscriberConfig struct {
+	// ClusterID is the NATS Streaming cluster ID.
+	ClusterID string
 
-	config SubscriberConfig
+	// ClientID is the NATS Streaming client ID to connect with.
+	// ClientID can contain only alphanumeric and `-` or `_` characters.
+	ClientID string
 
-	subs     []stan.Subscription
-	subsLock sync.Mutex
+	// QueueGroup is the NATS Streaming queue group.
+	//
+	// All subscriptions with the same queue name (regardless of the connection they originate from)
+	// will form a queue group. Each message will be delivered to only one subscriber per queue group,
+	// using queuing semantics.
+	//
+	// It is recommended to set it with DurableName.
+	// For non durable queue subscribers, when the last member leaves the group,
+	// that group is removed. A durable queue group (DurableName) allows you to have all members leave
+	// but still maintain state. When a member re-joins, it starts at the last position in that group.
+	//
+	// When QueueGroup is empty, subscribe without QueueGroup will be used.
+	QueueGroup string
 
-	closed  bool
-	closing chan struct{}
-
-	outputsWg            sync.WaitGroup
-	processingMessagesWg sync.WaitGroup
-}
-
-type SubscriberConfig struct {
-	ClusterID   string
-	ClientID    string
-	QueueGroup  string // todo - validate?
+	// DurableName is the NATS streaming durable name.
+	//
+	// Subscriptions may also specify a “durable name” which will survive client restarts.
+	// Durable subscriptions cause the server to track the last acknowledged message
+	// sequence number for a client and durable name. When the client restarts/resubscribes,
+	// and uses the same client ID and durable name, the server will resume delivery beginning
+	// with the earliest unacknowledged message for this durable subscription.
 	DurableName string
 
+	// SubscribersCount determines wow much concurrent subscribers should be started.
 	SubscribersCount int
-	CloseTimeout     time.Duration
 
+	// CloseTimeout determines how long subscriber will wait for Ack/Nack on close.
+	// When no Ack/Nack is received after CloseTimeout, subscriber will be closed.
+	CloseTimeout time.Duration
+
+	// How long subscriber should wait for Ack/Nack. When no Ack/Nack was received, message will be redelivered.
+	// It is mapped to stan.AckWait option.
 	AckWaitTimeout time.Duration
 
-	StanOptions             []stan.Option
+	// StanOptions are custom []stan.Option passed to the connection.
+	StanOptions []stan.Option
+
+	// StanSubscriptionOptions are custom []stan.SubscriptionOption passed to subscription.
 	StanSubscriptionOptions []stan.SubscriptionOption
 
+	// Unmarshaler is an unmarshaler used to unmarshaling messages from NATS format to Watermill format.
 	Unmarshaler Unmarshaler
 }
 
-func (c *SubscriberConfig) setDefaults() {
+func (c *StreamingSubscriberConfig) setDefaults() {
 	if c.SubscribersCount <= 0 {
 		c.SubscribersCount = 1
 	}
@@ -69,19 +88,51 @@ func (c *SubscriberConfig) setDefaults() {
 	}
 }
 
-func NewSubscriber(config SubscriberConfig, logger watermill.LoggerAdapter) (*Subscriber, error) {
+func (c *StreamingSubscriberConfig) Validate() error {
+	if c.Unmarshaler == nil {
+		return errors.New("StreamingSubscriberConfig.Unmarshaler is missing")
+	}
+
+	if c.QueueGroup == "" && c.SubscribersCount > 1 {
+		return errors.New(
+			"to set StreamingSubscriberConfig.SubscribersCount " +
+				"you need to also set StreamingSubscriberConfig.QueueGroup, " +
+				"in other case you will receive duplicated messages",
+		)
+	}
+
+	return nil
+}
+
+type StreamingSubscriber struct {
+	conn   stan.Conn
+	logger watermill.LoggerAdapter
+
+	config StreamingSubscriberConfig
+
+	subs     []stan.Subscription
+	subsLock sync.Mutex
+
+	closed  bool
+	closing chan struct{}
+
+	outputsWg            sync.WaitGroup
+	processingMessagesWg sync.WaitGroup
+}
+
+func NewStreamingSubscriber(config StreamingSubscriberConfig, logger watermill.LoggerAdapter) (*StreamingSubscriber, error) {
 	config.setDefaults()
 
-	if config.Unmarshaler == nil {
-		return nil, errors.New("SubscriberConfig.Unmarshaler cannot be empty")
+	if err := config.Validate(); err != nil {
+		return nil, err
 	}
 
 	conn, err := stan.Connect(config.ClusterID, config.ClientID, config.StanOptions...)
 	if err != nil {
-		return nil, errors.Wrap(err, "cannot connect to nats")
+		return nil, errors.Wrap(err, "cannot connect to NATS")
 	}
 
-	return &Subscriber{
+	return &StreamingSubscriber{
 		conn:    conn,
 		logger:  logger,
 		config:  config,
@@ -89,7 +140,10 @@ func NewSubscriber(config SubscriberConfig, logger watermill.LoggerAdapter) (*Su
 	}, nil
 }
 
-func (s *Subscriber) Subscribe(topic string) (chan *message.Message, error) {
+// Subscribe subscribes messages from NATS Streaming.
+//
+// Subscribe will spawn SubscribersCount goroutines making subscribe.
+func (s *StreamingSubscriber) Subscribe(topic string) (chan *message.Message, error) {
 	output := make(chan *message.Message, 0)
 	s.outputsWg.Add(1)
 
@@ -109,17 +163,7 @@ func (s *Subscriber) Subscribe(topic string) (chan *message.Message, error) {
 
 		s.logger.Debug("Starting subscriber", subscriberLogFields)
 
-		sub, err := s.conn.QueueSubscribe(
-			topic,
-			s.config.QueueGroup,
-			func(m *stan.Msg) {
-				s.processingMessagesWg.Add(1)
-				defer s.processingMessagesWg.Done()
-
-				s.processMessage(m, output, subscriberLogFields)
-			},
-			s.config.StanSubscriptionOptions...,
-		)
+		sub, err := s.subscribe(output, topic, subscriberLogFields)
 		if err != nil {
 			return nil, errors.Wrap(err, "cannot subscribe")
 		}
@@ -132,10 +176,34 @@ func (s *Subscriber) Subscribe(topic string) (chan *message.Message, error) {
 	return output, nil
 }
 
-func (s *Subscriber) processMessage(m *stan.Msg, output chan *message.Message, logFields watermill.LogFields) {
+func (s *StreamingSubscriber) subscribe(output chan *message.Message, topic string, subscriberLogFields watermill.LogFields) (stan.Subscription, error) {
+	if s.config.QueueGroup != "" {
+		return s.conn.QueueSubscribe(
+			topic,
+			s.config.QueueGroup,
+			func(m *stan.Msg) {
+				s.processMessage(m, output, subscriberLogFields)
+			},
+			s.config.StanSubscriptionOptions...,
+		)
+	}
+
+	return s.conn.Subscribe(
+		topic,
+		func(m *stan.Msg) {
+			s.processMessage(m, output, subscriberLogFields)
+		},
+		s.config.StanSubscriptionOptions...,
+	)
+}
+
+func (s *StreamingSubscriber) processMessage(m *stan.Msg, output chan *message.Message, logFields watermill.LogFields) {
 	if s.closed {
 		return
 	}
+
+	s.processingMessagesWg.Add(1)
+	defer s.processingMessagesWg.Done()
 
 	s.logger.Trace("Received message", logFields)
 
@@ -165,13 +233,16 @@ func (s *Subscriber) processMessage(m *stan.Msg, output chan *message.Message, l
 	case <-msg.Nacked():
 		s.logger.Trace("Message Nacked", messageLogFields)
 		return
+	case <-time.After(s.config.AckWaitTimeout):
+		s.logger.Trace("Ack timeouted", messageLogFields)
+		return
 	case <-s.closing:
 		s.logger.Trace("Closing, message discarded before ack", messageLogFields)
 		return
 	}
 }
 
-func (s *Subscriber) Close() error {
+func (s *StreamingSubscriber) Close() error {
 	s.subsLock.Lock()
 	defer s.subsLock.Unlock()
 
@@ -181,7 +252,7 @@ func (s *Subscriber) Close() error {
 	s.closed = true
 
 	s.logger.Debug("Closing subscriber", nil)
-	defer s.logger.Debug("Subscriber closed", nil)
+	defer s.logger.Debug("StreamingSubscriber closed", nil)
 
 	var result error
 	for _, sub := range s.subs {

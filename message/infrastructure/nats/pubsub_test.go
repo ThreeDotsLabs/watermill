@@ -17,16 +17,16 @@ import (
 
 func newPubSub(t *testing.T, clientID string, queueName string) message.PubSub {
 	logger := watermill.NewStdLogger(true, true)
-	pub, err := nats.NewPublisher(nats.PublisherConfig{
+	pub, err := nats.NewStreamingPublisher(nats.StreamingPublisherConfig{
 		ClusterID: "test-cluster",
-		ClientID:  clientID + "_pub", // todo - change
+		ClientID:  clientID + "_pub",
 		Marshaler: nats.GobMarshaler{},
 	}, logger)
 	require.NoError(t, err)
 
-	sub, err := nats.NewSubscriber(nats.SubscriberConfig{
+	sub, err := nats.NewStreamingSubscriber(nats.StreamingSubscriberConfig{
 		ClusterID:        "test-cluster",
-		ClientID:         clientID + "_sub", // todo - change
+		ClientID:         clientID + "_sub",
 		QueueGroup:       queueName,
 		DurableName:      "durable-name",
 		SubscribersCount: 1,

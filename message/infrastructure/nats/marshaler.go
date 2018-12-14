@@ -23,6 +23,7 @@ type MarshalerUnmarshaler interface {
 	Unmarshaler
 }
 
+// GobMarshaler is marshaller which is using Gob to marshal Watermill messages.
 type GobMarshaler struct{}
 
 func (GobMarshaler) Marshal(topic string, msg *message.Message) ([]byte, error) {

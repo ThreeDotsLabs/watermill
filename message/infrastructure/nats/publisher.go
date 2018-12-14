@@ -7,35 +7,57 @@ import (
 	"github.com/pkg/errors"
 )
 
-type PublisherConfig struct {
+type StreamingPublisherConfig struct {
+	// ClusterID is the NATS Streaming cluster ID.
 	ClusterID string
-	ClientID  string
 
+	// ClientID is the NATS Streaming client ID to connect with.
+	// ClientID can contain only alphanumeric and `-` or `_` characters.
+	ClientID string
+
+	// StanOptions are custom options for a connection.
 	StanOptions []stan.Option
 
+	// Marshaler is marshaler used to marshal messages to stan format.
 	Marshaler Marshaler
 }
 
-type Publisher struct {
+func (c StreamingPublisherConfig) Validate() error {
+	if c.Marshaler == nil {
+		return errors.New("StreamingPublisherConfig.Marshaler is missing")
+	}
+
+	return nil
+}
+
+type StreamingPublisher struct {
 	conn   stan.Conn
-	config PublisherConfig
+	config StreamingPublisherConfig
 	logger watermill.LoggerAdapter
 }
 
-func NewPublisher(config PublisherConfig, logger watermill.LoggerAdapter) (*Publisher, error) {
+func NewStreamingPublisher(config StreamingPublisherConfig, logger watermill.LoggerAdapter) (*StreamingPublisher, error) {
+	if err := config.Validate(); err != nil {
+		return nil, err
+	}
+
 	conn, err := stan.Connect(config.ClusterID, config.ClientID, config.StanOptions...)
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot connect to nats")
 	}
 
-	return &Publisher{
+	return &StreamingPublisher{
 		conn:   conn,
 		config: config,
 		logger: logger,
 	}, nil
 }
 
-func (p Publisher) Publish(topic string, messages ...*message.Message) error {
+// Publish publishes message to NATS.
+//
+// Publish will not return until an ack has been received from NATS Streaming.
+// When one of messages delivery fails - function is interrupted.
+func (p StreamingPublisher) Publish(topic string, messages ...*message.Message) error {
 	for _, msg := range messages {
 		messageFields := watermill.LogFields{
 			"message_uuid": msg.UUID,
@@ -57,12 +79,12 @@ func (p Publisher) Publish(topic string, messages ...*message.Message) error {
 	return nil
 }
 
-func (p Publisher) Close() error {
+func (p StreamingPublisher) Close() error {
 	p.logger.Trace("Closing publisher", nil)
-	defer p.logger.Trace("Publisher closed", nil)
+	defer p.logger.Trace("StreamingPublisher closed", nil)
 
 	if err := p.conn.Close(); err != nil {
-		return errors.Wrap(err, "closing nats conn failed")
+		return errors.Wrap(err, "closing NATS conn failed")
 	}
 
 	return nil
