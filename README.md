@@ -58,34 +58,6 @@ type Subscriber interface {
 }
 ```
 
-### [Go channel Pub/Sub](https://github.com/ThreeDotsLabs/watermill/tree/master/message/infrastructure/gochannel)
-
-Uses go channels for communication within the same process.
-
-### [Kafka Pub/Sub](https://github.com/ThreeDotsLabs/watermill/tree/master/message/infrastructure/kafka)
-
-Uses Apache Kafka as the broker: Publishes messages to chosen topics and subscribes on topics for incoming messages.
-
-This implementation uses [confluent-kafka-go](https://github.com/confluentinc/confluent-kafka-go) as Kafka
-client, which depends on [librdkafka](https://github.com/edenhill/librdkafka), so you will need it installed.
-Version 0.11.6 is recommended.
-
-For local development, you can use [golang-librdkafka](https://hub.docker.com/r/threedotslabs/golang-librdkafka/) docker image.
-
-### [HTTP subscriber](https://github.com/ThreeDotsLabs/watermill/tree/master/message/infrastructure/http)
-
-Starts an HTTP server that listens for messages in a REST fashion.
-
-## Middlewares
-
-You can find all built-in middlewares in [`message/router/middleware`](message/router/middleware).
-
-## Examples
-
-* [Your first app](_examples/your-first-app) - start here!
-* [Simple application with publisher and subscriber](_examples/simple-app)
-* [HTTP to Kafka](_examples/http-to-kafka)
-
 ## Contributing
 
 All contributions are very much welcome. If you'd like to help with Watermill development,
