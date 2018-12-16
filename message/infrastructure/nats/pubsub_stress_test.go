@@ -1,6 +1,6 @@
 // +build stress
 
-package kafka_test
+package nats_test
 
 import (
 	"testing"
@@ -18,20 +18,6 @@ func TestPublishSubscribe_stress(t *testing.T) {
 			Persistent:          true,
 		},
 		createPubSub,
-		createPubSubWithConsumerGrup,
-	)
-}
-
-func TestPublishSubscribe_ordered_stress(t *testing.T) {
-	infrastructure.TestPubSubStressTest(
-		t,
-		infrastructure.Features{
-			ConsumerGroups:      true,
-			ExactlyOnceDelivery: false,
-			GuaranteedOrder:     true,
-			Persistent:          true,
-		},
-		createPartitionedPubSub,
-		createPubSubWithConsumerGrup,
+		createPubSubWithDurable,
 	)
 }

@@ -27,9 +27,7 @@ func TestGobMarshaler(t *testing.T) {
 	unmarshaledMsg, err := marshaler.Unmarshal(&stan.Msg{MsgProto: pb.MsgProto{Data: b}})
 	require.NoError(t, err)
 
-	assert.Equal(t, msg.UUID, unmarshaledMsg.UUID)
-	assert.Equal(t, msg.Metadata, unmarshaledMsg.Metadata)
-	assert.Equal(t, msg.Payload, unmarshaledMsg.Payload)
+	assert.True(t, msg.Equals(unmarshaledMsg))
 
 	unmarshaledMsg.Ack()
 
@@ -60,7 +58,7 @@ func TestGobMarshaler_multiple_messages_async(t *testing.T) {
 			unmarshaledMsg, err := marshaler.Unmarshal(&stan.Msg{MsgProto: pb.MsgProto{Data: b}})
 			require.NoError(t, err)
 
-			assert.Equal(t, msg.UUID, unmarshaledMsg.UUID)
+			assert.True(t, msg.Equals(unmarshaledMsg))
 		}(i)
 	}
 

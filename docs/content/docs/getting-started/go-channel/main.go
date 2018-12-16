@@ -1,3 +1,4 @@
+// Sources for https://watermill.io/docs/getting-started/
 package main
 
 import (

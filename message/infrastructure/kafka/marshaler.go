@@ -1,8 +1,8 @@
 package kafka
 
 import (
+	"github.com/Shopify/sarama"
 	"github.com/ThreeDotsLabs/watermill/message"
-	confluentKafka "github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/pkg/errors"
 )
 
@@ -10,12 +10,12 @@ const UUIDHeaderKey = "_watermill_message_uuid"
 
 // Marshaler marshals Watermill's message to Kafka message.
 type Marshaler interface {
-	Marshal(topic string, msg *message.Message) (*confluentKafka.Message, error)
+	Marshal(topic string, msg *message.Message) (*sarama.ProducerMessage, error)
 }
 
 // Unmarshaler unmarshals Kafka's message to Watermill's message.
 type Unmarshaler interface {
-	Unmarshal(*confluentKafka.Message) (*message.Message, error)
+	Unmarshal(*sarama.ConsumerMessage) (*message.Message, error)
 }
 
 type MarshalerUnmarshaler interface {
@@ -25,45 +25,42 @@ type MarshalerUnmarshaler interface {
 
 type DefaultMarshaler struct{}
 
-func (DefaultMarshaler) Marshal(topic string, msg *message.Message) (*confluentKafka.Message, error) {
+func (DefaultMarshaler) Marshal(topic string, msg *message.Message) (*sarama.ProducerMessage, error) {
 	if value := msg.Metadata.Get(UUIDHeaderKey); value != "" {
 		return nil, errors.Errorf("metadata %s is reserved by watermill for message UUID", UUIDHeaderKey)
 	}
 
-	headers := []confluentKafka.Header{{
-		Key:   UUIDHeaderKey,
+	headers := []sarama.RecordHeader{{
+		Key:   []byte(UUIDHeaderKey),
 		Value: []byte(msg.UUID),
 	}}
 	for key, value := range msg.Metadata {
-		headers = append(headers, confluentKafka.Header{
-			Key:   key,
+		headers = append(headers, sarama.RecordHeader{
+			Key:   []byte(key),
 			Value: []byte(value),
 		})
 	}
 
-	return &confluentKafka.Message{
-		TopicPartition: confluentKafka.TopicPartition{Topic: &topic, Partition: confluentKafka.PartitionAny},
-		Value:          msg.Payload,
-		Headers:        headers,
+	return &sarama.ProducerMessage{
+		Topic:   topic,
+		Value:   sarama.ByteEncoder(msg.Payload),
+		Headers: headers,
 	}, nil
 }
 
-func (DefaultMarshaler) Unmarshal(kafkaMsg *confluentKafka.Message) (*message.Message, error) {
+func (DefaultMarshaler) Unmarshal(kafkaMsg *sarama.ConsumerMessage) (*message.Message, error) {
 	var messageID string
 	metadata := make(message.Metadata, len(kafkaMsg.Headers))
 
 	for _, header := range kafkaMsg.Headers {
-		if header.Key == UUIDHeaderKey {
+		if string(header.Key) == UUIDHeaderKey {
 			messageID = string(header.Value)
 		} else {
-			metadata.Set(header.Key, string(header.Value))
+			metadata.Set(string(header.Key), string(header.Value))
 		}
 	}
 
-	msg := message.NewMessage(
-		messageID,
-		kafkaMsg.Value,
-	)
+	msg := message.NewMessage(messageID, kafkaMsg.Value)
 	msg.Metadata = metadata
 
 	return msg, nil
@@ -81,7 +78,7 @@ func NewWithPartitioningMarshaler(generatePartitionKey GeneratePartitionKey) Mar
 	return kafkaJsonWithPartitioning{generatePartitionKey: generatePartitionKey}
 }
 
-func (j kafkaJsonWithPartitioning) Marshal(topic string, msg *message.Message) (*confluentKafka.Message, error) {
+func (j kafkaJsonWithPartitioning) Marshal(topic string, msg *message.Message) (*sarama.ProducerMessage, error) {
 	kafkaMsg, err := j.DefaultMarshaler.Marshal(topic, msg)
 	if err != nil {
 		return nil, err
@@ -91,7 +88,7 @@ func (j kafkaJsonWithPartitioning) Marshal(topic string, msg *message.Message) (
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot generate partition key")
 	}
-	kafkaMsg.Key = []byte(key)
+	kafkaMsg.Key = sarama.ByteEncoder(key)
 
 	return kafkaMsg, nil
 }

@@ -4,7 +4,7 @@
 version: '3'
 services:
   zookeeper:
-    image: confluentinc/cp-zookeeper:latest
+    image: confluentinc/cp-zookeeper:5.0.1
     network_mode: host
     restart: on-failure
     environment:
@@ -12,7 +12,7 @@ services:
       ZOOKEEPER_TICK_TIME: 2000
 
   kafka:
-    image: confluentinc/cp-kafka:latest
+    image: confluentinc/cp-kafka:5.0.1
     network_mode: host
     restart: on-failure
     depends_on:
@@ -27,5 +27,12 @@ services:
 
   nats-streaming:
     image: nats-streaming:0.11.2
+    network_mode: host
+    restart: on-failure
+    entrypoint: ["/nats-streaming-server", "-m=8222", "--max_channels=0"]
+
+  googlecloud:
+    image: google/cloud-sdk:228.0.0
+    entrypoint: gcloud --quiet beta emulators pubsub start --host-port=localhost:8085 --verbosity=debug --log-http
     network_mode: host
     restart: on-failure

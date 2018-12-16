@@ -1,86 +1,92 @@
 package kafka
 
 import (
-	"strings"
+	"time"
 
-	"github.com/confluentinc/confluent-kafka-go/kafka"
+	"github.com/ThreeDotsLabs/watermill"
+
+	"github.com/Shopify/sarama"
 
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/pkg/errors"
 )
 
-type confluentPublisher struct {
-	producer  *kafka.Producer
+type Publisher struct {
+	producer  sarama.SyncProducer
 	marshaler Marshaler
+
+	logger watermill.LoggerAdapter
 
 	closed bool
 }
 
-func NewPublisher(brokers []string, marshaler Marshaler, kafkaConfigOverwrite kafka.ConfigMap) (message.Publisher, error) {
-	config := &kafka.ConfigMap{
-		"bootstrap.servers":            strings.Join(brokers, ","),
-		"queue.buffering.max.messages": 10000000,
-		"queue.buffering.max.kbytes":   2097151,
-		"debug": ",",
+// NewPublisher creates a new Kafka Publisher.
+func NewPublisher(
+	brokers []string,
+	marshaler Marshaler,
+	overwriteSaramaConfig *sarama.Config,
+	logger watermill.LoggerAdapter,
+) (message.Publisher, error) {
+	if overwriteSaramaConfig == nil {
+		overwriteSaramaConfig = DefaultSaramaSyncPublisherConfig()
 	}
 
-	if err := mergeConfluentConfigs(config, kafkaConfigOverwrite); err != nil {
-		return nil, err
-	}
-
-	p, err := kafka.NewProducer(config)
+	producer, err := sarama.NewSyncProducer(brokers, overwriteSaramaConfig)
 	if err != nil {
-		return nil, errors.Wrap(err, "cannot create producer")
+		return nil, errors.Wrap(err, "cannot create Kafka producer")
 	}
 
-	return NewCustomPublisher(p, marshaler)
+	return &Publisher{producer, marshaler, logger, false}, nil
 }
 
-func NewCustomPublisher(producer *kafka.Producer, marshaler Marshaler) (message.Publisher, error) {
-	return &confluentPublisher{producer, marshaler, false}, nil
+func DefaultSaramaSyncPublisherConfig() *sarama.Config {
+	config := sarama.NewConfig()
+
+	config.Producer.Retry.Max = 10
+	config.Producer.Return.Successes = true
+	config.Version = sarama.V1_0_0_0
+	config.Metadata.Retry.Backoff = time.Second * 2
+	config.ClientID = "watermill"
+
+	return config
 }
 
 // Publish publishes message to Kafka.
 //
 // Publish is blocking and wait for ack from Kafka.
 // When one of messages delivery fails - function is interrupted.
-func (p confluentPublisher) Publish(topic string, msgs ...*message.Message) error {
+func (p *Publisher) Publish(topic string, msgs ...*message.Message) error {
 	if p.closed {
 		return errors.New("publisher closed")
 	}
 
+	logFields := watermill.LogFields{"message_uuid": ""}
 	for _, msg := range msgs {
+		logFields["message_uuid"] = msg.UUID
+		p.logger.Trace("Sending message to Kafka", logFields)
+
 		kafkaMsg, err := p.marshaler.Marshal(topic, msg)
 		if err != nil {
 			return errors.Wrapf(err, "cannot marshal message %s", msg.UUID)
 		}
 
-		deliveryChan := make(chan kafka.Event)
-		defer close(deliveryChan)
-
-		if err := p.producer.Produce(kafkaMsg, deliveryChan); err != nil {
+		if _, _, err := p.producer.SendMessage(kafkaMsg); err != nil {
 			return errors.Wrapf(err, "cannot produce message %s", msg.UUID)
 		}
-
-		e := <-deliveryChan
-		m := e.(*kafka.Message)
-		//
-		if m.TopicPartition.Error != nil {
-			return errors.Wrapf(m.TopicPartition.Error, "delivery of message %s failed", msg.UUID)
-		}
-
 	}
 
 	return nil
 }
 
-func (p *confluentPublisher) Close() error {
+func (p *Publisher) Close() error {
 	if p.closed {
 		return nil
 	}
 	p.closed = true
 
-	p.producer.Close()
+	if err := p.producer.Close(); err != nil {
+		return errors.Wrap(err, "cannot close Kafka producer")
+	}
 
 	return nil
 }

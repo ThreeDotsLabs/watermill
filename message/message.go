@@ -1,6 +1,7 @@
 package message
 
 import (
+	"bytes"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -61,6 +62,22 @@ const (
 	ack
 	nack
 )
+
+// Equals compare, that two messages are equal. Acks/Nacks are not compared.
+func (m Message) Equals(toCompare *Message) bool {
+	if m.UUID != toCompare.UUID {
+		return false
+	}
+	if len(m.Metadata) != len(toCompare.Metadata) {
+		return false
+	}
+	for key, value := range m.Metadata {
+		if value != toCompare.Metadata[key] {
+			return false
+		}
+	}
+	return bytes.Equal(m.Payload, toCompare.Payload)
+}
 
 // Ack sends message's acknowledgement.
 //
@@ -139,4 +156,11 @@ func (m *Message) Acked() <-chan struct{} {
 //		}
 func (m *Message) Nacked() <-chan struct{} {
 	return m.noAck
+}
+
+// Copy copies all message without Acks/Nacks.
+func (m Message) Copy() *Message {
+	msg := NewMessage(m.UUID, m.Payload)
+	msg.Metadata = m.Metadata
+	return msg
 }
