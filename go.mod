@@ -7,7 +7,6 @@ require (
 	github.com/Shopify/toxiproxy v2.1.3+incompatible // indirect
 	github.com/armon/go-metrics v0.0.0-20180917152333-f0300d1749da // indirect
 	github.com/boltdb/bolt v1.3.1 // indirect
-	github.com/confluentinc/confluent-kafka-go v0.11.6
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/eapache/go-resiliency v1.1.0 // indirect
 	github.com/eapache/go-xerial-snappy v0.0.0-20180814174437-776d5712da21 // indirect
@@ -35,7 +34,7 @@ require (
 	github.com/pkg/errors v0.8.0
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20181016184325-3113b8401b8a
-	github.com/renstrom/shortuuid v3.0.0+incompatible // indirect
+	github.com/renstrom/shortuuid v3.0.0+incompatible
 	github.com/satori/go.uuid v1.2.0
 	github.com/stretchr/testify v1.2.2
 	go.opencensus.io v0.18.0 // indirect
@@ -43,6 +42,7 @@ require (
 	golang.org/x/sync v0.0.0-20181108010431-42b317875d0f // indirect
 	google.golang.org/api v0.0.0-20181120235003-faade3cbb06a
 	google.golang.org/genproto v0.0.0-20181109154231-b5d43981345b // indirect
+	google.golang.org/grpc v1.16.0
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 	gopkg.in/vmihailenco/msgpack.v2 v2.9.1 // indirect
 	labix.org/v2/mgo v0.0.0-20140701140051-000000000287 // indirect
