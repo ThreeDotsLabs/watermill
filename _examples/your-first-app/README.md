@@ -1,5 +1,7 @@
 # Your first app
 
+Before checking the examples, it is recommended to read [getting started guide](https://watermill.io/docs/getting-started/).
+
 ## Files
 
 - [main.go](main.go) - example source code, probably the **most interesting file to you**

@@ -13,6 +13,8 @@ implementations like Kafka or RabbitMQ, but also HTTP or MySQL binlog if that fi
 
 Documentation: https://watermill.io/
 
+Getting started guide: https://watermill.io/docs/getting-started/
+
 ## Background
 
 Building distributed and scalable services is rarely as easy as some may suggest. There is a
@@ -65,6 +67,8 @@ please see [open issues](https://github.com/ThreeDotsLabs/watermill/issues?utf8=
 and submit your pull request via GitHub.
 
 ## Support
+
+If you didn't found answer to your question in [the documentation](https://watermill.io/), feel free to ask!
 
 Please join us on the `#watermill` channel on the [Gophers slack](https://gophers.slack.com/): You can get invite [here](https://gophersinvite.herokuapp.com/).
 
