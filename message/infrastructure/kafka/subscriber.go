@@ -71,6 +71,7 @@ type SubscriberConfig struct {
 	ReconnectRetrySleep time.Duration
 }
 
+// NoSleep can be set to SubscriberConfig.NackResendSleep and SubscriberConfig.ReconnectRetrySleep.
 const NoSleep time.Duration = -1
 
 func (c *SubscriberConfig) setDefaults() {
@@ -117,7 +118,10 @@ func (s *Subscriber) Subscribe(topic string) (chan *message.Message, error) {
 		return nil, err
 	}
 
-	go s.handleReconnects(topic, output, consumeClosed, logFields)
+	go func() {
+		defer s.subscribersWg.Done()
+		s.handleReconnects(topic, output, consumeClosed, logFields)
+	}()
 
 	return output, nil
 }
@@ -128,8 +132,6 @@ func (s *Subscriber) handleReconnects(
 	consumeClosed chan struct{},
 	logFields watermill.LogFields,
 ) {
-	defer s.subscribersWg.Done()
-
 	for {
 		// nil channel will cause deadlock
 		if consumeClosed != nil {
@@ -167,7 +169,7 @@ func (s *Subscriber) consumeMessages(
 	topic string,
 	output chan *message.Message,
 	logFields watermill.LogFields,
-) (chan struct{}, error) {
+) (consumeMessagesClosed chan struct{}, err error) {
 	s.logger.Info("Starting consuming", logFields)
 
 	// Start with a client
@@ -177,10 +179,19 @@ func (s *Subscriber) consumeMessages(
 	}
 
 	if s.config.ConsumerGroup == "" {
-		return s.consumeWithoutConsumerGroups(client, topic, output, logFields)
+		consumeMessagesClosed, err = s.consumeWithoutConsumerGroups(client, topic, output, logFields)
+	} else {
+		consumeMessagesClosed, err = s.consumeGroupMessages(client, topic, output, logFields)
 	}
 
-	return s.consumeGroupMessages(client, topic, output, logFields)
+	go func() {
+		<-consumeMessagesClosed
+		if err = client.Close(); err != nil {
+			s.logger.Error("Cannot close client", err, logFields)
+		}
+	}()
+
+	return consumeMessagesClosed, err
 }
 
 func (s *Subscriber) consumeGroupMessages(
@@ -221,9 +232,6 @@ func (s *Subscriber) consumeGroupMessages(
 		if err = group.Close(); err != nil {
 			s.logger.Error("Cannot close group client", err, logFields)
 		}
-		if err = client.Close(); err != nil && err != sarama.ErrClosedClient {
-			s.logger.Error("Cannot close client", err, logFields)
-		}
 
 		s.logger.Info("Consuming done", logFields)
 		close(closed)
@@ -248,14 +256,7 @@ func (s *Subscriber) consumeWithoutConsumerGroups(
 		return nil, errors.Wrap(err, "cannot get partitions")
 	}
 
-	go func() {
-		<-s.closing
-		if err = client.Close(); err != nil && err != sarama.ErrClosedClient {
-			s.logger.Error("Cannot close client", err, logFields)
-		}
-	}()
-
-	partitionConsumersWg := sync.WaitGroup{}
+	partitionConsumersWg := &sync.WaitGroup{}
 
 	for _, partition := range partitions {
 		partitionConsumersWg.Add(1)
@@ -270,31 +271,7 @@ func (s *Subscriber) consumeWithoutConsumerGroups(
 
 		messageHandler := s.createMessagesHandler(output)
 
-		go func(pc sarama.PartitionConsumer) {
-			defer func() {
-				if err := partitionConsumer.Close(); err != nil {
-					s.logger.Error("Cannot close partition consumer", err, logFields)
-				}
-				partitionConsumersWg.Done()
-			}()
-
-			kafkaMessages := pc.Messages()
-
-			for {
-				select {
-				case <-s.closing:
-					return
-				case kafkaMsg := <-kafkaMessages:
-					if kafkaMsg == nil {
-						// kafkaMessages is closed
-						return
-					}
-					if err := messageHandler.processMessage(kafkaMsg, nil, logFields); err != nil {
-						return
-					}
-				}
-			}
-		}(partitionConsumer)
+		go s.consumePartition(partitionConsumer, messageHandler, partitionConsumersWg, logFields)
 	}
 
 	closed := make(chan struct{})
@@ -304,6 +281,37 @@ func (s *Subscriber) consumeWithoutConsumerGroups(
 	}()
 
 	return closed, nil
+}
+
+func (s *Subscriber) consumePartition(
+	partitionConsumer sarama.PartitionConsumer,
+	messageHandler messageHandler,
+	partitionConsumersWg *sync.WaitGroup,
+	logFields watermill.LogFields,
+) {
+	defer func() {
+		if err := partitionConsumer.Close(); err != nil {
+			s.logger.Error("Cannot close partition consumer", err, logFields)
+		}
+		partitionConsumersWg.Done()
+	}()
+
+	kafkaMessages := partitionConsumer.Messages()
+
+	for {
+		select {
+		case <-s.closing:
+			return
+		case kafkaMsg := <-kafkaMessages:
+			if kafkaMsg == nil {
+				// kafkaMessages is closed
+				return
+			}
+			if err := messageHandler.processMessage(kafkaMsg, nil, logFields); err != nil {
+				return
+			}
+		}
+	}
 }
 
 func (s *Subscriber) createMessagesHandler(output chan *message.Message) messageHandler {
