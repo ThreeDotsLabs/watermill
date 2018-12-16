@@ -30,6 +30,11 @@ func TestNoGroupSubscriber(
 		t.Parallel()
 		testNoGroupSubscriberJoiningSubscribers(t, pubSubConstructor, noGroupSubscriberConstructor)
 	})
+
+	t.Run("testNoGroupSubscriber_Close", func(t *testing.T) {
+		t.Parallel()
+		testNoGroupSubscriber_Close(t, pubSubConstructor, noGroupSubscriberConstructor)
+	})
 }
 
 func testNoGroupSubscriberConcurrentSubscribers(
@@ -66,6 +71,8 @@ func testNoGroupSubscriberConcurrentSubscribers(
 	var messagesToPublish []*message.Message
 
 	pubSub := pubSubConstructor(t)
+	defer closePubSub(t, pubSub)
+
 	for i := 0; i < 10; i++ {
 		id := uuid.NewV4().String()
 
@@ -121,6 +128,8 @@ func testNoGroupSubscriberJoiningSubscribers(
 	}()
 
 	pubSub := pubSubConstructor(t)
+	defer closePubSub(t, pubSub)
+
 	for i := 0; i < subscribersCount; i++ {
 		createSubscriber <- struct{}{}
 		<-subscriberCreated
@@ -158,4 +167,37 @@ func testNoGroupSubscriberJoiningSubscribers(
 		}
 
 	}
+}
+
+func testNoGroupSubscriber_Close(
+	t *testing.T,
+	pubSubConstructor PubSubConstructor,
+	noGroupSubscriberConstructor NoGroupSubscriberConstructor,
+) {
+
+	topicName := testTopicName()
+
+	var messagesToPublish []*message.Message
+
+	pubSub := pubSubConstructor(t)
+	defer closePubSub(t, pubSub)
+
+	for i := 0; i < 10; i++ {
+		id := uuid.NewV4().String()
+
+		msg := message.NewMessage(id, []byte(fmt.Sprintf("%d", i)))
+		messagesToPublish = append(messagesToPublish, msg)
+
+		err := pubSub.Publish(topicName, msg)
+		require.NoError(t, err)
+	}
+
+	subscriber := noGroupSubscriberConstructor(t)
+	ch, err := subscriber.Subscribe(topicName)
+	require.NoError(t, err)
+
+	_, all := subscriber2.BulkRead(ch, 10, defaultTimeout)
+	require.True(t, all)
+
+	require.NoError(t, subscriber.Close())
 }
