@@ -14,7 +14,6 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/kafka"
 )
 
-// todo - check & gomod
 func main() {
 	saramaSubscriberConfig := kafka.DefaultSaramaSubscriberConfig()
 	// equivalent of auto.offset.reset: earliest

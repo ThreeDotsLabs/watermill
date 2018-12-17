@@ -60,6 +60,13 @@ type Subscriber interface {
 }
 ```
 
+All Pub/Subs implementation can be found in the [documentation](https://watermill.io/docs/pub-sub-implementations/).
+
+## Examples
+* [Your first app](_examples/your-first-app) - start here!
+* [Simple application with publisher and subscriber](_examples/simple-app)
+* [HTTP to Kafka](_examples/http-to-kafka)
+
 ## Contributing
 
 All contributions are very much welcome. If you'd like to help with Watermill development,

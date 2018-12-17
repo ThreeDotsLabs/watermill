@@ -93,7 +93,7 @@ func (c SubscriberConfig) Validate() error {
 
 // Subscribe subscribers for messages in Kafka.
 //
-// They are multiple subscribers spawned
+// There are multiple subscribers spawned.
 func (s *Subscriber) Subscribe(topic string) (chan *message.Message, error) {
 	if s.closed {
 		return nil, errors.New("subscriber closed")

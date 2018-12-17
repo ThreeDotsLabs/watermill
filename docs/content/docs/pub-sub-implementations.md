@@ -80,7 +80,7 @@ Kafka is one of the most popular Pub/Subs. We are providing Pub/Sub implementati
 ##### Passing custom `Sarama` config
 
 You can pass [custom config](https://github.com/Shopify/sarama/blob/master/config.go#L20) parameters via `overwriteSaramaConfig *sarama.Config` in `NewSubscriber` and `NewPublisher`.
-When null is passed, default config us used (`DefaultSaramaSubscriberConfig`).
+When `nil` is passed, default config is used (`DefaultSaramaSubscriberConfig`).
 
 {{% render-md %}}
 {{% load-snippet-partial file="content/src-link/message/infrastructure/kafka/config.go" first_line_contains="// DefaultSaramaSubscriberConfig" last_line_contains="return config" padding_after="1" %}}
