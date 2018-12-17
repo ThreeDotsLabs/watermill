@@ -46,7 +46,7 @@ type Subscriber struct {
 
 type SubscriberConfig struct {
 	// GenerateSubscriptionName generates subscription name for a given topic.
-	// he subscription connects the topic to a subscriber application that receives and processes
+	// The subscription connects the topic to a subscriber application that receives and processes
 	// messages published to the topic.
 	//
 	// By default, subscriptions expire after 31 days of inactivity.

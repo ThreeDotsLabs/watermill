@@ -31,6 +31,7 @@ func main() {
 		panic(err)
 	}
 
+        // Subscribe will create the subscription. Only messages that are sent after the subscription is created may be received.
 	messages, err := subscriber.Subscribe("example.topic")
 	if err != nil {
 		panic(err)
@@ -63,7 +64,7 @@ func process(messages chan *message.Message) {
 		log.Printf("received message: %s, payload: %s", msg.UUID, string(msg.Payload))
 
 		// we need to Acknowledge that we received and processed the message,
-		// otherwise we will not receive next message
+		// otherwise, it will be resent over and over again.
 		msg.Ack()
 	}
 }

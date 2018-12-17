@@ -8,7 +8,7 @@ services:
     volumes:
       - .:/app
     environment:
-      # this env forces application to run local emulator
+      # use local emulator instead of google cloud engine
       PUBSUB_EMULATOR_HOST: "googlecloud:8085"
     working_dir: /app
     command: go run main.go
