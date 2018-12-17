@@ -240,6 +240,8 @@ func resendOnErrorTest(t *testing.T, pubSub message.PubSub) {
 
 	i := 0
 	errsSent := 0
+
+ReadMessagesLoop:
 	for len(receivedMessages) < messagesToSend {
 		select {
 		case msg := <-messages:
@@ -257,12 +259,7 @@ func resendOnErrorTest(t *testing.T, pubSub message.PubSub) {
 			fmt.Println("acked msg ", msg.UUID)
 
 		case <-time.After(defaultTimeout):
-			t.Fatalf(
-				"timeouted, received messages %d of %d, missing: %d",
-				len(receivedMessages),
-				messagesToSend,
-				messagesToSend-len(receivedMessages),
-			)
+			break ReadMessagesLoop
 		}
 	}
 
@@ -550,13 +547,13 @@ func topicTest(t *testing.T, pubSub message.PubSub) {
 		close(messagesSent)
 	}()
 
-	<-messagesSent
-
 	messagesConsumedTopic1, received := subscriber.BulkRead(messagesTopic1, 1, defaultTimeout)
 	require.True(t, received, "no messages received in topic %s", topic1)
 
 	messagesConsumedTopic2, received := subscriber.BulkRead(messagesTopic2, 1, defaultTimeout)
 	require.True(t, received, "no messages received in topic %s", topic2)
+
+	<-messagesSent
 
 	assert.Equal(t, messagesConsumedTopic1.IDs()[0], topic1Msg.UUID)
 	assert.Equal(t, messagesConsumedTopic2.IDs()[0], topic2Msg.UUID)

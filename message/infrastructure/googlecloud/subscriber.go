@@ -45,14 +45,22 @@ type Subscriber struct {
 }
 
 type SubscriberConfig struct {
-	// SubscriptionName generates subscription name for a given topic.
-	SubscriptionName SubscriptionNameFn
+	// GenerateSubscriptionName generates subscription name for a given topic.
+	// The subscription connects the topic to a subscriber application that receives and processes
+	// messages published to the topic.
+	//
+	// By default, subscriptions expire after 31 days of inactivity.
+	//
+	// A topic can have multiple subscriptions, but a given subscription belongs to a single topic.
+	GenerateSubscriptionName SubscriptionNameFn
+
 	// ProjectID is the Google Cloud Engine project ID.
 	ProjectID string
 
 	// If false (default), `Subscriber` tries to create a subscription if there is none with the requested name.
 	// Otherwise, trying to use non-existent subscription results in `ErrSubscriptionDoesNotExist`.
 	DoNotCreateSubscriptionIfMissing bool
+
 	// If false (default), `Subscriber` tries to create a topic if there is none with the requested name
 	// and it is trying to create a new subscription with this topic name.
 	// Otherwise, trying to create a subscription on non-existent topic results in `ErrTopicDoesNotExist`.
@@ -70,21 +78,21 @@ type SubscriberConfig struct {
 
 type SubscriptionNameFn func(topic string) string
 
-// DefaultSubscriptionName uses the topic name as the subscription name.
-func DefaultSubscriptionName(topic string) string {
+// TopicSubscriptionName uses the topic name as the subscription name.
+func TopicSubscriptionName(topic string) string {
 	return topic
 }
 
-// DefaultSubscriptionNameWithSuffix uses the topic name with a chosen suffix as the subscription name.
-func DefaultSubscriptionNameWithSuffix(suffix string) SubscriptionNameFn {
+// TopicSubscriptionNameWithSuffix uses the topic name with a chosen suffix as the subscription name.
+func TopicSubscriptionNameWithSuffix(suffix string) SubscriptionNameFn {
 	return func(topic string) string {
 		return topic + suffix
 	}
 }
 
 func (c *SubscriberConfig) setDefaults() {
-	if c.SubscriptionName == nil {
-		c.SubscriptionName = DefaultSubscriptionName
+	if c.GenerateSubscriptionName == nil {
+		c.GenerateSubscriptionName = TopicSubscriptionName
 	}
 	if c.Unmarshaler == nil {
 		c.Unmarshaler = DefaultMarshalerUnmarshaler{}
@@ -124,7 +132,7 @@ func NewSubscriber(
 // In Google Cloud Pub/Sub, it is impossible to subscribe directly to a topic. Instead, a *subscription* is used.
 // Each subscription has one topic, but there may be multiple subscriptions to one topic (with different names).
 //
-// The `topic` argument is transformed into subscription name with the configured `SubscriptionName` function.
+// The `topic` argument is transformed into subscription name with the configured `GenerateSubscriptionName` function.
 // By default, if the subscription or topic don't exist, the are created. This behavior may be changed in the config.
 //
 // Be aware that in Google Cloud Pub/Sub, only messages sent after the subscription was created can be consumed.
@@ -136,7 +144,7 @@ func (s *Subscriber) Subscribe(topic string) (chan *message.Message, error) {
 	}
 
 	ctx, cancel := context.WithCancel(s.ctx)
-	subscriptionName := s.config.SubscriptionName(topic)
+	subscriptionName := s.config.GenerateSubscriptionName(topic)
 
 	logFields := watermill.LogFields{
 		"provider":          ProviderName,

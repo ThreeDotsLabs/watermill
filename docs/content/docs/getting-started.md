@@ -32,7 +32,7 @@ Watermill is supporting multiple [publishers and subscribers implementations]({{
 
 Let's start with subscribing for messages.
 
-{{% tabs id="subscribing" tabs="go-channel,kafka,nats-streaming" labels="Go Channel,Kafka,NATS Streaming" %}}
+{{% tabs id="subscribing" tabs="go-channel,kafka,nats-streaming,gcloud" labels="Go Channel,Kafka,NATS Streaming,Google Cloud Pub/Sub" %}}
 
 {{% tabs-tab id="go-channel"%}}
 {{% load-snippet-partial file="content/docs/getting-started/go-channel/main.go" first_line_contains="import (" last_line_contains="process(messages)" %}}
@@ -88,11 +88,36 @@ More detailed explanation of how it is running, and how to add live reload you c
 {{% load-snippet-partial file="content/docs/getting-started/nats-streaming/main.go" first_line_contains="func process" %}}
 {{% /tabs-tab %}}
 
+
+{{% tabs-tab id="gcloud"%}}
+
+{{< collapse id="running_gcloud" >}}
+
+{{< collapse-toggle box_id="gcloud-streaming-docker" >}}
+Running in Docker
+{{% /collapse-toggle %}}
+{{% collapse-box id="gcloud-streaming-docker" %}}
+You can run Google Cloud Pub/Sub emulator locally for development.
+
+{{% load-snippet file="content/docs/getting-started/googlecloud/docker-compose.yml" type="yaml" %}}
+
+The source should go to `main.go`.
+
+To run, please execute `docker-compose up`.
+
+More detailed explanation of how it is running, and how to add live reload you can find in [our [...] article](todo).
+{{% /collapse-box %}}
+{{< /collapse >}}
+
+{{% load-snippet-partial file="content/docs/getting-started/googlecloud/main.go" first_line_contains="import (" last_line_contains="process(messages)" %}}
+{{% load-snippet-partial file="content/docs/getting-started/googlecloud/main.go" first_line_contains="func process" %}}
+{{% /tabs-tab %}}
+
 {{% /tabs %}}
 
 ### Publishing messages
 
-{{% tabs id="publishing" tabs="go-channel,kafka,nats-streaming" labels="Go Channel,Kafka,NATS Streaming" %}}
+{{% tabs id="publishing" tabs="go-channel,kafka,nats-streaming,gcloud" labels="Go Channel,Kafka,NATS Streaming,Google Cloud Pub/Sub" %}}
 
 {{% tabs-tab id="go-channel"%}}
 {{% load-snippet-partial file="content/docs/getting-started/go-channel/main.go" first_line_contains="go process(messages)" last_line_contains="publisher.Publish" padding_after="4" %}}
@@ -104,6 +129,10 @@ More detailed explanation of how it is running, and how to add live reload you c
 
 {{% tabs-tab id="nats-streaming" %}}
 {{% load-snippet-partial file="content/docs/getting-started/nats-streaming/main.go" first_line_contains="go process(messages)" last_line_contains="publisher.Publish" padding_after="4" %}}
+{{% /tabs-tab %}}
+
+{{% tabs-tab id="gcloud" %}}
+{{% load-snippet-partial file="content/docs/getting-started/googlecloud/main.go" first_line_contains="go process(messages)" last_line_contains="publisher.Publish" padding_after="4" %}}
 {{% /tabs-tab %}}
 
 {{% /tabs %}}
