@@ -93,7 +93,7 @@ func (c SubscriberConfig) Validate() error {
 
 // Subscribe subscribers for messages in Kafka.
 //
-// There are multiple subscribers spawned.
+// There are multiple subscribers spawned
 func (s *Subscriber) Subscribe(topic string) (chan *message.Message, error) {
 	if s.closed {
 		return nil, errors.New("subscriber closed")
@@ -186,7 +186,7 @@ func (s *Subscriber) consumeMessages(
 
 	go func() {
 		<-consumeMessagesClosed
-		if err = client.Close(); err != nil {
+		if err := client.Close(); err != nil {
 			s.logger.Error("Cannot close client", err, logFields)
 		}
 	}()
@@ -229,7 +229,7 @@ func (s *Subscriber) consumeGroupMessages(
 			s.logger.Error("Group consume error", err, logFields)
 		}
 
-		if err = group.Close(); err != nil {
+		if err := group.Close(); err != nil {
 			s.logger.Error("Cannot close group client", err, logFields)
 		}
 
@@ -263,7 +263,7 @@ func (s *Subscriber) consumeWithoutConsumerGroups(
 
 		partitionConsumer, err := consumer.ConsumePartition(topic, partition, s.saramaConfig.Consumer.Offsets.Initial)
 		if err != nil {
-			if err = client.Close(); err != nil && err != sarama.ErrClosedClient {
+			if err := client.Close(); err != nil && err != sarama.ErrClosedClient {
 				s.logger.Error("Cannot close client", err, logFields)
 			}
 			return nil, errors.Wrap(err, "failed to start consumer for partition")
