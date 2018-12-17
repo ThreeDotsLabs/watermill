@@ -550,13 +550,13 @@ func topicTest(t *testing.T, pubSub message.PubSub) {
 		close(messagesSent)
 	}()
 
-	<-messagesSent
-
 	messagesConsumedTopic1, received := subscriber.BulkRead(messagesTopic1, 1, defaultTimeout)
 	require.True(t, received, "no messages received in topic %s", topic1)
 
 	messagesConsumedTopic2, received := subscriber.BulkRead(messagesTopic2, 1, defaultTimeout)
 	require.True(t, received, "no messages received in topic %s", topic2)
+
+	<-messagesSent
 
 	assert.Equal(t, messagesConsumedTopic1.IDs()[0], topic1Msg.UUID)
 	assert.Equal(t, messagesConsumedTopic2.IDs()[0], topic2Msg.UUID)
