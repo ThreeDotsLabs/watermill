@@ -13,6 +13,8 @@ implementations like Kafka or RabbitMQ, but also HTTP or MySQL binlog if that fi
 
 Documentation: https://watermill.io/
 
+Getting started guide: https://watermill.io/docs/getting-started/
+
 ## Background
 
 Building distributed and scalable services is rarely as easy as some may suggest. There is a
@@ -58,30 +60,9 @@ type Subscriber interface {
 }
 ```
 
-### [Go channel Pub/Sub](https://github.com/ThreeDotsLabs/watermill/tree/master/message/infrastructure/gochannel)
-
-Uses go channels for communication within the same process.
-
-### [Kafka Pub/Sub](https://github.com/ThreeDotsLabs/watermill/tree/master/message/infrastructure/kafka)
-
-Uses Apache Kafka as the broker: Publishes messages to chosen topics and subscribes on topics for incoming messages.
-
-This implementation uses [confluent-kafka-go](https://github.com/confluentinc/confluent-kafka-go) as Kafka
-client, which depends on [librdkafka](https://github.com/edenhill/librdkafka), so you will need it installed.
-Version 0.11.6 is recommended.
-
-For local development, you can use [golang-librdkafka](https://hub.docker.com/r/threedotslabs/golang-librdkafka/) docker image.
-
-### [HTTP subscriber](https://github.com/ThreeDotsLabs/watermill/tree/master/message/infrastructure/http)
-
-Starts an HTTP server that listens for messages in a REST fashion.
-
-## Middlewares
-
-You can find all built-in middlewares in [`message/router/middleware`](message/router/middleware).
+All Pub/Subs implementation can be found in the [documentation](https://watermill.io/docs/pub-sub-implementations/).
 
 ## Examples
-
 * [Your first app](_examples/your-first-app) - start here!
 * [Simple application with publisher and subscriber](_examples/simple-app)
 * [HTTP to Kafka](_examples/http-to-kafka)
@@ -93,6 +74,8 @@ please see [open issues](https://github.com/ThreeDotsLabs/watermill/issues?utf8=
 and submit your pull request via GitHub.
 
 ## Support
+
+If you didn't found answer to your question in [the documentation](https://watermill.io/), feel free to ask!
 
 Please join us on the `#watermill` channel on the [Gophers slack](https://gophers.slack.com/): You can get invite [here](https://gophersinvite.herokuapp.com/).
 

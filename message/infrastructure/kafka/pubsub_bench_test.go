@@ -3,6 +3,8 @@ package kafka_test
 import (
 	"testing"
 
+	"github.com/Shopify/sarama"
+
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure"
@@ -12,21 +14,22 @@ import (
 func BenchmarkSubscriber(b *testing.B) {
 	infrastructure.BenchSubscriber(b, func(n int) message.PubSub {
 		logger := watermill.NopLogger{}
-		marshaler := kafka.DefaultMarshaler{}
 
-		publisher, err := kafka.NewPublisher(brokers, marshaler, nil)
+		publisher, err := kafka.NewPublisher(brokers, kafka.DefaultMarshaler{}, nil, logger)
 		if err != nil {
 			panic(err)
 		}
 
-		subscriber, err := kafka.NewConfluentSubscriber(
+		saramaConfig := kafka.DefaultSaramaSubscriberConfig()
+		saramaConfig.Consumer.Offsets.Initial = sarama.OffsetOldest
+
+		subscriber, err := kafka.NewSubscriber(
 			kafka.SubscriberConfig{
-				Brokers:         brokers,
-				ConsumerGroup:   "test",
-				AutoOffsetReset: "earliest",
-				ConsumersCount:  8,
+				Brokers:       brokers,
+				ConsumerGroup: "test",
 			},
-			marshaler,
+			saramaConfig,
+			kafka.DefaultMarshaler{},
 			logger,
 		)
 		if err != nil {

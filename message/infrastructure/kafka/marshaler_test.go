@@ -3,6 +3,8 @@ package kafka_test
 import (
 	"testing"
 
+	"github.com/Shopify/sarama"
+
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/kafka"
 
 	"github.com/ThreeDotsLabs/watermill/message"
@@ -11,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestJson(t *testing.T) {
+func TestDefaultMarshaler_MarshalUnmarshal(t *testing.T) {
 	m := kafka.DefaultMarshaler{}
 
 	msg := message.NewMessage(uuid.NewV4().String(), []byte("payload"))
@@ -20,15 +22,42 @@ func TestJson(t *testing.T) {
 	marshaled, err := m.Marshal("topic", msg)
 	require.NoError(t, err)
 
-	unmarshaledMsg, err := m.Unmarshal(marshaled)
+	unmarshaledMsg, err := m.Unmarshal(producerToConsumerMessage(marshaled))
 	require.NoError(t, err)
 
-	assert.EqualValues(t, msg.UUID, unmarshaledMsg.UUID)
-	assert.EqualValues(t, msg.Metadata, unmarshaledMsg.Metadata)
-	assert.EqualValues(t, msg.Payload, unmarshaledMsg.Payload)
+	assert.True(t, msg.Equals(unmarshaledMsg))
 }
 
-func TestJsonWithPartitioning(t *testing.T) {
+func BenchmarkDefaultMarshaler_Marshal(b *testing.B) {
+	m := kafka.DefaultMarshaler{}
+
+	msg := message.NewMessage(uuid.NewV4().String(), []byte("payload"))
+	msg.Metadata.Set("foo", "bar")
+
+	for i := 0; i < b.N; i++ {
+		m.Marshal("foo", msg)
+	}
+}
+
+func BenchmarkDefaultMarshaler_Unmarshal(b *testing.B) {
+	m := kafka.DefaultMarshaler{}
+
+	msg := message.NewMessage(uuid.NewV4().String(), []byte("payload"))
+	msg.Metadata.Set("foo", "bar")
+
+	marshaled, err := m.Marshal("foo", msg)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	consumedMsg := producerToConsumerMessage(marshaled)
+
+	for i := 0; i < b.N; i++ {
+		m.Unmarshal(consumedMsg)
+	}
+}
+
+func TestWithPartitioningMarshaler_MarshalUnmarshal(t *testing.T) {
 	m := kafka.NewWithPartitioningMarshaler(func(topic string, msg *message.Message) (string, error) {
 		return msg.Metadata.Get("partition"), nil
 	})
@@ -40,14 +69,51 @@ func TestJsonWithPartitioning(t *testing.T) {
 	producerMsg, err := m.Marshal("topic", msg)
 	require.NoError(t, err)
 
-	unmarshaledMsg, err := m.Unmarshal(producerMsg)
+	unmarshaledMsg, err := m.Unmarshal(producerToConsumerMessage(producerMsg))
 	require.NoError(t, err)
 
-	assert.EqualValues(t, msg.UUID, unmarshaledMsg.UUID)
-	assert.EqualValues(t, msg.Metadata, unmarshaledMsg.Metadata)
-
-	assert.Equal(t, msg.Payload, unmarshaledMsg.Payload)
+	assert.True(t, msg.Equals(unmarshaledMsg))
 
 	assert.NoError(t, err)
-	assert.Equal(t, string(producerMsg.Key), partitionKey)
+
+	producerKey, err := producerMsg.Key.Encode()
+	require.NoError(t, err)
+
+	assert.Equal(t, string(producerKey), partitionKey)
+}
+
+func producerToConsumerMessage(producerMessage *sarama.ProducerMessage) *sarama.ConsumerMessage {
+	var key []byte
+
+	if producerMessage.Key != nil {
+		var err error
+		key, err = producerMessage.Key.Encode()
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	var value []byte
+	if producerMessage.Value != nil {
+		var err error
+		value, err = producerMessage.Value.Encode()
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	var headers []*sarama.RecordHeader
+	for i := range producerMessage.Headers {
+		headers = append(headers, &producerMessage.Headers[i])
+	}
+
+	return &sarama.ConsumerMessage{
+		Key:       key,
+		Value:     value,
+		Topic:     producerMessage.Topic,
+		Partition: producerMessage.Partition,
+		Offset:    producerMessage.Offset,
+		Timestamp: producerMessage.Timestamp,
+		Headers:   headers,
+	}
 }

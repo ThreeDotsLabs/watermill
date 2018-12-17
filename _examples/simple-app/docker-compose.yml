@@ -1,7 +1,7 @@
 version: '3'
 services:
   publishing:
-    image: threedotslabs/golang-librdkafka:1.11.2-stretch
+    image: golang:1.11
     restart: on-failure
     depends_on:
     - kafka
@@ -11,7 +11,7 @@ services:
     command: go run main.go
 
   subscribing:
-    image: threedotslabs/golang-librdkafka:1.11.2-stretch
+    image: golang:1.11
     restart: on-failure
     depends_on:
       - kafka

@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"sync"
 
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+
 	"cloud.google.com/go/pubsub"
 	"github.com/pkg/errors"
 	"google.golang.org/api/option"
@@ -281,17 +284,29 @@ func (s *Subscriber) subscription(ctx context.Context, subscriptionName, topicNa
 
 	if !exists {
 		t, err = s.client.CreateTopic(ctx, topicName)
-		if err != nil {
+
+		if grpc.Code(err) == codes.AlreadyExists {
+			s.logger.Debug("Topic already exists", watermill.LogFields{"topic": topicName})
+			t = s.client.Topic(topicName)
+		} else if err != nil {
 			return nil, errors.Wrap(err, "could not create topic for subscription")
 		}
 	}
 
 	config := s.config.SubscriptionConfig
 	config.Topic = t
+
 	sub, err = s.client.CreateSubscription(ctx, subscriptionName, config)
+	if grpc.Code(err) == codes.AlreadyExists {
+		s.logger.Debug("Subscription already exists", watermill.LogFields{"subscription": subscriptionName})
+		sub = s.client.Subscription(subscriptionName)
+	} else if err != nil {
+		return nil, errors.Wrap(err, "cannot create subscription")
+	}
+
 	sub.ReceiveSettings = s.config.ReceiveSettings
 
-	return sub, err
+	return sub, nil
 }
 
 func (s Subscriber) existingSubscription(ctx context.Context, sub *pubsub.Subscription, topic string) (*pubsub.Subscription, error) {

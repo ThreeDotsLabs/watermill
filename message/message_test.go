@@ -10,6 +10,52 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
+func TestMessage_Equals(t *testing.T) {
+	withMetadata := func(msg *message.Message, metadata message.Metadata) *message.Message {
+		msg.Metadata = metadata
+		return msg
+	}
+
+	testCases := []struct {
+		Name   string
+		Msg1   *message.Message
+		Msg2   *message.Message
+		Equals bool
+	}{
+		{
+			Name:   "equal",
+			Msg1:   message.NewMessage("1", []byte("foo")),
+			Msg2:   message.NewMessage("1", []byte("foo")),
+			Equals: true,
+		},
+		{
+			Name:   "different_uuid",
+			Msg1:   message.NewMessage("1", []byte("foo")),
+			Msg2:   message.NewMessage("2", []byte("foo")),
+			Equals: false,
+		},
+		{
+			Name:   "different_payload",
+			Msg1:   message.NewMessage("1", []byte("foo")),
+			Msg2:   message.NewMessage("1", []byte("bar")),
+			Equals: false,
+		},
+		{
+			Name:   "different_metadata",
+			Msg1:   withMetadata(message.NewMessage("1", []byte("foo")), map[string]string{"foo": "1"}),
+			Msg2:   withMetadata(message.NewMessage("1", []byte("foo")), map[string]string{"foo": "2"}),
+			Equals: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.Name, func(t *testing.T) {
+			assert.Equal(t, tc.Equals, tc.Msg1.Equals(tc.Msg2))
+			assert.Equal(t, tc.Equals, tc.Msg2.Equals(tc.Msg1))
+		})
+	}
+}
+
 func TestMessage_Ack(t *testing.T) {
 	msg := &message.Message{}
 	require.NoError(t, msg.Ack())
@@ -54,6 +100,17 @@ func TestMessage_Nack_already_Ack(t *testing.T) {
 	require.NoError(t, msg.Ack())
 
 	assert.Equal(t, message.ErrAlreadyAcked, msg.Nack())
+}
+
+func TestMessage_Copy(t *testing.T) {
+	msg := message.NewMessage("1", []byte("foo"))
+	msgCopy := msg.Copy()
+
+	require.NoError(t, msg.Ack())
+
+	assertAcked(t, msg)
+	assertNoAck(t, msgCopy)
+	assert.True(t, msg.Equals(msgCopy))
 }
 
 func assertAcked(t *testing.T, msg *message.Message) {

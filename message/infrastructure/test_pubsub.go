@@ -3,6 +3,7 @@ package infrastructure
 import (
 	"fmt"
 	"log"
+	"sync"
 	"testing"
 	"time"
 
@@ -22,10 +23,6 @@ type Features struct {
 	ExactlyOnceDelivery bool
 	GuaranteedOrder     bool
 	Persistent          bool
-
-	// RequireSingleInstance should be true,
-	// if subscriber doesn't use external storage and to work publisher and subscriber needs to be one instance.
-	RequireSingleInstance bool
 }
 
 type PubSubConstructor func(t *testing.T) message.PubSub
@@ -68,6 +65,15 @@ func TestPubSub(
 		continueAfterCloseTest(t, pubSubConstructor)
 	})
 
+	t.Run("concurrentClose", func(t *testing.T) {
+		if features.ExactlyOnceDelivery {
+			t.Skip("ExactlyOnceDelivery test is not supported yet")
+		}
+
+		t.Parallel()
+		concurrentClose(t, pubSubConstructor)
+	})
+
 	t.Run("continueAfterErrors", func(t *testing.T) {
 		if !features.Persistent {
 			t.Skip("continueAfterErrors test is not supported for non persistent pub/sub")
@@ -98,19 +104,9 @@ func TestPubSub(
 	t.Run("publisherCloseTest", func(t *testing.T) {
 		t.Parallel()
 
-		var publisher message.Publisher
-		var subscriber message.Subscriber
+		pubsub := pubSubConstructor(t)
 
-		if features.RequireSingleInstance {
-			pubsub := pubSubConstructor(t)
-			publisher = pubsub
-			subscriber = pubsub
-		} else {
-			publisher = pubSubConstructor(t)
-			subscriber = pubSubConstructor(t)
-		}
-
-		publisherCloseTest(t, publisher, subscriber)
+		publisherCloseTest(t, pubsub, pubsub)
 	})
 
 	t.Run("topicTest", func(t *testing.T) {
@@ -162,10 +158,10 @@ func publishSubscribeTest(t *testing.T, pubSub message.PubSub) {
 
 	go func() {
 		err := pubSub.Publish(topicName, messagesToPublish...)
-		require.NoError(t, err)
+		require.NoError(t, err, "cannot publish message")
 	}()
 
-	receivedMessages, all := subscriber.BulkRead(messages, len(messagesToPublish), defaultTimeout)
+	receivedMessages, all := subscriber.BulkRead(messages, len(messagesToPublish), defaultTimeout*3)
 	assert.True(t, all)
 
 	tests.AssertAllMessagesReceived(t, messagesToPublish, receivedMessages)
@@ -393,6 +389,40 @@ func continueAfterCloseTest(t *testing.T, createPubSub PubSubConstructor) {
 	fmt.Println("extra:", tests.MissingMessages(messagesToPublish, receivedMessages))
 }
 
+func concurrentClose(t *testing.T, createPubSub PubSubConstructor) {
+	topicName := testTopicName()
+	totalMessagesCount := 50
+
+	closeWg := sync.WaitGroup{}
+	closeWg.Add(10)
+
+	for i := 0; i < 10; i++ {
+		go func() {
+			defer closeWg.Done()
+
+			pubSub := createPubSub(t)
+			_, err := pubSub.Subscribe(topicName)
+			require.NoError(t, err)
+			closePubSub(t, pubSub)
+		}()
+	}
+
+	closeWg.Wait()
+
+	pubSub := createPubSub(t)
+	expectedMessages := addSimpleMessagesMessages(t, totalMessagesCount, pubSub, topicName)
+	closePubSub(t, pubSub)
+
+	pubSub = createPubSub(t)
+	messages, err := pubSub.Subscribe(topicName)
+	require.NoError(t, err)
+
+	receivedMessages, all := subscriber.BulkRead(messages, len(expectedMessages), defaultTimeout*3)
+	assert.True(t, all)
+
+	tests.AssertAllMessagesReceived(t, expectedMessages, receivedMessages)
+}
+
 func continueAfterErrors(t *testing.T, createPubSub PubSubConstructor) {
 	topicName := testTopicName()
 
@@ -436,7 +466,7 @@ func continueAfterErrors(t *testing.T, createPubSub PubSubConstructor) {
 	messages, err := pubSub.Subscribe(topicName)
 	require.NoError(t, err)
 
-	// no message should be consumed
+	// only nacks was sent, so all messages should be consumed
 	receivedMessages, all := subscriber.BulkRead(messages, len(messagesToPublish), defaultTimeout)
 	require.True(t, all)
 
@@ -450,7 +480,7 @@ func consumerGroupsTest(t *testing.T, pubSubConstructor ConsumerGroupPubSubConst
 	group1 := generateConsumerGroup(t, pubSubConstructor, topicName)
 	group2 := generateConsumerGroup(t, pubSubConstructor, topicName)
 
-	publisher := pubSubConstructor(t, "test")
+	publisher := pubSubConstructor(t, "test_"+uuid.NewV4().String())
 	messagesToPublish := addSimpleMessagesMessages(t, totalMessagesCount, publisher, topicName)
 	closePubSub(t, publisher)
 
@@ -468,9 +498,6 @@ func consumerGroupsTest(t *testing.T, pubSubConstructor ConsumerGroupPubSubConst
 }
 
 func publisherCloseTest(t *testing.T, pub message.Publisher, sub message.Subscriber) {
-	defer pub.Close()
-	defer sub.Close()
-
 	topicName := testTopicName()
 
 	messagesCount := 10000
@@ -480,17 +507,25 @@ func publisherCloseTest(t *testing.T, pub message.Publisher, sub message.Subscri
 
 	var producedMessages message.Messages
 	allMessagesProduced := make(chan struct{})
+
 	go func() {
 		producedMessages = addSimpleMessagesMessages(t, messagesCount, pub, topicName)
-		require.NoError(t, pub.Close())
-
-		allMessagesProduced <- struct{}{}
+		close(allMessagesProduced)
 	}()
 
 	receivedMessages, _ := subscriber.BulkRead(messages, messagesCount, defaultTimeout*3)
 
-	<-allMessagesProduced
+	select {
+	case <-allMessagesProduced:
+		// ok
+	case <-time.After(time.Second * 30):
+		t.Fatal("messages send timeouted")
+	}
+
 	tests.AssertAllMessagesReceived(t, producedMessages, receivedMessages)
+
+	require.NoError(t, pub.Close())
+	require.NoError(t, sub.Close())
 }
 
 func topicTest(t *testing.T, pubSub message.PubSub) {
@@ -508,10 +543,14 @@ func topicTest(t *testing.T, pubSub message.PubSub) {
 	topic1Msg := message.NewMessage(uuid.NewV4().String(), nil)
 	topic2Msg := message.NewMessage(uuid.NewV4().String(), nil)
 
+	messagesSent := make(chan struct{})
 	go func() {
 		require.NoError(t, pubSub.Publish(topic1, topic1Msg))
 		require.NoError(t, pubSub.Publish(topic2, topic2Msg))
+		close(messagesSent)
 	}()
+
+	<-messagesSent
 
 	messagesConsumedTopic1, received := subscriber.BulkRead(messagesTopic1, 1, defaultTimeout)
 	require.True(t, received, "no messages received in topic %s", topic1)
@@ -574,7 +613,7 @@ func addSimpleMessagesMessages(t *testing.T, messagesCount int, publisher messag
 		messagesToPublish = append(messagesToPublish, msg)
 
 		err := publisher.Publish(topicName, msg)
-		require.NoError(t, err)
+		require.NoError(t, err, "cannot publish messages")
 	}
 
 	return messagesToPublish

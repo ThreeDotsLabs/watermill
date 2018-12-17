@@ -88,7 +88,7 @@ func (g *GoChannel) sendMessage(topic string, message *message.Message) error {
 					g.logger.Trace("nack received, resending message", subscriberLogFields)
 
 					// message have nack already sent, we need fresh message
-					message = resetMessage(message)
+					message = message.Copy()
 
 					continue SendToSubscriber
 				}
@@ -138,11 +138,4 @@ func (g *GoChannel) Close() error {
 	}
 
 	return nil
-}
-
-func resetMessage(oldMsg *message.Message) *message.Message {
-	m := message.NewMessage(oldMsg.UUID, oldMsg.Payload)
-	m.Metadata = oldMsg.Metadata
-
-	return m
 }

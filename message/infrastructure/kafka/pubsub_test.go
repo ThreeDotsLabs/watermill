@@ -3,6 +3,8 @@ package kafka_test
 import (
 	"testing"
 
+	"github.com/Shopify/sarama"
+
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure"
@@ -13,18 +15,20 @@ import (
 var brokers = []string{"localhost:9092"}
 
 func newPubSub(t *testing.T, marshaler kafka.MarshalerUnmarshaler, consumerGroup string) message.PubSub {
-	publisher, err := kafka.NewPublisher(brokers, marshaler, nil)
-	require.NoError(t, err)
-
 	logger := watermill.NewStdLogger(true, true)
 
-	subscriber, err := kafka.NewConfluentSubscriber(
+	publisher, err := kafka.NewPublisher(brokers, marshaler, nil, logger)
+	require.NoError(t, err)
+
+	saramaConfig := kafka.DefaultSaramaSubscriberConfig()
+	saramaConfig.Consumer.Offsets.Initial = sarama.OffsetOldest
+
+	subscriber, err := kafka.NewSubscriber(
 		kafka.SubscriberConfig{
-			Brokers:         brokers,
-			ConsumerGroup:   consumerGroup,
-			AutoOffsetReset: "earliest",
-			ConsumersCount:  8,
+			Brokers:       brokers,
+			ConsumerGroup: consumerGroup,
 		},
+		saramaConfig,
 		marshaler,
 		logger,
 	)
@@ -54,13 +58,15 @@ func createNoGroupSubscriberConstructor(t *testing.T) message.Subscriber {
 
 	marshaler := kafka.DefaultMarshaler{}
 
-	sub, err := kafka.NewConfluentSubscriber(
+	saramaConfig := kafka.DefaultSaramaSubscriberConfig()
+	saramaConfig.Consumer.Offsets.Initial = sarama.OffsetOldest
+
+	sub, err := kafka.NewSubscriber(
 		kafka.SubscriberConfig{
-			Brokers:         brokers,
-			NoConsumerGroup: true,
-			AutoOffsetReset: "earliest",
-			ConsumersCount:  1,
+			Brokers:       brokers,
+			ConsumerGroup: "",
 		},
+		saramaConfig,
 		marshaler,
 		logger,
 	)
@@ -89,7 +95,7 @@ func TestPublishSubscribe_ordered(t *testing.T) {
 		infrastructure.Features{
 			ConsumerGroups:      true,
 			ExactlyOnceDelivery: false,
-			GuaranteedOrder:     false,
+			GuaranteedOrder:     true,
 			Persistent:          true,
 		},
 		createPartitionedPubSub,

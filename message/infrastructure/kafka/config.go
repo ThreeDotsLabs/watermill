@@ -1,16 +1,22 @@
 package kafka
 
-import (
-	"github.com/confluentinc/confluent-kafka-go/kafka"
-	"github.com/pkg/errors"
-)
+import "github.com/Shopify/sarama"
 
-func mergeConfluentConfigs(baseConfig *kafka.ConfigMap, valuesToSet kafka.ConfigMap) error {
-	for key, value := range valuesToSet {
-		if err := baseConfig.SetKey(key, value); err != nil {
-			return errors.Wrapf(err, "cannot overwrite config value for %s", key)
-		}
-	}
+// DefaultSaramaSubscriberConfig creates default Sarama config used by Watermill.
+//
+// Custom config can be passed to NewSubscriber and NewPublisher.
+//
+//		saramaConfig := DefaultSaramaSubscriberConfig()
+//		saramaConfig.Consumer.Offsets.Initial = sarama.OffsetOldest
+//
+//		subscriber, err := NewSubscriber(watermillConfig, saramaConfig, unmarshaler, logger)
+//		// ...
+//
+func DefaultSaramaSubscriberConfig() *sarama.Config {
+	config := sarama.NewConfig()
+	config.Version = sarama.V1_0_0_0
+	config.Consumer.Return.Errors = true
+	config.ClientID = "watermill"
 
-	return nil
+	return config
 }

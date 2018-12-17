@@ -1,32 +1,59 @@
 package kafka
 
 import (
-	"fmt"
-	"runtime"
-	"strings"
+	"context"
 	"sync"
+	"time"
+
+	"github.com/renstrom/shortuuid"
+
+	"github.com/Shopify/sarama"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
 
-	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/pkg/errors"
-	uuid "github.com/satori/go.uuid"
 )
 
-type ConfluentConsumerConstructor func(config SubscriberConfig) (*kafka.Consumer, error)
+type Subscriber struct {
+	config       SubscriberConfig
+	saramaConfig *sarama.Config
 
-type confluentSubscriber struct {
-	config SubscriberConfig
+	unmarshaler Unmarshaler
+	logger      watermill.LoggerAdapter
 
-	unmarshaler         Unmarshaler
-	consumerConstructor ConfluentConsumerConstructor
-	logger              watermill.LoggerAdapter
-
-	closing          chan struct{}
-	allSubscribersWg *sync.WaitGroup
+	closing       chan struct{}
+	subscribersWg sync.WaitGroup
 
 	closed bool
+}
+
+// NewSubscriber creates a new Kafka Subscriber.
+func NewSubscriber(
+	config SubscriberConfig,
+	overwriteSaramaConfig *sarama.Config,
+	unmarshaler Unmarshaler,
+	logger watermill.LoggerAdapter,
+) (message.Subscriber, error) {
+	config.setDefaults()
+
+	if err := config.Validate(); err != nil {
+		return nil, err
+	}
+
+	if overwriteSaramaConfig == nil {
+		overwriteSaramaConfig = DefaultSaramaSubscriberConfig()
+	}
+
+	return &Subscriber{
+		config:       config,
+		saramaConfig: overwriteSaramaConfig,
+
+		unmarshaler: unmarshaler,
+		logger:      logger,
+
+		closing: make(chan struct{}),
+	}, nil
 }
 
 type SubscriberConfig struct {
@@ -34,30 +61,25 @@ type SubscriberConfig struct {
 	Brokers []string
 
 	// Kafka consumer group.
+	// When empty, all messages from all partitions will be returned.
 	ConsumerGroup string
-	// When we want to consume without consumer group, you should set it to true.
-	// In practice you will receive all messages sent to the topic.
-	NoConsumerGroup bool
 
-	// Action to take when there is no initial offset in offset store or the desired offset is out of range.
-	// Available options: smallest, earliest, beginning, largest, latest, end, error.
-	AutoOffsetReset string
+	// How long after Nack message should be redelivered.
+	NackResendSleep time.Duration
 
-	// How much consumers should be spawned.
-	// Every consumer will receive messages for their own partition so messages order will be preserved.
-	ConsumersCount int
-
-	// Passing librdkafka options.
-	// Available options: https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md
-	KafkaConfigOverwrite kafka.ConfigMap
+	// How long about unsuccessful reconnecting next reconnect will occur.
+	ReconnectRetrySleep time.Duration
 }
 
+// NoSleep can be set to SubscriberConfig.NackResendSleep and SubscriberConfig.ReconnectRetrySleep.
+const NoSleep time.Duration = -1
+
 func (c *SubscriberConfig) setDefaults() {
-	if c.ConsumersCount == 0 {
-		c.ConsumersCount = runtime.NumCPU()
+	if c.NackResendSleep == 0 {
+		c.NackResendSleep = time.Millisecond * 100
 	}
-	if c.AutoOffsetReset == "" {
-		c.AutoOffsetReset = "latest"
+	if c.ReconnectRetrySleep == 0 {
+		c.ReconnectRetrySleep = time.Second
 	}
 }
 
@@ -65,338 +87,350 @@ func (c SubscriberConfig) Validate() error {
 	if len(c.Brokers) == 0 {
 		return errors.New("missing brokers")
 	}
-	if c.ConsumersCount <= 0 {
-		return errors.Errorf("ConsumersCount must be greater than 0, have %d", c.ConsumersCount)
-	}
-	if c.ConsumerGroup == "" && !c.NoConsumerGroup {
-		return errors.New("NoConsumerGroup must be true or ConsumerGroup must be set")
-	}
 
 	return nil
 }
 
-func NewConfluentSubscriber(
-	config SubscriberConfig,
-	unmarshaler Unmarshaler,
-	logger watermill.LoggerAdapter,
-) (message.Subscriber, error) {
-	return NewCustomConfluentSubscriber(config, unmarshaler, DefaultConfluentConsumerConstructor, logger)
-}
-
-func NewCustomConfluentSubscriber(
-	config SubscriberConfig,
-	unmarshaler Unmarshaler,
-	consumerConstructor ConfluentConsumerConstructor,
-	logger watermill.LoggerAdapter,
-) (message.Subscriber, error) {
-	config.setDefaults()
-	if err := config.Validate(); err != nil {
-		return nil, errors.Wrap(err, "invalid config")
-	}
-
-	return &confluentSubscriber{
-		config:              config,
-		unmarshaler:         unmarshaler,
-		consumerConstructor: consumerConstructor,
-		logger:              logger,
-
-		closing:          make(chan struct{}, 1),
-		allSubscribersWg: &sync.WaitGroup{},
-	}, nil
-}
-
-func DefaultConfluentConsumerConstructor(config SubscriberConfig) (*kafka.Consumer, error) {
-	if err := config.Validate(); err != nil {
-		return nil, errors.Wrap(err, "invalid config")
-	}
-
-	kafkaConfig := &kafka.ConfigMap{
-		"bootstrap.servers": strings.Join(config.Brokers, ","),
-
-		"auto.offset.reset":    config.AutoOffsetReset,
-		"default.topic.config": kafka.ConfigMap{"auto.offset.reset": config.AutoOffsetReset},
-
-		"session.timeout.ms": 6000,
-
-		"debug": ",",
-	}
-
-	if !config.NoConsumerGroup {
-		kafkaConfig.SetKey("group.id", config.ConsumerGroup)
-		kafkaConfig.SetKey("enable.auto.commit", true)
-
-		// to achieve at-least-once delivery we store offsets after processing of the message
-		kafkaConfig.SetKey("enable.auto.offset.store", false)
-
-	} else {
-		// this group will be not committed, setting just for api requirements
-		kafkaConfig.SetKey("group.id", "no_group_"+uuid.NewV4().String())
-		kafkaConfig.SetKey("enable.auto.commit", false)
-	}
-
-	if err := mergeConfluentConfigs(kafkaConfig, config.KafkaConfigOverwrite); err != nil {
-		return nil, err
-	}
-
-	return kafka.NewConsumer(kafkaConfig)
-}
-
 // Subscribe subscribers for messages in Kafka.
 //
-// They are multiple subscribers spawned
-func (s *confluentSubscriber) Subscribe(topic string) (chan *message.Message, error) {
+// There are multiple subscribers spawned
+func (s *Subscriber) Subscribe(topic string) (chan *message.Message, error) {
 	if s.closed {
 		return nil, errors.New("subscriber closed")
 	}
 
+	s.subscribersWg.Add(1)
+
 	logFields := watermill.LogFields{
-		"provider":                ProviderName,
-		"topic":                   topic,
-		"kafka_subscribers_count": s.config.ConsumersCount,
-		"consumer_group":          s.config.ConsumerGroup,
+		"provider":       "kafka",
+		"topic":          topic,
+		"consumer_group": s.config.ConsumerGroup,
+		"subscribe_uuid": shortuuid.New(),
 	}
 	s.logger.Info("Subscribing to Kafka topic", logFields)
 
 	// we don't want to have buffered channel to not consume message from Kafka when consumer is not consuming
 	output := make(chan *message.Message, 0)
 
-	s.allSubscribersWg.Add(1)
-
-	subscribersWg := &sync.WaitGroup{}
-
-	for i := 0; i < s.config.ConsumersCount; i++ {
-		kafkaConsumer, err := s.createConsumer(topic)
-		if err != nil {
-			return nil, err
-		}
-
-		subscribersWg.Add(1)
-		go func(i int) {
-			(&consumer{
-				config:   s.config,
-				consumer: kafkaConsumer,
-				consumerLogFields: logFields.Add(watermill.LogFields{
-					"consumer_no": i,
-				}),
-				outputChannel: output,
-				unmarshaler:   s.unmarshaler,
-				closing:       s.closing,
-				logger:        s.logger,
-			}).consumeMessages()
-
-			subscribersWg.Done()
-		}(i)
+	consumeClosed, err := s.consumeMessages(topic, output, logFields)
+	if err != nil {
+		s.subscribersWg.Done()
+		return nil, err
 	}
 
 	go func() {
-		subscribersWg.Wait()
-		s.logger.Debug("Closing message consumer", logFields)
-
-		close(output)
-		s.allSubscribersWg.Done()
+		defer s.subscribersWg.Done()
+		s.handleReconnects(topic, output, consumeClosed, logFields)
 	}()
 
 	return output, nil
 }
 
-func (s *confluentSubscriber) createConsumer(topic string) (*kafka.Consumer, error) {
-	consumer, err := s.consumerConstructor(s.config)
-	if err != nil {
-		return nil, errors.Wrap(err, "cannot create consumer")
-	}
+func (s *Subscriber) handleReconnects(
+	topic string,
+	output chan *message.Message,
+	consumeClosed chan struct{},
+	logFields watermill.LogFields,
+) {
+	for {
+		// nil channel will cause deadlock
+		if consumeClosed != nil {
+			<-consumeClosed
+		}
 
-	if err := consumer.SubscribeTopics([]string{topic}, nil); err != nil {
-		return nil, errors.Wrapf(err, "cannot subscribe topic %s", topic)
-	}
+		s.logger.Info("consumeMessages stopped", logFields)
 
-	return consumer, nil
+		select {
+		// it's important to don't exit before consumeClosed,
+		// to not trigger s.subscribersWg.Done() before consumer is closed
+		case <-s.closing:
+			s.logger.Debug("Closing subscriber, no reconnect needed", logFields)
+			return
+		default:
+			// not closing
+		}
+
+		s.logger.Info("Reconnecting consumer", logFields)
+
+		var err error
+		consumeClosed, err = s.consumeMessages(topic, output, logFields)
+		if err != nil {
+			s.logger.Error("Cannot reconnect messages consumer", err, logFields)
+
+			if s.config.ReconnectRetrySleep != NoSleep {
+				time.Sleep(s.config.ReconnectRetrySleep)
+			}
+			continue
+		}
+	}
 }
 
-func (s *confluentSubscriber) Close() error {
+func (s *Subscriber) consumeMessages(
+	topic string,
+	output chan *message.Message,
+	logFields watermill.LogFields,
+) (consumeMessagesClosed chan struct{}, err error) {
+	s.logger.Info("Starting consuming", logFields)
+
+	// Start with a client
+	client, err := sarama.NewClient(s.config.Brokers, s.saramaConfig)
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot create new Sarama client")
+	}
+
+	if s.config.ConsumerGroup == "" {
+		consumeMessagesClosed, err = s.consumeWithoutConsumerGroups(client, topic, output, logFields)
+	} else {
+		consumeMessagesClosed, err = s.consumeGroupMessages(client, topic, output, logFields)
+	}
+
+	go func() {
+		<-consumeMessagesClosed
+		if err := client.Close(); err != nil {
+			s.logger.Error("Cannot close client", err, logFields)
+		}
+	}()
+
+	return consumeMessagesClosed, err
+}
+
+func (s *Subscriber) consumeGroupMessages(
+	client sarama.Client,
+	topic string,
+	output chan *message.Message,
+	logFields watermill.LogFields,
+) (chan struct{}, error) {
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		<-s.closing
+		cancel()
+	}()
+
+	// Start a new consumer group
+	group, err := sarama.NewConsumerGroupFromClient(s.config.ConsumerGroup, client)
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot create consumer group client")
+	}
+	go func() {
+		for err := range group.Errors() {
+			s.logger.Error("Sarama internal error", err, logFields)
+		}
+	}()
+
+	handler := consumerGroupHandler{
+		messageHandler:   s.createMessagesHandler(output),
+		closing:          s.closing,
+		messageLogFields: logFields,
+	}
+
+	closed := make(chan struct{})
+	go func() {
+		if err := group.Consume(ctx, []string{topic}, handler); err != nil && err != sarama.ErrUnknown {
+			s.logger.Error("Group consume error", err, logFields)
+		}
+
+		if err := group.Close(); err != nil {
+			s.logger.Error("Cannot close group client", err, logFields)
+		}
+
+		s.logger.Info("Consuming done", logFields)
+		close(closed)
+	}()
+
+	return closed, nil
+}
+
+func (s *Subscriber) consumeWithoutConsumerGroups(
+	client sarama.Client,
+	topic string,
+	output chan *message.Message,
+	logFields watermill.LogFields,
+) (chan struct{}, error) {
+	consumer, err := sarama.NewConsumerFromClient(client)
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot create client")
+	}
+
+	partitions, err := consumer.Partitions(topic)
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot get partitions")
+	}
+
+	partitionConsumersWg := &sync.WaitGroup{}
+
+	for _, partition := range partitions {
+		partitionConsumersWg.Add(1)
+
+		partitionConsumer, err := consumer.ConsumePartition(topic, partition, s.saramaConfig.Consumer.Offsets.Initial)
+		if err != nil {
+			if err := client.Close(); err != nil && err != sarama.ErrClosedClient {
+				s.logger.Error("Cannot close client", err, logFields)
+			}
+			return nil, errors.Wrap(err, "failed to start consumer for partition")
+		}
+
+		messageHandler := s.createMessagesHandler(output)
+
+		go s.consumePartition(partitionConsumer, messageHandler, partitionConsumersWg, logFields)
+	}
+
+	closed := make(chan struct{})
+	go func() {
+		partitionConsumersWg.Wait()
+		close(closed)
+	}()
+
+	return closed, nil
+}
+
+func (s *Subscriber) consumePartition(
+	partitionConsumer sarama.PartitionConsumer,
+	messageHandler messageHandler,
+	partitionConsumersWg *sync.WaitGroup,
+	logFields watermill.LogFields,
+) {
+	defer func() {
+		if err := partitionConsumer.Close(); err != nil {
+			s.logger.Error("Cannot close partition consumer", err, logFields)
+		}
+		partitionConsumersWg.Done()
+	}()
+
+	kafkaMessages := partitionConsumer.Messages()
+
+	for {
+		select {
+		case <-s.closing:
+			return
+		case kafkaMsg := <-kafkaMessages:
+			if kafkaMsg == nil {
+				// kafkaMessages is closed
+				return
+			}
+			if err := messageHandler.processMessage(kafkaMsg, nil, logFields); err != nil {
+				return
+			}
+		}
+	}
+}
+
+func (s *Subscriber) createMessagesHandler(output chan *message.Message) messageHandler {
+	return messageHandler{
+		outputChannel:   output,
+		unmarshaler:     s.unmarshaler,
+		nackResendSleep: s.config.NackResendSleep,
+		logger:          s.logger,
+		closing:         s.closing,
+	}
+}
+
+func (s *Subscriber) Close() error {
 	if s.closed {
 		return nil
 	}
 
 	s.closed = true
 	close(s.closing)
-	s.allSubscribersWg.Wait()
+	s.subscribersWg.Wait()
 
 	s.logger.Debug("Kafka subscriber closed", nil)
 
 	return nil
 }
 
-var (
-	ErrClosingConsumer = errors.New("closing subscriber")
-	ErrNackReceived    = errors.New("closing subscriber")
-)
-
-type consumer struct {
-	config SubscriberConfig
-
-	consumer          *kafka.Consumer
-	consumerLogFields watermill.LogFields
-	outputChannel     chan<- *message.Message
-
-	unmarshaler Unmarshaler
-	closing     chan struct{}
-
-	logger watermill.LoggerAdapter
+type consumerGroupHandler struct {
+	messageHandler   messageHandler
+	closing          chan struct{}
+	messageLogFields watermill.LogFields
 }
 
-func (s *consumer) consumeMessages() {
-	s.logger.Debug("Starting messages consumer", s.consumerLogFields)
+func (consumerGroupHandler) Setup(_ sarama.ConsumerGroupSession) error   { return nil }
+func (consumerGroupHandler) Cleanup(_ sarama.ConsumerGroupSession) error { return nil }
+func (h consumerGroupHandler) ConsumeClaim(sess sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
+	kafkaMessages := claim.Messages()
 
-	defer func() {
-		if err := s.consumer.Close(); err != nil {
-			s.logger.Error("Cannot close consumer", err, s.consumerLogFields)
-		}
-
-		s.logger.Debug("Messages consumption consumer done", s.consumerLogFields)
-	}()
-
-MessagesLoop:
 	for {
 		select {
-		case <-s.closing:
-			s.logger.Debug("Closing message consumer", s.consumerLogFields)
-			break MessagesLoop
-		default:
-			ev := s.consumer.Poll(100)
-			if ev == nil {
-				continue MessagesLoop
+		case kafkaMsg := <-kafkaMessages:
+			if kafkaMsg == nil {
+				// kafkaMessages is closed
+				return nil
+			}
+			if err := h.messageHandler.processMessage(kafkaMsg, sess, h.messageLogFields); err != nil {
+				// error will stop consumerGroupHandler
+				return err
 			}
 
-			switch e := ev.(type) {
-			case *kafka.Message:
-				if err := s.handleMessage(e); err != nil {
-					if err := s.handleMessageError(e, err); err != nil {
-						// something went really wrong, let's die
-						// todo - better handling strategy
-						s.logger.Error("Handling message error failed, stopping consumer", err, s.consumerLogFields)
-						break MessagesLoop
-					}
-				}
-			case kafka.PartitionEOF:
-				s.logger.Trace("Reached end of partition", s.consumerLogFields)
-			case kafka.OffsetsCommitted:
-				s.logger.Trace("Offset committed", s.consumerLogFields.Add(watermill.LogFields{
-					"offsets": e.String(),
-				}))
-			default:
-				s.logger.Debug(
-					"Unsupported msg",
-					s.consumerLogFields.Add(watermill.LogFields{
-						"msg":      fmt.Sprintf("%#v", e),
-						"msg_type": fmt.Sprintf("%T", e),
-					}),
-				)
-			}
+		case <-h.closing:
+			return nil
 		}
 	}
 }
 
-func (s *consumer) handleMessage(e *kafka.Message) error {
-	if e.TopicPartition.Error != nil {
-		return e.TopicPartition.Error
-	}
+type messageHandler struct {
+	outputChannel chan<- *message.Message
+	unmarshaler   Unmarshaler
 
-	receivedMsgLogFields := s.consumerLogFields.Add(watermill.LogFields{
-		"kafka_partition":        e.TopicPartition.Partition,
-		"kafka_partition_offset": e.TopicPartition.Offset,
+	nackResendSleep time.Duration
+
+	logger  watermill.LoggerAdapter
+	closing chan struct{}
+}
+
+func (h messageHandler) processMessage(
+	kafkaMsg *sarama.ConsumerMessage,
+	sess sarama.ConsumerGroupSession,
+	messageLogFields watermill.LogFields,
+) error {
+	receivedMsgLogFields := messageLogFields.Add(watermill.LogFields{
+		"kafka_partition":        kafkaMsg.Partition,
+		"kafka_partition_offset": kafkaMsg.Offset,
 	})
-	s.logger.Trace("Received message from Kafka", receivedMsgLogFields)
 
-	msg, err := s.unmarshaler.Unmarshal(e)
+	h.logger.Trace("Received message from Kafka", receivedMsgLogFields)
+
+	msg, err := h.unmarshaler.Unmarshal(kafkaMsg)
 	if err != nil {
-		return err
+		// resend will make no sense, stopping consumerGroupHandler
+		return errors.Wrap(err, "message unmarshal failed")
 	}
 
 	receivedMsgLogFields = receivedMsgLogFields.Add(watermill.LogFields{
 		"message_uuid": msg.UUID,
 	})
 
-	s.logger.Trace("Kafka message unmarshalled, sending to output", receivedMsgLogFields)
+ResendLoop:
+	for {
+		select {
+		case h.outputChannel <- msg:
+			h.logger.Trace("Message sent to consumer", receivedMsgLogFields)
+		case <-h.closing:
+			h.logger.Trace("Closing, message discarded", receivedMsgLogFields)
+			return nil
+		}
 
-	select {
-	case <-s.closing:
-		s.logger.Info(
-			"Message not sent and close received, making rollback",
-			receivedMsgLogFields,
-		)
-		return ErrClosingConsumer
-	case s.outputChannel <- msg:
-		// message consumed, waiting for ack
-	}
+		select {
+		case <-msg.Acked():
+			if sess != nil {
+				sess.MarkMessage(kafkaMsg, "")
+			}
+			h.logger.Trace("Message Acked", receivedMsgLogFields)
+			break ResendLoop
+		case <-msg.Nacked():
+			h.logger.Trace("Message Nacked", receivedMsgLogFields)
 
-	s.logger.Trace("Waiting for ACK", receivedMsgLogFields)
-	if err := s.waitForAck(msg, receivedMsgLogFields); err != nil {
-		return err
-	}
+			// reset acks, etc.
+			msg = msg.Copy()
+			if h.nackResendSleep != NoSleep {
+				time.Sleep(h.nackResendSleep)
+			}
 
-	if err := s.storeOffsets(e, receivedMsgLogFields); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (s *consumer) handleMessageError(kafkaMessage *kafka.Message, err error) error {
-	switch err {
-	case ErrNackReceived:
-		s.logger.Debug("Nack received", s.consumerLogFields)
-	case ErrClosingConsumer:
-		s.logger.Debug("Close received during processing message", s.consumerLogFields)
-	default:
-		s.logger.Error("Error during handling message", err, s.consumerLogFields)
-	}
-
-	if err := s.rollback(kafkaMessage); err != nil {
-		return errors.Wrap(err, "rollback failed")
+			continue ResendLoop
+		case <-h.closing:
+			h.logger.Trace("Closing, message discarded before ack", receivedMsgLogFields)
+			return nil
+		}
 	}
 
 	return nil
-}
-
-func (s *consumer) waitForAck(msg *message.Message, receivedMsgLogFields watermill.LogFields) error {
-	select {
-	case <-msg.Acked():
-		s.logger.Trace("Message acknowledged", receivedMsgLogFields)
-		return nil
-	case <-msg.Nacked():
-		s.logger.Info(
-			"Nack sent",
-			receivedMsgLogFields,
-		)
-		return ErrNackReceived
-	case <-s.closing:
-		s.logger.Info(
-			"Ack not received and received close",
-			receivedMsgLogFields,
-		)
-		return ErrClosingConsumer
-	}
-}
-
-func (s *consumer) storeOffsets(kafkaMessage *kafka.Message, receivedMsgLogFields watermill.LogFields) error {
-	if s.config.ConsumerGroup == "" {
-		// if we have no consumer group, it is not sense to store offsets
-		return nil
-	}
-
-	stored, err := s.consumer.StoreOffsets([]kafka.TopicPartition{kafkaMessage.TopicPartition})
-	if err != nil {
-		return errors.Wrap(err, "cannot store offsets")
-	}
-
-	s.logger.Trace(
-		"Stored Kafka offsets",
-		receivedMsgLogFields.Add(watermill.LogFields{"stored_offsets": stored}),
-	)
-
-	return nil
-}
-
-func (s *consumer) rollback(kafkaMessage *kafka.Message) error {
-	return s.consumer.Seek(kafkaMessage.TopicPartition, 1000*60)
 }

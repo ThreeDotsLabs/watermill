@@ -34,7 +34,7 @@ All built-in implementations can be found in [message/infrastructure](https://gi
 | GuaranteedOrder | yes |  |
 | Persistent | no| |
 
-##### Configuration
+#### Configuration
 
 You can inject configuration via the constructor.
 
@@ -60,9 +60,7 @@ No marshaling is needed when sending messages within the process.
 
 ### Kafka
 
-Kafka is one of the most popular Pub/Subs. We are providing Pub/Sub implementation based on [Confluent's bindings to `librdkafka`](https://github.com/confluentinc/confluent-kafka-go).
-
-`librdkafka` is required to run Kafka Pub/Sub. Installation guide can be found in [Getting Started]({{< ref "/docs/getting-started#subscribing_kafka" >}}).
+Kafka is one of the most popular Pub/Subs. We are providing Pub/Sub implementation based on [Shopify's Sarama](https://github.com/Shopify/sarama).
 
 #### Characteristics
 
@@ -76,25 +74,47 @@ Kafka is one of the most popular Pub/Subs. We are providing Pub/Sub implementati
 #### Configuration
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/infrastructure/kafka/subscriber.go" first_line_contains="type SubscriberConfig struct" last_line_contains="func NewConfluentSubscriber(" %}}
+{{% load-snippet-partial file="content/src-link/message/infrastructure/kafka/subscriber.go" first_line_contains="type SubscriberConfig struct" last_line_contains="// Subscribe" %}}
 {{% /render-md %}}
 
-##### Passing custom `librdkafka` config
+##### Passing custom `Sarama` config
 
-You can pass custom config parameters (for example SSL Configuration) via `KafkaConfigOverwrite` in `SubscriberConfig` and `kafkaConfigOverwrite` to `NewPublisher`.
+You can pass [custom config](https://github.com/Shopify/sarama/blob/master/config.go#L20) parameters via `overwriteSaramaConfig *sarama.Config` in `NewSubscriber` and `NewPublisher`.
+When `nil` is passed, default config is used (`DefaultSaramaSubscriberConfig`).
 
-You can find a list of available options in [librdkafka documentation](https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md).
+{{% render-md %}}
+{{% load-snippet-partial file="content/src-link/message/infrastructure/kafka/config.go" first_line_contains="// DefaultSaramaSubscriberConfig" last_line_contains="return config" padding_after="1" %}}
+{{% /render-md %}}
+
+#### Connecting
+
+##### Publisher
+{{% render-md %}}
+{{% load-snippet-partial file="content/src-link/message/infrastructure/kafka/publisher.go" first_line_contains="// NewPublisher" last_line_contains="(message.Publisher, error)" padding_after="0" %}}
+
+Example:
+{{% load-snippet-partial file="content/docs/getting-started/kafka/main.go" first_line_contains="saramaSubscriberConfig :=" last_line_contains="panic(err)" padding_after="1" %}}
+
+{{% /render-md %}}
+
+##### Subscriber
+{{% render-md %}}
+{{% load-snippet-partial file="content/src-link/message/infrastructure/kafka/subscriber.go" first_line_contains="// NewSubscriber" last_line_contains="(message.Subscriber, error)" padding_after="0" %}}
+
+Example:
+{{% load-snippet-partial file="content/docs/getting-started/kafka/main.go" first_line_contains="publisher, err := kafka.NewPublisher" last_line_contains="panic(err)" padding_after="1" %}}
+{{% /render-md %}}
 
 #### Publishing
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/infrastructure/kafka/publisher.go" first_line_contains="// Publish" last_line_contains="func (p confluentPublisher) Publish" %}}
+{{% load-snippet-partial file="content/src-link/message/infrastructure/kafka/publisher.go" first_line_contains="// Publish" last_line_contains="func (p *Publisher) Publish" %}}
 {{% /render-md %}}
 
 #### Subscribing
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/infrastructure/kafka/subscriber.go" first_line_contains="// Subscribe" last_line_contains="func (s *confluentSubscriber) Subscribe" %}}
+{{% load-snippet-partial file="content/src-link/message/infrastructure/kafka/subscriber.go" first_line_contains="// Subscribe" last_line_contains="func (s *Subscriber) Subscribe" %}}
 {{% /render-md %}}
 
 #### Marshaler
@@ -208,10 +228,16 @@ By default NATS client will try to connect to `localhost:4222`. If you are using
 
 {{% render-md %}}
 {{% load-snippet-partial file="content/src-link/message/infrastructure/nats/publisher.go" first_line_contains="// NewStreamingPublisher" last_line_contains="func NewStreamingPublisher" %}}
+
+Example:
+{{% load-snippet-partial file="content/docs/getting-started/nats-streaming/main.go" first_line_contains="publisher, err :=" last_line_contains="panic(err)" %}}
 {{% /render-md %}}
 
 {{% render-md %}}
 {{% load-snippet-partial file="content/src-link/message/infrastructure/nats/subscriber.go" first_line_contains="// NewStreamingSubscriber" last_line_contains="func NewStreamingSubscriber" %}}
+
+Example:
+{{% load-snippet-partial file="content/docs/getting-started/nats-streaming/main.go" first_line_contains="subscriber, err :=" last_line_contains="panic(err)" %}}
 {{% /render-md %}}
 
 #### Publishing

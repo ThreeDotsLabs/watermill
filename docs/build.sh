@@ -13,6 +13,7 @@ declare -a files_to_link=(
     "message/infrastructure/kafka/publisher.go"
     "message/infrastructure/kafka/subscriber.go"
     "message/infrastructure/kafka/marshaler.go"
+    "message/infrastructure/kafka/config.go"
     "message/infrastructure/nats/publisher.go"
     "message/infrastructure/nats/subscriber.go"
     "message/infrastructure/nats/marshaler.go"
