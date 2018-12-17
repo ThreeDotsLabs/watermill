@@ -240,6 +240,8 @@ func resendOnErrorTest(t *testing.T, pubSub message.PubSub) {
 
 	i := 0
 	errsSent := 0
+
+ReadMessagesLoop:
 	for len(receivedMessages) < messagesToSend {
 		select {
 		case msg := <-messages:
@@ -257,12 +259,7 @@ func resendOnErrorTest(t *testing.T, pubSub message.PubSub) {
 			fmt.Println("acked msg ", msg.UUID)
 
 		case <-time.After(defaultTimeout):
-			t.Fatalf(
-				"timeouted, received messages %d of %d, missing: %d",
-				len(receivedMessages),
-				messagesToSend,
-				messagesToSend-len(receivedMessages),
-			)
+			break ReadMessagesLoop
 		}
 	}
 
