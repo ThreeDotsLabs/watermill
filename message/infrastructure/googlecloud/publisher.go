@@ -71,6 +71,9 @@ func NewPublisher(ctx context.Context, config PublisherConfig) (*Publisher, erro
 // Publish publishes a set of messages on a Google Cloud Pub/Sub topic.
 // It blocks until all the messages are successfully published or an error occurred.
 //
+// To receive messages published to a topic, you must create a subscription to that topic.
+// Only messages published to the topic after the subscription is created are available to subscriber applications.
+//
 // See https://cloud.google.com/pubsub/docs/publisher to find out more about how Google Cloud Pub/Sub Publishers work.
 func (p *Publisher) Publish(topic string, messages ...*message.Message) error {
 	if p.closed {
