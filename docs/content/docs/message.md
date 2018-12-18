@@ -43,7 +43,7 @@ When message is processed, you should send [`Ack()`]({{< ref "#ack" >}}) or [`Na
 
 ### Context
 
-Message contains the standard library context, just like a HTTP request.
+Message contains the standard library context, just like an HTTP request.
 
 {{% render-md %}}
 {{% load-snippet-partial file="content/src-link/message/message.go" first_line_contains="// Context" last_line_contains="func (m *Message) SetContext" padding_after="2" %}}

@@ -576,7 +576,7 @@ func testMessageCtx(t *testing.T, pubSub message.PubSub) {
 	go func() {
 		msg := message.NewMessage(uuid.NewV4().String(), nil)
 
-		// ensuring, that context is not propagated via pub/sub
+		// ensuring that context is not propagated via pub/sub
 		ctx, ctxCancel := context.WithCancel(context.Background())
 		ctxCancel()
 		msg.SetContext(ctx)
