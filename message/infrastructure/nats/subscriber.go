@@ -1,6 +1,7 @@
 package nats
 
 import (
+	"context"
 	"sync"
 	"time"
 
@@ -228,6 +229,10 @@ func (s *StreamingSubscriber) processMessage(m *stan.Msg, output chan *message.M
 		s.logger.Error("Cannot unmarshal message", err, logFields)
 		return
 	}
+
+	ctx, cancelCtx := context.WithCancel(context.Background())
+	msg.SetContext(ctx)
+	defer cancelCtx()
 
 	messageLogFields := logFields.Add(watermill.LogFields{"message_uuid": msg.UUID})
 	s.logger.Trace("Unmarshaled message", messageLogFields)

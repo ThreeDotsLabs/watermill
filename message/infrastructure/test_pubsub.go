@@ -113,6 +113,11 @@ func TestPubSub(
 		t.Parallel()
 		topicTest(t, pubSubConstructor(t))
 	})
+
+	t.Run("messageCtx", func(t *testing.T) {
+		t.Parallel()
+		testMessageCtx(t, pubSubConstructor(t))
+	})
 }
 
 var stressTestTestsCount = 20
@@ -557,6 +562,68 @@ func topicTest(t *testing.T, pubSub message.PubSub) {
 
 	assert.Equal(t, messagesConsumedTopic1.IDs()[0], topic1Msg.UUID)
 	assert.Equal(t, messagesConsumedTopic2.IDs()[0], topic2Msg.UUID)
+}
+
+func testMessageCtx(t *testing.T, pubSub message.PubSub) {
+	defer pubSub.Close()
+
+	topic := testTopicName()
+
+	messages, err := pubSub.Subscribe(topic)
+	require.NoError(t, err)
+
+	go func() {
+		msg := message.NewMessage(uuid.NewV4().String(), nil)
+
+		require.NoError(t, pubSub.Publish(topic, msg))
+		require.NoError(t, pubSub.Publish(topic, msg))
+	}()
+
+	select {
+	case msg := <-messages:
+		ctx := msg.Context()
+
+		select {
+		case <-ctx.Done():
+			t.Fatal("context should not be canceled")
+		default:
+			// ok
+		}
+
+		require.NoError(t, msg.Ack())
+
+		select {
+		case <-ctx.Done():
+			// ok
+		case <-time.After(defaultTimeout):
+			t.Fatal("context should be canceled after Ack")
+		}
+	case <-time.After(defaultTimeout):
+		t.Fatal("no message received")
+	}
+
+	select {
+	case msg := <-messages:
+		ctx := msg.Context()
+
+		select {
+		case <-ctx.Done():
+			t.Fatal("context should not be canceled")
+		default:
+			// ok
+		}
+
+		go require.NoError(t, pubSub.Close())
+
+		select {
+		case <-ctx.Done():
+			// ok
+		case <-time.After(defaultTimeout):
+			t.Fatal("context should be canceled after pubSub.Close()")
+		}
+	case <-time.After(defaultTimeout):
+		t.Fatal("no message received")
+	}
 }
 
 func assertConsumerGroupReceivedMessages(

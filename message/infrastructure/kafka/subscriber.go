@@ -395,6 +395,10 @@ func (h messageHandler) processMessage(
 		return errors.Wrap(err, "message unmarshal failed")
 	}
 
+	ctx, cancelCtx := context.WithCancel(context.Background())
+	msg.SetContext(ctx)
+	defer cancelCtx()
+
 	receivedMsgLogFields = receivedMsgLogFields.Add(watermill.LogFields{
 		"message_uuid": msg.UUID,
 	})

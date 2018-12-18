@@ -218,6 +218,10 @@ func (s *Subscriber) receive(
 			return
 		}
 
+		ctx, cancelCtx := context.WithCancel(context.Background())
+		msg.SetContext(ctx)
+		defer cancelCtx()
+
 		select {
 		case <-s.closing:
 			s.logger.Info(

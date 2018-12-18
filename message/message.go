@@ -2,6 +2,7 @@ package message
 
 import (
 	"bytes"
+	"context"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -43,6 +44,8 @@ type Message struct {
 
 	ackMutex    sync.Mutex
 	ackSentType ackType
+
+	ctx context.Context
 }
 
 func NewMessage(uuid string, payload Payload) *Message {
@@ -156,6 +159,23 @@ func (m *Message) Acked() <-chan struct{} {
 //		}
 func (m *Message) Nacked() <-chan struct{} {
 	return m.noAck
+}
+
+// Context returns the message's context. To change the context, use
+// SetContext.
+//
+// The returned context is always non-nil; it defaults to the
+// background context.
+func (m Message) Context() context.Context {
+	if m.ctx != nil {
+		return m.ctx
+	}
+	return context.Background()
+}
+
+// SetContext sets provided context to the message.
+func (m *Message) SetContext(ctx context.Context) {
+	m.ctx = ctx
 }
 
 // Copy copies all message without Acks/Nacks.
