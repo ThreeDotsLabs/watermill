@@ -103,7 +103,7 @@ You can run Google Cloud Pub/Sub emulator locally for development.
 
 The source should go to `main.go`.
 
-To run please execute `docker-compose up` command.
+To run, please execute `docker-compose up`.
 
 More detailed explanation of how it is running, and how to add live reload you can find in [our [...] article](todo).
 {{% /collapse-box %}}
