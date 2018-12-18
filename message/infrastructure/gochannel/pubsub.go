@@ -92,7 +92,8 @@ func (g *GoChannel) sendMessageToSubscriber(msg *message.Message, s *subscriber,
 
 SendToSubscriber:
 	for {
-		// message have nack already sent, we need fresh message
+		// copy the message to prevent ack/nack propagation to other consumers
+                // also allows to make retries on a fresh copy of the original message
 		msgToSend := msg.Copy()
 
 		ctx, cancelCtx := context.WithCancel(context.Background())
