@@ -31,7 +31,7 @@ func main() {
 		panic(err)
 	}
 
-        // Subscribe will create the subscription. Only messages that are sent after the subscription is created may be received.
+	// Subscribe will create the subscription. Only messages that are sent after the subscription is created may be received.
 	messages, err := subscriber.Subscribe("example.topic")
 	if err != nil {
 		panic(err)

@@ -1,10 +1,12 @@
 package gochannel
 
 import (
+	"context"
 	"sync"
 	"time"
 
 	"github.com/pkg/errors"
+
 	"github.com/satori/go.uuid"
 
 	"github.com/ThreeDotsLabs/watermill"
@@ -30,7 +32,8 @@ type GoChannel struct {
 
 	logger watermill.LoggerAdapter
 
-	closed bool
+	closed  bool
+	closing chan struct{}
 }
 
 func NewGoChannel(buffer int64, logger watermill.LoggerAdapter, sendTimeout time.Duration) message.PubSub {
@@ -41,6 +44,8 @@ func NewGoChannel(buffer int64, logger watermill.LoggerAdapter, sendTimeout time
 		subscribers:     make(map[string][]*subscriber),
 		subscribersLock: &sync.RWMutex{},
 		logger:          logger,
+
+		closing: make(chan struct{}),
 	}
 }
 
@@ -72,29 +77,50 @@ func (g *GoChannel) sendMessage(topic string, message *message.Message) error {
 	}
 
 	for _, s := range subscribers {
-		subscriberLogFields := messageLogFields.Add(watermill.LogFields{
-			"subscriber_uuid": s.uuid,
-		})
+		if err := g.sendMessageToSubscriber(message, s, messageLogFields); err != nil {
+			return err
+		}
+	}
 
-	SendToSubscriber:
-		for {
-			select {
-			case s.outputChannel <- message:
-				select {
-				case <-message.Acked():
-					g.logger.Trace("message sent", subscriberLogFields)
-					break SendToSubscriber
-				case <-message.Nacked():
-					g.logger.Trace("nack received, resending message", subscriberLogFields)
+	return nil
+}
 
-					// message have nack already sent, we need fresh message
-					message = message.Copy()
+func (g *GoChannel) sendMessageToSubscriber(msg *message.Message, s *subscriber, messageLogFields watermill.LogFields) error {
+	subscriberLogFields := messageLogFields.Add(watermill.LogFields{
+		"subscriber_uuid": s.uuid,
+	})
 
-					continue SendToSubscriber
-				}
-			case <-time.After(g.sendTimeout):
-				return errors.Errorf("sending message %s timeouted after %s", message.UUID, g.sendTimeout)
-			}
+SendToSubscriber:
+	for {
+		// copy the message to prevent ack/nack propagation to other consumers
+		// also allows to make retries on a fresh copy of the original message
+		msgToSend := msg.Copy()
+
+		ctx, cancelCtx := context.WithCancel(context.Background())
+		msgToSend.SetContext(ctx)
+		defer cancelCtx()
+
+		select {
+		case s.outputChannel <- msgToSend:
+			g.logger.Trace("Sent message to subscriber", subscriberLogFields)
+		case <-time.After(g.sendTimeout):
+			return errors.Errorf("Sending message %s timeouted after %s", msgToSend.UUID, g.sendTimeout)
+		case <-g.closing:
+			g.logger.Trace("Closing, message discarded", subscriberLogFields)
+			return nil
+		}
+
+		select {
+		case <-msgToSend.Acked():
+			g.logger.Trace("Message acked", subscriberLogFields)
+			break SendToSubscriber
+		case <-msgToSend.Nacked():
+			g.logger.Trace("Nack received, resending message", subscriberLogFields)
+
+			continue SendToSubscriber
+		case <-g.closing:
+			g.logger.Trace("Closing, message discarded", subscriberLogFields)
+			return nil
 		}
 	}
 
@@ -123,13 +149,14 @@ func (g *GoChannel) Subscribe(topic string) (chan *message.Message, error) {
 }
 
 func (g *GoChannel) Close() error {
-	g.subscribersLock.Lock()
-	defer g.subscribersLock.Unlock()
-
 	if g.closed {
 		return nil
 	}
 	g.closed = true
+	close(g.closing)
+
+	g.subscribersLock.Lock()
+	defer g.subscribersLock.Unlock()
 
 	for _, topicSubscribers := range g.subscribers {
 		for _, subscriber := range topicSubscribers {
