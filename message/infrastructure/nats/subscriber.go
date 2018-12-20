@@ -83,15 +83,16 @@ func (c *StreamingSubscriberConfig) setDefaults() {
 	if c.CloseTimeout <= 0 {
 		c.CloseTimeout = time.Second * 30
 	}
+	if c.AckWaitTimeout <= 0 {
+		c.AckWaitTimeout = time.Second * 30
+	}
 
 	c.StanSubscriptionOptions = append(
 		c.StanSubscriptionOptions,
 		stan.SetManualAckMode(), // manual AckMode is required to support acking/nacking by client
+		stan.AckWait(c.AckWaitTimeout),
 	)
 
-	if c.AckWaitTimeout != 0 {
-		c.StanSubscriptionOptions = append(c.StanSubscriptionOptions, stan.AckWait(c.AckWaitTimeout))
-	}
 	if c.DurableName != "" {
 		c.StanSubscriptionOptions = append(c.StanSubscriptionOptions, stan.DurableName(c.DurableName))
 	}
