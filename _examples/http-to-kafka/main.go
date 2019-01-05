@@ -24,7 +24,9 @@ type GitlabWebhook struct {
 func main() {
 	logger := watermill.NewStdLogger(true, true)
 
-	kafkaPublisher, err := kafka.NewPublisher([]string{"localhost:9092"}, kafka.DefaultMarshaler{}, nil)
+	kafkaPublisher, err := kafka.NewPublisher(
+		[]string{"localhost:9092"}, kafka.DefaultMarshaler{}, nil, logger,
+	)
 	if err != nil {
 		panic(err)
 	}
