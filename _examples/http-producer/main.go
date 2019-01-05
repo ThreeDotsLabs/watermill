@@ -23,7 +23,7 @@ func (i id) String() string {
 	return string(i)
 }
 
-type api struct {
+type meetingsService struct {
 	publisher message.Publisher
 }
 
@@ -36,7 +36,7 @@ type meeting struct {
 	arranged bool
 }
 
-func (a api) sendInvitation(meeting id, user id, text string) error {
+func (svc meetingsService) sendInvitation(meeting id, user id, text string) error {
 	payload := struct {
 		MeetingID string `json:"meeting_id"`
 		UserID    string `json:"user_id"`
@@ -52,10 +52,10 @@ func (a api) sendInvitation(meeting id, user id, text string) error {
 
 	msg := message.NewMessage(uuid.NewV4().String(), j)
 
-	return a.publisher.Publish("invitations", msg)
+	return svc.publisher.Publish("invitations", msg)
 }
 
-func (a api) bookMeeting(meetingID id, date time.Time) error {
+func (svc meetingsService) bookMeeting(meetingID id, date time.Time) error {
 	payload := struct {
 		MeetingID string `json:"meeting_id"`
 		Date      string `json:"date"`
@@ -70,21 +70,21 @@ func (a api) bookMeeting(meetingID id, date time.Time) error {
 
 	msg := message.NewMessage(uuid.NewV4().String(), j)
 
-	return a.publisher.Publish("meetings", msg)
+	return svc.publisher.Publish("meetings", msg)
 }
 
-func (a api) arrange(m meeting) error {
+func (svc meetingsService) arrange(m *meeting) error {
 	if m.arranged {
 		return nil
 	}
 
-	err := a.bookMeeting(m.id, m.date)
+	err := svc.bookMeeting(m.id, m.date)
 	if err != nil {
 		return err
 	}
 
 	for _, invitee := range m.invitedUsers {
-		err = a.sendInvitation(m.id, invitee, m.invitationText)
+		err = svc.sendInvitation(m.id, invitee, m.invitationText)
 		if err != nil {
 			return err
 		}
@@ -125,9 +125,9 @@ func main() {
 		panic(err)
 	}
 
-	meetingsAPI := api{publisher}
+	meetingsAPI := meetingsService{publisher}
 
-	newMeeting := meeting{
+	newMeeting := &meeting{
 		id:             id("meeting_1"),
 		date:           time.Date(2019, 1, 1, 13, 0, 0, 0, time.Local),
 		invitedUsers:   []id{"alice", "bob", "martha"},
