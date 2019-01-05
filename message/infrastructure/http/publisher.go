@@ -1,6 +1,7 @@
 package http
 
 import (
+	"bytes"
 	"net/http"
 
 	"github.com/pkg/errors"
@@ -15,6 +16,26 @@ var (
 )
 
 type MarshalMessageFunc func(topic string, msg *message.Message) (*http.Request, error)
+
+// DefaultMarshalMessageFunc encodes the UUID and Metadata in request headers
+// and sets the request URL according to the predefined server address and the topic.
+func DefaultMarshalMessageFunc(address string) MarshalMessageFunc {
+	return func(topic string, msg *message.Message) (*http.Request, error) {
+		req, err := http.NewRequest(http.MethodPost, address+"/"+topic, bytes.NewBuffer(msg.Payload))
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set(HeaderUUID, msg.UUID)
+
+		metadataJson, err := metadataToJson(msg)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not marshal metadata to JSON")
+		}
+		req.Header.Set(HeaderMetadata, string(metadataJson))
+		return req, nil
+	}
+}
 
 type Publisher struct {
 	client *http.Client
@@ -49,9 +70,10 @@ func (p *Publisher) Publish(topic string, messages ...*message.Message) error {
 		}
 
 		logFields := watermill.LogFields{
-			"uuid":   msg.UUID,
-			"url":    req.URL.String(),
-			"method": req.Method,
+			"uuid":     msg.UUID,
+			"url":      req.URL.String(),
+			"method":   req.Method,
+			"provider": ProviderName,
 		}
 
 		resp, err := p.client.Do(req)

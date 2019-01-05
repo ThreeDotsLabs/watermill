@@ -1,9 +1,12 @@
 package http
 
 import (
+	"io/ioutil"
 	"net/http"
 	"strings"
 	"sync"
+
+	"github.com/pkg/errors"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
@@ -11,6 +14,29 @@ import (
 )
 
 type UnmarshalMessageFunc func(topic string, request *http.Request) (*message.Message, error)
+
+// DefaultUnmarshalMessageFunc retrieves the UUID and Metadata from request headers,
+// as encoded by DefaultMarshalMessageFunc.
+func DefaultUnmarshalMessageFunc(topic string, req *http.Request) (*message.Message, error) {
+	body, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	uuid := req.Header.Get(HeaderUUID)
+	if uuid == "" {
+		return nil, errors.New("No UUID encoded in header")
+	}
+
+	msg := message.NewMessage(uuid, body)
+
+	msg.Metadata, err = metadataFromRequest(req)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not unmarshal metadata from request")
+	}
+
+	return msg, nil
+}
 
 // Subscriber can subscribe to HTTP requests and create Watermill's messages based on them.
 type Subscriber struct {
@@ -75,7 +101,7 @@ func (s *Subscriber) Subscribe(url string) (chan *message.Message, error) {
 	s.outputChannels = append(s.outputChannels, messages)
 	s.outputChannelsLock.Unlock()
 
-	baseLogFields := watermill.LogFields{"url": url}
+	baseLogFields := watermill.LogFields{"url": url, "provider": ProviderName}
 
 	if !strings.HasPrefix(url, "/") {
 		url = "/" + url
