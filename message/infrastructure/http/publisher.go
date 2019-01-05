@@ -2,6 +2,7 @@ package http
 
 import (
 	"bytes"
+	"encoding/json"
 	"net/http"
 
 	"github.com/pkg/errors"
@@ -28,7 +29,7 @@ func DefaultMarshalMessageFunc(address string) MarshalMessageFunc {
 
 		req.Header.Set(HeaderUUID, msg.UUID)
 
-		metadataJson, err := metadataToJson(msg)
+		metadataJson, err := json.Marshal(msg.Metadata)
 		if err != nil {
 			return nil, errors.Wrap(err, "could not marshal metadata to JSON")
 		}

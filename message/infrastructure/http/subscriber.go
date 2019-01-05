@@ -1,6 +1,7 @@
 package http
 
 import (
+	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -30,7 +31,8 @@ func DefaultUnmarshalMessageFunc(topic string, req *http.Request) (*message.Mess
 
 	msg := message.NewMessage(uuid, body)
 
-	msg.Metadata, err = metadataFromRequest(req)
+	metadata := req.Header.Get(HeaderMetadata)
+	err = json.Unmarshal([]byte(metadata), &msg.Metadata)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not unmarshal metadata from request")
 	}
