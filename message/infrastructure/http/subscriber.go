@@ -2,6 +2,7 @@ package http
 
 import (
 	"net/http"
+	"strings"
 	"sync"
 
 	"github.com/ThreeDotsLabs/watermill"
@@ -75,6 +76,10 @@ func (s *Subscriber) Subscribe(url string) (chan *message.Message, error) {
 	s.outputChannelsLock.Unlock()
 
 	baseLogFields := watermill.LogFields{"url": url}
+
+	if !strings.HasPrefix(url, "/") {
+		url = "/" + url
+	}
 
 	s.router.Post(url, func(w http.ResponseWriter, r *http.Request) {
 		msg, err := s.unmarshalMessageFunc(url, r)
