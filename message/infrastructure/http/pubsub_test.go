@@ -1,8 +1,10 @@
 package http
 
 import (
+	"net/http"
 	"testing"
-	"time"
+
+	"github.com/pkg/errors"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/stretchr/testify/require"
@@ -14,16 +16,20 @@ import (
 func createPubSub(t *testing.T) message.PubSub {
 	logger := watermill.NewStdLogger(true, true)
 
-	sub, err := NewSubscriber(":8080", DefaultUnmarshalMessageFunc, logger)
+	sub, err := NewSubscriber(":8080", SubscriberConfig{}, logger)
 
+	errChan, err := sub.StartHTTPServer()
+	require.NoError(t, err)
 	go func() {
-		err := sub.StartHTTPServer()
-		require.NoError(t, err)
+		err := <-errChan
+		require.Equal(t, http.ErrServerClosed, errors.Cause(err))
 	}()
 
-	time.Sleep(200 * time.Millisecond)
+	publisherConf := PublisherConfig{
+		marshalMessageFunc: DefaultMarshalMessageFunc("http://localhost:8080"),
+	}
 
-	pub, err := NewPublisher(DefaultMarshalMessageFunc("http://localhost:8080"), logger)
+	pub, err := NewPublisher(publisherConf, logger)
 	require.NoError(t, err)
 
 	return message.NewPubSub(pub, sub)

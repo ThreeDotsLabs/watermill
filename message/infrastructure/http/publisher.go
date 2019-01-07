@@ -14,12 +14,14 @@ import (
 var (
 	// ErrPublisherClosed happens when trying to publish to a topic while the publisher is closed or closing.
 	ErrPublisherClosed = errors.New("publisher is closed")
+	ErrNoMarshalFunc   = errors.New("marshal function is missing")
 )
 
 type MarshalMessageFunc func(topic string, msg *message.Message) (*http.Request, error)
 
-// DefaultMarshalMessageFunc encodes the UUID and Metadata in request headers
-// and sets the request URL according to the predefined server address and the topic.
+// DefaultMarshalMessageFunc returns a MarshalMessage func transforming the message into a HTTP POST request.
+// It encodes the UUID and Metadata in request headers.
+// The request URL is combined from the base address and the topic.
 func DefaultMarshalMessageFunc(address string) MarshalMessageFunc {
 	return func(topic string, msg *message.Message) (*http.Request, error) {
 		req, err := http.NewRequest(http.MethodPost, address+"/"+topic, bytes.NewBuffer(msg.Payload))
@@ -39,23 +41,38 @@ func DefaultMarshalMessageFunc(address string) MarshalMessageFunc {
 }
 
 type Publisher struct {
-	client *http.Client
 	logger watermill.LoggerAdapter
-
-	marshalMessageFunc MarshalMessageFunc
+	config PublisherConfig
 
 	closed bool
 }
 
-func NewPublisher(marshalMessageFunc MarshalMessageFunc, logger watermill.LoggerAdapter) (*Publisher, error) {
-	return NewPublisherWithClient(http.DefaultClient, marshalMessageFunc, logger)
+type PublisherConfig struct {
+	marshalMessageFunc MarshalMessageFunc
+	client             *http.Client
 }
 
-func NewPublisherWithClient(client *http.Client, marshalMessageFunc MarshalMessageFunc, logger watermill.LoggerAdapter) (*Publisher, error) {
+func (c *PublisherConfig) setDefaults() {
+	if c.client == nil {
+		c.client = http.DefaultClient
+	}
+}
+
+func (c PublisherConfig) validate() error {
+	if c.marshalMessageFunc == nil {
+		return ErrNoMarshalFunc
+	}
+	return nil
+}
+
+func NewPublisher(config PublisherConfig, logger watermill.LoggerAdapter) (*Publisher, error) {
+	config.setDefaults()
+	if err := config.validate(); err != nil {
+		return nil, errors.Wrap(err, "invalid config")
+	}
 	return &Publisher{
-		client:             client,
-		logger:             logger,
-		marshalMessageFunc: marshalMessageFunc,
+		config: config,
+		logger: logger,
 	}, nil
 }
 
@@ -65,7 +82,7 @@ func (p *Publisher) Publish(topic string, messages ...*message.Message) error {
 	}
 
 	for _, msg := range messages {
-		req, err := p.marshalMessageFunc(topic, msg)
+		req, err := p.config.marshalMessageFunc(topic, msg)
 		if err != nil {
 			return errors.Wrapf(err, "cannot marshal message %s", msg.UUID)
 		}
@@ -77,7 +94,7 @@ func (p *Publisher) Publish(topic string, messages ...*message.Message) error {
 			"provider": ProviderName,
 		}
 
-		resp, err := p.client.Do(req)
+		resp, err := p.config.client.Do(req)
 		if err != nil {
 			return errors.Wrapf(err, "publishing message %s failed", msg.UUID)
 		}

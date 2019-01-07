@@ -3,6 +3,7 @@ package http
 import (
 	"encoding/json"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"strings"
 	"sync"
@@ -40,13 +41,27 @@ func DefaultUnmarshalMessageFunc(topic string, req *http.Request) (*message.Mess
 	return msg, nil
 }
 
+type SubscriberConfig struct {
+	router               chi.Router
+	unmarshalMessageFunc UnmarshalMessageFunc
+}
+
+func (s *SubscriberConfig) setDefaults() {
+	if s.router == nil {
+		s.router = chi.NewRouter()
+	}
+
+	if s.unmarshalMessageFunc == nil {
+		s.unmarshalMessageFunc = DefaultUnmarshalMessageFunc
+	}
+}
+
 // Subscriber can subscribe to HTTP requests and create Watermill's messages based on them.
 type Subscriber struct {
-	router chi.Router
+	config SubscriberConfig
+
 	server *http.Server
 	logger watermill.LoggerAdapter
-
-	unmarshalMessageFunc UnmarshalMessageFunc
 
 	outputChannels     []chan *message.Message
 	outputChannelsLock sync.Locker
@@ -58,32 +73,15 @@ type Subscriber struct {
 //
 // addr is TCP address to listen on
 //
-// unmarshalMessageFunc is function which converts HTTP request to Watermill's message.
-//
 // logger is Watermill's logger.
-func NewSubscriber(addr string, unmarshalMessageFunc UnmarshalMessageFunc, logger watermill.LoggerAdapter) (*Subscriber, error) {
-	return NewSubscriberWithRouter(addr, chi.NewRouter(), unmarshalMessageFunc, logger)
-}
-
-// NewSubscriberWithRouter creates new Subscriber with provided router.
-//
-// addr is TCP address to listen on
-//
-// unmarshalMessageFunc is function which converts HTTP request to Watermill's message.
-//
-// logger is Watermill's logger.
-func NewSubscriberWithRouter(
-	addr string,
-	router chi.Router,
-	unmarshalMessageFunc UnmarshalMessageFunc,
-	logger watermill.LoggerAdapter) (*Subscriber, error) {
-	s := &http.Server{Addr: addr, Handler: router}
+func NewSubscriber(addr string, config SubscriberConfig, logger watermill.LoggerAdapter) (*Subscriber, error) {
+	config.setDefaults()
+	s := &http.Server{Addr: addr, Handler: config.router}
 
 	return &Subscriber{
-		router,
+		config,
 		s,
 		logger,
-		unmarshalMessageFunc,
 		make([]chan *message.Message, 0),
 		&sync.Mutex{},
 		false,
@@ -109,8 +107,8 @@ func (s *Subscriber) Subscribe(url string) (chan *message.Message, error) {
 		url = "/" + url
 	}
 
-	s.router.Post(url, func(w http.ResponseWriter, r *http.Request) {
-		msg, err := s.unmarshalMessageFunc(url, r)
+	s.config.router.Post(url, func(w http.ResponseWriter, r *http.Request) {
+		msg, err := s.config.unmarshalMessageFunc(url, r)
 		if err != nil {
 			s.logger.Info("Cannot unmarshal message", baseLogFields.Add(watermill.LogFields{"err": err}))
 			w.WriteHeader(http.StatusBadRequest)
@@ -143,8 +141,18 @@ func (s *Subscriber) Subscribe(url string) (chan *message.Message, error) {
 
 // StartHTTPServer starts http server.
 // StartHTTPServer must be called after all subscribe function are called.
-func (s *Subscriber) StartHTTPServer() error {
-	return s.server.ListenAndServe()
+func (s *Subscriber) StartHTTPServer() (chan error, error) {
+	errChan := make(chan error, 1)
+	listener, err := net.Listen("tcp", s.server.Addr)
+	if err != nil {
+		return nil, err
+	}
+
+	go func() {
+		err := s.server.Serve(listener)
+		errChan <- err
+	}()
+	return errChan, nil
 }
 
 func (s *Subscriber) Close() error {
