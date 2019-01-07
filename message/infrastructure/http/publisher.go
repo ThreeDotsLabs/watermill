@@ -3,6 +3,7 @@ package http
 import (
 	"bytes"
 	"encoding/json"
+	"io/ioutil"
 	"net/http"
 
 	"github.com/pkg/errors"
@@ -15,6 +16,8 @@ var (
 	// ErrPublisherClosed happens when trying to publish to a topic while the publisher is closed or closing.
 	ErrPublisherClosed = errors.New("publisher is closed")
 	ErrNoMarshalFunc   = errors.New("marshal function is missing")
+
+	ErrErrorResponse = errors.New("server responded with error status")
 )
 
 type MarshalMessageFunc func(topic string, msg *message.Message) (*http.Request, error)
@@ -100,6 +103,19 @@ func (p *Publisher) Publish(topic string, messages ...*message.Message) error {
 		}
 
 		// todo: process the response anyhow?
+		if resp.StatusCode >= http.StatusBadRequest {
+			body, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				return errors.New("could not read http response")
+			}
+
+			logFields = logFields.Add(watermill.LogFields{
+				"http_status":   resp.StatusCode,
+				"http_response": string(body),
+			})
+			p.logger.Info("server responded with error", logFields)
+			return errors.Wrapf(err, "%d %s", resp.StatusCode, resp.Status)
+		}
 
 		err = resp.Body.Close()
 		if err != nil {
