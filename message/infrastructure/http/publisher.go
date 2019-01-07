@@ -51,18 +51,21 @@ type Publisher struct {
 }
 
 type PublisherConfig struct {
-	marshalMessageFunc MarshalMessageFunc
-	client             *http.Client
+	MarshalMessageFunc MarshalMessageFunc
+	Client             *http.Client
+	// if false (default), when server responds with error (>=400) to the webhook request, the response body is logged.
+	DoNotLogResponseBodyOnServerError bool
 }
 
 func (c *PublisherConfig) setDefaults() {
-	if c.client == nil {
-		c.client = http.DefaultClient
+	if c.Client == nil {
+		c.Client = http.DefaultClient
 	}
+
 }
 
 func (c PublisherConfig) validate() error {
-	if c.marshalMessageFunc == nil {
+	if c.MarshalMessageFunc == nil {
 		return ErrNoMarshalFunc
 	}
 	return nil
@@ -85,7 +88,7 @@ func (p *Publisher) Publish(topic string, messages ...*message.Message) error {
 	}
 
 	for _, msg := range messages {
-		req, err := p.config.marshalMessageFunc(topic, msg)
+		req, err := p.config.MarshalMessageFunc(topic, msg)
 		if err != nil {
 			return errors.Wrapf(err, "cannot marshal message %s", msg.UUID)
 		}
@@ -97,27 +100,16 @@ func (p *Publisher) Publish(topic string, messages ...*message.Message) error {
 			"provider": ProviderName,
 		}
 
-		resp, err := p.config.client.Do(req)
+		resp, err := p.config.Client.Do(req)
 		if err != nil {
 			return errors.Wrapf(err, "publishing message %s failed", msg.UUID)
 		}
 
-		// todo: process the response anyhow?
+		p.handleResponseBody(resp, logFields)
 		if resp.StatusCode >= http.StatusBadRequest {
-			body, err := ioutil.ReadAll(resp.Body)
-			if err != nil {
-				return errors.New("could not read http response")
-			}
-
-			logFields = logFields.Add(watermill.LogFields{
-				"http_status":   resp.StatusCode,
-				"http_response": string(body),
-			})
-			p.logger.Info("server responded with error", logFields)
 			return errors.Wrapf(err, "%d %s", resp.StatusCode, resp.Status)
 		}
 
-		err = resp.Body.Close()
 		if err != nil {
 			return errors.Wrapf(err, "could not close response body for message %s", msg.UUID)
 		}
@@ -134,5 +126,30 @@ func (p *Publisher) Close() error {
 	}
 
 	p.closed = true
+	return nil
+}
+
+func (p Publisher) handleResponseBody(resp *http.Response, logFields watermill.LogFields) error {
+	defer resp.Body.Close()
+
+	if resp.StatusCode < http.StatusBadRequest {
+		return nil
+	}
+
+	if p.config.DoNotLogResponseBodyOnServerError {
+		return nil
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return errors.New("could not read http response")
+	}
+
+	logFields = logFields.Add(watermill.LogFields{
+		"http_status":   resp.StatusCode,
+		"http_response": string(body),
+	})
+	p.logger.Info("server responded with error", logFields)
+
 	return nil
 }

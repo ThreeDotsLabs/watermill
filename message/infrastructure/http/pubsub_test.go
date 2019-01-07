@@ -26,7 +26,7 @@ func createPubSub(t *testing.T) message.PubSub {
 	}()
 
 	publisherConf := PublisherConfig{
-		marshalMessageFunc: DefaultMarshalMessageFunc("http://localhost:8080"),
+		MarshalMessageFunc: DefaultMarshalMessageFunc("http://localhost:8080"),
 	}
 
 	pub, err := NewPublisher(publisherConf, logger)

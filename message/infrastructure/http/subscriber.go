@@ -42,17 +42,17 @@ func DefaultUnmarshalMessageFunc(topic string, req *http.Request) (*message.Mess
 }
 
 type SubscriberConfig struct {
-	router               chi.Router
-	unmarshalMessageFunc UnmarshalMessageFunc
+	Router               chi.Router
+	UnmarshalMessageFunc UnmarshalMessageFunc
 }
 
 func (s *SubscriberConfig) setDefaults() {
-	if s.router == nil {
-		s.router = chi.NewRouter()
+	if s.Router == nil {
+		s.Router = chi.NewRouter()
 	}
 
-	if s.unmarshalMessageFunc == nil {
-		s.unmarshalMessageFunc = DefaultUnmarshalMessageFunc
+	if s.UnmarshalMessageFunc == nil {
+		s.UnmarshalMessageFunc = DefaultUnmarshalMessageFunc
 	}
 }
 
@@ -76,7 +76,7 @@ type Subscriber struct {
 // logger is Watermill's logger.
 func NewSubscriber(addr string, config SubscriberConfig, logger watermill.LoggerAdapter) (*Subscriber, error) {
 	config.setDefaults()
-	s := &http.Server{Addr: addr, Handler: config.router}
+	s := &http.Server{Addr: addr, Handler: config.Router}
 
 	return &Subscriber{
 		config,
@@ -107,15 +107,15 @@ func (s *Subscriber) Subscribe(url string) (chan *message.Message, error) {
 		url = "/" + url
 	}
 
-	s.config.router.Post(url, func(w http.ResponseWriter, r *http.Request) {
-		msg, err := s.config.unmarshalMessageFunc(url, r)
+	s.config.Router.Post(url, func(w http.ResponseWriter, r *http.Request) {
+		msg, err := s.config.UnmarshalMessageFunc(url, r)
 		if err != nil {
 			s.logger.Info("Cannot unmarshal message", baseLogFields.Add(watermill.LogFields{"err": err}))
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 		if msg == nil {
-			s.logger.Info("No message returned by unmarshalMessageFunc", baseLogFields)
+			s.logger.Info("No message returned by UnmarshalMessageFunc", baseLogFields)
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
