@@ -61,20 +61,20 @@ func (c *PublisherConfig) setDefaults() {
 	if c.Client == nil {
 		c.Client = http.DefaultClient
 	}
-
 }
 
 func (c PublisherConfig) validate() error {
 	if c.MarshalMessageFunc == nil {
 		return ErrNoMarshalFunc
 	}
+
 	return nil
 }
 
 func NewPublisher(config PublisherConfig, logger watermill.LoggerAdapter) (*Publisher, error) {
 	config.setDefaults()
 	if err := config.validate(); err != nil {
-		return nil, errors.Wrap(err, "invalid config")
+		return nil, errors.Wrap(err, "invalid Publisher config")
 	}
 	return &Publisher{
 		config: config,
@@ -107,7 +107,7 @@ func (p *Publisher) Publish(topic string, messages ...*message.Message) error {
 
 		p.handleResponseBody(resp, logFields)
 		if resp.StatusCode >= http.StatusBadRequest {
-			return errors.Wrapf(err, "%d %s", resp.StatusCode, resp.Status)
+			return errors.Wrap(ErrErrorResponse, resp.Status)
 		}
 
 		if err != nil {
@@ -129,20 +129,20 @@ func (p *Publisher) Close() error {
 	return nil
 }
 
-func (p Publisher) handleResponseBody(resp *http.Response, logFields watermill.LogFields) error {
+func (p Publisher) handleResponseBody(resp *http.Response, logFields watermill.LogFields) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode < http.StatusBadRequest {
-		return nil
+		return
 	}
 
 	if p.config.DoNotLogResponseBodyOnServerError {
-		return nil
+		return
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return errors.New("could not read http response")
+		panic(errors.New("could not read http response"))
 	}
 
 	logFields = logFields.Add(watermill.LogFields{
@@ -150,6 +150,4 @@ func (p Publisher) handleResponseBody(resp *http.Response, logFields watermill.L
 		"http_response": string(body),
 	})
 	p.logger.Info("server responded with error", logFields)
-
-	return nil
 }
