@@ -60,8 +60,9 @@ func (s *SubscriberConfig) setDefaults() {
 type Subscriber struct {
 	config SubscriberConfig
 
-	server *http.Server
-	logger watermill.LoggerAdapter
+	server  *http.Server
+	address net.Addr
+	logger  watermill.LoggerAdapter
 
 	outputChannels     []chan *message.Message
 	outputChannelsLock sync.Locker
@@ -79,12 +80,11 @@ func NewSubscriber(addr string, config SubscriberConfig, logger watermill.Logger
 	s := &http.Server{Addr: addr, Handler: config.Router}
 
 	return &Subscriber{
-		config,
-		s,
-		logger,
-		make([]chan *message.Message, 0),
-		&sync.Mutex{},
-		false,
+		config:             config,
+		server:             s,
+		logger:             logger,
+		outputChannels:     make([]chan *message.Message, 0),
+		outputChannelsLock: &sync.Mutex{},
 	}, nil
 }
 
@@ -147,12 +147,18 @@ func (s *Subscriber) StartHTTPServer() (chan error, error) {
 	if err != nil {
 		return nil, err
 	}
+	s.address = listener.Addr()
 
 	go func() {
 		err := s.server.Serve(listener)
 		errChan <- err
 	}()
 	return errChan, nil
+}
+
+// Addr returns the server address.
+func (s Subscriber) Addr() net.Addr {
+	return s.address
 }
 
 func (s *Subscriber) Close() error {
