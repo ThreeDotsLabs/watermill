@@ -43,82 +43,82 @@ func TestPubSub(
 		t.Parallel()
 		publishSubscribeTest(t, pubSubConstructor(t))
 	})
-	//
-	//t.Run("resendOnError", func(t *testing.T) {
-	//	t.Parallel()
-	//	resendOnErrorTest(t, pubSubConstructor(t))
-	//})
-	//
-	//t.Run("noAck", func(t *testing.T) {
-	//	if !features.GuaranteedOrder {
-	//		t.Skip("guaranteed order is required for this test")
-	//	}
-	//	t.Parallel()
-	//	noAckTest(t, pubSubConstructor(t))
-	//})
-	//
-	//t.Run("continueAfterClose", func(t *testing.T) {
-	//	if features.ExactlyOnceDelivery {
-	//		t.Skip("ExactlyOnceDelivery test is not supported yet")
-	//	}
-	//
-	//	t.Parallel()
-	//	continueAfterCloseTest(t, pubSubConstructor)
-	//})
-	//
-	//t.Run("concurrentClose", func(t *testing.T) {
-	//	if features.ExactlyOnceDelivery {
-	//		t.Skip("ExactlyOnceDelivery test is not supported yet")
-	//	}
-	//
-	//	t.Parallel()
-	//	concurrentClose(t, pubSubConstructor)
-	//})
-	//
-	//t.Run("continueAfterErrors", func(t *testing.T) {
-	//	if !features.Persistent {
-	//		t.Skip("continueAfterErrors test is not supported for non persistent pub/sub")
-	//	}
-	//
-	//	t.Parallel()
-	//	continueAfterErrors(t, pubSubConstructor)
-	//})
-	//
-	//t.Run("publishSubscribeInOrderTest", func(t *testing.T) {
-	//	if !features.GuaranteedOrder {
-	//		t.Skipf("order is not guaranteed")
-	//	}
-	//
-	//	t.Parallel()
-	//	publishSubscribeInOrderTest(t, pubSubConstructor(t))
-	//})
-	//
-	//t.Run("consumerGroupsTest", func(t *testing.T) {
-	//	if !features.ConsumerGroups {
-	//		t.Skip("consumer groups are not supported")
-	//	}
-	//
-	//	t.Parallel()
-	//	consumerGroupsTest(t, consumerGroupPubSubConstructor)
-	//})
-	//
-	//t.Run("publisherCloseTest", func(t *testing.T) {
-	//	t.Parallel()
-	//
-	//	pubsub := pubSubConstructor(t)
-	//
-	//	publisherCloseTest(t, pubsub, pubsub)
-	//})
-	//
-	//t.Run("topicTest", func(t *testing.T) {
-	//	t.Parallel()
-	//	topicTest(t, pubSubConstructor(t))
-	//})
-	//
-	//t.Run("messageCtx", func(t *testing.T) {
-	//	t.Parallel()
-	//	testMessageCtx(t, pubSubConstructor(t))
-	//})
+
+	t.Run("resendOnError", func(t *testing.T) {
+		t.Parallel()
+		resendOnErrorTest(t, pubSubConstructor(t))
+	})
+
+	t.Run("noAck", func(t *testing.T) {
+		if !features.GuaranteedOrder {
+			t.Skip("guaranteed order is required for this test")
+		}
+		t.Parallel()
+		noAckTest(t, pubSubConstructor(t))
+	})
+
+	t.Run("continueAfterClose", func(t *testing.T) {
+		if features.ExactlyOnceDelivery {
+			t.Skip("ExactlyOnceDelivery test is not supported yet")
+		}
+
+		t.Parallel()
+		continueAfterCloseTest(t, pubSubConstructor)
+	})
+
+	t.Run("concurrentClose", func(t *testing.T) {
+		if features.ExactlyOnceDelivery {
+			t.Skip("ExactlyOnceDelivery test is not supported yet")
+		}
+
+		t.Parallel()
+		concurrentClose(t, pubSubConstructor)
+	})
+
+	t.Run("continueAfterErrors", func(t *testing.T) {
+		if !features.Persistent {
+			t.Skip("continueAfterErrors test is not supported for non persistent pub/sub")
+		}
+
+		t.Parallel()
+		continueAfterErrors(t, pubSubConstructor)
+	})
+
+	t.Run("publishSubscribeInOrderTest", func(t *testing.T) {
+		if !features.GuaranteedOrder {
+			t.Skipf("order is not guaranteed")
+		}
+
+		t.Parallel()
+		publishSubscribeInOrderTest(t, pubSubConstructor(t))
+	})
+
+	t.Run("consumerGroupsTest", func(t *testing.T) {
+		if !features.ConsumerGroups {
+			t.Skip("consumer groups are not supported")
+		}
+
+		t.Parallel()
+		consumerGroupsTest(t, consumerGroupPubSubConstructor)
+	})
+
+	t.Run("publisherCloseTest", func(t *testing.T) {
+		t.Parallel()
+
+		pubsub := pubSubConstructor(t)
+
+		publisherCloseTest(t, pubsub, pubsub)
+	})
+
+	t.Run("topicTest", func(t *testing.T) {
+		t.Parallel()
+		topicTest(t, pubSubConstructor(t))
+	})
+
+	t.Run("messageCtx", func(t *testing.T) {
+		t.Parallel()
+		testMessageCtx(t, pubSubConstructor(t))
+	})
 }
 
 var stressTestTestsCount = 20
@@ -162,7 +162,9 @@ func publishSubscribeTest(t *testing.T, pubSub message.PubSub) {
 	messages, err := pubSub.Subscribe(topicName)
 	require.NoError(t, err)
 
+	publishing := make(chan struct{})
 	go func() {
+		defer close(publishing)
 		err := pubSub.Publish(topicName, messagesToPublish...)
 		require.NoError(t, err, "cannot publish message")
 	}()
@@ -173,6 +175,9 @@ func publishSubscribeTest(t *testing.T, pubSub message.PubSub) {
 	tests.AssertAllMessagesReceived(t, messagesToPublish, receivedMessages)
 	tests.AssertMessagesPayloads(t, messagesPayloads, receivedMessages)
 	tests.AssertMessagesMetadata(t, "test", messagesTestMetadata, receivedMessages)
+
+	// wait for the publishing goroutine to end
+	<-publishing
 }
 
 func publishSubscribeInOrderTest(t *testing.T, pubSub message.PubSub) {
@@ -199,7 +204,9 @@ func publishSubscribeInOrderTest(t *testing.T, pubSub message.PubSub) {
 	messages, err := pubSub.Subscribe(topicName)
 	require.NoError(t, err)
 
+	publishing := make(chan struct{})
 	go func() {
+		defer close(publishing)
 		err := pubSub.Publish(topicName, messagesToPublish...)
 		require.NoError(t, err)
 	}()
@@ -222,6 +229,9 @@ func publishSubscribeInOrderTest(t *testing.T, pubSub message.PubSub) {
 	for key, ids := range expectedMessages {
 		assert.Equal(t, ids, receivedMessagesByType[key])
 	}
+
+	// wait for the publishing goroutine to end
+	<-publishing
 }
 
 func resendOnErrorTest(t *testing.T, pubSub message.PubSub) {
@@ -573,7 +583,9 @@ func testMessageCtx(t *testing.T, pubSub message.PubSub) {
 	messages, err := pubSub.Subscribe(topic)
 	require.NoError(t, err)
 
+	publishing := make(chan struct{})
 	go func() {
+		defer close(publishing)
 		msg := message.NewMessage(uuid.NewV4().String(), nil)
 
 		// ensuring that context is not propagated via pub/sub
@@ -582,7 +594,8 @@ func testMessageCtx(t *testing.T, pubSub message.PubSub) {
 		msg.SetContext(ctx)
 
 		require.NoError(t, pubSub.Publish(topic, msg))
-		require.NoError(t, pubSub.Publish(topic, msg))
+		// this might actually be an error in some pubsubs (http), because we close the subscriber without ACK.
+		_ = pubSub.Publish(topic, msg)
 	}()
 
 	select {
@@ -630,6 +643,10 @@ func testMessageCtx(t *testing.T, pubSub message.PubSub) {
 	case <-time.After(defaultTimeout):
 		t.Fatal("no message received")
 	}
+
+	// wait for the publishing goroutine to end
+	// don't wanna close the publisher until it's done its job
+	<-publishing
 }
 
 func assertConsumerGroupReceivedMessages(

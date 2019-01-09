@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"encoding/json"
 	"io/ioutil"
 	"net"
@@ -109,6 +110,11 @@ func (s *Subscriber) Subscribe(url string) (chan *message.Message, error) {
 
 	s.config.Router.Post(url, func(w http.ResponseWriter, r *http.Request) {
 		msg, err := s.config.UnmarshalMessageFunc(url, r)
+
+		ctx, cancelCtx := context.WithCancel(context.Background())
+		msg.SetContext(ctx)
+		defer cancelCtx()
+
 		if err != nil {
 			s.logger.Info("Cannot unmarshal message", baseLogFields.Add(watermill.LogFields{"err": err}))
 			w.WriteHeader(http.StatusBadRequest)
@@ -130,9 +136,11 @@ func (s *Subscriber) Subscribe(url string) (chan *message.Message, error) {
 			s.logger.Trace("Message acknowledged", logFields.Add(watermill.LogFields{"err": err}))
 			w.WriteHeader(http.StatusOK)
 		case <-msg.Nacked():
+			s.logger.Trace("Message nacked", logFields.Add(watermill.LogFields{"err": err}))
 			w.WriteHeader(http.StatusInternalServerError)
 		case <-r.Context().Done():
 			s.logger.Info("Request stopped without ACK received", logFields)
+			w.WriteHeader(http.StatusInternalServerError)
 		}
 	})
 
