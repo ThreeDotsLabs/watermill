@@ -114,7 +114,7 @@ func (p *Publisher) Publish(topic string, messages ...*message.Message) error {
 			return errors.Wrapf(err, "could not close response body for message %s", msg.UUID)
 		}
 
-		p.logger.Trace("message published", logFields)
+		p.logger.Trace("Message published", logFields)
 	}
 
 	return nil
@@ -149,5 +149,5 @@ func (p Publisher) handleResponseBody(resp *http.Response, logFields watermill.L
 		"http_status":   resp.StatusCode,
 		"http_response": string(body),
 	})
-	p.logger.Info("server responded with error", logFields)
+	p.logger.Info("Server responded with error", logFields)
 }
