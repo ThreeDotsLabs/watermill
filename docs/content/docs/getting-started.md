@@ -55,7 +55,7 @@ The source should go to `main.go`.
 
 To run please execute `docker-compose up` command.
 
-More detailed explanation of how it is running, and how to add live reload you can find in [our [...] article](todo).
+More detailed explanation of how it is running, and how to add live reload you can find in [*Go Docker dev environment* article](https://threedots.tech/post/go-docker-dev-environment-with-go-modules-and-live-code-reloading/).
 
 {{% /collapse-box %}}
 {{< /collapse >}}
@@ -80,7 +80,7 @@ The source should go to `main.go`.
 
 To run please execute `docker-compose up` command.
 
-More detailed explanation of how it is running, and how to add live reload you can find in [our [...] article](todo).
+More detailed explanation of how it is running, and how to add live reload you can find in [*Go Docker dev environment* article](https://threedots.tech/post/go-docker-dev-environment-with-go-modules-and-live-code-reloading/).
 {{% /collapse-box %}}
 {{< /collapse >}}
 
@@ -105,7 +105,7 @@ The source should go to `main.go`.
 
 To run, please execute `docker-compose up`.
 
-More detailed explanation of how it is running, and how to add live reload you can find in [our [...] article](todo).
+More detailed explanation of how it is running, and how to add live reload you can find in [*Go Docker dev environment* article](https://threedots.tech/post/go-docker-dev-environment-with-go-modules-and-live-code-reloading/).
 {{% /collapse-box %}}
 {{< /collapse >}}
 
