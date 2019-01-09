@@ -105,7 +105,10 @@ func (p *Publisher) Publish(topic string, messages ...*message.Message) error {
 			return errors.Wrapf(err, "publishing message %s failed", msg.UUID)
 		}
 
-		p.handleResponseBody(resp, logFields)
+		if err = p.handleResponseBody(resp, logFields); err != nil {
+			return err
+		}
+
 		if resp.StatusCode >= http.StatusBadRequest {
 			return errors.Wrap(ErrErrorResponse, resp.Status)
 		}
@@ -129,20 +132,20 @@ func (p *Publisher) Close() error {
 	return nil
 }
 
-func (p Publisher) handleResponseBody(resp *http.Response, logFields watermill.LogFields) {
+func (p Publisher) handleResponseBody(resp *http.Response, logFields watermill.LogFields) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode < http.StatusBadRequest {
-		return
+		return nil
 	}
 
 	if p.config.DoNotLogResponseBodyOnServerError {
-		return
+		return nil
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		panic(errors.New("could not read http response"))
+		return errors.Wrap(err, "could not read response body")
 	}
 
 	logFields = logFields.Add(watermill.LogFields{
