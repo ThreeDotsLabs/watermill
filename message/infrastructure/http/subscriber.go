@@ -156,7 +156,7 @@ func (s *Subscriber) StartHTTPServer() (chan error, error) {
 	return errChan, nil
 }
 
-// Addr returns the server address.
+// Addr returns the server address or nil if the server isn't running.
 func (s Subscriber) Addr() net.Addr {
 	return s.address
 }

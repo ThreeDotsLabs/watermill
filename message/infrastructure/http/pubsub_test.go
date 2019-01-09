@@ -1,4 +1,4 @@
-package http
+package http_test
 
 import (
 	"testing"
@@ -9,32 +9,36 @@ import (
 
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure"
+	"github.com/ThreeDotsLabs/watermill/message/infrastructure/http"
 )
 
 func createPubSub(t *testing.T) message.PubSub {
 	logger := watermill.NewStdLogger(true, true)
 
 	// use any free port to allow parallel tests
-	sub, err := NewSubscriber(":0", SubscriberConfig{}, logger)
+	sub, err := http.NewSubscriber(":0", http.SubscriberConfig{}, logger)
 	require.NoError(t, err)
 
 	_, err = sub.StartHTTPServer()
 	require.NoError(t, err)
 
-	publisherConf := PublisherConfig{
-		MarshalMessageFunc: DefaultMarshalMessageFunc("http://" + sub.Addr().String()),
+	addr := sub.Addr()
+	require.NotNil(t, addr)
+
+	publisherConf := http.PublisherConfig{
+		MarshalMessageFunc: http.DefaultMarshalMessageFunc("http://" + addr.String()),
 	}
 
-	pub, err := NewPublisher(publisherConf, logger)
+	pub, err := http.NewPublisher(publisherConf, logger)
 	require.NoError(t, err)
 
-	retryConf := RetryPublisherConfig{
+	retryConf := http.RetryPublisherConfig{
 		MaxRetries:       10,
 		TimeToFirstRetry: time.Millisecond,
 	}
 
 	// use the retry decorator, for tests involving retry after error
-	retryPub, err := NewRetryPublisher(pub, retryConf)
+	retryPub, err := http.NewRetryPublisher(pub, retryConf)
 	require.NoError(t, err)
 
 	return message.NewPubSub(retryPub, sub)
