@@ -153,4 +153,6 @@ func (p Publisher) handleResponseBody(resp *http.Response, logFields watermill.L
 		"http_response": string(body),
 	})
 	p.logger.Info("Server responded with error", logFields)
+
+	return nil
 }
