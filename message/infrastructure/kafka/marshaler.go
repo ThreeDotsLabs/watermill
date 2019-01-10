@@ -45,7 +45,7 @@ func (DefaultMarshaler) Marshal(topic string, msg *message.Message) (*sarama.Pro
 		Topic:   topic,
 		Value:   sarama.ByteEncoder(msg.Payload),
 		Headers: headers,
-		Key:     sarama.StringEncoder(msg.UUID),
+		Key:     sarama.ByteEncoder(msg.UUID),
 	}, nil
 }
 
