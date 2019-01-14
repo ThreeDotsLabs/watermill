@@ -277,13 +277,12 @@ func (r *Router) Close() error {
 	defer r.logger.Info("Router closed", nil)
 
 	close(r.closeCh)
+	defer close(r.closedCh)
 
 	timeouted := sync_internal.WaitGroupTimeout(r.handlersWg, r.config.CloseTimeout)
 	if timeouted {
 		return errors.New("router close timeouted")
 	}
-
-	close(r.closedCh)
 
 	return nil
 }
