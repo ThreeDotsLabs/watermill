@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	brokers   = []string{"localhost:9092"}
+	brokers   = []string{"kafka:9092"}
 	logger    = watermill.NewStdLogger(false, false)
 	topicName = "kafka_to_http_example"
 )
@@ -34,7 +34,7 @@ func passMessages(acceptedTypes ...string) message.HandlerFunc {
 }
 
 func marshalMessage(topic string, msg *message.Message) (*http.Request, error) {
-	return http.NewRequest(http.MethodPost, "http://localhost:8001/"+topic, bytes.NewBuffer(msg.Payload))
+	return http.NewRequest(http.MethodPost, "http://webhooks_server:8001/"+topic, bytes.NewBuffer(msg.Payload))
 }
 
 func main() {
