@@ -22,7 +22,8 @@ func (b BookRoomHandler) NewCommand() interface{} {
 }
 
 func (b BookRoomHandler) Handle(c interface{}) error {
-	cmd := c.(*BookRoom)
+	// c is always type returned by `NewCommand`, so cast is always safe
+	cmd := c.(*BookRoom) // todo - get rid of interface{} when generics added to Go
 
 	log.Printf("booked %s for %s from %s to %s", cmd.RoomId, cmd.GuestName, cmd.StartDate, cmd.EndDate)
 	return nil
@@ -48,6 +49,7 @@ func main() {
 	// you can use any Pub/Sub implementation from here: https://watermill.io/docs/pub-sub-implementations/
 	pubSub := gochannel.NewGoChannel(0, logger, time.Second)
 
+	// cqrs is built on already existing messages router: https://watermill.io/docs/messages-router/
 	router, err := message.NewRouter(message.RouterConfig{}, logger)
 	if err != nil {
 		panic(err)
@@ -67,50 +69,52 @@ func main() {
 		panic(err)
 	}
 
-	go func() {
-		commandBus := command.NewBus(
-			pubSub,
-			"commands",
-			cmdMarshaler,
-		)
-
-		i := 0
-		for {
-			i++
-
-			startDate, err := ptypes.TimestampProto(time.Now())
-			if err != nil {
-				panic(err)
-			}
-
-			endDate, err := ptypes.TimestampProto(time.Now().Add(time.Hour * 24 * 3))
-			if err != nil {
-				panic(err)
-			}
-
-			bookRoomCmd := &BookRoom{
-				RoomId:    fmt.Sprintf("%d", i),
-				GuestName: "Andrzej",
-				StartDate: startDate,
-				EndDate:   endDate,
-			}
-			if err := commandBus.Send(bookRoomCmd); err != nil {
-				panic(err)
-			}
-
-			orderBeerCmd := &OrderBeer{
-				RoomId: bookRoomCmd.RoomId,
-				Count:  rand.Int63n(10) + 1,
-			}
-			if err := commandBus.Send(orderBeerCmd); err != nil {
-				panic(err)
-			}
-
-			time.Sleep(time.Second)
-		}
-	}()
+	go publishCommands(pubSub, cmdMarshaler)
 
 	if err := router.Run(); err != nil {
 		panic(err)
+	}
+}
+
+func publishCommands(pubSub message.PubSub, cmdMarshaler command.ProtoBufMarshaler) func() {
+	commandBus := command.NewBus(
+		pubSub,
+		"commands",
+		cmdMarshaler,
+	)
+
+	i := 0
+	for {
+		i++
+
+		startDate, err := ptypes.TimestampProto(time.Now())
+		if err != nil {
+			panic(err)
+		}
+
+		endDate, err := ptypes.TimestampProto(time.Now().Add(time.Hour * 24 * 3))
+		if err != nil {
+			panic(err)
+		}
+
+		bookRoomCmd := &BookRoom{
+			RoomId:    fmt.Sprintf("%d", i),
+			GuestName: "Andrzej",
+			StartDate: startDate,
+			EndDate:   endDate,
+		}
+		if err := commandBus.Send(bookRoomCmd); err != nil {
+			panic(err)
+		}
+
+		orderBeerCmd := &OrderBeer{
+			RoomId: bookRoomCmd.RoomId,
+			Count:  rand.Int63n(10) + 1,
+		}
+		if err := commandBus.Send(orderBeerCmd); err != nil {
+			panic(err)
+		}
+
+		time.Sleep(time.Second)
 	}
 }
