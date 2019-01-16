@@ -146,10 +146,10 @@ marshaler := kafka.NewWithPartitioningMarshaler(func(topic string, msg *message.
 
 ### HTTP
 
-The HTTP subscriber allows us to send messages received by HTTP request (for example - webhooks).
+The HTTP subscriber listens to HTTP requests (for example - webhooks) and outputs them as messages.
 You can then post them to any Publisher. Here is an example with [sending HTTP messages to Kafka](https://github.com/ThreeDotsLabs/watermill/blob/master/_examples/http-to-kafka/main.go).
 
-The HTTP publisher sends requests to the webhooks specified in its configuration. #TODO: example
+The HTTP publisher sends HTTP requests as specified in its configuration. Here is an example with [transforming Kafka messages into HTTP webhook requests](https://github.com/ThreeDotsLabs/watermill/tree/http-publisher/_examples/kafka-to-http).
 
 #### Characteristics
 
@@ -160,16 +160,33 @@ The HTTP publisher sends requests to the webhooks specified in its configuration
 | GuaranteedOrder | yes |  |
 | Persistent | no| |
 
-#### Configuration
+#### Subscriber configuration
 
-The configuration of HTTP subscriber is done via the constructor.
+Subscriber configuration is done via the config struct passed to the constructor:
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/infrastructure/http/subscriber.go" first_line_contains="// NewSubscriber" last_line_contains="func NewSubscriber(" %}}
+{{% load-snippet-partial file="content/src-link/message/infrastructure/http/subscriber.go" first_line_contains="type SubscriberConfig struct" last_line_contains="}" %}}
 {{% /render-md %}}
 
-You can use the `Router` config option to pass your own `chi.Router` (see [chi](https://github.com/go-chi/chi)).
+You can use the `Router` config option to `SubscriberConfig` to pass your own `chi.Router` (see [chi](https://github.com/go-chi/chi)).
 This may be helpful if you'd like to add your own HTTP handlers (e.g. a health check endpoint).
+
+#### Publisher configuration
+
+Publisher configuration is done via the config struct passed to the constructor:
+
+{{% render-md %}}
+{{% load-snippet-partial file="content/src-link/message/infrastructure/http/publisher.go" first_line_contains="type PublisherConfig struct" last_line_contains="}" %}}
+{{% /render-md %}}
+
+How the message topic and body translate into the URL, method and payload of the HTTP request is highly configurable through the use of `MarshalMessageFunc`. 
+Use the provided `DefaultMarshalMessageFunc` to send POST requests to a predefined address:
+
+{{% render-md %}}
+{{% load-snippet-partial file="content/src-link/message/infrastructure/http/publisher.go" first_line_contains="// DefaultMarshalMessageFunc" last_line_contains="return req, nil" padding_after="2" %}}
+{{% /render-md %}}
+
+You can pass your own `http.Client` to execute the requests or use Golang's default client. 
 
 #### Running
 

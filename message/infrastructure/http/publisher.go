@@ -43,13 +43,6 @@ func DefaultMarshalMessageFunc(address string) MarshalMessageFunc {
 	}
 }
 
-type Publisher struct {
-	logger watermill.LoggerAdapter
-	config PublisherConfig
-
-	closed bool
-}
-
 type PublisherConfig struct {
 	MarshalMessageFunc MarshalMessageFunc
 	Client             *http.Client
@@ -71,6 +64,16 @@ func (c PublisherConfig) validate() error {
 	return nil
 }
 
+type Publisher struct {
+	logger watermill.LoggerAdapter
+	config PublisherConfig
+
+	closed bool
+}
+
+// NewPublisher creates a new Publisher.
+// It publishes the received messages as HTTP requests.
+// The URL, method and payload of the request are determined by the configured MarshalMessageFunc.
 func NewPublisher(config PublisherConfig, logger watermill.LoggerAdapter) (*Publisher, error) {
 	config.setDefaults()
 	if err := config.validate(); err != nil {

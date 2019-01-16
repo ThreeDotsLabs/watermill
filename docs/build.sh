@@ -22,6 +22,7 @@ declare -a files_to_link=(
     "message/infrastructure/googlecloud/marshaler.go"
     "message/infrastructure/gochannel/pubsub.go"
     "message/infrastructure/http/subscriber.go"
+    "message/infrastructure/http/publisher.go"
     "message/message.go"
     "message/publisher.go"
     "message/subscriber.go"
