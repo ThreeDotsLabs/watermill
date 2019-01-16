@@ -1,0 +1,17 @@
+syntax = "proto3";
+package main;
+
+import "google/protobuf/timestamp.proto";
+
+message BookRoom {
+    string room_id = 1;
+    string guest_name = 2;
+
+    google.protobuf.Timestamp start_date = 3;
+    google.protobuf.Timestamp end_date = 4;
+}
+
+message OrderBeer {
+    string room_id = 1;
+    int64 count = 2;
+}
