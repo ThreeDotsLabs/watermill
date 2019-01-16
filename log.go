@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sort"
 	"strings"
 )
 
@@ -79,8 +80,20 @@ func (l *StdLoggerAdapter) log(logger *log.Logger, level string, msg string, fie
 	}
 
 	fieldsStr := ""
-	for field, value := range fields {
+
+	keys := make([]string, len(fields))
+	i := 0
+	for field := range fields {
+		keys[i] = field
+		i++
+	}
+
+	sort.Strings(keys)
+
+	for _, key := range keys {
 		var valueStr string
+		value := fields[key]
+
 		if stringer, ok := value.(fmt.Stringer); ok {
 			valueStr = stringer.String()
 		} else {
@@ -91,7 +104,7 @@ func (l *StdLoggerAdapter) log(logger *log.Logger, level string, msg string, fie
 			valueStr = `"` + valueStr + `"`
 		}
 
-		fieldsStr += field + "=" + valueStr + " "
+		fieldsStr += key + "=" + valueStr + " "
 	}
 
 	logger.Output(3, fmt.Sprintf("\t"+`level=%s msg="%s" %s`, level, msg, fieldsStr))
