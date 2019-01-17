@@ -12,7 +12,7 @@ toc = false
 |------|-----------|------------|--------|
 |  [Golang Channel]({{< ref "#golang-channel" >}}) | x | x | `prod-ready` |
 |  [Kafka]({{< ref "#kafka" >}}) | x | x | `prod-ready` |
-|  [HTTP]({{< ref "#http" >}})  |   | x | `prod-ready` |
+|  [HTTP]({{< ref "#http" >}})  | x | x | `prod-ready` |
 |  [Google Cloud Pub/Sub]({{< ref "#google-cloud-pub-sub" >}})  | x | x | [`beta`](https://github.com/ThreeDotsLabs/watermill/pull/10) |
 |  [NATS Streaming]({{< ref "#nats-streaming" >}})  | x | x | `beta` |
 |  MySQL Binlog  |  | x | [`idea`](https://github.com/ThreeDotsLabs/watermill/issues/5) |
@@ -149,14 +149,14 @@ marshaler := kafka.NewWithPartitioningMarshaler(func(topic string, msg *message.
 The HTTP subscriber listens to HTTP requests (for example - webhooks) and outputs them as messages.
 You can then post them to any Publisher. Here is an example with [sending HTTP messages to Kafka](https://github.com/ThreeDotsLabs/watermill/blob/master/_examples/http-to-kafka/main.go).
 
-The HTTP publisher sends HTTP requests as specified in its configuration. Here is an example with [transforming Kafka messages into HTTP webhook requests](https://github.com/ThreeDotsLabs/watermill/tree/http-publisher/_examples/kafka-to-http).
+The HTTP publisher sends HTTP requests as specified in its configuration. Here is an example with [transforming Kafka messages into HTTP webhook requests](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/kafka-to-http).
 
 #### Characteristics
 
 | Feature | Implements | Note |
 | ------- | ---------- | ---- |
 | ConsumerGroups | no | |
-| ExactlyOnceDelivery | no |  |
+| ExactlyOnceDelivery | yes |  |
 | GuaranteedOrder | yes |  |
 | Persistent | no| |
 
