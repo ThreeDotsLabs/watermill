@@ -45,7 +45,7 @@ func TestRetryPublisher_Publish_after_retries(t *testing.T) {
 	require.NoError(t, err)
 
 	// given
-	require.True(t, pub.howManyFails < conf.MaxRetries, "Publisher must fail less than MaxRetriesTimes")
+	require.True(t, pub.howManyFails < conf.MaxRetries, "Publisher must fail less than MaxRetries times")
 
 	// when
 	err = retryPub.Publish("topic", message.NewMessage("uuid", []byte{}))
