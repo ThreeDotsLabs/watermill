@@ -34,7 +34,7 @@ func passMessages(acceptedTypes ...string) message.HandlerFunc {
 }
 
 func marshalMessage(topic string, msg *message.Message) (*http.Request, error) {
-	return http.NewRequest(http.MethodPost, "http://webhooks_server:8001/"+topic, bytes.NewBuffer(msg.Payload))
+	return http.NewRequest(http.MethodPost, "http://webhooks-server:8001/"+topic, bytes.NewBuffer(msg.Payload))
 }
 
 func main() {

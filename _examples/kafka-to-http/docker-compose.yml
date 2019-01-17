@@ -1,11 +1,11 @@
 version: '3'
 services:
-  webhooks_server:
+  webhooks-server:
     image: golang:1.11
     restart: on-failure
     volumes:
     - .:/app
-    working_dir: /app/http-server/
+    working_dir: /app/webhooks-server/
     command: go run main.go
 
   router:
@@ -23,7 +23,7 @@ services:
     restart: on-failure
     depends_on:
     - kafka
-    - webhooks_server
+    - webhooks-server
     - router
     volumes:
     - .:/app
