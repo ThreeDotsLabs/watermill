@@ -7,9 +7,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ThreeDotsLabs/watermill"
 	"github.com/stretchr/testify/require"
 
+	"github.com/ThreeDotsLabs/watermill"
+	"github.com/ThreeDotsLabs/watermill/internal/publisher"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure"
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/http"
@@ -52,13 +53,14 @@ func createPubSub(t *testing.T) message.PubSub {
 	pub, err := http.NewPublisher(publisherConf, logger)
 	require.NoError(t, err)
 
-	retryConf := http.RetryPublisherConfig{
+	retryConf := publisher.RetryPublisherConfig{
 		MaxRetries:       10,
 		TimeToFirstRetry: time.Millisecond,
+		Logger:           logger,
 	}
 
 	// use the retry decorator, for tests involving retry after error
-	retryPub, err := http.NewRetryPublisher(pub, retryConf)
+	retryPub, err := publisher.NewRetryPublisher(pub, retryConf)
 	require.NoError(t, err)
 
 	return message.NewPubSub(retryPub, sub)

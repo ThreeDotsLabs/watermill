@@ -1,10 +1,9 @@
-package http
+package publisher
 
 import (
 	"time"
 
 	"github.com/ThreeDotsLabs/watermill"
-
 	"github.com/ThreeDotsLabs/watermill/message"
 
 	"github.com/pkg/errors"
@@ -19,6 +18,7 @@ type RetryPublisherConfig struct {
 	MaxRetries int
 	// each subsequent retry doubles the time to next retry.
 	TimeToFirstRetry time.Duration
+	Logger           watermill.LoggerAdapter
 }
 
 func (c *RetryPublisherConfig) setDefaults() {
@@ -28,6 +28,10 @@ func (c *RetryPublisherConfig) setDefaults() {
 
 	if c.TimeToFirstRetry == 0 {
 		c.TimeToFirstRetry = time.Second
+	}
+
+	if c.Logger == nil {
+		c.Logger = watermill.NopLogger{}
 	}
 }
 
@@ -43,11 +47,11 @@ func (c RetryPublisherConfig) validate() error {
 }
 
 type RetryPublisher struct {
-	pub    *Publisher
+	pub    message.Publisher
 	config RetryPublisherConfig
 }
 
-func NewRetryPublisher(pub *Publisher, config RetryPublisherConfig) (*RetryPublisher, error) {
+func NewRetryPublisher(pub message.Publisher, config RetryPublisherConfig) (*RetryPublisher, error) {
 	config.setDefaults()
 
 	if err := config.validate(); err != nil {
@@ -70,7 +74,7 @@ func (p RetryPublisher) Publish(topic string, messages ...*message.Message) erro
 			return nil
 		}
 
-		p.pub.logger.Debug("publish failed, retrying in "+timeToNextRetry.String(), watermill.LogFields{})
+		p.config.Logger.Debug("publish failed, retrying in "+timeToNextRetry.String(), watermill.LogFields{})
 		time.Sleep(timeToNextRetry)
 		timeToNextRetry *= 2
 	}
