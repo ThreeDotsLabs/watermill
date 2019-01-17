@@ -22,6 +22,9 @@ func (m Metadata) Set(key, value string) {
 }
 
 func (m *Metadata) UnmarshalJSON(b []byte) error {
+	if *m == nil {
+		*m = Metadata{}
+	}
 	var items []metadataItem
 	if err := json.Unmarshal(b, &items); err != nil {
 		return err
