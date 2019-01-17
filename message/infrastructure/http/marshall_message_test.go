@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -15,9 +14,6 @@ import (
 )
 
 var (
-	host        = "some-server.domain"
-	marshalFunc = watermill_http.DefaultMarshalMessageFunc("http://" + host)
-
 	metadataKey   = "key"
 	metadataValue = "value"
 	msgUUID       = "1"
@@ -31,16 +27,14 @@ func init() {
 }
 
 func TestDefaultMarshalMessageFunc(t *testing.T) {
-	topic := "test_topic"
-	req, err := marshalFunc(topic, msg)
+	url := "http://some-server.domain/topic"
+	req, err := watermill_http.DefaultMarshalMessageFunc(url, msg)
 	require.NoError(t, err)
 
 	assert.Equal(t, http.MethodPost, req.Method)
 	assert.Equal(t, msgUUID, req.Header.Get(watermill_http.HeaderUUID))
 
-	assert.Equal(t, "http", req.URL.Scheme)
-	assert.Equal(t, host, req.URL.Host)
-	assert.Equal(t, topic, strings.TrimPrefix(req.URL.Path, "/"))
+	assert.Equal(t, url, req.URL.String())
 
 	body, err := ioutil.ReadAll(req.Body)
 	require.NoError(t, err)

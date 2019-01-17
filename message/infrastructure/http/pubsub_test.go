@@ -1,7 +1,9 @@
 package http_test
 
 import (
+	"fmt"
 	"net"
+	net_http "net/http"
 	"testing"
 	"time"
 
@@ -42,7 +44,9 @@ func createPubSub(t *testing.T) message.PubSub {
 	require.NotNil(t, addr)
 
 	publisherConf := http.PublisherConfig{
-		MarshalMessageFunc: http.DefaultMarshalMessageFunc("http://" + addr.String()),
+		MarshalMessageFunc: func(topic string, msg *message.Message) (*net_http.Request, error) {
+			return http.DefaultMarshalMessageFunc(fmt.Sprintf("http://%s/%s", addr.String(), topic), msg)
+		},
 	}
 
 	pub, err := http.NewPublisher(publisherConf, logger)

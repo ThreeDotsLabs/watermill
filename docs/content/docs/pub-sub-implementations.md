@@ -179,11 +179,11 @@ Publisher configuration is done via the config struct passed to the constructor:
 {{% load-snippet-partial file="content/src-link/message/infrastructure/http/publisher.go" first_line_contains="type PublisherConfig struct" last_line_contains="}" %}}
 {{% /render-md %}}
 
-How the message topic and body translate into the URL, method and payload of the HTTP request is highly configurable through the use of `MarshalMessageFunc`. 
-Use the provided `DefaultMarshalMessageFunc` to send POST requests to a predefined address:
+How the message topic and body translate into the URL, method, headers, and payload of the HTTP request is highly configurable through the use of `MarshalMessageFunc`. 
+Use the provided `DefaultMarshalMessageFunc` to send POST requests to a specific url:
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/infrastructure/http/publisher.go" first_line_contains="// DefaultMarshalMessageFunc" last_line_contains="return req, nil" padding_after="2" %}}
+{{% load-snippet-partial file="content/src-link/message/infrastructure/http/publisher.go" first_line_contains="// MarshalMessageFunc" last_line_contains="return req, nil" padding_after="2" %}}
 {{% /render-md %}}
 
 You can pass your own `http.Client` to execute the requests or use Golang's default client. 

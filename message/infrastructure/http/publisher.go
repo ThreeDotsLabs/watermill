@@ -16,31 +16,28 @@ var (
 	// ErrPublisherClosed happens when trying to publish to a topic while the publisher is closed or closing.
 	ErrPublisherClosed = errors.New("publisher is closed")
 	ErrNoMarshalFunc   = errors.New("marshal function is missing")
-
-	ErrErrorResponse = errors.New("server responded with error status")
+	ErrErrorResponse   = errors.New("server responded with error status")
 )
 
-type MarshalMessageFunc func(topic string, msg *message.Message) (*http.Request, error)
+// MarshalMessageFunc transforms the message into a HTTP request to be sent to the specified url.
+type MarshalMessageFunc func(url string, msg *message.Message) (*http.Request, error)
 
-// DefaultMarshalMessageFunc returns a MarshalMessage func transforming the message into a HTTP POST request.
+// DefaultMarshalMessageFunc transforms the message into a HTTP POST request.
 // It encodes the UUID and Metadata in request headers.
-// The request URL is combined from the base address and the topic.
-func DefaultMarshalMessageFunc(address string) MarshalMessageFunc {
-	return func(topic string, msg *message.Message) (*http.Request, error) {
-		req, err := http.NewRequest(http.MethodPost, address+"/"+topic, bytes.NewBuffer(msg.Payload))
-		if err != nil {
-			return nil, err
-		}
-
-		req.Header.Set(HeaderUUID, msg.UUID)
-
-		metadataJson, err := json.Marshal(msg.Metadata)
-		if err != nil {
-			return nil, errors.Wrap(err, "could not marshal metadata to JSON")
-		}
-		req.Header.Set(HeaderMetadata, string(metadataJson))
-		return req, nil
+func DefaultMarshalMessageFunc(url string, msg *message.Message) (*http.Request, error) {
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(msg.Payload))
+	if err != nil {
+		return nil, err
 	}
+
+	req.Header.Set(HeaderUUID, msg.UUID)
+
+	metadataJson, err := json.Marshal(msg.Metadata)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not marshal metadata to JSON")
+	}
+	req.Header.Set(HeaderMetadata, string(metadataJson))
+	return req, nil
 }
 
 type PublisherConfig struct {
