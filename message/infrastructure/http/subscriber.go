@@ -149,21 +149,15 @@ func (s *Subscriber) Subscribe(url string) (chan *message.Message, error) {
 
 // StartHTTPServer starts http server.
 // It must be called after all Subscribe calls have completed.
-// StartHTTPServer returns an error immediately if the server could not be set up.
-// The error channel waits until Serve is finished and sends its error.
-func (s *Subscriber) StartHTTPServer() (chan error, error) {
-	errChan := make(chan error, 1)
+// Just like http.Server.Serve(), it returns http.ErrServerClosed after the server's been closed.
+// https://golang.org/pkg/net/http/#Server.Serve
+func (s *Subscriber) StartHTTPServer() error {
 	listener, err := net.Listen("tcp", s.server.Addr)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	s.address = listener.Addr()
-
-	go func() {
-		err := s.server.Serve(listener)
-		errChan <- err
-	}()
-	return errChan, nil
+	return s.server.Serve(listener)
 }
 
 // Addr returns the server address or nil if the server isn't running.

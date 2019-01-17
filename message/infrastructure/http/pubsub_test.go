@@ -1,6 +1,7 @@
 package http_test
 
 import (
+	"net"
 	"testing"
 	"time"
 
@@ -19,10 +20,25 @@ func createPubSub(t *testing.T) message.PubSub {
 	sub, err := http.NewSubscriber(":0", http.SubscriberConfig{}, logger)
 	require.NoError(t, err)
 
-	_, err = sub.StartHTTPServer()
-	require.NoError(t, err)
+	// closing sub closes the server
+	// whoever calls createPubSub is responsible for closing sub
+	go sub.StartHTTPServer()
 
-	addr := sub.Addr()
+	// wait for sub to have address assigned
+	var addr net.Addr
+	timeout := time.After(10 * time.Second)
+	for {
+		addr = sub.Addr()
+		if addr != nil {
+			break
+		}
+		select {
+		case <-timeout:
+			t.Fatal("Could not obtain an address for subscriber's HTTP server")
+		default:
+			time.Sleep(10 * time.Millisecond)
+		}
+	}
 	require.NotNil(t, addr)
 
 	publisherConf := http.PublisherConfig{
