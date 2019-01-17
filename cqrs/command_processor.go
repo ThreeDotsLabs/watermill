@@ -1,4 +1,4 @@
-package command
+package cqrs
 
 import (
 	"fmt"
@@ -8,8 +8,13 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
-type Processor struct {
-	handlers      []Handler
+type CommandHandler interface {
+	NewCommand() interface{}
+	Handle(cmd interface{}) error
+}
+
+type CommandProcessor struct {
+	handlers      []CommandHandler
 	commandsTopic string
 
 	subscriber message.Subscriber
@@ -17,14 +22,14 @@ type Processor struct {
 	logger     watermill.LoggerAdapter
 }
 
-func NewProcessor(
-	handlers []Handler,
+func NewCommandProcessor(
+	handlers []CommandHandler,
 	commandsTopic string,
 	subscriber message.Subscriber,
 	marshaler Marshaler,
 	logger watermill.LoggerAdapter,
-) Processor {
-	return Processor{
+) CommandProcessor {
+	return CommandProcessor{
 		handlers,
 		commandsTopic,
 		subscriber,
@@ -33,10 +38,14 @@ func NewProcessor(
 	}
 }
 
-func (p Processor) AddHandlersToRouter(r *message.Router) error {
-	for i := range p.handlers {
+func (p CommandProcessor) Handlers() []CommandHandler {
+	return p.handlers
+}
+
+func (p CommandProcessor) AddHandlersToRouter(r *message.Router) error {
+	for i := range p.Handlers() {
 		handler := p.handlers[i]
-		commandName := p.marshaler.CommandName(handler.NewCommand())
+		commandName := p.marshaler.Name(handler.NewCommand())
 
 		handlerFunc, err := p.RouterHandlerFunc(handler)
 		if err != nil {
@@ -56,9 +65,9 @@ func (p Processor) AddHandlersToRouter(r *message.Router) error {
 	return nil
 }
 
-func (p Processor) RouterHandlerFunc(handler Handler) (message.HandlerFunc, error) {
+func (p CommandProcessor) RouterHandlerFunc(handler CommandHandler) (message.HandlerFunc, error) {
 	initCommand := handler.NewCommand()
-	expectedCmdName := p.marshaler.CommandName(initCommand)
+	expectedCmdName := p.marshaler.Name(initCommand)
 
 	if err := p.validateCommand(initCommand); err != nil {
 		return nil, err
@@ -66,7 +75,7 @@ func (p Processor) RouterHandlerFunc(handler Handler) (message.HandlerFunc, erro
 
 	return func(msg *message.Message) ([]*message.Message, error) {
 		cmd := handler.NewCommand()
-		messageCmdName := p.marshaler.MarshaledCommandName(msg)
+		messageCmdName := p.marshaler.MarshaledName(msg)
 
 		if messageCmdName != expectedCmdName {
 			p.logger.Trace("Received different command type than expected, ignoring", watermill.LogFields{
@@ -94,7 +103,7 @@ func (p Processor) RouterHandlerFunc(handler Handler) (message.HandlerFunc, erro
 	}, nil
 }
 
-func (p Processor) validateCommand(cmd interface{}) error {
+func (p CommandProcessor) validateCommand(cmd interface{}) error {
 	rv := reflect.ValueOf(cmd)
 	if rv.Kind() != reflect.Ptr || rv.IsNil() {
 		return NonPointerCommandError{rv.Type()}

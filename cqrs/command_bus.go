@@ -1,22 +1,22 @@
-package command
+package cqrs
 
 import "github.com/ThreeDotsLabs/watermill/message"
 
-type Bus struct {
+type CommandBus struct {
 	publisher message.Publisher
 	topic     string
 	marshaler Marshaler
 }
 
-func NewBus(
+func NewCommandBus(
 	publisher message.Publisher,
 	topic string,
 	marshaler Marshaler,
-) Bus {
-	return Bus{publisher, topic, marshaler}
+) CommandBus {
+	return CommandBus{publisher, topic, marshaler}
 }
 
-func (c Bus) Send(cmd interface{}) error {
+func (c CommandBus) Send(cmd interface{}) error {
 	msg, err := c.marshaler.Marshal(cmd)
 	if err != nil {
 		panic(err)
