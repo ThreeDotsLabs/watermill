@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"net/http"
 	"time"
 
@@ -18,9 +17,11 @@ var (
 	topicName = "kafka_to_http_example"
 )
 
-// passMessages passes the message along if its event type is one of acceptedTypes.
-func passMessages(acceptedTypes ...string) message.HandlerFunc {
+// filterMessages passes the message along if its event type is one of acceptedTypes.
+func filterMessages(acceptedTypes ...string) message.HandlerFunc {
 	return func(msg *message.Message) ([]*message.Message, error) {
+		// the kafka producer sets this metadata so that we don't have to unmarshal the body
+		// just sort the messages based on event type metadata
 		msgEventType := msg.Metadata.Get("event_type")
 
 		for _, typ := range acceptedTypes {
@@ -34,7 +35,7 @@ func passMessages(acceptedTypes ...string) message.HandlerFunc {
 }
 
 func marshalMessage(topic string, msg *message.Message) (*http.Request, error) {
-	return http.NewRequest(http.MethodPost, "http://webhooks-server:8001/"+topic, bytes.NewBuffer(msg.Payload))
+	return watermill_http.DefaultMarshalMessageFunc("http://webhooks-server:8001/"+topic, msg)
 }
 
 func main() {
@@ -59,11 +60,10 @@ func main() {
 		panic(err)
 	}
 
-	router.AddHandler("foo", topicName, "foo", pubSub, passMessages("Foo"))
-	router.AddHandler("foo_or_bar", topicName, "foo_or_bar", pubSub, passMessages("Foo", "Bar"))
-	router.AddHandler("all", topicName, "all", pubSub, passMessages("Foo", "Bar", "Baz"))
+	router.AddHandler("foo", topicName, "foo", pubSub, filterMessages("Foo"))
+	router.AddHandler("foo_or_bar", topicName, "foo_or_bar", pubSub, filterMessages("Foo", "Bar"))
+	router.AddHandler("all", topicName, "all", pubSub, filterMessages("Foo", "Bar", "Baz"))
 	router.AddPlugin(plugin.SignalsHandler)
 
 	err = router.Run()
-
 }
