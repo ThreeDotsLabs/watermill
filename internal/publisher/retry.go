@@ -65,11 +65,34 @@ func NewRetryPublisher(pub message.Publisher, config RetryPublisherConfig) (*Ret
 }
 
 func (p RetryPublisher) Publish(topic string, messages ...*message.Message) error {
+	failedMessages := NewErrCouldNotPublish()
+
+	// todo: do some parallel processing maybe? this is a very basic implementation
+	for _, msg := range messages {
+		err := p.send(topic, msg)
+		if err != nil {
+			failedMessages.addMsg(msg, err)
+		}
+	}
+
+	if failedMessages.Len() > 0 {
+		return failedMessages
+	}
+
+	return nil
+}
+
+func (p RetryPublisher) Close() error {
+	return p.pub.Close()
+}
+
+// send sends one message at a time to prevent sending a successful message more than once.
+func (p RetryPublisher) send(topic string, msg *message.Message) error {
 	var err error
 	timeToNextRetry := p.config.TimeToFirstRetry
 
 	for i := 0; i < p.config.MaxRetries; i++ {
-		err = p.pub.Publish(topic, messages...)
+		err = p.pub.Publish(topic, msg)
 		if err == nil {
 			return nil
 		}
@@ -78,10 +101,5 @@ func (p RetryPublisher) Publish(topic string, messages ...*message.Message) erro
 		time.Sleep(timeToNextRetry)
 		timeToNextRetry *= 2
 	}
-
 	return err
-}
-
-func (p RetryPublisher) Close() error {
-	return p.pub.Close()
 }
