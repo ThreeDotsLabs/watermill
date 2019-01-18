@@ -40,7 +40,7 @@ func TestDefaultMarshalMessageFunc(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, msgPayload, body)
 
-	var metadata message.Metadata
+	metadata := message.Metadata{}
 	err = json.Unmarshal([]byte(req.Header.Get(watermill_http.HeaderMetadata)), &metadata)
 	require.NoError(t, err)
 	assert.Equal(t, metadataValue, metadata.Get(metadataKey))
