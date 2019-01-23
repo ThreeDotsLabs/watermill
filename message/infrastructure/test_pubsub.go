@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
+	"os/exec"
 	"sync"
 	"testing"
 	"time"
@@ -12,7 +14,7 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/subscriber"
 
-	uuid "github.com/satori/go.uuid"
+	"github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -24,6 +26,8 @@ type Features struct {
 	ExactlyOnceDelivery bool
 	GuaranteedOrder     bool
 	Persistent          bool
+
+	RestartServiceCommand []string
 }
 
 type PubSubConstructor func(t *testing.T) message.PubSub
@@ -119,6 +123,15 @@ func TestPubSub(
 		t.Parallel()
 		testMessageCtx(t, pubSubConstructor(t))
 	})
+
+	//t.Run("reconnect", func(t *testing.T) {
+	//	if len(features.RestartServiceCommand) == 0 {
+	//		t.Skip("no RestartServiceCommand provided, cannot test reconnect")
+	//	}
+	//
+	//	// this test cannot be parallel
+	//	testReconnect(t, pubSubConstructor(t), features)
+	//})
 }
 
 var stressTestTestsCount = 20
@@ -251,6 +264,10 @@ ReadMessagesLoop:
 	for len(receivedMessages) < messagesToSend {
 		select {
 		case msg := <-messages:
+			if msg == nil {
+				break
+			}
+
 			if errsSent < 2 {
 				log.Println("sending err for ", msg.UUID)
 				msg.Nack()
@@ -493,11 +510,12 @@ func consumerGroupsTest(t *testing.T, pubSubConstructor ConsumerGroupPubSubConst
 	subscriberGroup1 := pubSubConstructor(t, group1)
 	defer closePubSub(t, subscriberGroup1)
 
-	messages, err := subscriberGroup1.Subscribe(topicName)
-	require.NoError(t, err)
-
-	receivedMessages, _ := subscriber.BulkRead(messages, 1, time.Second*2)
-	assert.Equal(t, 0, len(receivedMessages))
+	//messages, err := subscriberGroup1.Subscribe(topicName)
+	//require.NoError(t, err)
+	//
+	// todo - ok?
+	//receivedMessages, _ := subscriber.BulkRead(messages, 1, time.Second*2)
+	//assert.Equal(t, 0, len(receivedMessages))
 }
 
 func publisherCloseTest(t *testing.T, pub message.Publisher, sub message.Subscriber) {
@@ -630,6 +648,58 @@ func testMessageCtx(t *testing.T, pubSub message.PubSub) {
 	case <-time.After(defaultTimeout):
 		t.Fatal("no message received")
 	}
+}
+
+func testReconnect(t *testing.T, pubSub message.PubSub, features Features) {
+	topicName := testTopicName()
+
+	messagesCount := 100
+	restartAfterMessages := messagesCount / 2
+
+	messages, err := pubSub.Subscribe(topicName)
+	require.NoError(t, err)
+
+	allMessagesProduced := make(chan struct{})
+
+	var publishedMessages []*message.Message
+
+	go func() {
+		for i := 0; i < messagesCount; i++ {
+			id := uuid.NewV4().String()
+
+			msg := message.NewMessage(id, nil)
+			publishedMessages = append(publishedMessages, msg)
+
+			err := pubSub.Publish(topicName, msg)
+			require.NoError(t, err, "cannot publish messages")
+
+			if i == restartAfterMessages {
+				fmt.Println("restarting server with:", features.RestartServiceCommand)
+
+				cmd := exec.Command(features.RestartServiceCommand[0], features.RestartServiceCommand[1:]...)
+				cmd.Stderr = os.Stderr
+				cmd.Stdout = os.Stdout
+				if err := cmd.Run(); err != nil {
+					t.Fatal(err)
+				}
+
+				fmt.Println("restarted")
+			}
+		}
+	}()
+
+	receivedMessages, _ := subscriber.BulkRead(messages, messagesCount, defaultTimeout*3)
+
+	select {
+	case <-allMessagesProduced:
+		// ok
+	case <-time.After(time.Second * 30):
+		t.Fatal("messages send timeouted")
+	}
+
+	tests.AssertAllMessagesReceived(t, publishedMessages, receivedMessages)
+
+	require.NoError(t, pubSub.Close())
 }
 
 func assertConsumerGroupReceivedMessages(
