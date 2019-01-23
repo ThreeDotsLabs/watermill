@@ -21,7 +21,7 @@ func TestPublishSubscribe_pubsub(t *testing.T) {
 			ExactlyOnceDelivery:   false,
 			GuaranteedOrder:       true,
 			Persistent:            true,
-			RestartServiceCommand: []string{"docker", "restart", "watermill_rabbitmq_1"},
+			RestartServiceCommand: []string{"docker", "restart", "watermill_rabbitmq_1"}, // todo - propagate
 		},
 		func(t *testing.T) message.PubSub {
 			pubSub, err := amqp.NewPubSub(
