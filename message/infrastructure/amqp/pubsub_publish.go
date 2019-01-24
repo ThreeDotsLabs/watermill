@@ -89,7 +89,7 @@ func (p *PubSub) preparePublishBindings(topic string, channel *amqp.Channel) err
 	}
 
 	if !p.config.Exchange.UseDefaultExchange() {
-		if err := p.exchangeDeclare(channel, topic); err != nil {
+		if err := p.exchangeDeclare(channel, p.generateExchangeName(topic)); err != nil {
 			return err
 		}
 	}

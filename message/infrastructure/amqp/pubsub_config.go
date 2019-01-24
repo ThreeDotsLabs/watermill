@@ -154,6 +154,15 @@ type ReconnectConfig struct {
 	BackoffMaxInterval         time.Duration
 }
 
+func DefaultReconnectConfig() ReconnectConfig {
+	return ReconnectConfig{
+		BackoffInitialInterval:     500 * time.Millisecond,
+		BackoffRandomizationFactor: 0.5,
+		BackoffMultiplier:          1.5,
+		BackoffMaxInterval:         60 * time.Second,
+	}
+}
+
 func (r ReconnectConfig) backoffConfig() *backoff.ExponentialBackOff {
 	return &backoff.ExponentialBackOff{
 		InitialInterval:     r.BackoffInitialInterval,
@@ -162,14 +171,5 @@ func (r ReconnectConfig) backoffConfig() *backoff.ExponentialBackOff {
 		MaxInterval:         r.BackoffMaxInterval,
 		MaxElapsedTime:      0, // no support for disabling reconnect, only close of Pub/Sub can stop reconnecting
 		Clock:               backoff.SystemClock,
-	}
-}
-
-func DefaultReconnectConfig() ReconnectConfig {
-	return ReconnectConfig{
-		BackoffInitialInterval:     500 * time.Millisecond,
-		BackoffRandomizationFactor: 0.5,
-		BackoffMultiplier:          1.5,
-		BackoffMaxInterval:         60 * time.Second,
 	}
 }
