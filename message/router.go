@@ -132,14 +132,18 @@ func (r *Router) AddPlugin(p ...RouterPlugin) {
 
 // AddPublisherDecorators wraps the router's Publisher.
 // The first decorator is the innermost, i.e. calls the original publisher.
-func (r *Router) AddPublisherDecorators(decorators ...PublisherDecorator) {
-	r.publisherDecorators = append(r.publisherDecorators, decorators...)
+func (r *Router) AddPublisherDecorators(dec ...PublisherDecorator) {
+	r.logger.Debug("Adding publisher decorators", watermill.LogFields{"count": fmt.Sprintf("%d", len(dec))})
+
+	r.publisherDecorators = append(r.publisherDecorators, dec...)
 }
 
 // AddSubscriberDecorators wraps the router's Subscriber.
 // The first decorator is the innermost, i.e. calls the original subscriber.
-func (r *Router) AddSubscriberDecorators(decorators ...SubscriberDecorator) {
-	r.subscriberDecorators = append(r.subscriberDecorators, decorators...)
+func (r *Router) AddSubscriberDecorators(dec ...SubscriberDecorator) {
+	r.logger.Debug("Adding subscriber decorators", watermill.LogFields{"count": fmt.Sprintf("%d", len(dec))})
+
+	r.subscriberDecorators = append(r.subscriberDecorators, dec...)
 }
 
 // AddHandler adds a new handler.
