@@ -1,0 +1,8 @@
+version: '3'
+services:
+  prometheus:
+    image: prom/prometheus
+    restart: on-failure
+    network_mode: host
+    volumes:
+     - ./prometheus.yml:/etc/prometheus/prometheus.yml

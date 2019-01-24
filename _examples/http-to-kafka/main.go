@@ -2,9 +2,13 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	stdHttp "net/http"
 	_ "net/http/pprof"
+	"time"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/pkg/errors"
 	uuid "github.com/satori/go.uuid"
@@ -15,6 +19,10 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/kafka"
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
 	"github.com/ThreeDotsLabs/watermill/message/router/plugin"
+
+	prometheusmetrics "github.com/deathowl/go-metrics-prometheus"
+	"github.com/prometheus/client_golang/prometheus"
+	metrics "github.com/rcrowley/go-metrics"
 )
 
 type GitlabWebhook struct {
@@ -23,10 +31,19 @@ type GitlabWebhook struct {
 
 type PublisherMetrics struct {
 	pub message.Publisher
+
+	publishedSuccess metrics.Counter
+	publishedFail    metrics.Counter
 }
 
-func (m PublisherMetrics) Publish(topic string, messages ...*message.Message) error {
-	// do metrics stuff
+func (m PublisherMetrics) Publish(topic string, messages ...*message.Message) (err error) {
+	defer func() {
+		if err != nil {
+			m.publishedFail.Inc(1)
+			return
+		}
+		m.publishedSuccess.Inc(1)
+	}()
 	return m.pub.Publish(topic, messages...)
 }
 
@@ -34,12 +51,47 @@ func (m PublisherMetrics) Close() error {
 	return m.pub.Close()
 }
 
-func NewPublisherMetricsDecorator(pub message.Publisher) message.Publisher {
-	return PublisherMetrics{pub}
+type PrometheusPublisherMetricsBuilder struct {
+	MetricsRegistry    metrics.Registry
+	PrometheusRegistry *prometheus.Registry
+	PrometheusConfig   *prometheusmetrics.PrometheusConfig
+}
+
+func (b PrometheusPublisherMetricsBuilder) Decorate(pub message.Publisher) message.Publisher {
+	metricsRegistry := b.MetricsRegistry
+	if metricsRegistry == nil {
+		metricsRegistry = metrics.NewRegistry()
+	}
+
+	prometheusRegistry := b.PrometheusRegistry
+	if prometheusRegistry == nil {
+		prometheusRegistry = prometheus.NewRegistry()
+	}
+
+	pClient := b.PrometheusConfig
+	if pClient == nil {
+		// todo: some sensible defaults?
+		pClient = prometheusmetrics.NewPrometheusProvider(metricsRegistry, "http-to-kafka", "", prometheusRegistry, time.Second)
+	}
+
+	go pClient.UpdatePrometheusMetrics()
+
+	publishSuccess := metrics.NewRegisteredCounter("published_success", metricsRegistry)
+	publishFail := metrics.NewRegisteredCounter("published_fail", metricsRegistry)
+
+	go func() {
+		stdHttp.Handle("/metrics", promhttp.HandlerFor(prometheusRegistry, promhttp.HandlerOpts{}))
+		err := stdHttp.ListenAndServe(":8081", nil)
+		if err != stdHttp.ErrServerClosed {
+			fmt.Printf("Server exited with err %+v", err)
+		}
+	}()
+
+	return PublisherMetrics{pub, publishSuccess, publishFail}
 }
 
 func DecorateRouterWithMetrics(r *message.Router) {
-	r.AddPublisherDecorators(NewPublisherMetricsDecorator)
+	r.AddPublisherDecorators(PrometheusPublisherMetricsBuilder{}.Decorate)
 }
 
 func main() {
@@ -73,6 +125,7 @@ func main() {
 	r.AddMiddleware(
 		middleware.Recoverer,
 		middleware.CorrelationID,
+		middleware.RandomPanic(0.1),
 	)
 	r.AddPlugin(plugin.SignalsHandler)
 
@@ -105,8 +158,8 @@ func main() {
 	go func() {
 		// HTTP server needs to be started after router is ready.
 		<-r.Running()
-		httpSubscriber.StartHTTPServer()
+		_ = httpSubscriber.StartHTTPServer()
 	}()
 
-	r.Run()
+	_ = r.Run()
 }
