@@ -7,9 +7,6 @@ import (
 	"github.com/streadway/amqp"
 )
 
-// todo - compare with https://github.com/micro/go-plugins/blob/master/broker/rabbitmq/channel.go
-// todo - compare with https://github.com/RichardKnop/machinery
-// todo - compare with https://github.com/assembla/cony
 // todo - add link to rabbit's docs
 // todo - https://www.rabbitmq.com/confirms.html
 // todo - https://www.rabbitmq.com/production-checklist.html

@@ -74,7 +74,9 @@ func NewDurablePubSubConfig(amqpURI string, generateQueueName QueueNameGenerator
 		QueueBind: QueueBindConfig{},
 		Publish:   PublishConfig{},
 		Consume:   ConsumeConfig{},
-		Qos:       QosConfig{},
+		Qos: QosConfig{
+			PrefetchCount: 1,
+		},
 	}
 }
 
@@ -95,8 +97,13 @@ func NewDurableQueueConfig(amqpURI string) Config {
 		QueueBind: QueueBindConfig{},
 		Publish:   PublishConfig{},
 		Consume:   ConsumeConfig{},
+		Qos: QosConfig{
+			PrefetchCount: 1,
+		},
 	}
 }
+
+// todo - add non durable configs
 
 // todo - copy docs
 type ExchangeConfig struct {

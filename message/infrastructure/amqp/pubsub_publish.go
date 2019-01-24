@@ -3,6 +3,7 @@ package amqp
 import (
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"github.com/streadway/amqp"
 )
@@ -22,13 +23,12 @@ func (p *PubSub) Publish(topic string, messages ...*message.Message) error {
 	if err != nil {
 		return errors.Wrap(err, "cannot open channel")
 	}
-	defer func() {
-		if err := channel.Close(); err != nil {
-			p.logger.Error("cannot close channel", err, nil)
-		}
-	}()
 
 	if err := p.preparePublishBindings(topic, channel); err != nil {
+		if channelCloseErr := channel.Close(); channelCloseErr != nil {
+			err = multierror.Append(err, channelCloseErr)
+		}
+
 		return err
 	}
 
@@ -37,6 +37,12 @@ func (p *PubSub) Publish(topic string, messages ...*message.Message) error {
 			return err
 		}
 	}
+
+	if err := channel.Close(); err != nil {
+		return errors.Wrap(err, "cannot close channel")
+	}
+
+	p.logger.Trace("All messages published", nil)
 
 	return nil
 }

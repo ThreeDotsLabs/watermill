@@ -54,10 +54,11 @@ func TestPublishSubscribe_queue(t *testing.T) {
 	infrastructure.TestPubSub(
 		t,
 		infrastructure.Features{
-			ConsumerGroups:      false,
-			ExactlyOnceDelivery: false,
-			GuaranteedOrder:     true,
-			Persistent:          true,
+			ConsumerGroups:        false,
+			ExactlyOnceDelivery:   false,
+			GuaranteedOrder:       true,
+			Persistent:            true,
+			RestartServiceCommand: []string{"docker", "restart", "watermill_rabbitmq_1"}, // todo - propagate
 		},
 		func(t *testing.T) message.PubSub {
 			pubSub, err := amqp.NewPubSub(
