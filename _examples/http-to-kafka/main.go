@@ -21,10 +21,31 @@ type GitlabWebhook struct {
 	ObjectKind string `json:"object_kind"`
 }
 
+type PublisherMetrics struct {
+	pub message.Publisher
+}
+
+func (m PublisherMetrics) Publish(topic string, messages ...*message.Message) error {
+	// do metrics stuff
+	return m.pub.Publish(topic, messages...)
+}
+
+func (m PublisherMetrics) Close() error {
+	return m.pub.Close()
+}
+
+func NewPublisherMetricsDecorator(pub message.Publisher) message.Publisher {
+	return PublisherMetrics{pub}
+}
+
+func DecorateRouterWithMetrics(r *message.Router) {
+	r.AddPublisherDecorators(NewPublisherMetricsDecorator)
+}
+
 func main() {
 	logger := watermill.NewStdLogger(true, true)
 
-	kafkaPublisher, err := kafka.NewPublisher([]string{"localhost:9092"}, kafka.DefaultMarshaler{}, nil)
+	kafkaPublisher, err := kafka.NewPublisher([]string{"localhost:9092"}, kafka.DefaultMarshaler{}, nil, logger)
 	if err != nil {
 		panic(err)
 	}
@@ -54,6 +75,8 @@ func main() {
 		middleware.CorrelationID,
 	)
 	r.AddPlugin(plugin.SignalsHandler)
+
+	DecorateRouterWithMetrics(r)
 
 	err = r.AddHandler(
 		"http_to_kafka",

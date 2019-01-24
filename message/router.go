@@ -42,6 +42,12 @@ type HandlerMiddleware func(h HandlerFunc) HandlerFunc
 // RouterPlugin is function which is executed on Router start.
 type RouterPlugin func(*Router) error
 
+// PublisherDecorator wraps the underlying Publisher, adding some functionality.
+type PublisherDecorator func(pub Publisher) Publisher
+
+// SubscriberDecorator wraps the underlying Subscriber, adding some functionality.
+type SubscriberDecorator func(sub Subscriber) Subscriber
+
 type RouterConfig struct {
 	// CloseTimeout determines how long router should work for handlers when closing.
 	CloseTimeout time.Duration
@@ -98,6 +104,9 @@ type Router struct {
 
 	logger watermill.LoggerAdapter
 
+	publisherDecorators  []PublisherDecorator
+	subscriberDecorators []SubscriberDecorator
+
 	isRunning bool
 	running   chan struct{}
 }
@@ -119,6 +128,18 @@ func (r *Router) AddPlugin(p ...RouterPlugin) {
 	r.logger.Debug("Adding plugins", watermill.LogFields{"count": fmt.Sprintf("%d", len(p))})
 
 	r.plugins = append(r.plugins, p...)
+}
+
+// AddPublisherDecorators wraps the router's Publisher.
+// The first decorator is the innermost, i.e. calls the original publisher.
+func (r *Router) AddPublisherDecorators(decorators ...PublisherDecorator) {
+	r.publisherDecorators = append(r.publisherDecorators, decorators...)
+}
+
+// AddSubscriberDecorators wraps the router's Subscriber.
+// The first decorator is the innermost, i.e. calls the original subscriber.
+func (r *Router) AddSubscriberDecorators(decorators ...SubscriberDecorator) {
+	r.subscriberDecorators = append(r.subscriberDecorators, decorators...)
 }
 
 // AddHandler adds a new handler.
@@ -210,6 +231,21 @@ func (r *Router) Run() (err error) {
 		if err := plugin(r); err != nil {
 			return errors.Wrapf(err, "cannot initialize plugin %v", plugin)
 		}
+	}
+
+	r.logger.Debug("Applying decorators", nil)
+	for name, handler := range r.handlers {
+		pub := handler.publisher
+		for _, decorator := range r.publisherDecorators {
+			pub = decorator(pub)
+		}
+		r.handlers[name].publisher = pub
+
+		sub := handler.subscriber
+		for _, decorator := range r.subscriberDecorators {
+			sub = decorator(sub)
+		}
+		r.handlers[name].subscriber = sub
 	}
 
 	for _, h := range r.handlers {
