@@ -12,7 +12,7 @@ import (
 	"github.com/ThreeDotsLabs/watermill/internal/tests"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/subscriber"
-	"github.com/satori/go.uuid"
+	uuid "github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -64,6 +64,7 @@ func TestRouter_functional(t *testing.T) {
 	err = r.AddHandler(
 		"test_subscriber_1",
 		subscribeTopic,
+		pubSub,
 		publishedEventsTopic,
 		pubSub,
 		func(msg *message.Message) (producedMessages []*message.Message, err error) {
@@ -205,8 +206,9 @@ func BenchmarkRouterHandler(b *testing.B) {
 	if err := router.AddHandler(
 		"handler",
 		"benchmark_topic",
+		sub,
 		"publish_topic",
-		message.NewPubSub(nopPublisher{}, sub),
+		nopPublisher{},
 		func(msg *message.Message) (messages []*message.Message, e error) {
 			allProcessedWg.Done()
 			return []*message.Message{msg}, nil

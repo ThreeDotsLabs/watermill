@@ -16,3 +16,13 @@ type Publisher interface {
 	// Close should flush unsent messages, if publisher is async.
 	Close() error
 }
+
+type NopPublisher struct{}
+
+func (NopPublisher) Publish(topic string, messages ...*Message) error {
+	return nil
+}
+
+func (NopPublisher) Close() error {
+	return nil
+}

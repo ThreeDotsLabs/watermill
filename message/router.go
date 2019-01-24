@@ -138,15 +138,35 @@ func (r *Router) AddPlugin(p ...RouterPlugin) {
 func (r *Router) AddHandler(
 	handlerName string,
 	subscribeTopic string,
+	subscriber Subscriber,
 	publishTopic string,
-	pubSub PubSub,
+	publisher Publisher,
 	handlerFunc HandlerFunc,
 ) error {
-	if err := r.AddNoPublisherHandler(handlerName, subscribeTopic, pubSub, handlerFunc); err != nil {
-		return err
+	r.logger.Info("Adding subscriber", watermill.LogFields{
+		"handler_name": handlerName,
+		"topic":        subscribeTopic,
+	})
+
+	if _, ok := r.handlers[handlerName]; ok {
+		return errors.Errorf("handler %s already exists", handlerName)
 	}
-	r.handlers[handlerName].publisher = pubSub
-	r.handlers[handlerName].publishTopic = publishTopic
+
+	r.handlers[handlerName] = &handler{
+		name:   handlerName,
+		logger: r.logger,
+
+		subscriber:     subscriber,
+		subscribeTopic: subscribeTopic,
+		publisher:      publisher,
+		publishTopic:   publishTopic,
+
+		runningHandlersWg: r.runningHandlersWg,
+		handlerFunc:       handlerFunc,
+		messagesCh:        nil,
+
+		closeCh: r.closeCh,
+	}
 
 	return nil
 }
@@ -166,26 +186,7 @@ func (r *Router) AddNoPublisherHandler(
 	subscriber Subscriber,
 	handlerFunc HandlerFunc,
 ) error {
-	r.logger.Info("Adding subscriber", watermill.LogFields{
-		"handler_name": handlerName,
-		"topic":        subscribeTopic,
-	})
-
-	if _, ok := r.handlers[handlerName]; ok {
-		return errors.Errorf("handler %s already exists", handlerName)
-	}
-
-	r.handlers[handlerName] = &handler{
-		name:              handlerName,
-		subscribeTopic:    subscribeTopic,
-		handlerFunc:       handlerFunc,
-		subscriber:        subscriber,
-		logger:            r.logger,
-		runningHandlersWg: r.runningHandlersWg,
-		closeCh:           r.closeCh,
-	}
-
-	return nil
+	return r.AddHandler(handlerName, subscribeTopic, subscriber, "", NopPublisher{}, handlerFunc)
 }
 
 // Run runs all plugins and handlers and starts subscribing to provided topics.
@@ -288,17 +289,17 @@ func (r *Router) Close() error {
 }
 
 type handler struct {
-	name           string
+	name   string
+	logger watermill.LoggerAdapter
+
+	subscriber     Subscriber
 	subscribeTopic string
+	publisher      Publisher
 	publishTopic   string
-	handlerFunc    HandlerFunc
 
-	publisher         Publisher
-	subscriber        Subscriber
-	logger            watermill.LoggerAdapter
 	runningHandlersWg *sync.WaitGroup
-
-	messagesCh chan *Message
+	handlerFunc       HandlerFunc
+	messagesCh        chan *Message
 
 	closeCh chan struct{}
 }
