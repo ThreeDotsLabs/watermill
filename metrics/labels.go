@@ -10,7 +10,6 @@ var (
 	labelKeys = []string{
 		"pubsub_provider",
 		"handler_name",
-		"hostname",
 	}
 )
 

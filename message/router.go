@@ -328,10 +328,14 @@ func (r *Router) Close() error {
 }
 
 type handler struct {
-	name           string
+	name string
+
 	subscribeTopic string
+	subscriberName string
 	publishTopic   string
-	handlerFunc    HandlerFunc
+	publisherName  string
+
+	handlerFunc HandlerFunc
 
 	publisher         Publisher
 	subscriber        Subscriber
