@@ -8,14 +8,34 @@ import (
 
 const MessageUUIDHeaderKey = "_watermill_message_uuid"
 
+// Marshaler marshals Watermill's message to amqp.Publishing and unmarshals amqp.Delivery to Watermill's message.
 type Marshaler interface {
 	Marshal(msg *message.Message) (amqp.Publishing, error)
 	Unmarshal(amqpMsg amqp.Delivery) (*message.Message, error)
 }
 
 type DefaultMarshaler struct {
+	// PostprocessPublishing can be used to make some extra processing with amqp.Publishing,
+	// for example add CorrelationId and ContentType:
+	//
+	//  amqp.DefaultMarshaler{
+	//		PostprocessPublishing: func(publishing stdAmqp.Publishing) stdAmqp.Publishing {
+	//			publishing.CorrelationId = "correlation"
+	//			publishing.ContentType = "application/json"
+	//
+	//			return publishing
+	//		},
+	//	}
 	PostprocessPublishing func(amqp.Publishing) amqp.Publishing
-	NotPersistent         bool
+
+	// When true, DeliveryMode will be not set to Persistent.
+	//
+	// DeliveryMode.  Transient means higher throughput but messages will not be
+	// restored on broker restart.  The delivery mode of publishings is unrelated
+	// to the durability of the queues they reside on.  Transient messages will
+	// not be restored to durable queues, persistent messages will be restored to
+	// durable queues and lost on non-durable queues during server restart.
+	NotPersistentDeliveryMode bool
 }
 
 func (d DefaultMarshaler) Marshal(msg *message.Message) (amqp.Publishing, error) {
@@ -30,7 +50,7 @@ func (d DefaultMarshaler) Marshal(msg *message.Message) (amqp.Publishing, error)
 		Body:    msg.Payload,
 		Headers: headers,
 	}
-	if !d.NotPersistent {
+	if !d.NotPersistentDeliveryMode {
 		publishing.DeliveryMode = amqp.Persistent
 	}
 

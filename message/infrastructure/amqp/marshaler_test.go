@@ -29,7 +29,7 @@ func TestDefaultMarshaler(t *testing.T) {
 }
 
 func TestDefaultMarshaler_not_persistent(t *testing.T) {
-	marshaler := amqp.DefaultMarshaler{NotPersistent: true}
+	marshaler := amqp.DefaultMarshaler{NotPersistentDeliveryMode: true}
 
 	msg := message.NewMessage(uuid.NewV4().String(), []byte("payload"))
 	msg.Metadata.Set("foo", "bar")

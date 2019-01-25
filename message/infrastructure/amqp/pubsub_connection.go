@@ -6,6 +6,53 @@ import (
 	"github.com/streadway/amqp"
 )
 
+func (p *PubSub) connect() error {
+	p.connectionLock.Lock()
+	defer p.connectionLock.Unlock()
+
+	if p.config.AmqpConfig != nil && p.config.AmqpConfig.TLSClientConfig != nil && p.config.TLSConfig != nil {
+		return errors.New("both Config.AmqpConfig.TLSClientConfig and Config.TLSConfig are set")
+	}
+
+	var connection *amqp.Connection
+	var err error
+
+	if p.config.AmqpConfig != nil {
+		connection, err = amqp.DialConfig(p.config.AmqpURI, *p.config.AmqpConfig)
+	} else if p.config.TLSConfig != nil {
+		connection, err = amqp.DialTLS(p.config.AmqpURI, p.config.TLSConfig)
+	} else {
+		connection, err = amqp.Dial(p.config.AmqpURI)
+	}
+
+	if err != nil {
+		return errors.Wrap(err, "cannot connect to AMQP")
+	}
+	p.connection = connection
+	close(p.connected)
+
+	p.logger.Info("Connected to AMQP", nil)
+
+	return nil
+}
+
+func (p *PubSub) Connection() *amqp.Connection {
+	return p.connection
+}
+
+func (p *PubSub) Connected() chan struct{} {
+	return p.connected
+}
+
+func (p *PubSub) IsConnected() bool {
+	select {
+	case <-p.connected:
+		return true
+	default:
+		return false
+	}
+}
+
 func (p *PubSub) handleConnectionClose() {
 	for {
 		p.logger.Debug("handleConnectionClose is waiting for p.connected", nil)
@@ -44,30 +91,4 @@ func (p *PubSub) reconnect() {
 		// should only exit, if closing Pub/Sub
 		p.logger.Error("AMQP reconnect failed failed", err, nil)
 	}
-}
-
-func (p *PubSub) isConnected() bool {
-	select {
-	case <-p.connected:
-		return true
-	default:
-		return false
-	}
-}
-
-func (p *PubSub) connect() error {
-	p.connectionLock.Lock()
-	defer p.connectionLock.Unlock()
-
-	// todo - support for tls
-	connection, err := amqp.Dial(p.config.AmqpURI)
-	if err != nil {
-		return errors.Wrap(err, "cannot connect to AMQP")
-	}
-	p.connection = connection
-	close(p.connected)
-
-	p.logger.Info("Connected to AMQP", nil)
-
-	return nil
 }

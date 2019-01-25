@@ -7,13 +7,11 @@ import (
 	"github.com/streadway/amqp"
 )
 
+// todo - consult settings
 // todo - add link to rabbit's docs
-// todo - https://www.rabbitmq.com/confirms.html
-// todo - https://www.rabbitmq.com/production-checklist.html
-// todo - https://www.rabbitmq.com/monitoring.html
-// todo - check bulk processing
-// todo - consult settingsd
 // todo - add in docs supported features
+// todo - add in docs - https://www.rabbitmq.com/production-checklist.html
+// todo - production deploy watermill w docsach - wzorowac sie - https://www.rabbitmq.com/production-checklist.html
 
 type PubSub struct {
 	config Config
@@ -52,22 +50,15 @@ func NewPubSub(config Config, logger watermill.LoggerAdapter) (*PubSub, error) {
 
 	return pubSub, nil
 }
-func (p *PubSub) generateRoutingKey(topic string) string {
-	// todo - magic, doc it good
-	if p.config.Exchange.UseDefaultExchange() && p.config.Publish.RoutingKey == "" {
-		return topic
-	}
 
-	return p.config.Publish.RoutingKey
+// generateRoutingKey generates routing key based on topic or config.
+func (p *PubSub) generateRoutingKey(topic string) string {
+	return p.config.Publish.GenerateRoutingKey(topic)
 }
 
+// generateExchangeName generates exchange name based on topic.
 func (p *PubSub) generateExchangeName(topic string) string {
-	// todo - magic, doc it good
-	if p.config.Exchange.UseDefaultExchange() {
-		return "" // todo -doc
-	}
-
-	return topic
+	return p.config.Exchange.GenerateName(topic)
 }
 
 func (p *PubSub) exchangeDeclare(channel *amqp.Channel, exchangeName string) error {

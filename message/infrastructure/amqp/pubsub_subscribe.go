@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/hashicorp/go-multierror"
+
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/pkg/errors"
@@ -15,7 +17,7 @@ func (p *PubSub) Subscribe(topic string) (chan *message.Message, error) {
 		return nil, errors.New("pub/sub is closed")
 	}
 
-	if !p.isConnected() {
+	if !p.IsConnected() {
 		return nil, errors.New("not connected to AMQP")
 	}
 
@@ -36,7 +38,7 @@ func (p *PubSub) Subscribe(topic string) (chan *message.Message, error) {
 	p.subscribingWg.Add(1)
 	go func() {
 		defer func() {
-			close(out) // todo - test it
+			close(out)
 			p.logger.Info("Stopped consuming from AMQP channel", logFields)
 			p.subscribingWg.Done()
 		}()
@@ -54,21 +56,22 @@ func (p *PubSub) Subscribe(topic string) (chan *message.Message, error) {
 				break ReconnectLoop
 			}
 
-			time.Sleep(time.Millisecond * 100) // todo - backoff?
+			time.Sleep(time.Millisecond * 500)
 		}
 	}()
 
 	return out, nil
 }
 
-func (p *PubSub) prepareConsume(queueName string, exchangeName string, logFields watermill.LogFields) error {
+func (p *PubSub) prepareConsume(queueName string, exchangeName string, logFields watermill.LogFields) (err error) {
 	channel, err := p.openSubscribeChannel(logFields)
 	if err != nil {
 		return err
 	}
 	defer func() {
-		// todo - log/handle err?
-		_ = channel.Close()
+		if channelCloseErr := channel.Close(); channelCloseErr != nil {
+			err = multierror.Append(err, channelCloseErr)
+		}
 	}()
 
 	if _, err := channel.QueueDeclare(
@@ -83,7 +86,8 @@ func (p *PubSub) prepareConsume(queueName string, exchangeName string, logFields
 	}
 	p.logger.Debug("Queue declared", logFields)
 
-	if p.config.Exchange.UseDefaultExchange() {
+	if exchangeName == "" {
+		p.logger.Debug("No exchange to declare", logFields)
 		return nil
 	}
 
@@ -109,15 +113,15 @@ func (p *PubSub) prepareConsume(queueName string, exchangeName string, logFields
 func (p *PubSub) runSubscriber(out chan *message.Message, queueName string, exchangeName string, logFields watermill.LogFields) {
 	channel, err := p.openSubscribeChannel(logFields)
 	if err != nil {
-		p.logger.Error("Failed to create channel", err, logFields)
+		p.logger.Error("Failed to open channel", err, logFields)
 		return
 	}
-	notifyCloseChannel := channel.NotifyClose(make(chan *amqp.Error))
-
 	defer func() {
-		// todo -  log?
-		_ = channel.Close()
+		err := channel.Close()
+		p.logger.Error("Failed to close channel", err, logFields)
 	}()
+
+	notifyCloseChannel := channel.NotifyClose(make(chan *amqp.Error))
 
 	sub := subscription{
 		out:                out,
@@ -136,7 +140,7 @@ func (p *PubSub) runSubscriber(out chan *message.Message, queueName string, exch
 }
 
 func (p *PubSub) openSubscribeChannel(logFields watermill.LogFields) (*amqp.Channel, error) {
-	if !p.isConnected() {
+	if !p.IsConnected() {
 		return nil, errors.New("not connected to AMQP")
 	}
 
@@ -146,7 +150,6 @@ func (p *PubSub) openSubscribeChannel(logFields watermill.LogFields) (*amqp.Chan
 	}
 	p.logger.Debug("Channel opened", logFields)
 
-	// todo - benchmark & check
 	if p.config.Qos != (QosConfig{}) {
 		err = channel.Qos(
 			p.config.Qos.PrefetchCount, // prefetch count
@@ -256,5 +259,5 @@ func (s *subscription) processMessage(amqpMsg amqp.Delivery, out chan *message.M
 }
 
 func (s *subscription) nackMsg(amqpMsg amqp.Delivery) error {
-	return amqpMsg.Nack(false, s.config.RequeueOnNack)
+	return amqpMsg.Nack(false, !s.config.NoRequeueOnNack)
 }

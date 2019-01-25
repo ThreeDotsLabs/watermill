@@ -13,6 +13,32 @@ import (
 
 var amqpURI = "amqp://guest:guest@localhost:5672/"
 
+func createPubSub(t *testing.T) message.PubSub {
+	pubSub, err := amqp.NewPubSub(
+		amqp.NewDurablePubSubConfig(
+			amqpURI,
+			amqp.GenerateQueueNameTopicNameWithSuffix("test"),
+		),
+		watermill.NewStdLogger(true, true),
+	)
+	require.NoError(t, err)
+
+	return pubSub
+}
+
+func createPubSubWithConsumerGrup(t *testing.T, consumerGroup string) message.PubSub {
+	pubSub, err := amqp.NewPubSub(
+		amqp.NewDurablePubSubConfig(
+			amqpURI,
+			amqp.GenerateQueueNameTopicNameWithSuffix(consumerGroup),
+		),
+		watermill.NewStdLogger(true, true),
+	)
+	require.NoError(t, err)
+
+	return pubSub
+}
+
 func TestPublishSubscribe_pubsub(t *testing.T) {
 	infrastructure.TestPubSub(
 		t,
@@ -23,31 +49,22 @@ func TestPublishSubscribe_pubsub(t *testing.T) {
 			Persistent:            true,
 			RestartServiceCommand: []string{"docker", "restart", "watermill_rabbitmq_1"}, // todo - propagate
 		},
-		func(t *testing.T) message.PubSub {
-			pubSub, err := amqp.NewPubSub(
-				amqp.NewDurablePubSubConfig(
-					amqpURI,
-					amqp.GenerateQueueNameTopicNameWithSuffix("test"),
-				),
-				watermill.NewStdLogger(true, true),
-			)
-			require.NoError(t, err)
-
-			return pubSub
-		},
-		func(t *testing.T, consumerGroup string) message.PubSub {
-			pubSub, err := amqp.NewPubSub(
-				amqp.NewDurablePubSubConfig(
-					amqpURI,
-					amqp.GenerateQueueNameTopicNameWithSuffix(consumerGroup),
-				),
-				watermill.NewStdLogger(true, true),
-			)
-			require.NoError(t, err)
-
-			return pubSub
-		},
+		createPubSub,
+		createPubSubWithConsumerGrup,
 	)
+}
+
+func createQueuePubSub(t *testing.T) message.PubSub {
+	pubSub, err := amqp.NewPubSub(
+		amqp.NewDurablePubSubConfig(
+			amqpURI,
+			amqp.GenerateQueueNameTopicNameWithSuffix("test"),
+		),
+		watermill.NewStdLogger(true, true),
+	)
+	require.NoError(t, err)
+
+	return pubSub
 }
 
 func TestPublishSubscribe_queue(t *testing.T) {
@@ -60,17 +77,25 @@ func TestPublishSubscribe_queue(t *testing.T) {
 			Persistent:            true,
 			RestartServiceCommand: []string{"docker", "restart", "watermill_rabbitmq_1"}, // todo - propagate
 		},
-		func(t *testing.T) message.PubSub {
-			pubSub, err := amqp.NewPubSub(
-				amqp.NewDurableQueueConfig(amqpURI),
-				watermill.NewStdLogger(true, true),
-			)
-			require.NoError(t, err)
-
-			return pubSub
-		},
+		createQueuePubSub,
 		nil,
 	)
+}
+
+func TestPublishSubscribe_transactional_publish(t *testing.T) {
+	config := amqp.NewDurablePubSubConfig(
+		amqpURI,
+		amqp.GenerateQueueNameTopicNameWithSuffix("test"),
+	)
+	config.Publish.Transactional = true
+
+	pubSub, err := amqp.NewPubSub(
+		config,
+		watermill.NewStdLogger(true, true),
+	)
+	require.NoError(t, err)
+
+	infrastructure.TestPublishSubscribe(t, pubSub)
 }
 
 // todo - stress
