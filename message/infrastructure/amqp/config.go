@@ -13,6 +13,8 @@ import (
 )
 
 // NewDurablePubSubConfig creates config for durable PubSub.
+// generateQueueName is optional, when passing to the publisher.
+// Exchange name is set to the topic name and routing key is empty.
 //
 // IMPORTANT: Watermill's topic is not mapped for the AMQP's topic exchange type, but for generating exchange name,
 // routing key and queue name.
@@ -55,6 +57,8 @@ func NewDurablePubSubConfig(amqpURI string, generateQueueName QueueNameGenerator
 }
 
 // NewNonDurablePubSubConfig creates config for durable PubSub.
+// generateQueueName is optional, when passing to the publisher.
+// Exchange name is set to the topic name and routing key is empty.
 //
 // IMPORTANT: Watermill's topic is not mapped for the AMQP's topic exchange type, but for generating exchange name,
 // routing key and queue name.
@@ -94,6 +98,7 @@ func NewNonDurablePubSubConfig(amqpURI string, generateQueueName QueueNameGenera
 }
 
 // NewDurableQueueConfig creates config for durable PubSub.
+// Queue name and routing key is set to the topic name by default. Default ("") exchange is used.
 //
 // IMPORTANT: Watermill's topic is not mapped for the AMQP's topic exchange type, but for generating exchange name,
 // routing key and queue name.
@@ -134,6 +139,7 @@ func NewDurableQueueConfig(amqpURI string) Config {
 }
 
 // NewNonDurableQueueConfig creates config for durable PubSub.
+// Queue name and routing key is set to the topic name by default. Default ("") exchange is used.
 //
 // IMPORTANT: Watermill's topic is not mapped for the AMQP's topic exchange type, but for generating exchange name,
 // routing key and queue name.
@@ -281,7 +287,7 @@ type ExchangeConfig struct {
 // QueueNameGenerator generates QueueName based on the topic.
 type QueueNameGenerator func(topic string) string
 
-// GenerateQueueNameTopicName generates queueName equal to topic.
+// GenerateQueueNameTopicName generates queueName equal to the topic.
 func GenerateQueueNameTopicName(topic string) string {
 	return topic
 }

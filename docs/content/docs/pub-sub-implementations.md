@@ -254,11 +254,11 @@ Watermill will connect to the instance of Google Cloud Pub/Sub indicated by the 
 For development, you can use a Docker image with the emulator and the `PUBSUB_EMULATOR_HOST` env ([check out the Getting Started guide]({{< ref "getting-started#subscribing_gcloud" >}})).
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/docs/getting-started/googlecloud/main.go" first_line_contains="publisher, err :=" last_line_contains="panic(err)" %}}
+{{% load-snippet-partial file="content/docs/getting-started/googlecloud/main.go" first_line_contains="publisher, err :=" last_line_contains="panic(err)" padding_after="1" %}}
 {{% /render-md %}}
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/docs/getting-started/googlecloud/main.go" first_line_contains="subscriber, err :=" last_line_contains="panic(err)" %}}
+{{% load-snippet-partial file="content/docs/getting-started/googlecloud/main.go" first_line_contains="subscriber, err :=" last_line_contains="panic(err)" padding_after="1" %}}
 {{% /render-md %}}
 
 #### Publishing
@@ -312,14 +312,14 @@ By default NATS client will try to connect to `localhost:4222`. If you are using
 {{% load-snippet-partial file="content/src-link/message/infrastructure/nats/publisher.go" first_line_contains="// NewStreamingPublisher" last_line_contains="func NewStreamingPublisher" %}}
 
 Example:
-{{% load-snippet-partial file="content/docs/getting-started/nats-streaming/main.go" first_line_contains="publisher, err :=" last_line_contains="panic(err)" %}}
+{{% load-snippet-partial file="content/docs/getting-started/nats-streaming/main.go" first_line_contains="publisher, err :=" last_line_contains="panic(err)" padding_after="1" %}}
 {{% /render-md %}}
 
 {{% render-md %}}
 {{% load-snippet-partial file="content/src-link/message/infrastructure/nats/subscriber.go" first_line_contains="// NewStreamingSubscriber" last_line_contains="func NewStreamingSubscriber" %}}
 
 Example:
-{{% load-snippet-partial file="content/docs/getting-started/nats-streaming/main.go" first_line_contains="subscriber, err :=" last_line_contains="panic(err)" %}}
+{{% load-snippet-partial file="content/docs/getting-started/nats-streaming/main.go" first_line_contains="subscriber, err :=" last_line_contains="panic(err)" padding_after="1" %}}
 {{% /render-md %}}
 
 #### Publishing
@@ -355,6 +355,10 @@ but some standard [middlewares]({{< ref "messages-router#middleware" >}}) may be
 
 We are providing Pub/Sub implementation based on [github.com/streadway/amqp](https://github.com/streadway/amqp).
 
+{{% render-md %}}
+{{% load-snippet-partial file="content/src-link/message/infrastructure/amqp/doc.go" first_line_contains="// AMQP" last_line_contains="package amqp" padding_after="0" %}}
+{{% /render-md %}}
+
 #### Characteristics
 
 | Feature | Implements | Note |
@@ -369,7 +373,7 @@ We are providing Pub/Sub implementation based on [github.com/streadway/amqp](htt
 Our AMQP is shipped with some pre-created configurations:
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/infrastructure/amqp/pubsub_config.go" first_line_contains="// NewDurablePubSubConfig" last_line_contains="// Config descriptions" %}}
+{{% load-snippet-partial file="content/src-link/message/infrastructure/amqp/config.go" first_line_contains="// NewDurablePubSubConfig" last_line_contains="type Config struct {" %}}
 {{% /render-md %}}
 
 For detailed configuration description, please check [message/infrastructure/amqp/pubsub_config.go](https://github.com/ThreeDotsLabs/watermill/tree/master/message/infrastructure/amqp/pubsub_config.go)
@@ -379,28 +383,26 @@ For detailed configuration description, please check [message/infrastructure/amq
 TLS config can be passed to `Config.TLSConfig`.
 
 
-##### Pub/Sub
-
-Our AMQP package provides PubSub which implements both Publisher and Subscriber.
+##### Connecting
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/infrastructure/amqp/pubsub.go" first_line_contains="// PubSub" last_line_contains="type PubSub struct {" padding_after="0" %}}
+{{% load-snippet-partial file="content/docs/getting-started/amqp/main.go" first_line_contains="publisher, err :=" last_line_contains="panic(err)" padding_after="1" %}}
+{{% /render-md %}}
 
-Example (TODO!!!!!!!!):
-{{% load-snippet-partial file="content/docs/getting-started/kafka/main.go" first_line_contains="saramaSubscriberConfig :=" last_line_contains="panic(err)" padding_after="1" %}}
-
+{{% render-md %}}
+{{% load-snippet-partial file="content/docs/getting-started/amqp/main.go" first_line_contains="subscriber, err :=" last_line_contains="panic(err)" padding_after="1" %}}
 {{% /render-md %}}
 
 #### Publishing
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/infrastructure/amqp/pubsub_publish.go" first_line_contains="// Publish" last_line_contains="func (p *PubSub) Publish" %}}
+{{% load-snippet-partial file="content/src-link/message/infrastructure/amqp/publisher.go" first_line_contains="// Publish" last_line_contains="func (p *Publisher) Publish" %}}
 {{% /render-md %}}
 
 #### Subscribing
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/infrastructure/amqp/pubsub_subscribe.go" first_line_contains="// Subscribe" last_line_contains="func (p *PubSub) Subscribe" %}}
+{{% load-snippet-partial file="content/src-link/message/infrastructure/amqp/subscriber.go" first_line_contains="// Subscribe" last_line_contains="func (p *Subscriber) Subscribe" %}}
 {{% /render-md %}}
 
 #### Marshaler
@@ -419,25 +421,10 @@ If you need to customize thing in `amqp.Delivery`, you can do it `PostprocessPub
 AMQP doesn't provide mechanism like Kafka's "consumer groups". You can still achieve similar behaviour with [...]
 
 
-```go
-pubSub1, err := amqp.NewPubSub(
-    amqp.NewDurablePubSubConfig(
-        amqpURI,
-        amqp.GenerateQueueNameTopicNameWithSuffix("group_1"),
-    ),
-    watermill.NewStdLogger(true, true),
-)
-pubSub1.Subscribe("some_topic")
+{{% render-md %}}
+{{% load-snippet-partial file="content/docs/snippets/amqp-consumer-groups/main.go" first_line_contains="func createSubscriber(" last_line_contains="go process(\"subscriber_2\", messages2)" %}}
+{{% /render-md %}}
 
-pubSub2, err := amqp.NewPubSub(
-    amqp.NewDurablePubSubConfig(
-        amqpURI,
-        amqp.GenerateQueueNameTopicNameWithSuffix("group_2"),
-    ),
-    watermill.NewStdLogger(true, true),
-)
-pubSub2.Subscribe("some_topic")
-```
 
 In this example both `pubSub1` and `pubSub2` will receive some messages independently.
 
