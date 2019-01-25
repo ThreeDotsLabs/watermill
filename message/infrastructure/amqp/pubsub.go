@@ -11,7 +11,7 @@ import (
 // todo - add link to rabbit's docs
 // todo - add in docs supported features
 // todo - add in docs - https://www.rabbitmq.com/production-checklist.html
-// todo - production deploy watermill w docsach - wzorowac sie - https://www.rabbitmq.com/production-checklist.html
+// todo - production deploy watermill w docsach - base on: https://www.rabbitmq.com/production-checklist.html
 
 type PubSub struct {
 	config Config
