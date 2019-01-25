@@ -30,9 +30,9 @@ type DefaultMarshaler struct {
 
 	// When true, DeliveryMode will be not set to Persistent.
 	//
-	// DeliveryMode.  Transient means higher throughput but messages will not be
-	// restored on broker restart.  The delivery mode of publishings is unrelated
-	// to the durability of the queues they reside on.  Transient messages will
+	// DeliveryMode Transient means higher throughput, but messages will not be
+	// restored on broker restart. The delivery mode of publishings is unrelated
+	// to the durability of the queues they reside on. Transient messages will
 	// not be restored to durable queues, persistent messages will be restored to
 	// durable queues and lost on non-durable queues during server restart.
 	NotPersistentDeliveryMode bool
