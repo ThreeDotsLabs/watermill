@@ -56,7 +56,7 @@ func (p *PubSub) Subscribe(topic string) (chan *message.Message, error) {
 				break ReconnectLoop
 			}
 
-			time.Sleep(time.Millisecond * 500)
+			time.Sleep(time.Millisecond * 100)
 		}
 	}()
 

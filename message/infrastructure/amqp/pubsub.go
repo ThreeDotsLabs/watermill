@@ -7,12 +7,14 @@ import (
 	"github.com/streadway/amqp"
 )
 
-// todo - consult settings
-// todo - add link to rabbit's docs
-// todo - add in docs supported features
-// todo - add in docs - https://www.rabbitmq.com/production-checklist.html
-// todo - production deploy watermill w docsach - wzorowac sie - https://www.rabbitmq.com/production-checklist.html
-
+// PubSub is AMQP implementation of Watermill's Pub/Sub interface.
+//
+// Supported features:
+// - Reconnect support
+// - Fully customizable configuration
+// - Qos settings
+// - TLS support
+// - Publish Transactions support (optional, can be enabled in config)
 type PubSub struct {
 	config Config
 	logger watermill.LoggerAdapter
