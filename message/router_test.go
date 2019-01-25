@@ -6,8 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
-
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/gochannel"
 
 	"github.com/ThreeDotsLabs/watermill"
@@ -242,10 +240,6 @@ func TestRouterNoPublisherHandler(t *testing.T) {
 		&logger,
 	)
 	require.NoError(t, err)
-
-	pq, err := middleware.NewPoisonQueue(pubSub, "poisoned")
-	require.NoError(t, err)
-	r.AddMiddleware(pq.Middleware)
 
 	msgReceived := false
 	wait := make(chan struct{})
