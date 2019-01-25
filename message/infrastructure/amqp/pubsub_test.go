@@ -47,7 +47,7 @@ func TestPublishSubscribe_pubsub(t *testing.T) {
 			ExactlyOnceDelivery:   false,
 			GuaranteedOrder:       true,
 			Persistent:            true,
-			RestartServiceCommand: []string{"docker", "restart", "watermill_rabbitmq_1"}, // todo - propagate
+			RestartServiceCommand: []string{"docker", "restart", "watermill_rabbitmq_1"},
 		},
 		createPubSub,
 		createPubSubWithConsumerGrup,
@@ -75,7 +75,7 @@ func TestPublishSubscribe_queue(t *testing.T) {
 			ExactlyOnceDelivery:   false,
 			GuaranteedOrder:       true,
 			Persistent:            true,
-			RestartServiceCommand: []string{"docker", "restart", "watermill_rabbitmq_1"}, // todo - propagate
+			RestartServiceCommand: []string{"docker", "restart", "watermill_rabbitmq_1"},
 		},
 		createQueuePubSub,
 		nil,
@@ -97,5 +97,3 @@ func TestPublishSubscribe_transactional_publish(t *testing.T) {
 
 	infrastructure.TestPublishSubscribe(t, pubSub)
 }
-
-// todo - stress

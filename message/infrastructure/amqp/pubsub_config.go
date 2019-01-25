@@ -35,51 +35,6 @@ func GenerateQueueNameTopicNameWithSuffix(suffix string) QueueNameGenerator {
 	}
 }
 
-type Config struct {
-	AmqpURI string
-
-	TLSConfig  *tls.Config
-	AmqpConfig *amqp.Config
-
-	// When true, message will be not requeued when nacked.
-	NoRequeueOnNack bool
-
-	GenerateQueueName QueueNameGenerator
-	Marshaler         Marshaler
-
-	Reconnect ReconnectConfig
-
-	Exchange  ExchangeConfig
-	Queue     QueueConfig
-	QueueBind QueueBindConfig
-	Publish   PublishConfig
-	Consume   ConsumeConfig
-	Qos       QosConfig
-}
-
-func (c Config) Validate() error {
-	var err error
-
-	if c.AmqpURI == "" {
-		err = multierror.Append(err, errors.New("empty Config.AmqpURI"))
-	}
-	if c.GenerateQueueName == nil {
-		err = multierror.Append(err, errors.New("missing Config.GenerateQueueName"))
-	}
-	if c.Marshaler == nil {
-		err = multierror.Append(err, errors.New("missing Config.Marshaler"))
-	}
-
-	if c.Publish.GenerateRoutingKey == nil {
-		err = multierror.Append(err, errors.New("missing Config.GenerateRoutingKey"))
-	}
-	if c.Exchange.GenerateName == nil {
-		err = multierror.Append(err, errors.New("missing Config.GenerateName"))
-	}
-
-	return err
-}
-
 // NewDurablePubSubConfig creates config for durable PubSub.
 //
 // This config is based on this example: https://www.rabbitmq.com/tutorials/tutorial-three-go.html
@@ -215,6 +170,51 @@ func NewNonDurableQueueConfig(amqpURI string) Config {
 			PrefetchCount: 1,
 		},
 	}
+}
+
+type Config struct {
+	AmqpURI string
+
+	TLSConfig  *tls.Config
+	AmqpConfig *amqp.Config
+
+	// When true, message will be not requeued when nacked.
+	NoRequeueOnNack bool
+
+	GenerateQueueName QueueNameGenerator
+	Marshaler         Marshaler
+
+	Reconnect ReconnectConfig
+
+	Exchange  ExchangeConfig
+	Queue     QueueConfig
+	QueueBind QueueBindConfig
+	Publish   PublishConfig
+	Consume   ConsumeConfig
+	Qos       QosConfig
+}
+
+func (c Config) Validate() error {
+	var err error
+
+	if c.AmqpURI == "" {
+		err = multierror.Append(err, errors.New("empty Config.AmqpURI"))
+	}
+	if c.GenerateQueueName == nil {
+		err = multierror.Append(err, errors.New("missing Config.GenerateQueueName"))
+	}
+	if c.Marshaler == nil {
+		err = multierror.Append(err, errors.New("missing Config.Marshaler"))
+	}
+
+	if c.Publish.GenerateRoutingKey == nil {
+		err = multierror.Append(err, errors.New("missing Config.GenerateRoutingKey"))
+	}
+	if c.Exchange.GenerateName == nil {
+		err = multierror.Append(err, errors.New("missing Config.GenerateName"))
+	}
+
+	return err
 }
 
 // Config descriptions are based on descriptions from: https://github.com/streadway/amqp

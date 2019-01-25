@@ -12,6 +12,11 @@ import (
 	"github.com/streadway/amqp"
 )
 
+// Subscribe consumes messages from AMQP broker.
+//
+// Watermill's topic in publish is not mapped to AMQP's topic, but depending on configuration it can be mapped
+// to exchange, queue or routing key.
+// For detailed description of nomenclature mapping, please check "Nomenclature" paragraph in PubSub GoDoc.
 func (p *PubSub) Subscribe(topic string) (chan *message.Message, error) {
 	if p.closed {
 		return nil, errors.New("pub/sub is closed")
