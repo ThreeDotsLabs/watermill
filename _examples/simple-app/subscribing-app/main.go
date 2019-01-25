@@ -81,26 +81,32 @@ func main() {
 	r.AddPlugin(plugin.SignalsHandler)
 
 	// handler which just counts added posts
-	_ = r.AddHandler(
+	if err = r.AddHandler(
 		"posts_counter",
 		"posts_published",
 		"posts_count",
 		message.NewPubSub(pub, createSubscriber("posts_counter_v2", logger)),
 		PostsCounter{memoryCountStorage{new(int64)}}.Count,
-	)
+	); err != nil {
+		panic(err)
+	}
 
 	// handler which generates "feed" from events post
 	//
 	// this implementation just prints it to stdout,
 	// but production ready implementation would save posts to some persistent storage
-	_ = r.AddNoPublisherHandler(
+	if err = r.AddNoPublisherHandler(
 		"feed_generator",
 		"posts_published",
 		createSubscriber("feed_generator_v2", logger),
 		FeedGenerator{printFeedStorage{}}.UpdateFeed,
-	)
+	); err != nil {
+		panic(err)
+	}
 
-	_ = r.Run()
+	if err = r.Run(); err != nil {
+		panic(err)
+	}
 
 }
 
