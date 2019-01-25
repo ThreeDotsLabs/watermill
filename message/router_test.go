@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
+
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/gochannel"
 
 	"github.com/ThreeDotsLabs/watermill"
@@ -226,6 +228,60 @@ func BenchmarkRouterHandler(b *testing.B) {
 	if err := router.Run(); err != nil {
 		b.Fatal(err)
 	}
+}
+
+func TestRouterNoPublisherHandler(t *testing.T) {
+	pubSub, err := createPubSub()
+	require.NoError(t, err)
+	defer pubSub.Close()
+
+	logger := watermill.NewCaptureLogger()
+
+	r, err := message.NewRouter(
+		message.RouterConfig{},
+		&logger,
+	)
+	require.NoError(t, err)
+
+	pq, err := middleware.NewPoisonQueue(pubSub, "poisoned")
+	require.NoError(t, err)
+	r.AddMiddleware(pq.Middleware)
+
+	msgReceived := false
+	wait := make(chan struct{})
+
+	err = r.AddNoPublisherHandler(
+		"test_no_publisher_handler",
+		"subscribe_topic",
+		pubSub,
+		func(msg *message.Message) (producedMessages []*message.Message, err error) {
+			if msgReceived {
+				require.NoError(t, msg.Ack())
+				close(wait)
+				return nil, nil
+			}
+			msgReceived = true
+			return message.Messages{msg}, nil
+		},
+	)
+	require.NoError(t, err)
+
+	go r.Run()
+	defer r.Close()
+
+	<-r.Running()
+
+	publishedMsg := message.NewMessage("1", nil)
+	err = pubSub.Publish("subscribe_topic", publishedMsg)
+	require.NoError(t, err)
+
+	<-wait
+
+	// handler has no publisher, so the router should complain about it
+	// however, it returns no error for now (because of how messages are processed in the router),
+	// so let's just look for the error in the logger.
+	assert.True(t, logger.HasError(message.ErrOutputInNoPublisherHandler))
+	require.NoError(t, r.Close())
 }
 
 func BenchmarkRouterNoPublisherHandler(b *testing.B) {

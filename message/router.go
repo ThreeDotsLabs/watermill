@@ -10,6 +10,12 @@ import (
 	"github.com/pkg/errors"
 )
 
+var (
+	// ErrOutputInNoPublisherHandler happens when a handler func returned some messages in a no-publisher handler.
+	// todo: maybe change the handler func signature in no-publisher handler so that there's no possibility for this
+	ErrOutputInNoPublisherHandler = errors.New("returned output messages in a handler without publisher")
+)
+
 // HandlerFunc is function called when message is received.
 //
 // msg.Ack() is called automatically when HandlerFunc doesn't return error.
@@ -127,7 +133,7 @@ func (r *Router) AddPlugin(p ...RouterPlugin) {
 //
 // subscribeTopic is a topic from which handler will receive messages.
 //
-// publishTopic is a topic to which router will produce messages retuened by handlerFunc.
+// publishTopic is a topic to which router will produce messages returned by handlerFunc.
 // When handler needs to publish to multiple topics,
 // it is recommended to just inject Publisher to Handler or implement middleware
 // which will catch messages and publish to topic based on metadata for example.
@@ -387,7 +393,7 @@ func (h *handler) publishProducedMessages(producedMessages Messages, msgFields w
 	}
 
 	if h.publishTopic == "" {
-		return errors.New("router was created without publisher, cannot publish messages")
+		return ErrOutputInNoPublisherHandler
 	}
 
 	h.logger.Trace("Sending produced messages", msgFields.Add(watermill.LogFields{
@@ -411,7 +417,7 @@ func (h *handler) publishProducedMessages(producedMessages Messages, msgFields w
 type disabledPublisher struct{}
 
 func (disabledPublisher) Publish(topic string, messages ...*Message) error {
-	return errors.New("trying to publish in a handler without publisher")
+	return ErrOutputInNoPublisherHandler
 }
 
 func (disabledPublisher) Close() error {
