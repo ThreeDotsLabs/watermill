@@ -6,7 +6,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/satori/go.uuid"
+	uuid "github.com/satori/go.uuid"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
@@ -59,6 +59,7 @@ func main() {
 	if err := router.AddHandler(
 		"struct_handler",  // handler name, must be unique
 		"example.topic_1", // topic from which we will read events
+		pubSub,
 		"example.topic_2", // topic to which we will publish event
 		pubSub,
 		structHandler{}.Handler,

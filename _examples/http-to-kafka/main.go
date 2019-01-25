@@ -24,7 +24,7 @@ type GitlabWebhook struct {
 func main() {
 	logger := watermill.NewStdLogger(true, true)
 
-	kafkaPublisher, err := kafka.NewPublisher([]string{"localhost:9092"}, kafka.DefaultMarshaler{}, nil)
+	kafkaPublisher, err := kafka.NewPublisher([]string{"localhost:9092"}, kafka.DefaultMarshaler{}, nil, logger)
 	if err != nil {
 		panic(err)
 	}
@@ -58,8 +58,9 @@ func main() {
 	err = r.AddHandler(
 		"http_to_kafka",
 		"/gitlab-webhooks", // this is the URL of our API
+		httpSubscriber,
 		"webhooks",
-		message.NewPubSub(kafkaPublisher, httpSubscriber),
+		kafkaPublisher,
 		func(msg *message.Message) ([]*message.Message, error) {
 			webhook := GitlabWebhook{}
 
