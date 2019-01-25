@@ -63,8 +63,9 @@ func main() {
 	err = r.AddHandler(
 		"http_to_kafka",
 		"/gitlab-webhooks", // this is the URL of our API
+		httpSubscriber,
 		"webhooks",
-		message.NewPubSub(kafkaPublisher, httpSubscriber),
+		kafkaPublisher,
 		func(msg *message.Message) ([]*message.Message, error) {
 			webhook := GitlabWebhook{}
 
