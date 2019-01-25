@@ -418,8 +418,7 @@ If you need to customize thing in `amqp.Delivery`, you can do it `PostprocessPub
 
 #### AMQP "Consumer Groups"
 
-AMQP doesn't provide mechanism like Kafka's "consumer groups". You can still achieve similar behaviour with [...]
-
+AMQP doesn't provide mechanism like Kafka's "consumer groups". You can still achieve similar behaviour with `GenerateQueueNameTopicNameWithSuffix` and `NewDurablePubSubConfig`.
 
 {{% render-md %}}
 {{% load-snippet-partial file="content/docs/snippets/amqp-consumer-groups/main.go" first_line_contains="func createSubscriber(" last_line_contains="go process(\"subscriber_2\", messages2)" %}}
