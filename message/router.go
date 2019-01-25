@@ -1,6 +1,7 @@
 package message
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"time"
@@ -174,7 +175,7 @@ func (r *Router) AddHandler(
 	publisher Publisher,
 	handlerFunc HandlerFunc,
 ) error {
-	r.logger.Info("Adding subscriber", watermill.LogFields{
+	r.logger.Info("Adding handler", watermill.LogFields{
 		"handler_name": handlerName,
 		"topic":        subscribeTopic,
 	})
@@ -183,23 +184,44 @@ func (r *Router) AddHandler(
 		return errors.Errorf("handler %s already exists", handlerName)
 	}
 
+	publisherName, subscriberName := r.pubSubNames(publisher, subscriber)
+
 	r.handlers[handlerName] = &handler{
 		name:   handlerName,
 		logger: r.logger,
 
 		subscriber:     subscriber,
 		subscribeTopic: subscribeTopic,
-		publisher:      publisher,
-		publishTopic:   publishTopic,
+		subscriberName: subscriberName,
 
-		runningHandlersWg: r.runningHandlersWg,
+		publisher:     publisher,
+		publishTopic:  publishTopic,
+		publisherName: publisherName,
+
 		handlerFunc:       handlerFunc,
+		runningHandlersWg: r.runningHandlersWg,
 		messagesCh:        nil,
-
-		closeCh: r.closeCh,
+		closeCh:           r.closeCh,
 	}
 
 	return nil
+}
+
+// pubSubNames resolves the names of publisher and subscriber.
+// They are then stored in the context of the message.
+func (r *Router) pubSubNames(pub Publisher, sub Subscriber) (string, string) {
+	var publisherName, subscriberName string
+	if pubStringer, ok := pub.(fmt.Stringer); ok {
+		publisherName = pubStringer.String()
+	} else {
+		publisherName = fmt.Sprintf("%T", pub)
+	}
+	if subStringer, ok := sub.(fmt.Stringer); ok {
+		subscriberName = subStringer.String()
+	} else {
+		subscriberName = fmt.Sprintf("%T", sub)
+	}
+	return publisherName, subscriberName
 }
 
 // AddNoPublisherHandler adds a new handler.
@@ -335,16 +357,16 @@ func (r *Router) Close() error {
 }
 
 type handler struct {
-	name string
-logger watermill.LoggerAdapter
+	name   string
+	logger watermill.LoggerAdapter
 
 	subscriber     Subscriber
 	subscribeTopic string
 	subscriberName string
 
-	publisher         Publisher
-	publishTopic   string
-	publisherName  string
+	publisher     Publisher
+	publishTopic  string
+	publisherName string
 
 	handlerFunc HandlerFunc
 
@@ -384,7 +406,23 @@ func (h *handler) run(middlewares []HandlerMiddleware) {
 	}
 
 	h.logger.Debug("Router handler stopped", nil)
+}
 
+func (h handler) addMsgContext(messages ...*Message) {
+	for i, msg := range messages {
+		ctx := msg.ctx
+
+		if h.name != "" {
+			ctx = context.WithValue(ctx, handlerNameKey, h.name)
+		}
+		if h.publisherName != "" {
+			ctx = context.WithValue(ctx, publisherNameKey, h.publisherName)
+		}
+		if h.subscriberName != "" {
+			ctx = context.WithValue(ctx, subscriberNameKey, h.subscriberName)
+		}
+		messages[i].SetContext(ctx)
+	}
 }
 
 func (h *handler) handleClose() {
@@ -416,12 +454,16 @@ func (h *handler) handleMessage(msg *Message, handler HandlerFunc) {
 
 	h.logger.Trace("Received message", msgFields)
 
+	h.addMsgContext(msg)
+
 	producedMessages, err := handler(msg)
 	if err != nil {
 		h.logger.Error("Handler returned error", err, nil)
 		msg.Nack()
 		return
 	}
+
+	h.addMsgContext(producedMessages...)
 
 	if err := h.publishProducedMessages(producedMessages, msgFields); err != nil {
 		h.logger.Error("Publishing produced messages failed", err, nil)
