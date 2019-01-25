@@ -359,7 +359,7 @@ We are providing Pub/Sub implementation based on [github.com/streadway/amqp](htt
 
 | Feature | Implements | Note |
 | ------- | ---------- | ---- |
-| ConsumerGroups | yes* | there is no literally consumer groups in AMQP, but we can achieve similar behaviour with `GenerateQueueNameTopicNameWithSuffix`, for more details please check [AMQP "Consumer Groups" section](#amqp-consumer-groups) |
+| ConsumerGroups | yes* | there are no literal consumer groups in AMQP, but we can achieve similar behaviour with `GenerateQueueNameTopicNameWithSuffix`. For more details please check [AMQP "Consumer Groups" section](#amqp-consumer-groups) |
 | ExactlyOnceDelivery | no |  |
 | GuaranteedOrder | yes |  yes, please check https://www.rabbitmq.com/semantics.html#ordering |
 | Persistent | yes* | when using `NewDurablePubSubConfig` or `NewDurableQueueConfig`  |
@@ -381,7 +381,7 @@ TLS config can be passed to `Config.TLSConfig`.
 
 ##### Pub/Sub
 
-Our AMQP pachage provides PubSub which implements both Publisher and Subscriber.
+Our AMQP package provides PubSub which implements both Publisher and Subscriber.
 
 {{% render-md %}}
 {{% load-snippet-partial file="content/src-link/message/infrastructure/amqp/pubsub.go" first_line_contains="// PubSub" last_line_contains="type PubSub struct {" padding_after="0" %}}
