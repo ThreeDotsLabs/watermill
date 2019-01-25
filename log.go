@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"reflect"
 	"sort"
 	"strings"
 )
@@ -108,4 +109,85 @@ func (l *StdLoggerAdapter) log(logger *log.Logger, level string, msg string, fie
 	}
 
 	logger.Output(3, fmt.Sprintf("\t"+`level=%s msg="%s" %s`, level, msg, fieldsStr))
+}
+
+type LogLevel uint
+
+const (
+	Trace LogLevel = iota + 1
+	Debug
+	Info
+	Error
+)
+
+type CapturedMessage struct {
+	Level  LogLevel
+	Fields LogFields
+	Msg    string
+	Err    error
+}
+
+type CaptureLoggerAdapter struct {
+	captured map[LogLevel][]CapturedMessage
+}
+
+func NewCaptureLogger() CaptureLoggerAdapter {
+	return CaptureLoggerAdapter{
+		captured: map[LogLevel][]CapturedMessage{},
+	}
+}
+
+func (c *CaptureLoggerAdapter) capture(msg CapturedMessage) {
+	c.captured[msg.Level] = append(c.captured[msg.Level], msg)
+}
+
+func (c CaptureLoggerAdapter) Has(msg CapturedMessage) bool {
+	for _, capturedMsg := range c.captured[msg.Level] {
+		if reflect.DeepEqual(msg, capturedMsg) {
+			return true
+		}
+	}
+	return false
+}
+
+func (c CaptureLoggerAdapter) HasError(err error) bool {
+	for _, capturedMsg := range c.captured[Error] {
+		if capturedMsg.Err == err {
+			return true
+		}
+	}
+	return false
+}
+
+func (c *CaptureLoggerAdapter) Error(msg string, err error, fields LogFields) {
+	c.capture(CapturedMessage{
+		Level:  Error,
+		Fields: fields,
+		Msg:    msg,
+		Err:    err,
+	})
+}
+
+func (c *CaptureLoggerAdapter) Info(msg string, fields LogFields) {
+	c.capture(CapturedMessage{
+		Level:  Info,
+		Fields: fields,
+		Msg:    msg,
+	})
+}
+
+func (c *CaptureLoggerAdapter) Debug(msg string, fields LogFields) {
+	c.capture(CapturedMessage{
+		Level:  Debug,
+		Fields: fields,
+		Msg:    msg,
+	})
+}
+
+func (c *CaptureLoggerAdapter) Trace(msg string, fields LogFields) {
+	c.capture(CapturedMessage{
+		Level:  Trace,
+		Fields: fields,
+		Msg:    msg,
+	})
 }
