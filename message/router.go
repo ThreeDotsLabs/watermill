@@ -186,7 +186,7 @@ func (r *Router) AddNoPublisherHandler(
 	subscriber Subscriber,
 	handlerFunc HandlerFunc,
 ) error {
-	return r.AddHandler(handlerName, subscribeTopic, subscriber, "", NopPublisher{}, handlerFunc)
+	return r.AddHandler(handlerName, subscribeTopic, subscriber, "", disabledPublisher{}, handlerFunc)
 }
 
 // Run runs all plugins and handlers and starts subscribing to provided topics.
@@ -405,5 +405,15 @@ func (h *handler) publishProducedMessages(producedMessages Messages, msgFields w
 		}
 	}
 
+	return nil
+}
+
+type disabledPublisher struct{}
+
+func (disabledPublisher) Publish(topic string, messages ...*Message) error {
+	return errors.New("trying to publish in a handler without publisher")
+}
+
+func (disabledPublisher) Close() error {
 	return nil
 }
