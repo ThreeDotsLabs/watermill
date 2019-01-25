@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math/rand"
 	"os"
 	"os/exec"
 	"sync"
@@ -18,6 +19,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func init() {
+	rand.Seed(3)
+}
 
 const defaultTimeout = time.Second * 10
 
@@ -45,12 +50,12 @@ func TestPubSub(
 ) {
 	t.Run("publishSubscribe", func(t *testing.T) {
 		t.Parallel()
-		publishSubscribeTest(t, pubSubConstructor(t))
+		TestPublishSubscribe(t, pubSubConstructor(t))
 	})
 
 	t.Run("resendOnError", func(t *testing.T) {
 		t.Parallel()
-		resendOnErrorTest(t, pubSubConstructor(t))
+		TestResendOnError(t, pubSubConstructor(t))
 	})
 
 	t.Run("noAck", func(t *testing.T) {
@@ -58,7 +63,7 @@ func TestPubSub(
 			t.Skip("guaranteed order is required for this test")
 		}
 		t.Parallel()
-		noAckTest(t, pubSubConstructor(t))
+		TestNoAck(t, pubSubConstructor(t))
 	})
 
 	t.Run("continueAfterClose", func(t *testing.T) {
@@ -67,7 +72,7 @@ func TestPubSub(
 		}
 
 		t.Parallel()
-		continueAfterCloseTest(t, pubSubConstructor)
+		TestContinueAfterClose(t, pubSubConstructor)
 	})
 
 	t.Run("concurrentClose", func(t *testing.T) {
@@ -76,7 +81,7 @@ func TestPubSub(
 		}
 
 		t.Parallel()
-		concurrentClose(t, pubSubConstructor)
+		TestConcurrentClose(t, pubSubConstructor)
 	})
 
 	t.Run("continueAfterErrors", func(t *testing.T) {
@@ -85,53 +90,53 @@ func TestPubSub(
 		}
 
 		t.Parallel()
-		continueAfterErrors(t, pubSubConstructor)
+		TestContinueAfterErrors(t, pubSubConstructor)
 	})
 
-	t.Run("publishSubscribeInOrderTest", func(t *testing.T) {
+	t.Run("publishSubscribeInOrder", func(t *testing.T) {
 		if !features.GuaranteedOrder {
 			t.Skipf("order is not guaranteed")
 		}
 
 		t.Parallel()
-		publishSubscribeInOrderTest(t, pubSubConstructor(t))
+		TestPublishSubscribeInOrder(t, pubSubConstructor(t))
 	})
 
-	t.Run("consumerGroupsTest", func(t *testing.T) {
+	t.Run("consumerGroups", func(t *testing.T) {
 		if !features.ConsumerGroups {
 			t.Skip("consumer groups are not supported")
 		}
 
 		t.Parallel()
-		consumerGroupsTest(t, consumerGroupPubSubConstructor)
+		TestConsumerGroups(t, consumerGroupPubSubConstructor)
 	})
 
-	t.Run("publisherCloseTest", func(t *testing.T) {
+	t.Run("publisherClose", func(t *testing.T) {
 		t.Parallel()
 
 		pubsub := pubSubConstructor(t)
 
-		publisherCloseTest(t, pubsub, pubsub)
+		TestPublisherClose(t, pubsub, pubsub)
 	})
 
-	t.Run("topicTest", func(t *testing.T) {
+	t.Run("topic", func(t *testing.T) {
 		t.Parallel()
-		topicTest(t, pubSubConstructor(t))
+		TopicTest(t, pubSubConstructor(t))
 	})
 
 	t.Run("messageCtx", func(t *testing.T) {
 		t.Parallel()
-		testMessageCtx(t, pubSubConstructor(t))
+		TestMessageCtx(t, pubSubConstructor(t))
 	})
 
-	//t.Run("reconnect", func(t *testing.T) {
-	//	if len(features.RestartServiceCommand) == 0 {
-	//		t.Skip("no RestartServiceCommand provided, cannot test reconnect")
-	//	}
-	//
-	//	// this test cannot be parallel
-	//	testReconnect(t, pubSubConstructor(t), features)
-	//})
+	t.Run("reconnect", func(t *testing.T) {
+		if len(features.RestartServiceCommand) == 0 {
+			t.Skip("no RestartServiceCommand provided, cannot test reconnect")
+		}
+
+		// this test cannot be parallel
+		TestReconnect(t, pubSubConstructor(t), features)
+	})
 }
 
 var stressTestTestsCount = 20
@@ -150,7 +155,7 @@ func TestPubSubStressTest(
 	}
 }
 
-func publishSubscribeTest(t *testing.T, pubSub message.PubSub) {
+func TestPublishSubscribe(t *testing.T, pubSub message.PubSub) {
 	defer closePubSub(t, pubSub)
 	topicName := testTopicName()
 
@@ -186,9 +191,12 @@ func publishSubscribeTest(t *testing.T, pubSub message.PubSub) {
 	tests.AssertAllMessagesReceived(t, messagesToPublish, receivedMessages)
 	tests.AssertMessagesPayloads(t, messagesPayloads, receivedMessages)
 	tests.AssertMessagesMetadata(t, "test", messagesTestMetadata, receivedMessages)
+
+	closePubSub(t, pubSub)
+	assertMessagesChannelClosed(t, messages)
 }
 
-func publishSubscribeInOrderTest(t *testing.T, pubSub message.PubSub) {
+func TestPublishSubscribeInOrder(t *testing.T, pubSub message.PubSub) {
 	defer closePubSub(t, pubSub)
 	topicName := testTopicName()
 
@@ -218,7 +226,7 @@ func publishSubscribeInOrderTest(t *testing.T, pubSub message.PubSub) {
 	}()
 
 	receivedMessages, all := subscriber.BulkRead(messages, len(messagesToPublish), defaultTimeout)
-	require.True(t, all)
+	require.True(t, all, "not all messages received (%d of %d)", len(receivedMessages), len(messagesToPublish))
 
 	receivedMessagesByType := map[string][]string{}
 	for _, msg := range receivedMessages {
@@ -237,7 +245,7 @@ func publishSubscribeInOrderTest(t *testing.T, pubSub message.PubSub) {
 	}
 }
 
-func resendOnErrorTest(t *testing.T, pubSub message.PubSub) {
+func TestResendOnError(t *testing.T, pubSub message.PubSub) {
 	defer closePubSub(t, pubSub)
 	topicName := testTopicName()
 
@@ -290,7 +298,7 @@ ReadMessagesLoop:
 	tests.AssertAllMessagesReceived(t, publishedMessages, receivedMessages)
 }
 
-func noAckTest(t *testing.T, pubSub message.PubSub) {
+func TestNoAck(t *testing.T, pubSub message.PubSub) {
 	defer closePubSub(t, pubSub)
 	topicName := testTopicName()
 
@@ -343,7 +351,7 @@ func noAckTest(t *testing.T, pubSub message.PubSub) {
 	}
 }
 
-func continueAfterCloseTest(t *testing.T, createPubSub PubSubConstructor) {
+func TestContinueAfterClose(t *testing.T, createPubSub PubSubConstructor) {
 	topicName := testTopicName()
 	totalMessagesCount := 500
 
@@ -409,7 +417,7 @@ func continueAfterCloseTest(t *testing.T, createPubSub PubSubConstructor) {
 	fmt.Println("extra:", tests.MissingMessages(messagesToPublish, receivedMessages))
 }
 
-func concurrentClose(t *testing.T, createPubSub PubSubConstructor) {
+func TestConcurrentClose(t *testing.T, createPubSub PubSubConstructor) {
 	topicName := testTopicName()
 	totalMessagesCount := 50
 
@@ -443,7 +451,7 @@ func concurrentClose(t *testing.T, createPubSub PubSubConstructor) {
 	tests.AssertAllMessagesReceived(t, expectedMessages, receivedMessages)
 }
 
-func continueAfterErrors(t *testing.T, createPubSub PubSubConstructor) {
+func TestContinueAfterErrors(t *testing.T, createPubSub PubSubConstructor) {
 	topicName := testTopicName()
 
 	totalMessagesCount := 50
@@ -493,7 +501,7 @@ func continueAfterErrors(t *testing.T, createPubSub PubSubConstructor) {
 	tests.AssertAllMessagesReceived(t, messagesToPublish, receivedMessages)
 }
 
-func consumerGroupsTest(t *testing.T, pubSubConstructor ConsumerGroupPubSubConstructor) {
+func TestConsumerGroups(t *testing.T, pubSubConstructor ConsumerGroupPubSubConstructor) {
 	topicName := testTopicName()
 	totalMessagesCount := 50
 
@@ -518,7 +526,7 @@ func consumerGroupsTest(t *testing.T, pubSubConstructor ConsumerGroupPubSubConst
 	//assert.Equal(t, 0, len(receivedMessages))
 }
 
-func publisherCloseTest(t *testing.T, pub message.Publisher, sub message.Subscriber) {
+func TestPublisherClose(t *testing.T, pub message.Publisher, sub message.Subscriber) {
 	topicName := testTopicName()
 
 	messagesCount := 10000
@@ -549,7 +557,7 @@ func publisherCloseTest(t *testing.T, pub message.Publisher, sub message.Subscri
 	require.NoError(t, sub.Close())
 }
 
-func topicTest(t *testing.T, pubSub message.PubSub) {
+func TopicTest(t *testing.T, pubSub message.PubSub) {
 	defer closePubSub(t, pubSub)
 
 	topic1 := testTopicName()
@@ -583,7 +591,7 @@ func topicTest(t *testing.T, pubSub message.PubSub) {
 	assert.Equal(t, messagesConsumedTopic2.IDs()[0], topic2Msg.UUID)
 }
 
-func testMessageCtx(t *testing.T, pubSub message.PubSub) {
+func TestMessageCtx(t *testing.T, pubSub message.PubSub) {
 	defer pubSub.Close()
 
 	topic := testTopicName()
@@ -650,53 +658,93 @@ func testMessageCtx(t *testing.T, pubSub message.PubSub) {
 	}
 }
 
-func testReconnect(t *testing.T, pubSub message.PubSub, features Features) {
+// todo - refactor
+func TestReconnect(t *testing.T, pubSub message.PubSub, features Features) {
 	topicName := testTopicName()
 
-	messagesCount := 100
-	restartAfterMessages := messagesCount / 2
+	messagesCount := 10000
+	restartAfterMessages := map[int]struct{}{messagesCount / 3: {}, messagesCount / 2: {}}
 
 	messages, err := pubSub.Subscribe(topicName)
 	require.NoError(t, err)
 
-	allMessagesProduced := make(chan struct{})
-
-	var publishedMessages []*message.Message
+	var publishedMessages message.Messages
+	allMessagesPublished := make(chan struct{})
 
 	go func() {
-		for i := 0; i < messagesCount; i++ {
-			id := uuid.NewV4().String()
+		messagePublished := make(chan *message.Message, messagesCount)
 
-			msg := message.NewMessage(id, nil)
-			publishedMessages = append(publishedMessages, msg)
+		publishMessage := make(chan struct{})
+		go func() {
+			for i := 0; i < messagesCount; i++ {
+				publishMessage <- struct{}{}
 
-			err := pubSub.Publish(topicName, msg)
-			require.NoError(t, err, "cannot publish messages")
+				if _, shouldRestart := restartAfterMessages[i]; shouldRestart {
+					// todo - ensure that restarted?
+					go func() {
+						fmt.Println("restarting server with:", features.RestartServiceCommand)
 
-			if i == restartAfterMessages {
-				fmt.Println("restarting server with:", features.RestartServiceCommand)
+						cmd := exec.Command(features.RestartServiceCommand[0], features.RestartServiceCommand[1:]...)
+						cmd.Stderr = os.Stderr
+						cmd.Stdout = os.Stdout
+						if err := cmd.Run(); err != nil {
+							t.Fatal(err)
+						}
 
-				cmd := exec.Command(features.RestartServiceCommand[0], features.RestartServiceCommand[1:]...)
-				cmd.Stderr = os.Stderr
-				cmd.Stdout = os.Stdout
-				if err := cmd.Run(); err != nil {
-					t.Fatal(err)
+						fmt.Println("server restarted")
+					}()
 				}
-
-				fmt.Println("restarted")
 			}
+			close(publishMessage)
+		}()
+
+		for i := 0; i < 100; i++ {
+			go func() {
+				for range publishMessage {
+					id := uuid.NewV4().String()
+					msg := message.NewMessage(id, nil)
+
+					for {
+						fmt.Println("publishing message")
+
+						// some randomization in sending
+						if rand.Int31n(10) == 0 {
+							time.Sleep(time.Millisecond * 500)
+						}
+
+						err := pubSub.Publish(topicName, msg)
+						if err == nil {
+							break
+						}
+
+						fmt.Printf("cannot publish message %s, trying again, err: %s\n", msg.UUID, err)
+						time.Sleep(time.Millisecond * 500)
+					}
+
+					messagePublished <- msg
+				}
+			}()
 		}
+
+		go func() {
+			count := 0
+
+			for msg := range messagePublished {
+				publishedMessages = append(publishedMessages, msg)
+				count++
+
+				if count >= messagesCount {
+					close(allMessagesPublished)
+				}
+			}
+		}()
 	}()
 
-	receivedMessages, _ := subscriber.BulkRead(messages, messagesCount, defaultTimeout*3)
+	// todo - fix upper (remove waiting for chan)
+	receivedMessages, allMessages := subscriber.BulkReadWithDeduplication(messages, messagesCount, time.Second*60) // todo - remove bulk read in every place?
+	assert.True(t, allMessages, "not all messages received (has %d of %d)", len(receivedMessages), messagesCount)
 
-	select {
-	case <-allMessagesProduced:
-		// ok
-	case <-time.After(time.Second * 30):
-		t.Fatal("messages send timeouted")
-	}
-
+	<-allMessagesPublished
 	tests.AssertAllMessagesReceived(t, publishedMessages, receivedMessages)
 
 	require.NoError(t, pubSub.Close())
@@ -757,4 +805,19 @@ func addSimpleMessagesMessages(t *testing.T, messagesCount int, publisher messag
 	}
 
 	return messagesToPublish
+}
+
+func assertMessagesChannelClosed(t *testing.T, messages chan *message.Message) bool {
+	select {
+	case msg := <-messages:
+		if msg == nil {
+			return true
+		}
+
+		t.Error("messages channel is not closed (received message)")
+		return false
+	default:
+		t.Error("messages channel is not closed (blocked)")
+		return false
+	}
 }
