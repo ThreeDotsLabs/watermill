@@ -8,14 +8,33 @@ import (
 	"github.com/streadway/amqp"
 )
 
+type Publisher struct {
+	*connectionWrapper
+
+	config Config
+}
+
+func NewPublisher(config Config, logger watermill.LoggerAdapter) (*Publisher, error) {
+	if err := config.ValidatePublisher(); err != nil {
+		return nil, err
+	}
+
+	conn, err := newConnection(config, logger)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Publisher{conn, config}, nil
+}
+
 // Publish publishes messages to AMQP broker.
 // Publish is blocking since broker received and saved the message.
 // Publish is always thread safe.
 //
 // Watermill's topic in publish is not mapped to AMQP's topic, but depending on configuration it can be mapped
 // to exchange, queue or routing key.
-// For detailed description of nomenclature mapping, please check "Nomenclature" paragraph in PubSub GoDoc.
-func (p *PubSub) Publish(topic string, messages ...*message.Message) (err error) {
+// For detailed description of nomenclature mapping, please check "Nomenclature" paragraph in doc.go file.
+func (p *Publisher) Publish(topic string, messages ...*message.Message) (err error) {
 	if p.closed {
 		return errors.New("pub/sub is connection closed")
 	}
@@ -26,7 +45,7 @@ func (p *PubSub) Publish(topic string, messages ...*message.Message) (err error)
 		return errors.New("not connected to AMQP")
 	}
 
-	channel, err := p.connection.Channel()
+	channel, err := p.amqpConnection.Channel()
 	if err != nil {
 		return errors.Wrap(err, "cannot open channel")
 	}
@@ -52,10 +71,10 @@ func (p *PubSub) Publish(topic string, messages ...*message.Message) (err error)
 
 	logFields := make(watermill.LogFields, 3)
 
-	exchangeName := p.generateExchangeName(topic)
+	exchangeName := p.config.Exchange.GenerateName(topic)
 	logFields["amqp_exchange_name"] = exchangeName
 
-	routingKey := p.generateRoutingKey(topic)
+	routingKey := p.config.Publish.GenerateRoutingKey(topic)
 	logFields["amqp_routing_key"] = routingKey
 
 	for _, msg := range messages {
@@ -64,12 +83,10 @@ func (p *PubSub) Publish(topic string, messages ...*message.Message) (err error)
 		}
 	}
 
-	p.logger.Trace("All messages published", logFields)
-
 	return nil
 }
 
-func (p *PubSub) beginTransaction(channel *amqp.Channel) error {
+func (p *Publisher) beginTransaction(channel *amqp.Channel) error {
 	if err := channel.Tx(); err != nil {
 		return errors.Wrap(err, "cannot start transaction")
 	}
@@ -79,7 +96,7 @@ func (p *PubSub) beginTransaction(channel *amqp.Channel) error {
 	return nil
 }
 
-func (p *PubSub) commitTransaction(channel *amqp.Channel, err error) error {
+func (p *Publisher) commitTransaction(channel *amqp.Channel, err error) error {
 	if err != nil {
 		if rollbackErr := channel.TxRollback(); rollbackErr != nil {
 			return multierror.Append(err, rollbackErr)
@@ -89,7 +106,7 @@ func (p *PubSub) commitTransaction(channel *amqp.Channel, err error) error {
 	return channel.TxCommit()
 }
 
-func (p *PubSub) publishMessage(
+func (p *Publisher) publishMessage(
 	exchangeName, routingKey string,
 	msg *message.Message,
 	channel *amqp.Channel,
@@ -119,7 +136,7 @@ func (p *PubSub) publishMessage(
 	return nil
 }
 
-func (p *PubSub) preparePublishBindings(topic string, channel *amqp.Channel) error {
+func (p *Publisher) preparePublishBindings(topic string, channel *amqp.Channel) error {
 	p.publishBindingsLock.RLock()
 	_, prepared := p.publishBindingsPrepared[topic]
 	p.publishBindingsLock.RUnlock()
@@ -131,19 +148,8 @@ func (p *PubSub) preparePublishBindings(topic string, channel *amqp.Channel) err
 	p.publishBindingsLock.Lock()
 	defer p.publishBindingsLock.Unlock()
 
-	if _, err := channel.QueueDeclare(
-		p.config.GenerateQueueName(topic),
-		p.config.Queue.Durable,
-		p.config.Queue.AutoDelete,
-		p.config.Queue.Exclusive,
-		p.config.Queue.NoWait,
-		p.config.Queue.Arguments,
-	); err != nil {
-		return errors.Wrap(err, "cannot declare queue")
-	}
-
-	if p.generateExchangeName(topic) != "" {
-		if err := p.exchangeDeclare(channel, p.generateExchangeName(topic)); err != nil {
+	if p.config.Exchange.GenerateName(topic) != "" {
+		if err := p.exchangeDeclare(channel, p.config.Exchange.GenerateName(topic)); err != nil {
 			return err
 		}
 	}

@@ -1,94 +1,174 @@
 package amqp
 
 import (
+	"sync"
+
+	"github.com/ThreeDotsLabs/watermill"
 	"github.com/cenkalti/backoff"
 	"github.com/pkg/errors"
 	"github.com/streadway/amqp"
 )
 
-func (p *PubSub) connect() error {
-	p.connectionLock.Lock()
-	defer p.connectionLock.Unlock()
+type connectionWrapper struct {
+	config Config
 
-	if p.config.AmqpConfig != nil && p.config.AmqpConfig.TLSClientConfig != nil && p.config.TLSConfig != nil {
+	logger watermill.LoggerAdapter
+
+	amqpConnection     *amqp.Connection
+	amqpConnectionLock sync.Mutex
+	connected          chan struct{}
+
+	publishBindingsLock     sync.RWMutex
+	publishBindingsPrepared map[string]struct{}
+
+	closing chan struct{}
+	closed  bool
+
+	publishingWg  sync.WaitGroup
+	subscribingWg sync.WaitGroup
+}
+
+func newConnection(
+	config Config,
+	logger watermill.LoggerAdapter,
+) (*connectionWrapper, error) {
+	pubSub := &connectionWrapper{
+		config:    config,
+		logger:    logger,
+		closing:   make(chan struct{}),
+		connected: make(chan struct{}),
+	}
+	if err := pubSub.connect(); err != nil {
+		return nil, err
+	}
+
+	go pubSub.handleConnectionClose()
+
+	return pubSub, nil
+}
+
+func (c *connectionWrapper) exchangeDeclare(channel *amqp.Channel, exchangeName string) error {
+	return channel.ExchangeDeclare(
+		exchangeName,
+		c.config.Exchange.Type,
+		c.config.Exchange.Durable,
+		c.config.Exchange.AutoDeleted,
+		c.config.Exchange.Internal,
+		c.config.Exchange.NoWait,
+		c.config.Exchange.Arguments,
+	)
+}
+
+func (c *connectionWrapper) Close() error {
+	if c.closed {
+		return nil
+	}
+	c.closed = true
+	close(c.closing)
+
+	c.logger.Info("Closing AMQP Pub/Sub", nil)
+	defer c.logger.Info("Closed AMQP Pub/Sub", nil)
+
+	c.publishingWg.Wait()
+
+	if err := c.amqpConnection.Close(); err != nil {
+		c.logger.Error("Connection close error", err, nil)
+	}
+
+	c.subscribingWg.Wait()
+
+	return nil
+}
+
+func (c *connectionWrapper) connect() error {
+	c.amqpConnectionLock.Lock()
+	defer c.amqpConnectionLock.Unlock()
+
+	amqpConfig := c.config.Connection.AmqpConfig
+	if amqpConfig != nil && amqpConfig.TLSClientConfig != nil && c.config.Connection.TLSConfig != nil {
 		return errors.New("both Config.AmqpConfig.TLSClientConfig and Config.TLSConfig are set")
 	}
 
 	var connection *amqp.Connection
 	var err error
 
-	if p.config.AmqpConfig != nil {
-		connection, err = amqp.DialConfig(p.config.AmqpURI, *p.config.AmqpConfig)
-	} else if p.config.TLSConfig != nil {
-		connection, err = amqp.DialTLS(p.config.AmqpURI, p.config.TLSConfig)
+	if amqpConfig != nil {
+		connection, err = amqp.DialConfig(c.config.Connection.AmqpURI, *c.config.Connection.AmqpConfig)
+	} else if c.config.Connection.TLSConfig != nil {
+		connection, err = amqp.DialTLS(c.config.Connection.AmqpURI, c.config.Connection.TLSConfig)
 	} else {
-		connection, err = amqp.Dial(p.config.AmqpURI)
+		connection, err = amqp.Dial(c.config.Connection.AmqpURI)
 	}
 
 	if err != nil {
 		return errors.Wrap(err, "cannot connect to AMQP")
 	}
-	p.connection = connection
-	close(p.connected)
+	c.amqpConnection = connection
+	close(c.connected)
 
-	p.logger.Info("Connected to AMQP", nil)
+	c.logger.Info("Connected to AMQP", nil)
 
 	return nil
 }
 
-func (p *PubSub) Connection() *amqp.Connection {
-	return p.connection
+func (c *connectionWrapper) Connection() *amqp.Connection {
+	return c.amqpConnection
 }
 
-func (p *PubSub) Connected() chan struct{} {
-	return p.connected
+func (c *connectionWrapper) Connected() chan struct{} {
+	return c.connected
 }
 
-func (p *PubSub) IsConnected() bool {
+func (c *connectionWrapper) IsConnected() bool {
 	select {
-	case <-p.connected:
+	case <-c.connected:
 		return true
 	default:
 		return false
 	}
 }
 
-func (p *PubSub) handleConnectionClose() {
+func (c *connectionWrapper) handleConnectionClose() {
 	for {
-		p.logger.Debug("handleConnectionClose is waiting for p.connected", nil)
-		<-p.connected
-		p.logger.Debug("handleConnectionClose is for connection or Pub/Sub close", nil)
+		c.logger.Debug("handleConnectionClose is waiting for p.connected", nil)
+		<-c.connected
+		c.logger.Debug("handleConnectionClose is for connection or Pub/Sub close", nil)
 
-		notifyCloseConnection := p.connection.NotifyClose(make(chan *amqp.Error))
+		notifyCloseConnection := c.amqpConnection.NotifyClose(make(chan *amqp.Error))
 
 		select {
-		case <-p.closing:
-			p.logger.Debug("Stopping handleConnectionClose", nil)
+		case <-c.closing:
+			c.logger.Debug("Stopping handleConnectionClose", nil)
 			return
 		case err := <-notifyCloseConnection:
-			p.connected = make(chan struct{})
-			p.logger.Error("Received close notification from AMQP, reconnecting", err, nil)
-			p.reconnect()
+			c.connected = make(chan struct{})
+			c.logger.Error("Received close notification from AMQP, reconnecting", err, nil)
+			c.reconnect()
 		}
 	}
 }
 
-func (p *PubSub) reconnect() {
+func (c *connectionWrapper) reconnect() {
+	reconnectConfig := c.config.Connection.Reconnect
+	if reconnectConfig == nil {
+		reconnectConfig = DefaultReconnectConfig()
+	}
+
 	if err := backoff.Retry(func() error {
-		err := p.connect()
+		err := c.connect()
 		if err == nil {
 			return nil
 		}
 
-		p.logger.Error("Cannot reconnect to AMQP, retrying", err, nil)
+		c.logger.Error("Cannot reconnect to AMQP, retrying", err, nil)
 
-		if p.closed {
-			return backoff.Permanent(errors.Wrap(err, "closing AMQP PubSub"))
+		if c.closed {
+			return backoff.Permanent(errors.Wrap(err, "closing AMQP connection"))
 		}
 
 		return err
-	}, p.config.Reconnect.backoffConfig()); err != nil {
+	}, reconnectConfig.backoffConfig()); err != nil {
 		// should only exit, if closing Pub/Sub
-		p.logger.Error("AMQP reconnect failed failed", err, nil)
+		c.logger.Error("AMQP reconnect failed failed", err, nil)
 	}
 }

@@ -14,7 +14,16 @@ import (
 var amqpURI = "amqp://guest:guest@localhost:5672/"
 
 func createPubSub(t *testing.T) message.PubSub {
-	pubSub, err := amqp.NewPubSub(
+	publisher, err := amqp.NewPublisher(
+		amqp.NewDurablePubSubConfig(
+			amqpURI,
+			nil,
+		),
+		watermill.NewStdLogger(true, true),
+	)
+	require.NoError(t, err)
+
+	subscriber, err := amqp.NewSubscriber(
 		amqp.NewDurablePubSubConfig(
 			amqpURI,
 			amqp.GenerateQueueNameTopicNameWithSuffix("test"),
@@ -23,11 +32,20 @@ func createPubSub(t *testing.T) message.PubSub {
 	)
 	require.NoError(t, err)
 
-	return pubSub
+	return message.NewPubSub(publisher, subscriber)
 }
 
 func createPubSubWithConsumerGrup(t *testing.T, consumerGroup string) message.PubSub {
-	pubSub, err := amqp.NewPubSub(
+	publisher, err := amqp.NewPublisher(
+		amqp.NewDurablePubSubConfig(
+			amqpURI,
+			nil,
+		),
+		watermill.NewStdLogger(true, true),
+	)
+	require.NoError(t, err)
+
+	subscriber, err := amqp.NewSubscriber(
 		amqp.NewDurablePubSubConfig(
 			amqpURI,
 			amqp.GenerateQueueNameTopicNameWithSuffix(consumerGroup),
@@ -36,7 +54,7 @@ func createPubSubWithConsumerGrup(t *testing.T, consumerGroup string) message.Pu
 	)
 	require.NoError(t, err)
 
-	return pubSub
+	return message.NewPubSub(publisher, subscriber)
 }
 
 func TestPublishSubscribe_pubsub(t *testing.T) {
@@ -55,16 +73,23 @@ func TestPublishSubscribe_pubsub(t *testing.T) {
 }
 
 func createQueuePubSub(t *testing.T) message.PubSub {
-	pubSub, err := amqp.NewPubSub(
-		amqp.NewDurablePubSubConfig(
-			amqpURI,
-			amqp.GenerateQueueNameTopicNameWithSuffix("test"),
-		),
+	config := amqp.NewDurableQueueConfig(
+		amqpURI,
+	)
+
+	publisher, err := amqp.NewPublisher(
+		config,
 		watermill.NewStdLogger(true, true),
 	)
 	require.NoError(t, err)
 
-	return pubSub
+	subscriber, err := amqp.NewSubscriber(
+		config,
+		watermill.NewStdLogger(true, true),
+	)
+	require.NoError(t, err)
+
+	return message.NewPubSub(publisher, subscriber)
 }
 
 func TestPublishSubscribe_queue(t *testing.T) {
@@ -89,11 +114,17 @@ func TestPublishSubscribe_transactional_publish(t *testing.T) {
 	)
 	config.Publish.Transactional = true
 
-	pubSub, err := amqp.NewPubSub(
+	publisher, err := amqp.NewPublisher(
 		config,
 		watermill.NewStdLogger(true, true),
 	)
 	require.NoError(t, err)
 
-	infrastructure.TestPublishSubscribe(t, pubSub)
+	subscriber, err := amqp.NewSubscriber(
+		config,
+		watermill.NewStdLogger(true, true),
+	)
+	require.NoError(t, err)
+
+	infrastructure.TestPublishSubscribe(t, message.NewPubSub(publisher, subscriber))
 }

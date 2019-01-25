@@ -12,12 +12,31 @@ import (
 	"github.com/streadway/amqp"
 )
 
+type Subscriber struct {
+	*connectionWrapper
+
+	config Config
+}
+
+func NewSubscriber(config Config, logger watermill.LoggerAdapter) (*Subscriber, error) {
+	if err := config.ValidateSubscriber(); err != nil {
+		return nil, err
+	}
+
+	conn, err := newConnection(config, logger)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Subscriber{conn, config}, nil
+}
+
 // Subscribe consumes messages from AMQP broker.
 //
 // Watermill's topic in publish is not mapped to AMQP's topic, but depending on configuration it can be mapped
 // to exchange, queue or routing key.
-// For detailed description of nomenclature mapping, please check "Nomenclature" paragraph in PubSub GoDoc.
-func (p *PubSub) Subscribe(topic string) (chan *message.Message, error) {
+// For detailed description of nomenclature mapping, please check "Nomenclature" paragraph in doc.go file.
+func (p *Subscriber) Subscribe(topic string) (chan *message.Message, error) {
 	if p.closed {
 		return nil, errors.New("pub/sub is closed")
 	}
@@ -30,10 +49,10 @@ func (p *PubSub) Subscribe(topic string) (chan *message.Message, error) {
 
 	out := make(chan *message.Message, 0)
 
-	queueName := p.config.GenerateQueueName(topic)
+	queueName := p.config.Queue.GenerateName(topic)
 	logFields["amqp_queue_name"] = queueName
 
-	exchangeName := p.generateExchangeName(topic)
+	exchangeName := p.config.Exchange.GenerateName(topic)
 	logFields["amqp_exchange_name"] = exchangeName
 
 	if err := p.prepareConsume(queueName, exchangeName, logFields); err != nil {
@@ -68,7 +87,7 @@ func (p *PubSub) Subscribe(topic string) (chan *message.Message, error) {
 	return out, nil
 }
 
-func (p *PubSub) prepareConsume(queueName string, exchangeName string, logFields watermill.LogFields) (err error) {
+func (p *Subscriber) prepareConsume(queueName string, exchangeName string, logFields watermill.LogFields) (err error) {
 	channel, err := p.openSubscribeChannel(logFields)
 	if err != nil {
 		return err
@@ -115,7 +134,7 @@ func (p *PubSub) prepareConsume(queueName string, exchangeName string, logFields
 	return nil
 }
 
-func (p *PubSub) runSubscriber(out chan *message.Message, queueName string, exchangeName string, logFields watermill.LogFields) {
+func (p *Subscriber) runSubscriber(out chan *message.Message, queueName string, exchangeName string, logFields watermill.LogFields) {
 	channel, err := p.openSubscribeChannel(logFields)
 	if err != nil {
 		p.logger.Error("Failed to open channel", err, logFields)
@@ -144,22 +163,22 @@ func (p *PubSub) runSubscriber(out chan *message.Message, queueName string, exch
 	sub.ProcessMessages()
 }
 
-func (p *PubSub) openSubscribeChannel(logFields watermill.LogFields) (*amqp.Channel, error) {
+func (p *Subscriber) openSubscribeChannel(logFields watermill.LogFields) (*amqp.Channel, error) {
 	if !p.IsConnected() {
 		return nil, errors.New("not connected to AMQP")
 	}
 
-	channel, err := p.connection.Channel()
+	channel, err := p.amqpConnection.Channel()
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot open channel")
 	}
 	p.logger.Debug("Channel opened", logFields)
 
-	if p.config.Qos != (QosConfig{}) {
+	if p.config.Consume.Qos != (QosConfig{}) {
 		err = channel.Qos(
-			p.config.Qos.PrefetchCount, // prefetch count
-			p.config.Qos.PrefetchSize,  // prefetch size
-			p.config.Qos.Global,        // global
+			p.config.Consume.Qos.PrefetchCount, // prefetch count
+			p.config.Consume.Qos.PrefetchSize,  // prefetch size
+			p.config.Consume.Qos.Global,        // global
 		)
 		p.logger.Debug("Qos set", logFields)
 	}
@@ -216,7 +235,7 @@ func (s *subscription) createConsumer(queueName string, channel *amqp.Channel) (
 	amqpMsgs, err := channel.Consume(
 		queueName,
 		s.config.Consume.Consumer,
-		false, // autoAck must be set to true - acks are managed by Watermill
+		false, // autoAck must be set to false - acks are managed by Watermill
 		s.config.Consume.Exclusive,
 		s.config.Consume.NoLocal,
 		s.config.Consume.NoWait,
@@ -264,5 +283,5 @@ func (s *subscription) processMessage(amqpMsg amqp.Delivery, out chan *message.M
 }
 
 func (s *subscription) nackMsg(amqpMsg amqp.Delivery) error {
-	return amqpMsg.Nack(false, !s.config.NoRequeueOnNack)
+	return amqpMsg.Nack(false, !s.config.Consume.NoRequeueOnNack)
 }
