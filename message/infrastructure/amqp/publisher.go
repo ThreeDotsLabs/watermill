@@ -118,7 +118,7 @@ func (p *Publisher) publishMessage(
 
 	amqpMsg, err := p.config.Marshaler.Marshal(msg)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "cannot marshal message")
 	}
 
 	if err = channel.Publish(

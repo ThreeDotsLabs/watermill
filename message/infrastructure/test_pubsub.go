@@ -517,13 +517,6 @@ func TestConsumerGroups(t *testing.T, pubSubConstructor ConsumerGroupPubSubConst
 
 	subscriberGroup1 := pubSubConstructor(t, group1)
 	defer closePubSub(t, subscriberGroup1)
-
-	//messages, err := subscriberGroup1.Subscribe(topicName)
-	//require.NoError(t, err)
-	//
-	// todo - ok?
-	//receivedMessages, _ := subscriber.BulkRead(messages, 1, time.Second*2)
-	//assert.Equal(t, 0, len(receivedMessages))
 }
 
 func TestPublisherClose(t *testing.T, pub message.Publisher, sub message.Subscriber) {

@@ -56,7 +56,7 @@ func NewDurablePubSubConfig(amqpURI string, generateQueueName QueueNameGenerator
 	}
 }
 
-// NewNonDurablePubSubConfig creates config for durable PubSub.
+// NewNonDurablePubSubConfig creates config for non durable PubSub.
 // generateQueueName is optional, when passing to the publisher.
 // Exchange name is set to the topic name and routing key is empty.
 //
@@ -97,7 +97,7 @@ func NewNonDurablePubSubConfig(amqpURI string, generateQueueName QueueNameGenera
 	}
 }
 
-// NewDurableQueueConfig creates config for durable PubSub.
+// NewDurableQueueConfig creates config for durable Queue.
 // Queue name and routing key is set to the topic name by default. Default ("") exchange is used.
 //
 // IMPORTANT: Watermill's topic is not mapped for the AMQP's topic exchange type, but for generating exchange name,
@@ -138,7 +138,7 @@ func NewDurableQueueConfig(amqpURI string) Config {
 	}
 }
 
-// NewNonDurableQueueConfig creates config for durable PubSub.
+// NewNonDurableQueueConfig creates config for non durable Queue.
 // Queue name and routing key is set to the topic name by default. Default ("") exchange is used.
 //
 // IMPORTANT: Watermill's topic is not mapped for the AMQP's topic exchange type, but for generating exchange name,
