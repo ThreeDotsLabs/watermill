@@ -6,6 +6,11 @@ import (
 	stdHttp "net/http"
 	_ "net/http/pprof"
 
+	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/go-chi/chi"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+
 	"github.com/ThreeDotsLabs/watermill/metrics"
 
 	"github.com/pkg/errors"
@@ -57,7 +62,8 @@ func main() {
 	)
 	r.AddPlugin(plugin.SignalsHandler)
 
-	metrics.AddPrometheusRouterMetrics(r, "http_to_kafka", "")
+	prometheusRegistry := prometheus.NewRegistry()
+	metrics.AddPrometheusRouterMetrics(r, prometheusRegistry, "http_to_kafka", "")
 
 	err = r.AddHandler(
 		"http_to_kafka",
@@ -90,5 +96,31 @@ func main() {
 		_ = httpSubscriber.StartHTTPServer()
 	}()
 
+	wait := make(chan struct{})
+	go metricsServer(prometheusRegistry, wait)
+
 	_ = r.Run()
+	close(wait)
+}
+
+func metricsServer(prometheusRegistry *prometheus.Registry, wait chan struct{}) {
+	router := chi.NewRouter()
+	handler := promhttp.HandlerFor(prometheusRegistry, promhttp.HandlerOpts{})
+	router.Get("/metrics", func(w stdHttp.ResponseWriter, r *stdHttp.Request) {
+		handler.ServeHTTP(w, r)
+	})
+	server := stdHttp.Server{
+		Addr:    ":8081",
+		Handler: handler,
+	}
+
+	go func() {
+		err := server.ListenAndServe()
+		if err != nil {
+			panic(err)
+		}
+	}()
+
+	<-wait
+	server.Close()
 }

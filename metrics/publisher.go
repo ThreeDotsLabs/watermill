@@ -1,17 +1,12 @@
 package metrics
 
 import (
-	"net/http"
 	"time"
 
 	multierror "github.com/hashicorp/go-multierror"
 
-	"github.com/go-chi/chi"
-
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-
 	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 var (
@@ -22,8 +17,7 @@ var (
 )
 
 type PublisherPrometheusMetricsDecorator struct {
-	pub        message.Publisher
-	httpServer http.Server
+	pub message.Publisher
 
 	publisherSuccessTotal *prometheus.CounterVec
 	publisherFailTotal    *prometheus.CounterVec
@@ -58,28 +52,16 @@ func (m PublisherPrometheusMetricsDecorator) Publish(topic string, messages ...*
 // Close decreases the total publisher count, closes the Prometheus HTTP server and calls wrapped Close.
 func (m PublisherPrometheusMetricsDecorator) Close() error {
 	m.publisherCountTotal.Dec()
-
-	err := m.httpServer.Close()
-
-	if closeErr := m.pub.Close(); closeErr != nil {
-		err = multierror.Append(err, closeErr)
-	}
-
-	return err
+	return m.pub.Close()
 }
 
 // PrometheusPublisherMetricsBuilder provides Decorate method, which is a publisher decorator.
 type PrometheusPublisherMetricsBuilder struct {
 	// PrometheusRegistry may be filled with a pre-existing Prometheus registry, or left empty for the default registry.
 	PrometheusRegistry *prometheus.Registry
-	// HandlerOpts may be supplied according to promhttp, or left empty for default values.
-	HandlerOpts promhttp.HandlerOpts
 
 	Namespace string
 	Subsystem string
-
-	// PrometheusBindAddress is the address at which the Prometheus /metrics endpoint will be served.
-	PrometheusBindAddress string
 }
 
 // Decorate wraps the underlying publisher with Prometheus metrics.
@@ -143,27 +125,10 @@ func (b PrometheusPublisherMetricsBuilder) Decorate(pub message.Publisher) (wrap
 	}
 
 	// todo: just register metrics on the registry. leave the http server to someone outside the decorator.
-	router := chi.NewRouter()
-	handler := promhttp.HandlerFor(prometheusRegistry, b.HandlerOpts)
-	router.Get("/metrics", func(w http.ResponseWriter, r *http.Request) {
-		handler.ServeHTTP(w, r)
-	})
-	server := http.Server{
-		Addr:    b.PrometheusBindAddress,
-		Handler: handler,
-	}
-
-	go func() {
-		err := server.ListenAndServe()
-		if err != nil {
-			panic(err)
-		}
-	}()
 
 	publisherCountTotal.Inc()
 	return PublisherPrometheusMetricsDecorator{
 		pub,
-		server,
 		publishSuccessTotal,
 		publishFailTotal,
 		publishTimeSeconds,
