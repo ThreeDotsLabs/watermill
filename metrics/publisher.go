@@ -1,9 +1,12 @@
 package metrics
 
 import (
-	"fmt"
 	"net/http"
 	"time"
+
+	multierror "github.com/hashicorp/go-multierror"
+
+	"github.com/go-chi/chi"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -11,22 +14,32 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
-type PublisherPrometheusMetricsMiddleware struct {
-	pub message.Publisher
+var (
+	publisherLabelKeys = []string{
+		labelKeyHandlerName,
+		labelKeyPublisherName,
+	}
+)
+
+type PublisherPrometheusMetricsDecorator struct {
+	pub        message.Publisher
+	httpServer http.Server
 
 	publisherSuccessTotal *prometheus.CounterVec
 	publisherFailTotal    *prometheus.CounterVec
 	publishTimeSeconds    *prometheus.HistogramVec
+	publisherCountTotal   prometheus.Gauge
 }
 
-func (m PublisherPrometheusMetricsMiddleware) Publish(topic string, messages ...*message.Message) (err error) {
+// Publish updates the relevant publisher metrics and calls the wrapped publisher's Publish.
+func (m PublisherPrometheusMetricsDecorator) Publish(topic string, messages ...*message.Message) (err error) {
 	if len(messages) == 0 {
 		return m.pub.Publish(topic)
 	}
 
 	// TODO: take ctx not only from first msg. Might require changing the signature of Publish, which is planned anyway.
 	ctx := messages[0].Context()
-	labels := labelsFromCtx(ctx)
+	labels := labelsFromCtx(ctx, publisherLabelKeys...)
 	now := time.Now()
 
 	defer func() {
@@ -42,17 +55,35 @@ func (m PublisherPrometheusMetricsMiddleware) Publish(topic string, messages ...
 	return m.pub.Publish(topic, messages...)
 }
 
-func (m PublisherPrometheusMetricsMiddleware) Close() error {
-	return m.pub.Close()
+// Close decreases the total publisher count, closes the Prometheus HTTP server and calls wrapped Close.
+func (m PublisherPrometheusMetricsDecorator) Close() error {
+	m.publisherCountTotal.Dec()
+
+	err := m.httpServer.Close()
+
+	if closeErr := m.pub.Close(); closeErr != nil {
+		err = multierror.Append(err, closeErr)
+	}
+
+	return err
 }
 
+// PrometheusPublisherMetricsBuilder provides Decorate method, which is a publisher decorator.
 type PrometheusPublisherMetricsBuilder struct {
+	// PrometheusRegistry may be filled with a pre-existing Prometheus registry, or left empty for the default registry.
 	PrometheusRegistry *prometheus.Registry
-	Namespace          string
-	Subsystem          string
+	// HandlerOpts may be supplied according to promhttp, or left empty for default values.
+	HandlerOpts promhttp.HandlerOpts
+
+	Namespace string
+	Subsystem string
+
+	// PrometheusBindAddress is the address at which the Prometheus /metrics endpoint will be served.
+	PrometheusBindAddress string
 }
 
-func (b PrometheusPublisherMetricsBuilder) Decorate(pub message.Publisher) message.Publisher {
+// Decorate wraps the underlying publisher with Prometheus metrics.
+func (b PrometheusPublisherMetricsBuilder) Decorate(pub message.Publisher) (wrapped message.Publisher, err error) {
 	prometheusRegistry := b.PrometheusRegistry
 	if prometheusRegistry == nil {
 		prometheusRegistry = prometheus.NewRegistry()
@@ -65,7 +96,7 @@ func (b PrometheusPublisherMetricsBuilder) Decorate(pub message.Publisher) messa
 			Name:      "publisher_success_total",
 			Help:      "Total number of successfully produced messages",
 		},
-		labelKeys,
+		publisherLabelKeys,
 	)
 
 	publishFailTotal := prometheus.NewCounterVec(
@@ -75,7 +106,7 @@ func (b PrometheusPublisherMetricsBuilder) Decorate(pub message.Publisher) messa
 			Name:      "publisher_fail_total",
 			Help:      "Total number of failed attempts to publish a message",
 		},
-		labelKeys,
+		publisherLabelKeys,
 	)
 
 	publishTimeSeconds := prometheus.NewHistogramVec(
@@ -85,24 +116,57 @@ func (b PrometheusPublisherMetricsBuilder) Decorate(pub message.Publisher) messa
 			Name:      "publish_time_seconds",
 			Help:      "The time that a publishing attempt (success or not) took in seconds",
 		},
-		labelKeys,
+		publisherLabelKeys,
 	)
 
-	prometheusRegistry.MustRegister(publishSuccessTotal, publishFailTotal, publishTimeSeconds)
+	publisherCountTotal := prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Namespace: b.Namespace,
+			Subsystem: b.Subsystem,
+			Name:      "publisher_count_total",
+			Help:      "The total count of active publishers",
+		},
+	)
 
-	go func() {
-		// todo: stop the server eventually. configure the address.
-		http.Handle("/metrics", promhttp.HandlerFor(prometheusRegistry, promhttp.HandlerOpts{}))
-		err := http.ListenAndServe(":8081", nil)
-		if err != http.ErrServerClosed {
-			fmt.Printf("Server exited with err %+v", err)
-		}
-	}()
-
-	return PublisherPrometheusMetricsMiddleware{
-		pub,
+	for _, c := range []prometheus.Collector{
 		publishSuccessTotal,
 		publishFailTotal,
 		publishTimeSeconds,
+		// publisherCountTotal is WIP, don't register yet
+	} {
+		if registerErr := prometheusRegistry.Register(c); registerErr != nil {
+			err = multierror.Append(err, registerErr)
+		}
 	}
+	if err != nil {
+		return nil, err
+	}
+
+	// todo: just register metrics on the registry. leave the http server to someone outside the decorator.
+	router := chi.NewRouter()
+	handler := promhttp.HandlerFor(prometheusRegistry, b.HandlerOpts)
+	router.Get("/metrics", func(w http.ResponseWriter, r *http.Request) {
+		handler.ServeHTTP(w, r)
+	})
+	server := http.Server{
+		Addr:    b.PrometheusBindAddress,
+		Handler: handler,
+	}
+
+	go func() {
+		err := server.ListenAndServe()
+		if err != nil {
+			panic(err)
+		}
+	}()
+
+	publisherCountTotal.Inc()
+	return PublisherPrometheusMetricsDecorator{
+		pub,
+		server,
+		publishSuccessTotal,
+		publishFailTotal,
+		publishTimeSeconds,
+		publisherCountTotal,
+	}, nil
 }

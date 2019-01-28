@@ -44,9 +44,9 @@ func labelsFromCtx(ctx context.Context, labels ...string) prometheus.Labels {
 			continue
 		}
 
-		if v := getter(ctx); v != "" {
-			ctxLabels[l] = v
-		}
+		v := getter(ctx)
+		ctxLabels[l] = v
 	}
+
 	return ctxLabels
 }

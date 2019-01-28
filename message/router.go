@@ -50,7 +50,7 @@ type HandlerMiddleware func(h HandlerFunc) HandlerFunc
 type RouterPlugin func(*Router) error
 
 // PublisherDecorator wraps the underlying Publisher, adding some functionality.
-type PublisherDecorator func(pub Publisher) Publisher
+type PublisherDecorator func(pub Publisher) (Publisher, error)
 
 // SubscriberDecorator wraps the underlying Subscriber, adding some functionality.
 type SubscriberDecorator func(sub Subscriber) Subscriber
@@ -270,7 +270,10 @@ func (r *Router) Run() (err error) {
 	for name, handler := range r.handlers {
 		pub := handler.publisher
 		for _, decorator := range r.publisherDecorators {
-			pub = decorator(pub)
+			pub, err = decorator(pub)
+			if err != nil {
+				return errors.Wrap(err, "could not apply decorator")
+			}
 		}
 		r.handlers[name].publisher = pub
 

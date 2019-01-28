@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"io/ioutil"
 	stdHttp "net/http"
@@ -76,9 +75,6 @@ func main() {
 			if webhook.ObjectKind == "" {
 				return nil, errors.New("empty object kind")
 			}
-
-			ctx := context.WithValue(msg.Context(), "handler_name", "hehe")
-			msg.SetContext(ctx)
 
 			// just forward from http subscriber to kafka publisher
 			return []*message.Message{msg}, nil
