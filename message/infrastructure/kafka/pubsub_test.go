@@ -2,6 +2,7 @@ package kafka_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/Shopify/sarama"
 
@@ -23,10 +24,24 @@ func newPubSub(t *testing.T, marshaler kafka.MarshalerUnmarshaler, consumerGroup
 	saramaConfig := kafka.DefaultSaramaSubscriberConfig()
 	saramaConfig.Consumer.Offsets.Initial = sarama.OffsetOldest
 
+	//saramaConfig.Net.MaxOpenRequests = 10 // todo
+
+	saramaConfig.Admin.Timeout = time.Second * 30
+	saramaConfig.Producer.RequiredAcks = sarama.WaitForAll
+	saramaConfig.ChannelBufferSize = 10240
+	saramaConfig.Consumer.Group.Heartbeat.Interval = time.Millisecond * 500
+	saramaConfig.Consumer.Group.Rebalance.Timeout = time.Millisecond * 500
+
 	subscriber, err := kafka.NewSubscriber(
 		kafka.SubscriberConfig{
 			Brokers:       brokers,
 			ConsumerGroup: consumerGroup,
+			InitializeTopicDetails: &sarama.TopicDetail{
+				NumPartitions:     8,
+				ReplicationFactor: 1,
+				//ReplicaAssignment: nil,
+				//ConfigEntries:     nil,
+			},
 		},
 		saramaConfig,
 		marshaler,

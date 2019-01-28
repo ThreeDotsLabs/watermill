@@ -22,11 +22,21 @@ func (l LogFields) Add(newFields LogFields) LogFields {
 	return resultFields
 }
 
+func (l LogFields) Copy() LogFields {
+	cpy := make(LogFields, len(l))
+	for k, v := range l {
+		cpy[k] = v
+	}
+
+	return cpy
+}
+
 type LoggerAdapter interface {
 	Error(msg string, err error, fields LogFields)
 	Info(msg string, fields LogFields)
 	Debug(msg string, fields LogFields)
 	Trace(msg string, fields LogFields)
+	With(fields LogFields) LoggerAdapter
 }
 
 type NopLogger struct{}
@@ -35,12 +45,15 @@ func (NopLogger) Error(msg string, err error, fields LogFields) {}
 func (NopLogger) Info(msg string, fields LogFields)             {}
 func (NopLogger) Debug(msg string, fields LogFields)            {}
 func (NopLogger) Trace(msg string, fields LogFields)            {}
+func (l NopLogger) With(fields LogFields) LoggerAdapter         { return l }
 
 type StdLoggerAdapter struct {
 	ErrorLogger *log.Logger
 	InfoLogger  *log.Logger
 	DebugLogger *log.Logger
 	TraceLogger *log.Logger
+
+	fields LogFields
 }
 
 func NewStdLogger(debug, trace bool) LoggerAdapter {
@@ -71,6 +84,16 @@ func (l *StdLoggerAdapter) Debug(msg string, fields LogFields) {
 
 func (l *StdLoggerAdapter) Trace(msg string, fields LogFields) {
 	l.log(l.TraceLogger, "TRACE", msg, fields)
+}
+
+func (l *StdLoggerAdapter) With(fields LogFields) LoggerAdapter {
+	return &StdLoggerAdapter{
+		ErrorLogger: l.ErrorLogger,
+		InfoLogger:  l.InfoLogger,
+		DebugLogger: l.DebugLogger,
+		TraceLogger: l.TraceLogger,
+		fields:      l.fields.Copy().Add(fields),
+	}
 }
 
 func (l *StdLoggerAdapter) log(logger *log.Logger, level string, msg string, fields LogFields) {

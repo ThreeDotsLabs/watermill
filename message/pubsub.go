@@ -10,12 +10,15 @@ type PubSub interface {
 }
 
 func NewPubSub(publisher Publisher, subscriber Subscriber) PubSub {
-	return pubSub{publisher, subscriber}
+	subInit, _ := subscriber.(SubscribeInitializer)
+
+	return pubSub{publisher, subscriber, subInit}
 }
 
 type pubSub struct {
 	Publisher
 	Subscriber
+	SubscribeInitializer
 }
 
 func (p pubSub) Close() error {

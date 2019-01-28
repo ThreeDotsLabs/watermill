@@ -15,3 +15,7 @@ type Subscriber interface {
 	// Close closes all subscriptions with their output channels and flush offsets etc. when needed.
 	Close() error
 }
+
+type SubscribeInitializer interface {
+	SubscribeInitialize(topic string) error
+}
