@@ -53,7 +53,7 @@ type RouterPlugin func(*Router) error
 type PublisherDecorator func(pub Publisher) (Publisher, error)
 
 // SubscriberDecorator wraps the underlying Subscriber, adding some functionality.
-type SubscriberDecorator func(sub Subscriber) Subscriber
+type SubscriberDecorator func(sub Subscriber) (Subscriber, error)
 
 type RouterConfig struct {
 	// CloseTimeout determines how long router should work for handlers when closing.
@@ -272,14 +272,17 @@ func (r *Router) Run() (err error) {
 		for _, decorator := range r.publisherDecorators {
 			pub, err = decorator(pub)
 			if err != nil {
-				return errors.Wrap(err, "could not apply decorator")
+				return errors.Wrap(err, "could not apply publisher decorator")
 			}
 		}
 		r.handlers[name].publisher = pub
 
 		sub := handler.subscriber
 		for _, decorator := range r.subscriberDecorators {
-			sub = decorator(sub)
+			sub, err = decorator(sub)
+			if err != nil {
+				return errors.Wrap(err, "could not apply subscriber decorator")
+			}
 		}
 		r.handlers[name].subscriber = sub
 	}

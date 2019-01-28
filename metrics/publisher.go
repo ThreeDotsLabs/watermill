@@ -55,22 +55,8 @@ func (m PublisherPrometheusMetricsDecorator) Close() error {
 	return m.pub.Close()
 }
 
-// PrometheusPublisherMetricsBuilder provides Decorate method, which is a publisher decorator.
-type PrometheusPublisherMetricsBuilder struct {
-	// PrometheusRegistry may be filled with a pre-existing Prometheus registry, or left empty for the default registry.
-	PrometheusRegistry *prometheus.Registry
-
-	Namespace string
-	Subsystem string
-}
-
-// Decorate wraps the underlying publisher with Prometheus metrics.
-func (b PrometheusPublisherMetricsBuilder) Decorate(pub message.Publisher) (wrapped message.Publisher, err error) {
-	prometheusRegistry := b.PrometheusRegistry
-	if prometheusRegistry == nil {
-		prometheusRegistry = prometheus.NewRegistry()
-	}
-
+// DecoratePublisher wraps the underlying publisher with Prometheus metrics.
+func (b PrometheusMetricsBuilder) DecoratePublisher(pub message.Publisher) (wrapped message.Publisher, err error) {
 	publishSuccessTotal := prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: b.Namespace,
@@ -116,15 +102,13 @@ func (b PrometheusPublisherMetricsBuilder) Decorate(pub message.Publisher) (wrap
 		publishTimeSeconds,
 		// publisherCountTotal is WIP, don't register yet
 	} {
-		if registerErr := prometheusRegistry.Register(c); registerErr != nil {
+		if registerErr := b.PrometheusRegistry.Register(c); registerErr != nil {
 			err = multierror.Append(err, registerErr)
 		}
 	}
 	if err != nil {
 		return nil, err
 	}
-
-	// todo: just register metrics on the registry. leave the http server to someone outside the decorator.
 
 	publisherCountTotal.Inc()
 	return PublisherPrometheusMetricsDecorator{

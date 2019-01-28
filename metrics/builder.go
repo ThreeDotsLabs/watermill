@@ -6,9 +6,21 @@ import (
 )
 
 func AddPrometheusRouterMetrics(r *message.Router, prometheusRegistry *prometheus.Registry, namespace string, subsystem string) {
-	r.AddPublisherDecorators(PrometheusPublisherMetricsBuilder{
+	builder := PrometheusMetricsBuilder{
 		Namespace:          namespace,
 		Subsystem:          subsystem,
 		PrometheusRegistry: prometheusRegistry,
-	}.Decorate)
+	}
+
+	r.AddPublisherDecorators(builder.DecoratePublisher)
+	r.AddSubscriberDecorators(builder.DecorateSubscriber)
+}
+
+// PrometheusMetricsBuilder provides methods to decorate publishers, subscribers and handlers.
+type PrometheusMetricsBuilder struct {
+	// PrometheusRegistry may be filled with a pre-existing Prometheus registry, or left empty for the default registry.
+	PrometheusRegistry *prometheus.Registry
+
+	Namespace string
+	Subsystem string
 }
