@@ -184,16 +184,6 @@ type nopPublisher struct{}
 func (nopPublisher) Publish(topic string, messages ...*message.Message) error { return nil }
 func (nopPublisher) Close() error                                             { return nil }
 
-// namedGoChannel is just like GoChannel, but implements Stringer.
-// It is used to check if pub/sub names are supported.
-type namedGoChannel struct {
-	*gochannel.GoChannel
-}
-
-func (namedGoChannel) String() string {
-	return "named_gochannel_mock"
-}
-
 func BenchmarkRouterHandler(b *testing.B) {
 	logger := watermill.NopLogger{}
 
@@ -281,94 +271,6 @@ func TestRouterNoPublisherHandler(t *testing.T) {
 	assert.True(t, logger.HasError(message.ErrOutputInNoPublisherHandler))
 	require.NoError(t, r.Close())
 }
-
-func TestRouter_PubSubNames(t *testing.T) {
-	// todo: separate the test cases named/unnamed
-	logger := watermill.NewStdLogger(true, true)
-	pubSub := gochannel.NewGoChannel(0, logger, 50*time.Millisecond)
-	gc, ok := pubSub.(*gochannel.GoChannel)
-	require.True(t, ok)
-
-	namedPubSub := namedGoChannel{gc}
-
-	r, err := message.NewRouter(message.RouterConfig{}, logger)
-	require.NoError(t, err)
-
-	capturedMessages := []*message.Message{}
-	passMessage := func(msg *message.Message) ([]*message.Message, error) {
-		capturedMessages = append(capturedMessages, msg)
-		require.NoError(t, msg.Ack())
-		return message.Messages{message.NewMessage(msg.UUID+"_copy", msg.Payload)}, nil
-	}
-
-	//r.AddMiddleware(func(h message.HandlerFunc) message.HandlerFunc {
-	//	return func(msg *message.Message) ([]*message.Message, error) {
-	//		capturedMessages = append(capturedMessages, msg)
-	//		return h(msg)
-	//	}
-	//})
-
-	require.NoError(t, r.AddHandler(
-		"unnamed_pubsub",
-		"input",
-		pubSub,
-		"unnamed_output",
-		pubSub,
-		passMessage,
-	))
-
-	require.NoError(t, r.AddHandler(
-		"named_pubsub",
-		"input",
-		namedPubSub,
-		"named_output",
-		namedPubSub,
-		passMessage,
-	))
-
-	unnamedMessages, err := pubSub.Subscribe("unnamed_output")
-	require.NoError(t, err)
-
-	namedMessages, err := namedPubSub.Subscribe("named_output")
-	require.NoError(t, err)
-
-	// given
-	require.Equal(t, "*gochannel.GoChannel", fmt.Sprintf("%T", pubSub))
-	require.Equal(t, "named_gochannel_mock", namedPubSub.String())
-
-	// when
-	go func() {
-		require.NoError(t, r.Run())
-	}()
-	<-r.Running()
-
-	go func() {
-		require.NoError(t, pubSub.Publish("input", message.NewMessage("1", []byte{})))
-	}()
-	<-unnamedMessages
-
-	go func() {
-		require.NoError(t, namedPubSub.Publish("input", message.NewMessage("2", []byte{})))
-	}()
-	<-namedMessages
-
-	require.NoError(t, r.Close())
-
-	// then
-	require.Len(t, capturedMessages, 2, "expected to capture 2 messages")
-
-	unnamedMessage := capturedMessages[0]
-	assert.Equal(t, "unnamed_pubsub", message.HandlerNameFromCtx(unnamedMessage.Context()))
-	assert.Equal(t, "*gochannel.GoChannel", message.PublisherNameFromCtx(unnamedMessage.Context()))
-	assert.Equal(t, "*gochannel.GoChannel", message.SubscriberNameFromCtx(unnamedMessage.Context()))
-
-	namedMessage := capturedMessages[1]
-	assert.Equal(t, "named_pubsub", message.HandlerNameFromCtx(unnamedMessage.Context()))
-	assert.Equal(t, "named_gochannel_mock", message.PublisherNameFromCtx(namedMessage.Context()))
-	assert.Equal(t, "named_gochannel_mock", message.SubscriberNameFromCtx(namedMessage.Context()))
-
-}
-
 func BenchmarkRouterNoPublisherHandler(b *testing.B) {
 	logger := watermill.NopLogger{}
 
