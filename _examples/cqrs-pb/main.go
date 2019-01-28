@@ -61,7 +61,9 @@ func (o OrderBeerOnRoomBooked) Handle(e interface{}) error {
 	return o.commandBus.Send(orderBeerCmd)
 }
 
-type OrderBeerHandler struct{}
+type OrderBeerHandler struct {
+	eventBus cqrs.EventBus
+}
 
 func (b OrderBeerHandler) NewCommand() interface{} {
 	return &OrderBeer{}
@@ -69,6 +71,13 @@ func (b OrderBeerHandler) NewCommand() interface{} {
 
 func (b OrderBeerHandler) Handle(c interface{}) error {
 	cmd := c.(*OrderBeer)
+
+	if err := b.eventBus.Send(&BeerOrdered{
+		RoomId: cmd.RoomId,
+		Count:  cmd.Count,
+	}); err != nil {
+		return err
+	}
 
 	log.Printf("%d beers ordered to room %s", cmd.Count, cmd.RoomId)
 	return nil
@@ -93,7 +102,7 @@ func main() {
 	commandProcessor := cqrs.NewCommandProcessor(
 		[]cqrs.CommandHandler{
 			BookRoomHandler{eventBus},
-			OrderBeerHandler{},
+			OrderBeerHandler{eventBus},
 		},
 		"commands",
 		pubSub,

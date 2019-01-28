@@ -23,3 +23,9 @@ message OrderBeer {
     string room_id = 1;
     int64 count = 2;
 }
+
+
+message BeerOrdered {
+    string room_id = 1;
+    int64 count = 2;
+}
