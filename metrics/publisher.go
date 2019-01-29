@@ -3,9 +3,8 @@ package metrics
 import (
 	"time"
 
-	multierror "github.com/hashicorp/go-multierror"
-
 	"github.com/ThreeDotsLabs/watermill/message"
+	multierror "github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -56,8 +55,13 @@ func (m PublisherPrometheusMetricsDecorator) Close() error {
 }
 
 // DecoratePublisher wraps the underlying publisher with Prometheus metrics.
-func (b PrometheusMetricsBuilder) DecoratePublisher(pub message.Publisher) (wrapped message.Publisher, err error) {
-	publishSuccessTotal := prometheus.NewCounterVec(
+func (b PrometheusMetricsBuilder) DecoratePublisher(pub message.Publisher) (message.Publisher, error) {
+	var err, registerErr error
+	d := PublisherPrometheusMetricsDecorator{
+		pub: pub,
+	}
+
+	d.publisherSuccessTotal, registerErr = b.registerCounterVec(prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: b.Namespace,
 			Subsystem: b.Subsystem,
@@ -65,9 +69,12 @@ func (b PrometheusMetricsBuilder) DecoratePublisher(pub message.Publisher) (wrap
 			Help:      "Total number of successfully produced messages",
 		},
 		publisherLabelKeys,
-	)
+	))
+	if registerErr != nil {
+		err = multierror.Append(err, registerErr)
+	}
 
-	publishFailTotal := prometheus.NewCounterVec(
+	d.publisherFailTotal, registerErr = b.registerCounterVec(prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: b.Namespace,
 			Subsystem: b.Subsystem,
@@ -75,9 +82,12 @@ func (b PrometheusMetricsBuilder) DecoratePublisher(pub message.Publisher) (wrap
 			Help:      "Total number of failed attempts to publish a message",
 		},
 		publisherLabelKeys,
-	)
+	))
+	if registerErr != nil {
+		err = multierror.Append(err, registerErr)
+	}
 
-	publishTimeSeconds := prometheus.NewHistogramVec(
+	d.publishTimeSeconds, registerErr = b.registerHistogramVec(prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Namespace: b.Namespace,
 			Subsystem: b.Subsystem,
@@ -85,8 +95,13 @@ func (b PrometheusMetricsBuilder) DecoratePublisher(pub message.Publisher) (wrap
 			Help:      "The time that a publishing attempt (success or not) took in seconds",
 		},
 		publisherLabelKeys,
-	)
+	))
+	if registerErr != nil {
+		err = multierror.Append(err, registerErr)
+	}
 
+	// todo: unclear if decrementing the gauge when publisher dies is trustworthy
+	// don't register yet, WIP
 	publisherCountTotal := prometheus.NewGauge(
 		prometheus.GaugeOpts{
 			Namespace: b.Namespace,
@@ -96,26 +111,10 @@ func (b PrometheusMetricsBuilder) DecoratePublisher(pub message.Publisher) (wrap
 		},
 	)
 
-	for _, c := range []prometheus.Collector{
-		publishSuccessTotal,
-		publishFailTotal,
-		publishTimeSeconds,
-		// publisherCountTotal is WIP, don't register yet
-	} {
-		if registerErr := b.PrometheusRegistry.Register(c); registerErr != nil {
-			err = multierror.Append(err, registerErr)
-		}
-	}
 	if err != nil {
 		return nil, err
 	}
 
 	publisherCountTotal.Inc()
-	return PublisherPrometheusMetricsDecorator{
-		pub,
-		publishSuccessTotal,
-		publishFailTotal,
-		publishTimeSeconds,
-		publisherCountTotal,
-	}, nil
+	return d, nil
 }

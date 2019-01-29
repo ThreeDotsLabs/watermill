@@ -48,9 +48,18 @@ func (s SubscriberPrometheusMetricsDecorator) recordMetrics(msg *message.Message
 	}()
 }
 
+func (s *SubscriberPrometheusMetricsDecorator) onClose(error) {
+	close(s.closing)
+}
+
 // DecorateSubscriber wraps the underlying subscriber with Prometheus metrics.
 func (b PrometheusMetricsBuilder) DecorateSubscriber(sub message.Subscriber) (message.Subscriber, error) {
-	subscriberReceivedTotal := prometheus.NewCounterVec(
+	var err, registerErr error
+	d := &SubscriberPrometheusMetricsDecorator{
+		closing: make(chan struct{}),
+	}
+
+	d.subscriberReceivedTotal, registerErr = b.registerCounterVec(prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: b.Namespace,
 			Subsystem: b.Subsystem,
@@ -58,9 +67,12 @@ func (b PrometheusMetricsBuilder) DecorateSubscriber(sub message.Subscriber) (me
 			Help:      "Total number of received messages",
 		},
 		subscriberLabelKeys,
-	)
+	))
+	if registerErr != nil {
+		err = multierror.Append(err, registerErr)
+	}
 
-	subscriberTimeToAckSeconds := prometheus.NewHistogramVec(
+	d.subscriberTimeToAckSeconds, registerErr = b.registerHistogramVec(prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Namespace: b.Namespace,
 			Subsystem: b.Subsystem,
@@ -68,9 +80,14 @@ func (b PrometheusMetricsBuilder) DecorateSubscriber(sub message.Subscriber) (me
 			Help:      "The time elapsed between obtaining a message and receiving an ACK",
 		},
 		subscriberLabelKeys,
-	)
+	))
+	if registerErr != nil {
+		err = multierror.Append(err, registerErr)
+	}
 
-	subscriberCountTotal := prometheus.NewGauge(
+	// todo: unclear if decrementing the gauge when subscriber dies is trustworthy
+	// don't register yet, WIP
+	d.subscriberCountTotal = prometheus.NewGauge(
 		prometheus.GaugeOpts{
 			Namespace: b.Namespace,
 			Subsystem: b.Subsystem,
@@ -78,34 +95,15 @@ func (b PrometheusMetricsBuilder) DecorateSubscriber(sub message.Subscriber) (me
 			Help:      "The total count of active subscribers",
 		},
 	)
-
-	var err error
-	for _, c := range []prometheus.Collector{
-		subscriberReceivedTotal,
-		subscriberTimeToAckSeconds,
-		// subscriberCountTotal is WIP, don't register yet
-	} {
-		if registerErr := b.PrometheusRegistry.Register(c); registerErr != nil {
-			err = multierror.Append(err, registerErr)
-		}
-	}
-	if err != nil {
-		return nil, err
+	if registerErr != nil {
+		err = multierror.Append(err, registerErr)
 	}
 
-	wrapped := &SubscriberPrometheusMetricsDecorator{
-		subscriberReceivedTotal:    subscriberReceivedTotal,
-		subscriberTimeToAckSeconds: subscriberTimeToAckSeconds,
-		subscriberCountTotal:       subscriberCountTotal,
-
-		closing: make(chan struct{}),
-	}
-
-	wrapped.Subscriber, err = message.MessageTransformSubscriberDecorator(wrapped.recordMetrics, func(error) { close(wrapped.closing) })(sub)
+	d.Subscriber, err = message.MessageTransformSubscriberDecorator(d.recordMetrics, d.onClose)(sub)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not decorate subscriber with metrics decorator")
 	}
 
-	subscriberCountTotal.Inc()
-	return wrapped, nil
+	d.subscriberCountTotal.Inc()
+	return d, nil
 }
