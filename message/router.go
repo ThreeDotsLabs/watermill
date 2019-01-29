@@ -282,7 +282,9 @@ func (r *Router) Run() (err error) {
 		// add a special decorator to add context to subscriber even before handler obtains the message
 		// it goes before other decorators, so that they may take advantage of ctx
 		messageTransform := func(msg *Message) {
-			handler.addMsgContext(msg)
+			if msg != nil {
+				handler.addMsgContext(msg)
+			}
 		}
 		sub, err = MessageTransformSubscriberDecorator(messageTransform, nil)(sub)
 		if err != nil {
@@ -471,8 +473,6 @@ func (h *handler) handleMessage(msg *Message, handler HandlerFunc) {
 	}()
 
 	h.logger.Trace("Received message", msgFields)
-
-	h.addMsgContext(msg)
 
 	producedMessages, err := handler(msg)
 	if err != nil {

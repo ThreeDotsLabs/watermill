@@ -28,6 +28,10 @@ type SubscriberPrometheusMetricsDecorator struct {
 }
 
 func (s SubscriberPrometheusMetricsDecorator) recordMetrics(msg *message.Message) {
+	if msg == nil {
+		return
+	}
+
 	now := time.Now()
 	ctx := msg.Context()
 	labels := labelsFromCtx(ctx, subscriberLabelKeys...)
