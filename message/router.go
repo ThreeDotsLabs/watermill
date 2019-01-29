@@ -278,6 +278,17 @@ func (r *Router) Run() (err error) {
 		r.handlers[name].publisher = pub
 
 		sub := handler.subscriber
+
+		// add a special decorator to add context to subscriber even before handler obtains the message
+		// it goes before other decorators, so that they may take advantage of ctx
+		messageTransform := func(msg *Message) {
+			handler.addMsgContext(msg)
+		}
+		sub, err = MessageTransformSubscriberDecorator(messageTransform, nil)(sub)
+		if err != nil {
+			return errors.Wrapf(err, "cannot wrap subscriber with context decorator")
+		}
+
 		for _, decorator := range r.subscriberDecorators {
 			sub, err = decorator(sub)
 			if err != nil {
@@ -285,6 +296,7 @@ func (r *Router) Run() (err error) {
 			}
 		}
 		r.handlers[name].subscriber = sub
+
 	}
 
 	for _, h := range r.handlers {
