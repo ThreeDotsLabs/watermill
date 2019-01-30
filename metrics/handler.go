@@ -3,20 +3,36 @@ package metrics
 import (
 	"time"
 
-	"github.com/ThreeDotsLabs/watermill/message"
-	multierror "github.com/hashicorp/go-multierror"
+	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/ThreeDotsLabs/watermill/message"
 )
 
 var (
 	handlerLabelKeys = []string{
 		labelKeyHandlerName,
+		labelSuccess,
+	}
+
+	// handlerExecutionTimeBuckets are one order of magnitude smaller than default buckets (5ms~10s),
+	// because the handler execution times are typically shorter (µs~ms range).
+	handlerExecutionTimeBuckets = []float64{
+		0.0005,
+		0.001,
+		0.0025,
+		0.005,
+		0.01,
+		0.025,
+		0.05,
+		0.1,
+		0.25,
+		0.5,
+		1,
 	}
 )
 
 type HandlerPrometheusMetricsMiddleware struct {
-	handlerSuccessesTotal       *prometheus.CounterVec
-	handlerFailuresTotal        *prometheus.CounterVec
 	handlerExecutionTimeSeconds *prometheus.HistogramVec
 	handlerCountTotal           prometheus.Gauge
 }
@@ -31,12 +47,12 @@ func (m HandlerPrometheusMetricsMiddleware) Middleware(h message.HandlerFunc) me
 		labels := labelsFromCtx(ctx, handlerLabelKeys...)
 
 		defer func() {
-			m.handlerExecutionTimeSeconds.With(labels).Observe(time.Since(now).Seconds())
 			if err != nil {
-				m.handlerFailuresTotal.With(labels).Inc()
-				return
+				labels[labelSuccess] = "false"
+			} else {
+				labels[labelSuccess] = "true"
 			}
-			m.handlerSuccessesTotal.With(labels).Inc()
+			m.handlerExecutionTimeSeconds.With(labels).Observe(time.Since(now).Seconds())
 		}()
 
 		return h(msg)
@@ -44,46 +60,21 @@ func (m HandlerPrometheusMetricsMiddleware) Middleware(h message.HandlerFunc) me
 }
 
 func (b PrometheusMetricsBuilder) NewRouterMiddleware() HandlerPrometheusMetricsMiddleware {
-	var err, registerErr error
+	var err error
 	m := HandlerPrometheusMetricsMiddleware{}
 
-	m.handlerSuccessesTotal, registerErr = b.registerCounterVec(prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Namespace: b.Namespace,
-			Subsystem: b.Subsystem,
-			Name:      "handler_successes_total",
-			Help:      "The total number of times a handler succeeded",
-		},
-		handlerLabelKeys,
-	))
-	if registerErr != nil {
-		err = multierror.Append(err, registerErr)
-	}
-
-	m.handlerFailuresTotal, registerErr = b.registerCounterVec(prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Namespace: b.Namespace,
-			Subsystem: b.Subsystem,
-			Name:      "handler_failures_total",
-			Help:      "The total number of times a handler failed",
-		},
-		handlerLabelKeys,
-	))
-	if registerErr != nil {
-		err = multierror.Append(err, registerErr)
-	}
-
-	m.handlerExecutionTimeSeconds, registerErr = b.registerHistogramVec(prometheus.NewHistogramVec(
+	m.handlerExecutionTimeSeconds, err = b.registerHistogramVec(prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Namespace: b.Namespace,
 			Subsystem: b.Subsystem,
 			Name:      "handler_execution_time_seconds",
 			Help:      "The total time elapsed while executing the handler function in seconds",
+			Buckets:   handlerExecutionTimeBuckets,
 		},
 		handlerLabelKeys,
 	))
-	if registerErr != nil {
-		err = multierror.Append(err, registerErr)
+	if err != nil {
+		panic(errors.Wrap(err, "could not register handler execution time metric"))
 	}
 
 	// todo: unclear how to decrement the gauge when handler dies
@@ -96,10 +87,6 @@ func (b PrometheusMetricsBuilder) NewRouterMiddleware() HandlerPrometheusMetrics
 			Help:      "The total count of active handlers",
 		},
 	)
-
-	if err != nil {
-		panic(err)
-	}
 
 	return m
 }

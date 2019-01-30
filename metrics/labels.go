@@ -14,6 +14,7 @@ const (
 	labelKeyHandlerName    = "handler_name"
 	labelKeyPublisherName  = "publisher_name"
 	labelKeySubscriberName = "subscriber_name"
+	labelSuccess           = "success"
 )
 
 var (

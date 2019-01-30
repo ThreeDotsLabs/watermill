@@ -6,7 +6,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/ThreeDotsLabs/watermill/message"
-	multierror "github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -20,7 +19,6 @@ var (
 type SubscriberPrometheusMetricsDecorator struct {
 	message.Subscriber
 
-	subscriberReceivedTotal    *prometheus.CounterVec
 	subscriberTimeToAckSeconds *prometheus.HistogramVec
 	subscriberCountTotal       prometheus.Gauge
 
@@ -35,8 +33,6 @@ func (s SubscriberPrometheusMetricsDecorator) recordMetrics(msg *message.Message
 	now := time.Now()
 	ctx := msg.Context()
 	labels := labelsFromCtx(ctx, subscriberLabelKeys...)
-
-	s.subscriberReceivedTotal.With(labels).Inc()
 
 	go func() {
 		select {
@@ -54,25 +50,12 @@ func (s *SubscriberPrometheusMetricsDecorator) onClose(error) {
 
 // DecorateSubscriber wraps the underlying subscriber with Prometheus metrics.
 func (b PrometheusMetricsBuilder) DecorateSubscriber(sub message.Subscriber) (message.Subscriber, error) {
-	var err, registerErr error
+	var err error
 	d := &SubscriberPrometheusMetricsDecorator{
 		closing: make(chan struct{}),
 	}
 
-	d.subscriberReceivedTotal, registerErr = b.registerCounterVec(prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Namespace: b.Namespace,
-			Subsystem: b.Subsystem,
-			Name:      "subscriber_received_total",
-			Help:      "Total number of received messages",
-		},
-		subscriberLabelKeys,
-	))
-	if registerErr != nil {
-		err = multierror.Append(err, registerErr)
-	}
-
-	d.subscriberTimeToAckSeconds, registerErr = b.registerHistogramVec(prometheus.NewHistogramVec(
+	d.subscriberTimeToAckSeconds, err = b.registerHistogramVec(prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Namespace: b.Namespace,
 			Subsystem: b.Subsystem,
@@ -81,8 +64,8 @@ func (b PrometheusMetricsBuilder) DecorateSubscriber(sub message.Subscriber) (me
 		},
 		subscriberLabelKeys,
 	))
-	if registerErr != nil {
-		err = multierror.Append(err, registerErr)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not register time to ack metric")
 	}
 
 	// todo: unclear if decrementing the gauge when subscriber dies is trustworthy
@@ -95,9 +78,6 @@ func (b PrometheusMetricsBuilder) DecorateSubscriber(sub message.Subscriber) (me
 			Help:      "The total count of active subscribers",
 		},
 	)
-	if registerErr != nil {
-		err = multierror.Append(err, registerErr)
-	}
 
 	d.Subscriber, err = message.MessageTransformSubscriberDecorator(d.recordMetrics, d.onClose)(sub)
 	if err != nil {
