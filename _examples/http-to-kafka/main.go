@@ -6,14 +6,10 @@ import (
 	stdHttp "net/http"
 	_ "net/http/pprof"
 
-	"github.com/prometheus/client_golang/prometheus"
-
 	"github.com/go-chi/chi"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-
-	"github.com/ThreeDotsLabs/watermill/metrics"
-
 	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	uuid "github.com/satori/go.uuid"
 
 	"github.com/ThreeDotsLabs/watermill"
@@ -22,6 +18,7 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/kafka"
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
 	"github.com/ThreeDotsLabs/watermill/message/router/plugin"
+	"github.com/ThreeDotsLabs/watermill/metrics"
 )
 
 type GitlabWebhook struct {
@@ -56,14 +53,15 @@ func main() {
 		panic(err)
 	}
 
+	// todo: how to enforce that metrics are the last middleware?
+	prometheusRegistry := prometheus.NewRegistry()
+	metrics.AddPrometheusRouterMetrics(r, prometheusRegistry, "", "")
+
 	r.AddMiddleware(
 		middleware.Recoverer,
 		middleware.CorrelationID,
 	)
 	r.AddPlugin(plugin.SignalsHandler)
-
-	prometheusRegistry := prometheus.NewRegistry()
-	metrics.AddPrometheusRouterMetrics(r, prometheusRegistry, "http_to_kafka", "")
 
 	err = r.AddHandler(
 		"http_to_kafka",
