@@ -102,7 +102,7 @@ func (b PrometheusMetricsBuilder) DecoratePublisher(pub message.Publisher) (mess
 
 	// todo: unclear if decrementing the gauge when publisher dies is trustworthy
 	// don't register yet, WIP
-	publisherCountTotal := prometheus.NewGauge(
+	d.publisherCountTotal = prometheus.NewGauge(
 		prometheus.GaugeOpts{
 			Namespace: b.Namespace,
 			Subsystem: b.Subsystem,
@@ -115,6 +115,6 @@ func (b PrometheusMetricsBuilder) DecoratePublisher(pub message.Publisher) (mess
 		return nil, err
 	}
 
-	publisherCountTotal.Inc()
+	d.publisherCountTotal.Inc()
 	return d, nil
 }
