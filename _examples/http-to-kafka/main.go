@@ -2,9 +2,13 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"io/ioutil"
+	"math"
+	"math/rand"
 	stdHttp "net/http"
 	_ "net/http/pprof"
+	"time"
 
 	"github.com/go-chi/chi"
 	"github.com/pkg/errors"
@@ -21,19 +25,27 @@ import (
 	"github.com/ThreeDotsLabs/watermill/metrics"
 )
 
+var (
+	kafkaAddr    = flag.String("kafka", "localhost:9092", "The address of the kafka broker")
+	httpAddr     = flag.String("http", ":8080", "The address for the http subscriber")
+	metricsAddr  = flag.String("metrics", ":8081", "The address that will expose /metrics for Prometheus")
+	handlerDelay = flag.Float64("delay", 0, "The stdev of normal distribution of delay in handler, to simulate load")
+)
+
 type GitlabWebhook struct {
 	ObjectKind string `json:"object_kind"`
 }
 
 func main() {
+	flag.Parse()
 	logger := watermill.NewStdLogger(true, true)
 
-	kafkaPublisher, err := kafka.NewPublisher([]string{"localhost:9092"}, kafka.DefaultMarshaler{}, nil, logger)
+	kafkaPublisher, err := kafka.NewPublisher([]string{*kafkaAddr}, kafka.DefaultMarshaler{}, nil, logger)
 	if err != nil {
 		panic(err)
 	}
 
-	httpSubscriber, err := http.NewSubscriber(":8080", func(topic string, request *stdHttp.Request) (*message.Message, error) {
+	httpSubscriber, err := http.NewSubscriber(*httpAddr, func(topic string, request *stdHttp.Request) (*message.Message, error) {
 		b, err := ioutil.ReadAll(request.Body)
 		if err != nil {
 			return nil, errors.Wrap(err, "cannot read body")
@@ -70,6 +82,7 @@ func main() {
 		"webhooks",
 		kafkaPublisher,
 		func(msg *message.Message) ([]*message.Message, error) {
+			delay(*handlerDelay)
 			webhook := GitlabWebhook{}
 
 			// simple validation
@@ -108,7 +121,7 @@ func metricsServer(prometheusRegistry *prometheus.Registry, wait chan struct{}) 
 		handler.ServeHTTP(w, r)
 	})
 	server := stdHttp.Server{
-		Addr:    ":8081",
+		Addr:    *metricsAddr,
 		Handler: handler,
 	}
 
@@ -121,4 +134,12 @@ func metricsServer(prometheusRegistry *prometheus.Registry, wait chan struct{}) 
 
 	<-wait
 	server.Close()
+}
+
+func delay(seconds float64) {
+	if seconds == 0 {
+		return
+	}
+	delay := math.Abs(rand.NormFloat64() * seconds)
+	time.Sleep(time.Duration(float64(time.Second) * delay))
 }
