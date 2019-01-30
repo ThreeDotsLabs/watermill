@@ -16,8 +16,8 @@ func NewEventBus(
 	return EventBus{publisher, topic, marshaler}
 }
 
-func (c EventBus) Send(cmd interface{}) error {
-	msg, err := c.marshaler.Marshal(cmd)
+func (c EventBus) Publish(event interface{}) error {
+	msg, err := c.marshaler.Marshal(event)
 	if err != nil {
 		panic(err)
 	}

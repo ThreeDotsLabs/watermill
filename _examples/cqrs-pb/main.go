@@ -30,7 +30,7 @@ func (b BookRoomHandler) Handle(c interface{}) error {
 
 	log.Printf("booked %s for %s from %s to %s", cmd.RoomId, cmd.GuestName, cmd.StartDate, cmd.EndDate)
 
-	if err := b.eventBus.Send(&RoomBooked{
+	if err := b.eventBus.Publish(&RoomBooked{
 		RoomId:    cmd.RoomId,
 		GuestName: cmd.GuestName,
 		StartDate: cmd.StartDate,
@@ -72,7 +72,7 @@ func (b OrderBeerHandler) NewCommand() interface{} {
 func (b OrderBeerHandler) Handle(c interface{}) error {
 	cmd := c.(*OrderBeer)
 
-	if err := b.eventBus.Send(&BeerOrdered{
+	if err := b.eventBus.Publish(&BeerOrdered{
 		RoomId: cmd.RoomId,
 		Count:  cmd.Count,
 	}); err != nil {
