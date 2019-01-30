@@ -3,6 +3,7 @@ package message
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -214,12 +215,20 @@ func (r *Router) pubSubNames(pub Publisher, sub Subscriber) (string, string) {
 	if pubStringer, ok := pub.(fmt.Stringer); ok {
 		publisherName = pubStringer.String()
 	} else {
-		publisherName = fmt.Sprintf("%T", pub)
+		// trim the pointer indicator, if any
+		publisherName = strings.TrimLeft(
+			fmt.Sprintf("%T", pub),
+			"*",
+		)
 	}
 	if subStringer, ok := sub.(fmt.Stringer); ok {
 		subscriberName = subStringer.String()
 	} else {
-		subscriberName = fmt.Sprintf("%T", sub)
+		// trim the pointer indicator, if any
+		subscriberName = strings.TrimLeft(
+			fmt.Sprintf("%T", sub),
+			"*",
+		)
 	}
 	return publisherName, subscriberName
 }

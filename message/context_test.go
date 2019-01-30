@@ -1,7 +1,6 @@
 package message_test
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/ThreeDotsLabs/watermill/message"
@@ -114,8 +113,8 @@ func TestRouter_Context_TypeName(t *testing.T) {
 
 	// then
 	require.Equal(t, handlerName, message.HandlerNameFromCtx(ctx))
-	require.Equal(t, fmt.Sprintf("%T", sub), message.SubscriberNameFromCtx(ctx))
-	require.Equal(t, fmt.Sprintf("%T", pub), message.PublisherNameFromCtx(ctx))
+	require.Equal(t, "message_test.unnamedMockSubscriber", message.SubscriberNameFromCtx(ctx))
+	require.Equal(t, "message_test.unnamedMockPublisher", message.PublisherNameFromCtx(ctx))
 }
 
 func setupPubsubNameTests(t *testing.T, capturedMessages chan (*message.Message)) (*message.Router, message.HandlerFunc) {
