@@ -35,7 +35,7 @@ func createPubSub(t *testing.T) message.PubSub {
 	return message.NewPubSub(publisher, subscriber)
 }
 
-func createPubSubWithConsumerGrup(t *testing.T, consumerGroup string) message.PubSub {
+func createPubSubWithConsumerGroup(t *testing.T, consumerGroup string) message.PubSub {
 	publisher, err := amqp.NewPublisher(
 		amqp.NewDurablePubSubConfig(
 			amqpURI,
@@ -68,7 +68,7 @@ func TestPublishSubscribe_pubsub(t *testing.T) {
 			RestartServiceCommand: []string{"docker", "restart", "watermill_rabbitmq_1"},
 		},
 		createPubSub,
-		createPubSubWithConsumerGrup,
+		createPubSubWithConsumerGroup,
 	)
 }
 
@@ -126,10 +126,5 @@ func TestPublishSubscribe_transactional_publish(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	infrastructure.TestPublishSubscribe(t, message.NewPubSub(publisher, subscriber), infrastructure.Features{
-		ConsumerGroups:      false,
-		ExactlyOnceDelivery: false,
-		GuaranteedOrder:     true,
-		Persistent:          true,
-	})
+	infrastructure.TestPublishSubscribe(t, message.NewPubSub(publisher, subscriber))
 }

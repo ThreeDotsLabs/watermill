@@ -33,15 +33,15 @@ func NewSubscriber(config Config, logger watermill.LoggerAdapter) (*Subscriber, 
 
 // Subscribe consumes messages from AMQP broker.
 //
-// Watermill's topic in publish is not mapped to AMQP's topic, but depending on configuration it can be mapped
+// Watermill's topic in Subscribe is not mapped to AMQP's topic, but depending on configuration it can be mapped
 // to exchange, queue or routing key.
 // For detailed description of nomenclature mapping, please check "Nomenclature" paragraph in doc.go file.
-func (s *Subscriber) Subscribe(topic string) (chan *message.Message, error) {
-	if s.closed {
+func (p *Subscriber) Subscribe(topic string) (chan *message.Message, error) {
+	if p.closed {
 		return nil, errors.New("pub/sub is closed")
 	}
 
-	if !s.IsConnected() {
+	if !p.IsConnected() {
 		return nil, errors.New("not connected to AMQP")
 	}
 
@@ -49,35 +49,35 @@ func (s *Subscriber) Subscribe(topic string) (chan *message.Message, error) {
 
 	out := make(chan *message.Message, 0)
 
-	queueName := s.config.Queue.GenerateName(topic)
+	queueName := p.config.Queue.GenerateName(topic)
 	logFields["amqp_queue_name"] = queueName
 
-	exchangeName := s.config.Exchange.GenerateName(topic)
+	exchangeName := p.config.Exchange.GenerateName(topic)
 	logFields["amqp_exchange_name"] = exchangeName
 
-	if err := s.prepareConsume(queueName, exchangeName, logFields); err != nil {
+	if err := p.prepareConsume(queueName, exchangeName, logFields); err != nil {
 		return nil, errors.Wrap(err, "failed to prepare consume")
 	}
 
-	s.subscribingWg.Add(1)
+	p.subscribingWg.Add(1)
 	go func() {
 		defer func() {
 			close(out)
-			s.logger.Info("Stopped consuming from AMQP channel", logFields)
-			s.subscribingWg.Done()
+			p.logger.Info("Stopped consuming from AMQP channel", logFields)
+			p.subscribingWg.Done()
 		}()
 
 	ReconnectLoop:
 		for {
-			s.logger.Debug("Waiting for s.connected or s.closing in ReconnectLoop", logFields)
+			p.logger.Debug("Waiting for p.connected or p.closing in ReconnectLoop", logFields)
 
 			select {
-			case <-s.connected:
-				s.logger.Debug("Connection established in ReconnectLoop", logFields)
+			case <-p.connected:
+				p.logger.Debug("Connection established in ReconnectLoop", logFields)
 				// runSubscriber blocks until connection fails or Close() is called
-				s.runSubscriber(out, queueName, exchangeName, logFields)
-			case <-s.closing:
-				s.logger.Debug("Stopping ReconnectLoop", logFields)
+				p.runSubscriber(out, queueName, exchangeName, logFields)
+			case <-p.closing:
+				p.logger.Debug("Stopping ReconnectLoop", logFields)
 				break ReconnectLoop
 			}
 
@@ -88,23 +88,8 @@ func (s *Subscriber) Subscribe(topic string) (chan *message.Message, error) {
 	return out, nil
 }
 
-func (s *Subscriber) SubscribeInitialize(topic string) (err error) {
-	queueName := s.config.Queue.GenerateName(topic)
-	exchangeName := s.config.Exchange.GenerateName(topic)
-
-	logFields := watermill.LogFields{
-		"topic":              topic,
-		"amqp_queue_name":    queueName,
-		"amqp_exchange_name": exchangeName,
-	}
-
-	s.logger.Info("Initializing subscribe", logFields)
-
-	return s.prepareConsume(queueName, exchangeName, logFields)
-}
-
-func (s *Subscriber) prepareConsume(queueName string, exchangeName string, logFields watermill.LogFields) (err error) {
-	channel, err := s.openSubscribeChannel(logFields)
+func (p *Subscriber) prepareConsume(queueName string, exchangeName string, logFields watermill.LogFields) (err error) {
+	channel, err := p.openSubscribeChannel(logFields)
 	if err != nil {
 		return err
 	}
@@ -116,98 +101,98 @@ func (s *Subscriber) prepareConsume(queueName string, exchangeName string, logFi
 
 	if _, err := channel.QueueDeclare(
 		queueName,
-		s.config.Queue.Durable,
-		s.config.Queue.AutoDelete,
-		s.config.Queue.Exclusive,
-		s.config.Queue.NoWait,
-		s.config.Queue.Arguments,
+		p.config.Queue.Durable,
+		p.config.Queue.AutoDelete,
+		p.config.Queue.Exclusive,
+		p.config.Queue.NoWait,
+		p.config.Queue.Arguments,
 	); err != nil {
 		return errors.Wrap(err, "cannot declare queue")
 	}
-	s.logger.Debug("Queue declared", logFields)
+	p.logger.Debug("Queue declared", logFields)
 
 	if exchangeName == "" {
-		s.logger.Debug("No exchange to declare", logFields)
+		p.logger.Debug("No exchange to declare", logFields)
 		return nil
 	}
 
-	if err := s.exchangeDeclare(channel, exchangeName); err != nil {
+	if err := p.exchangeDeclare(channel, exchangeName); err != nil {
 		return errors.Wrap(err, "cannot declare exchange")
 	}
-	s.logger.Debug("Exchange declared", logFields)
+	p.logger.Debug("Exchange declared", logFields)
 
 	if err := channel.QueueBind(
 		queueName,
-		s.config.QueueBind.RoutingKey,
+		p.config.QueueBind.RoutingKey,
 		exchangeName,
-		s.config.QueueBind.NoWait,
-		s.config.QueueBind.Arguments,
+		p.config.QueueBind.NoWait,
+		p.config.QueueBind.Arguments,
 	); err != nil {
 		return errors.Wrap(err, "cannot bind queue")
 	}
-	s.logger.Debug("Queue bound to exchange", logFields)
+	p.logger.Debug("Queue bound to exchange", logFields)
 
 	return nil
 }
 
-func (s *Subscriber) runSubscriber(out chan *message.Message, queueName string, exchangeName string, logFields watermill.LogFields) {
-	channel, err := s.openSubscribeChannel(logFields)
+func (p *Subscriber) runSubscriber(out chan *message.Message, queueName string, exchangeName string, logFields watermill.LogFields) {
+	channel, err := p.openSubscribeChannel(logFields)
 	if err != nil {
-		s.logger.Error("Failed to open channel", err, logFields)
+		p.logger.Error("Failed to open channel", err, logFields)
 		return
 	}
 	defer func() {
 		err := channel.Close()
-		s.logger.Error("Failed to close channel", err, logFields)
+		p.logger.Error("Failed to close channel", err, logFields)
 	}()
 
-	//notifyCloseChannel := channel.NotifyClose(make(chan *amqp.Error))
+	notifyCloseChannel := channel.NotifyClose(make(chan *amqp.Error))
 
 	sub := subscription{
-		out:                   out,
-		logFields:             logFields,
-		notifyCloseConnection: s.connectionClosed,
-		channel:               channel,
-		queueName:             queueName,
-		logger:                s.logger,
-		closing:               s.closing,
-		config:                s.config,
+		out:                out,
+		logFields:          logFields,
+		notifyCloseChannel: notifyCloseChannel,
+		channel:            channel,
+		queueName:          queueName,
+		logger:             p.logger,
+		closing:            p.closing,
+		config:             p.config,
 	}
 
-	s.logger.Info("Starting consuming from AMQP channel", logFields)
+	p.logger.Info("Starting consuming from AMQP channel", logFields)
 
 	sub.ProcessMessages()
 }
 
-func (s *Subscriber) openSubscribeChannel(logFields watermill.LogFields) (*amqp.Channel, error) {
-	if !s.IsConnected() {
+func (p *Subscriber) openSubscribeChannel(logFields watermill.LogFields) (*amqp.Channel, error) {
+	if !p.IsConnected() {
 		return nil, errors.New("not connected to AMQP")
 	}
 
-	channel, err := s.amqpConnection.Channel()
+	channel, err := p.amqpConnection.Channel()
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot open channel")
 	}
-	s.logger.Debug("Channel opened", logFields)
+	p.logger.Debug("Channel opened", logFields)
 
-	if s.config.Consume.Qos != (QosConfig{}) {
+	if p.config.Consume.Qos != (QosConfig{}) {
 		err = channel.Qos(
-			s.config.Consume.Qos.PrefetchCount, // prefetch count
-			s.config.Consume.Qos.PrefetchSize,  // prefetch size
-			s.config.Consume.Qos.Global,        // global
+			p.config.Consume.Qos.PrefetchCount, // prefetch count
+			p.config.Consume.Qos.PrefetchSize,  // prefetch size
+			p.config.Consume.Qos.Global,        // global
 		)
-		s.logger.Debug("Qos set", logFields)
+		p.logger.Debug("Qos set", logFields)
 	}
 
 	return channel, nil
 }
 
 type subscription struct {
-	out                   chan *message.Message
-	logFields             watermill.LogFields
-	notifyCloseConnection chan struct{}
-	channel               *amqp.Channel
-	queueName             string
+	out                chan *message.Message
+	logFields          watermill.LogFields
+	notifyCloseChannel chan *amqp.Error
+	channel            *amqp.Channel
+	queueName          string
 
 	logger  watermill.LoggerAdapter
 	closing chan struct{}
@@ -237,7 +222,7 @@ ConsumingLoop:
 			}
 			continue ConsumingLoop
 
-		case <-s.notifyCloseConnection:
+		case <-s.notifyCloseChannel:
 			s.logger.Error("Channel closed, stopping ProcessMessages", nil, s.logFields)
 			break ConsumingLoop
 

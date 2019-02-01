@@ -9,12 +9,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/deathowl/go-metrics-prometheus"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/rcrowley/go-metrics"
-	"github.com/satori/go.uuid"
+	metrics "github.com/rcrowley/go-metrics"
+	uuid "github.com/satori/go.uuid"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
@@ -31,12 +30,12 @@ var (
 )
 
 func main() {
-	pub, err := kafka.NewPublisher(brokers, marshaler, nil)
+	pub, err := kafka.NewPublisher(brokers, marshaler, nil, logger)
 	if err != nil {
 		panic(err)
 	}
 
-	h, err := message.NewRouter(
+	r, err := message.NewRouter(
 		message.RouterConfig{},
 		logger,
 	)
@@ -53,7 +52,7 @@ func main() {
 		panic(err)
 	}
 
-	h.AddMiddleware(
+	r.AddMiddleware(
 		// limiting processed messages to 10 per second
 		middleware.NewThrottle(100, time.Second).Middleware,
 
@@ -79,39 +78,45 @@ func main() {
 	)
 
 	// close router when SIGTERM is sent
-	h.AddPlugin(plugin.SignalsHandler)
+	r.AddPlugin(plugin.SignalsHandler)
 
 	// handler which just counts added posts
-	h.AddHandler(
+	if err = r.AddHandler(
 		"posts_counter",
 		"posts_published",
 		"posts_count",
 		message.NewPubSub(pub, createSubscriber("posts_counter_v2", logger)),
 		PostsCounter{memoryCountStorage{new(int64)}}.Count,
-	)
+	); err != nil {
+		panic(err)
+	}
 
 	// handler which generates "feed" from events post
 	//
 	// this implementation just prints it to stdout,
 	// but production ready implementation would save posts to some persistent storage
-	h.AddNoPublisherHandler(
+	if err = r.AddNoPublisherHandler(
 		"feed_generator",
 		"posts_published",
 		createSubscriber("feed_generator_v2", logger),
 		FeedGenerator{printFeedStorage{}}.UpdateFeed,
-	)
+	); err != nil {
+		panic(err)
+	}
 
-	h.Run()
+	if err = r.Run(); err != nil {
+		panic(err)
+	}
+
 }
 
 func createSubscriber(consumerGroup string, logger watermill.LoggerAdapter) message.Subscriber {
-	sub, err := kafka.NewConfluentSubscriber(
+	sub, err := kafka.NewSubscriber(
 		kafka.SubscriberConfig{
-			Brokers:         brokers,
-			ConsumerGroup:   consumerGroup,
-			ConsumersCount:  8,
-			AutoOffsetReset: "earliest",
+			Brokers:       brokers,
+			ConsumerGroup: consumerGroup,
 		},
+		nil,
 		marshaler,
 		logger,
 	)
