@@ -33,7 +33,7 @@ func NewSubscriber(config Config, logger watermill.LoggerAdapter) (*Subscriber, 
 
 // Subscribe consumes messages from AMQP broker.
 //
-// Watermill's topic in publish is not mapped to AMQP's topic, but depending on configuration it can be mapped
+// Watermill's topic in Subscribe is not mapped to AMQP's topic, but depending on configuration it can be mapped
 // to exchange, queue or routing key.
 // For detailed description of nomenclature mapping, please check "Nomenclature" paragraph in doc.go file.
 func (p *Subscriber) Subscribe(topic string) (chan *message.Message, error) {

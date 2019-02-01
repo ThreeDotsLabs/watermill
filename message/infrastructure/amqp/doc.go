@@ -12,10 +12,9 @@
 // Unfortunately, Watermill's nomenclature is not fully compatible with AMQP's nomenclature.
 // Depending of the configuration, topic can be mapped to exchange name, routing key and queue name.
 //
-// IMPORTANT: Watermill's topic is not mapped for the AMQP's topic exchange type, but for generating exchange name,
-// routing key and queue name.
-// To check how topic is mapped, please check Exchange.GenerateName, Queue.GenerateName and Publish.GenerateRoutingKey
-// in the config.
+// IMPORTANT: Watermill's topic is not mapped directly to the AMQP's topic exchange type.
+// It is used to generate exchange name, routing key and queue name, depending on the context.
+// To check how topic is mapped, please check Exchange.GenerateName, Queue.GenerateName and Publish.GenerateRoutingKey.
 //
 // In case of any problem to find to what exchange name, routing key and queue name are set,
 // just enable logging with debug level and check it in logs.

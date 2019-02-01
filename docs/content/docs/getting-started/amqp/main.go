@@ -57,7 +57,7 @@ func process(messages chan *message.Message) {
 		log.Printf("received message: %s, payload: %s", msg.UUID, string(msg.Payload))
 
 		// we need to Acknowledge that we received and processed the message,
-		// otherwise we will not receive next message
+		// otherwise we will not receive the next message
 		msg.Ack()
 	}
 }

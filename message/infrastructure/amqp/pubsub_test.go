@@ -35,7 +35,7 @@ func createPubSub(t *testing.T) message.PubSub {
 	return message.NewPubSub(publisher, subscriber)
 }
 
-func createPubSubWithConsumerGrup(t *testing.T, consumerGroup string) message.PubSub {
+func createPubSubWithConsumerGroup(t *testing.T, consumerGroup string) message.PubSub {
 	publisher, err := amqp.NewPublisher(
 		amqp.NewDurablePubSubConfig(
 			amqpURI,
@@ -68,7 +68,7 @@ func TestPublishSubscribe_pubsub(t *testing.T) {
 			RestartServiceCommand: []string{"docker", "restart", "watermill_rabbitmq_1"},
 		},
 		createPubSub,
-		createPubSubWithConsumerGrup,
+		createPubSubWithConsumerGroup,
 	)
 }
 

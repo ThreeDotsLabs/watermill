@@ -28,10 +28,10 @@ func NewPublisher(config Config, logger watermill.LoggerAdapter) (*Publisher, er
 }
 
 // Publish publishes messages to AMQP broker.
-// Publish is blocking since broker received and saved the message.
+// Publish is blocking until the broker has received and saved the message.
 // Publish is always thread safe.
 //
-// Watermill's topic in publish is not mapped to AMQP's topic, but depending on configuration it can be mapped
+// Watermill's topic in Publish is not mapped to AMQP's topic, but depending on configuration it can be mapped
 // to exchange, queue or routing key.
 // For detailed description of nomenclature mapping, please check "Nomenclature" paragraph in doc.go file.
 func (p *Publisher) Publish(topic string, messages ...*message.Message) (err error) {

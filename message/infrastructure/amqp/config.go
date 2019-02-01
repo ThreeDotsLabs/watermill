@@ -16,8 +16,8 @@ import (
 // generateQueueName is optional, when passing to the publisher.
 // Exchange name is set to the topic name and routing key is empty.
 //
-// IMPORTANT: Watermill's topic is not mapped for the AMQP's topic exchange type, but for generating exchange name,
-// routing key and queue name.
+// IMPORTANT: Watermill's topic is not mapped directly to the AMQP's topic exchange type.
+// It is used to generate exchange name, routing key and queue name, depending on the context.
 // To check how topic is mapped, please check Exchange.GenerateName, Queue.GenerateName and Publish.GenerateRoutingKey.
 //
 // This config is based on this example: https://www.rabbitmq.com/tutorials/tutorial-three-go.html
@@ -60,8 +60,8 @@ func NewDurablePubSubConfig(amqpURI string, generateQueueName QueueNameGenerator
 // generateQueueName is optional, when passing to the publisher.
 // Exchange name is set to the topic name and routing key is empty.
 //
-// IMPORTANT: Watermill's topic is not mapped for the AMQP's topic exchange type, but for generating exchange name,
-// routing key and queue name.
+// IMPORTANT: Watermill's topic is not mapped directly to the AMQP's topic exchange type.
+// It is used to generate exchange name, routing key and queue name, depending on the context.
 // To check how topic is mapped, please check Exchange.GenerateName, Queue.GenerateName and Publish.GenerateRoutingKey.
 //
 // This config is based on this example: https://www.rabbitmq.com/tutorials/tutorial-three-go.html.
@@ -100,8 +100,8 @@ func NewNonDurablePubSubConfig(amqpURI string, generateQueueName QueueNameGenera
 // NewDurableQueueConfig creates config for durable Queue.
 // Queue name and routing key is set to the topic name by default. Default ("") exchange is used.
 //
-// IMPORTANT: Watermill's topic is not mapped for the AMQP's topic exchange type, but for generating exchange name,
-// routing key and queue name.
+// IMPORTANT: Watermill's topic is not mapped directly to the AMQP's topic exchange type.
+// It is used to generate exchange name, routing key and queue name, depending on the context.
 // To check how topic is mapped, please check Exchange.GenerateName, Queue.GenerateName and Publish.GenerateRoutingKey.
 //
 // This config is based on this example: https://www.rabbitmq.com/tutorials/tutorial-two-go.html
@@ -141,8 +141,8 @@ func NewDurableQueueConfig(amqpURI string) Config {
 // NewNonDurableQueueConfig creates config for non durable Queue.
 // Queue name and routing key is set to the topic name by default. Default ("") exchange is used.
 //
-// IMPORTANT: Watermill's topic is not mapped for the AMQP's topic exchange type, but for generating exchange name,
-// routing key and queue name.
+// IMPORTANT: Watermill's topic is not mapped directly to the AMQP's topic exchange type.
+// It is used to generate exchange name, routing key and queue name, depending on the context.
 // To check how topic is mapped, please check Exchange.GenerateName, Queue.GenerateName and Publish.GenerateRoutingKey.
 //
 // This config is based on this example: https://www.rabbitmq.com/tutorials/tutorial-two-go.html.

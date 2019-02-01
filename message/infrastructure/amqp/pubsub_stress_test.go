@@ -18,7 +18,7 @@ func TestPublishSubscribe_stress(t *testing.T) {
 			Persistent:          true,
 		},
 		createPubSub,
-		createPubSubWithConsumerGrup,
+		createPubSubWithConsumerGroup,
 	)
 }
 

@@ -16,7 +16,7 @@ var amqpURI = "amqp://guest:guest@rabbitmq:5672/"
 func createSubscriber(queueSuffix string) *amqp.Subscriber {
 	subscriber, err := amqp.NewSubscriber(
 		// This config is based on this example: https://www.rabbitmq.com/tutorials/tutorial-three-go.html
-		// to create just simple queue, you can use NewDurableQueueConfig or create your own config
+		// to create just a simple queue, you can use NewDurableQueueConfig or create your own config.
 		amqp.NewDurablePubSubConfig(
 			amqpURI,
 			// Rabbit's queue name in this example is based on Watermill's topic passed to Subscribe
