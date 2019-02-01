@@ -37,6 +37,11 @@ services:
     network_mode: host
     restart: on-failure
 
+  rabbitmq:
+    image: rabbitmq:3.7-management
+    restart: on-failure
+    network_mode: host
+
   prometheus:
     image: prom/prometheus
     restart: on-failure

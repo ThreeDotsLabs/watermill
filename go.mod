@@ -7,6 +7,7 @@ require (
 	github.com/Shopify/toxiproxy v2.1.3+incompatible // indirect
 	github.com/armon/go-metrics v0.0.0-20180917152333-f0300d1749da // indirect
 	github.com/boltdb/bolt v1.3.1 // indirect
+	github.com/cenkalti/backoff v2.1.1+incompatible
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/deathowl/go-metrics-prometheus v0.0.0-20181105123824-7cfe975c505b
 	github.com/eapache/go-resiliency v1.1.0 // indirect
@@ -38,7 +39,9 @@ require (
 	github.com/rcrowley/go-metrics v0.0.0-20181016184325-3113b8401b8a
 	github.com/renstrom/shortuuid v3.0.0+incompatible
 	github.com/satori/go.uuid v1.2.0
-	github.com/stretchr/testify v1.2.2
+	github.com/streadway/amqp v0.0.0-20181205114330-a314942b2fd9
+	github.com/stretchr/objx v0.1.1 // indirect
+	github.com/stretchr/testify v1.3.0
 	go.opencensus.io v0.18.0 // indirect
 	golang.org/x/oauth2 v0.0.0-20181120190819-8f65e3013eba // indirect
 	golang.org/x/sync v0.0.0-20181108010431-42b317875d0f // indirect

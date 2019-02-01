@@ -32,10 +32,10 @@ Watermill is supporting multiple [publishers and subscribers implementations]({{
 
 Let's start with subscribing for messages.
 
-{{% tabs id="subscribing" tabs="go-channel,kafka,nats-streaming,gcloud" labels="Go Channel,Kafka,NATS Streaming,Google Cloud Pub/Sub" %}}
+{{% tabs id="subscribing" tabs="go-channel,kafka,nats-streaming,gcloud,amqp" labels="Go Channel,Kafka,NATS Streaming,Google Cloud Pub/Sub,RabbitMQ (AMQP)" %}}
 
 {{% tabs-tab id="go-channel"%}}
-{{% load-snippet-partial file="content/docs/getting-started/go-channel/main.go" first_line_contains="import (" last_line_contains="process(messages)" %}}
+{{% load-snippet-partial file="content/docs/getting-started/go-channel/main.go" first_line_contains="package main" last_line_contains="process(messages)" %}}
 {{% load-snippet-partial file="content/docs/getting-started/go-channel/main.go" first_line_contains="func process" %}}
 {{% /tabs-tab %}}
 
@@ -60,7 +60,7 @@ More detailed explanation of how it is running, and how to add live reload you c
 {{% /collapse-box %}}
 {{< /collapse >}}
 
-{{% load-snippet-partial file="content/docs/getting-started/kafka/main.go" first_line_contains="import (" last_line_contains="process(messages)" %}}
+{{% load-snippet-partial file="content/docs/getting-started/kafka/main.go" first_line_contains="package main" last_line_contains="process(messages)" %}}
 {{% load-snippet-partial file="content/docs/getting-started/kafka/main.go" first_line_contains="func process" %}}
 {{% /tabs-tab %}}
 
@@ -84,7 +84,7 @@ More detailed explanation of how it is running, and how to add live reload you c
 {{% /collapse-box %}}
 {{< /collapse >}}
 
-{{% load-snippet-partial file="content/docs/getting-started/nats-streaming/main.go" first_line_contains="import (" last_line_contains="process(messages)" %}}
+{{% load-snippet-partial file="content/docs/getting-started/nats-streaming/main.go" first_line_contains="package main" last_line_contains="process(messages)" %}}
 {{% load-snippet-partial file="content/docs/getting-started/nats-streaming/main.go" first_line_contains="func process" %}}
 {{% /tabs-tab %}}
 
@@ -109,15 +109,37 @@ More detailed explanation of how it is running, and how to add live reload you c
 {{% /collapse-box %}}
 {{< /collapse >}}
 
-{{% load-snippet-partial file="content/docs/getting-started/googlecloud/main.go" first_line_contains="import (" last_line_contains="process(messages)" %}}
+{{% load-snippet-partial file="content/docs/getting-started/googlecloud/main.go" first_line_contains="package main" last_line_contains="process(messages)" %}}
 {{% load-snippet-partial file="content/docs/getting-started/googlecloud/main.go" first_line_contains="func process" %}}
+{{% /tabs-tab %}}
+
+{{% tabs-tab id="amqp"%}}
+
+{{< collapse id="running_amqp" >}}
+
+{{< collapse-toggle box_id="amqp-docker" >}}
+Running in Docker
+{{% /collapse-toggle %}}
+{{% collapse-box id="amqp-docker" %}}
+{{% load-snippet file="content/docs/getting-started/amqp/docker-compose.yml" type="yaml" %}}
+
+The source should go to `main.go`.
+
+To run, please execute `docker-compose up`.
+
+More detailed explanation of how it is running, and how to add live reload you can find in [*Go Docker dev environment* article](https://threedots.tech/post/go-docker-dev-environment-with-go-modules-and-live-code-reloading/).
+{{% /collapse-box %}}
+{{< /collapse >}}
+
+{{% load-snippet-partial file="content/docs/getting-started/amqp/main.go" first_line_contains="package main" last_line_contains="process(messages)" %}}
+{{% load-snippet-partial file="content/docs/getting-started/amqp/main.go" first_line_contains="func process" %}}
 {{% /tabs-tab %}}
 
 {{% /tabs %}}
 
 ### Publishing messages
 
-{{% tabs id="publishing" tabs="go-channel,kafka,nats-streaming,gcloud" labels="Go Channel,Kafka,NATS Streaming,Google Cloud Pub/Sub" %}}
+{{% tabs id="publishing" tabs="go-channel,kafka,nats-streaming,gcloud,amqp" labels="Go Channel,Kafka,NATS Streaming,Google Cloud Pub/Sub,RabbitMQ (AMQP)" %}}
 
 {{% tabs-tab id="go-channel"%}}
 {{% load-snippet-partial file="content/docs/getting-started/go-channel/main.go" first_line_contains="go process(messages)" last_line_contains="publisher.Publish" padding_after="4" %}}
@@ -133,6 +155,10 @@ More detailed explanation of how it is running, and how to add live reload you c
 
 {{% tabs-tab id="gcloud" %}}
 {{% load-snippet-partial file="content/docs/getting-started/googlecloud/main.go" first_line_contains="go process(messages)" last_line_contains="publisher.Publish" padding_after="4" %}}
+{{% /tabs-tab %}}
+
+{{% tabs-tab id="amqp" %}}
+{{% load-snippet-partial file="content/docs/getting-started/amqp/main.go" first_line_contains="go process(messages)" last_line_contains="publisher.Publish" padding_after="4" %}}
 {{% /tabs-tab %}}
 
 {{% /tabs %}}
