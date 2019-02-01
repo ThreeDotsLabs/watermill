@@ -73,7 +73,8 @@ func (p *Subscriber) Subscribe(topic string) (chan *message.Message, error) {
 
 			select {
 			case <-p.connected:
-				p.logger.Debug("Waiting for p.connected or p.closing in ReconnectLoop", logFields)
+				p.logger.Debug("Connection established in ReconnectLoop", logFields)
+				// runSubscriber blocks until connection fails or Close() is called
 				p.runSubscriber(out, queueName, exchangeName, logFields)
 			case <-p.closing:
 				p.logger.Debug("Stopping ReconnectLoop", logFields)

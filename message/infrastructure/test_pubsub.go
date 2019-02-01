@@ -650,7 +650,6 @@ func TestMessageCtx(t *testing.T, pubSub message.PubSub, features Features) {
 	}
 }
 
-// todo - refactor
 func TestReconnect(t *testing.T, pubSub message.PubSub, features Features) {
 	if len(features.RestartServiceCommand) == 0 {
 		t.Skip("no RestartServiceCommand provided, cannot test reconnect")
@@ -661,92 +660,99 @@ func TestReconnect(t *testing.T, pubSub message.PubSub, features Features) {
 		require.NoError(t, subscribeInitializer.SubscribeInitialize(topicName))
 	}
 
-	messagesCount := 10000
-	restartAfterMessages := map[int]struct{}{messagesCount / 3: {}, messagesCount / 2: {}}
+	const messagesCount = 10000
+	const publishersCount = 100
+	const timeout = time.Second * 60
+
+	restartAfterMessages := map[int]struct{}{
+		messagesCount / 3: {}, // restart at 1/3 of messages
+		messagesCount / 2: {}, // restart at 1/2 of messages
+	}
 
 	messages, err := pubSub.Subscribe(topicName)
 	require.NoError(t, err)
 
 	var publishedMessages message.Messages
 	allMessagesPublished := make(chan struct{})
+	messagePublished := make(chan *message.Message, messagesCount)
+	publishMessage := make(chan struct{})
 
 	go func() {
-		messagePublished := make(chan *message.Message, messagesCount)
+		for i := 0; i < messagesCount; i++ {
+			publishMessage <- struct{}{}
 
-		publishMessage := make(chan struct{})
-		go func() {
-			for i := 0; i < messagesCount; i++ {
-				publishMessage <- struct{}{}
-
-				if _, shouldRestart := restartAfterMessages[i]; shouldRestart {
-					// todo - ensure that restarted?
-					go func() {
-						fmt.Println("restarting server with:", features.RestartServiceCommand)
-
-						cmd := exec.Command(features.RestartServiceCommand[0], features.RestartServiceCommand[1:]...)
-						cmd.Stderr = os.Stderr
-						cmd.Stdout = os.Stdout
-						if err := cmd.Run(); err != nil {
-							t.Fatal(err)
-						}
-
-						fmt.Println("server restarted")
-					}()
-				}
+			if _, shouldRestart := restartAfterMessages[i]; shouldRestart {
+				go restartServer(t, features)
 			}
-			close(publishMessage)
-		}()
+		}
+		close(publishMessage)
+	}()
 
-		for i := 0; i < 100; i++ {
-			go func() {
-				for range publishMessage {
-					id := uuid.NewV4().String()
-					msg := message.NewMessage(id, nil)
+	go func() {
+		count := 0
 
-					for {
-						fmt.Println("publishing message")
+		for msg := range messagePublished {
+			publishedMessages = append(publishedMessages, msg)
+			count++
 
-						// some randomization in sending
-						if rand.Int31n(10) == 0 {
-							time.Sleep(time.Millisecond * 500)
-						}
+			if count >= messagesCount {
+				close(allMessagesPublished)
+			}
+		}
+	}()
 
-						err := publishWithRetry(pubSub, topicName, msg)
-						if err == nil {
-							break
-						}
+	for i := 0; i < publishersCount; i++ {
+		go func() {
+			for range publishMessage {
+				id := uuid.NewV4().String()
+				msg := message.NewMessage(id, nil)
 
-						fmt.Printf("cannot publish message %s, trying again, err: %s\n", msg.UUID, err)
+				for {
+					fmt.Println("publishing message")
+
+					// some randomization in sending
+					if rand.Int31n(10) == 0 {
 						time.Sleep(time.Millisecond * 500)
 					}
 
-					messagePublished <- msg
+					if err := publishWithRetry(pubSub, topicName, msg); err == nil {
+						break
+					}
+
+					fmt.Printf("cannot publish message %s, trying again, err: %s\n", msg.UUID, err)
+					time.Sleep(time.Millisecond * 500)
 				}
-			}()
-		}
 
-		go func() {
-			count := 0
-
-			for msg := range messagePublished {
-				publishedMessages = append(publishedMessages, msg)
-				count++
-
-				if count >= messagesCount {
-					close(allMessagesPublished)
-				}
+				messagePublished <- msg
 			}
 		}()
-	}()
+	}
 
-	// todo - fix upper (remove waiting for chan)
-	receivedMessages, allMessages := subscriber.BulkReadWithDeduplication(messages, messagesCount, time.Second*60) // todo - remove bulk read in every place?
+	receivedMessages, allMessages := subscriber.BulkReadWithDeduplication(messages, messagesCount, timeout)
 	assert.True(t, allMessages, "not all messages received (has %d of %d)", len(receivedMessages), messagesCount)
 
-	<-allMessagesPublished
+	select {
+	case <-allMessagesPublished:
+		//ok
+	case <-time.After(timeout):
+		t.Fatal("all messages not sent after", timeout)
+	}
 	tests.AssertAllMessagesReceived(t, publishedMessages, receivedMessages)
 
 	require.NoError(t, pubSub.Close())
+}
+
+func restartServer(t *testing.T, features Features) {
+	fmt.Println("restarting server with:", features.RestartServiceCommand)
+	cmd := exec.Command(features.RestartServiceCommand[0], features.RestartServiceCommand[1:]...)
+	cmd.Stderr = os.Stderr
+	cmd.Stdout = os.Stdout
+
+	if err := cmd.Run(); err != nil {
+		t.Fatal(err)
+	}
+
+	fmt.Println("server restarted")
 }
 
 func assertConsumerGroupReceivedMessages(
