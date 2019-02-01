@@ -16,3 +16,9 @@ func BenchmarkSubscriber(b *testing.B) {
 		return gochannel.NewGoChannel(int64(n), watermill.NopLogger{}, time.Second)
 	})
 }
+
+func BenchmarkSubscriberPersistent(b *testing.B) {
+	infrastructure.BenchSubscriber(b, func(n int) message.PubSub {
+		return gochannel.NewPersistentGoChannel(int64(n), watermill.NopLogger{}, time.Second)
+	})
+}

@@ -13,6 +13,8 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
+const noTimeout time.Duration = -1
+
 type subscriber struct {
 	uuid          string
 	outputChannel chan *message.Message
@@ -24,8 +26,8 @@ type subscriber struct {
 // GoChannel has no global state,
 // that means that you need to use the same instance for Publishing and Subscribing!
 type GoChannel struct {
-	sendTimeout time.Duration
-	buffer      int64
+	sendTimeout         time.Duration
+	outputChannelBuffer int64
 
 	subscribers     map[string][]*subscriber
 	subscribersLock *sync.RWMutex
@@ -48,10 +50,10 @@ func (g *GoChannel) Subscriber() message.Subscriber {
 	return g
 }
 
-func NewGoChannel(buffer int64, logger watermill.LoggerAdapter, sendTimeout time.Duration) message.PubSub {
+func NewGoChannel(outputChannelBuffer int64, logger watermill.LoggerAdapter, sendTimeout time.Duration) message.PubSub {
 	return &GoChannel{
-		sendTimeout: sendTimeout,
-		buffer:      buffer,
+		sendTimeout:         sendTimeout,
+		outputChannelBuffer: outputChannelBuffer,
 
 		subscribers:     make(map[string][]*subscriber),
 		subscribersLock: &sync.RWMutex{},
@@ -61,10 +63,10 @@ func NewGoChannel(buffer int64, logger watermill.LoggerAdapter, sendTimeout time
 	}
 }
 
-func NewPersistentGoChannel(buffer int64, logger watermill.LoggerAdapter, sendTimeout time.Duration) message.PubSub {
+func NewPersistentGoChannel(outputChannelBuffer int64, logger watermill.LoggerAdapter, sendTimeout time.Duration) message.PubSub {
 	return &GoChannel{
-		sendTimeout: sendTimeout,
-		buffer:      buffer, // todo - 0?
+		sendTimeout:         sendTimeout,
+		outputChannelBuffer: outputChannelBuffer,
 
 		subscribers:     make(map[string][]*subscriber),
 		subscribersLock: &sync.RWMutex{},
@@ -111,7 +113,7 @@ func (g *GoChannel) sendMessage(topic string, message *message.Message) error {
 	}
 
 	for _, s := range subscribers {
-		if err := g.sendMessageToSubscriber(message, s); err != nil {
+		if err := g.sendMessageToSubscriber(message, s, g.sendTimeout); err != nil {
 			return err
 		}
 	}
@@ -119,7 +121,7 @@ func (g *GoChannel) sendMessage(topic string, message *message.Message) error {
 	return nil
 }
 
-func (g *GoChannel) sendMessageToSubscriber(msg *message.Message, s *subscriber) error {
+func (g *GoChannel) sendMessageToSubscriber(msg *message.Message, s *subscriber, sendTimeout time.Duration) error {
 	subscriberLogFields := watermill.LogFields{
 		"message_uuid":    msg.UUID,
 		"subscriber_uuid": s.uuid,
@@ -135,11 +137,18 @@ SendToSubscriber:
 		msgToSend.SetContext(ctx)
 		defer cancelCtx()
 
+		var timeout <-chan time.Time
+		if sendTimeout != noTimeout {
+			timeout = time.After(sendTimeout)
+		} else {
+			timeout = make(<-chan time.Time)
+		}
+
 		select {
 		case s.outputChannel <- msgToSend:
 			g.logger.Trace("Sent message to subscriber", subscriberLogFields)
-		case <-time.After(g.sendTimeout):
-			return errors.Errorf("Sending message %s timeouted after %s", msgToSend.UUID, g.sendTimeout)
+		case <-timeout:
+			return errors.Errorf("Sending message %s timeouted after %s", msgToSend.UUID, sendTimeout)
 		case <-g.closing:
 			g.logger.Trace("Closing, message discarded", subscriberLogFields)
 			return nil
@@ -167,35 +176,36 @@ SendToSubscriber:
 //
 // There are no consumer groups support etc. Every consumer will receive every produced message.
 func (g *GoChannel) Subscribe(topic string) (chan *message.Message, error) {
-	g.subscribersLock.Lock()
-	defer g.subscribersLock.Unlock()
-
-	// todo - validate locks
-	g.messagesMutex.RLock()
-
-	if _, ok := g.subscribers[topic]; !ok {
-		g.subscribers[topic] = make([]*subscriber, 0)
-	}
-
 	s := &subscriber{
 		uuid:          uuid.NewV4().String(),
-		outputChannel: make(chan *message.Message, g.buffer),
+		outputChannel: make(chan *message.Message, g.outputChannelBuffer),
 	}
-	g.subscribers[topic] = append(g.subscribers[topic], s)
 
-	go func() {
-		defer g.messagesMutex.RUnlock()
+	go func(s *subscriber) {
+		g.messagesMutex.RLock()
 
-		if messages, ok := g.messages[topic]; ok {
-			for _, msg := range messages {
-				if err := g.sendMessageToSubscriber(msg, s); err != nil {
-					// todo - don't panic?
-					panic(err)
+		if g.persistent {
+			if messages, ok := g.messages[topic]; ok {
+				for _, msg := range messages {
+					if err := g.sendMessageToSubscriber(msg, s, noTimeout); err != nil {
+						panic(err)
+					}
 				}
 			}
 		}
 
-	}()
+		// ensuring that there is no race condition between add to subscribers and read from g.messages
+		// for that reason we lock first, then unlock
+		g.subscribersLock.Lock()
+		defer g.subscribersLock.Unlock()
+		g.messagesMutex.RUnlock()
+
+		if _, ok := g.subscribers[topic]; !ok {
+			g.subscribers[topic] = make([]*subscriber, 0)
+		}
+		g.subscribers[topic] = append(g.subscribers[topic], s)
+
+	}(s)
 
 	return s.outputChannel, nil
 }
