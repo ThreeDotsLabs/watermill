@@ -41,10 +41,10 @@ func (t *messageTransformer) Close() error {
 // When Close is called on the decorated subscriber, it closes the wrapped subscriber
 // and calls onClose with the resulting error.
 func MessageTransformSubscriberDecorator(transform func(*Message)) SubscriberDecorator {
+	if transform == nil {
+		panic("transform function is nil")
+	}
 	return func(sub Subscriber) (Subscriber, error) {
-		if transform == nil {
-			transform = func(*Message) {}
-		}
 		return &messageTransformer{
 			sub:       sub,
 			transform: transform,

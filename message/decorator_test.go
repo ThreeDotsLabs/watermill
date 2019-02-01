@@ -17,6 +17,8 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/gochannel"
 )
 
+var noop = func(*message.Message) {}
+
 func TestMessageTransformer_Subscribe(t *testing.T) {
 	numMessages := 1000
 	pubsub := gochannel.NewGoChannel(0, watermill.NewStdLogger(true, true), time.Second)
@@ -61,7 +63,6 @@ func (m mockSubscriber) Close() error                                          {
 
 func TestMessageTransformer_transparent(t *testing.T) {
 	sub := mockSubscriber{make(chan *message.Message)}
-	noop := func(*message.Message) {}
 	decorated, err := message.MessageTransformSubscriberDecorator(noop)(sub)
 	require.NoError(t, err)
 
@@ -82,6 +83,12 @@ func TestMessageTransformer_transparent(t *testing.T) {
 	assert.True(t, received[0].Equals(richMessage), "expected the message to pass unchanged through decorator")
 }
 
+func TestMessageTransformer_nil_panics(t *testing.T) {
+	require.Panics(t, func() {
+		_ = message.MessageTransformSubscriberDecorator(nil)
+	})
+}
+
 var closingErr = errors.New("mock error on close")
 
 type closingSubscriber struct {
@@ -97,7 +104,7 @@ func (c *closingSubscriber) Close() error {
 func TestMessageTransformer_Close(t *testing.T) {
 	cs := &closingSubscriber{}
 
-	decoratedSub, err := message.MessageTransformSubscriberDecorator(nil)(cs)
+	decoratedSub, err := message.MessageTransformSubscriberDecorator(noop)(cs)
 	require.NoError(t, err)
 
 	// given
