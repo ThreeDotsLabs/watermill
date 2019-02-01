@@ -1,63 +1,39 @@
 package message
 
-import (
-	"errors"
-	"sync"
-	"time"
-)
+import "sync"
 
 type messageTransformer struct {
 	sub Subscriber
 
-	outputChannelsWg sync.WaitGroup
-
-	transform func(*Message)
-
-	closed  bool
-	closing chan struct{}
+	transform   func(*Message)
+	subscribeWg sync.WaitGroup
 }
 
 func (t *messageTransformer) Subscribe(topic string) (chan *Message, error) {
-	if t.closed {
-		return nil, errors.New("subscriber closed")
-	}
-
-	out := make(chan *Message)
-
 	in, err := t.sub.Subscribe(topic)
 	if err != nil {
 		return nil, err
 	}
 
-	t.outputChannelsWg.Add(1)
+	out := make(chan *Message)
+	t.subscribeWg.Add(1)
 	go func() {
-		for {
-			select {
-			case msg := <-in:
-				t.transform(msg)
-				out <- msg
-
-			case <-t.closing:
-				close(out)
-				time.Sleep(3 * time.Second)
-				t.outputChannelsWg.Done()
-				return
-			}
+		for msg := range in {
+			t.transform(msg)
+			out <- msg
 		}
+		close(out)
+		t.subscribeWg.Done()
 	}()
 
 	return out, nil
 }
 
-func (t messageTransformer) Close() (err error) {
-	if t.closed {
-		return nil
-	}
+func (t *messageTransformer) Close() error {
+	err := t.sub.Close()
 
-	close(t.closing)
-	t.outputChannelsWg.Wait()
-
-	return t.sub.Close()
+	t.subscribeWg.Wait()
+	return err
 }
 
 // MessageTransformSubscriberDecorator creates a subscriber decorator that calls transform
@@ -70,14 +46,8 @@ func MessageTransformSubscriberDecorator(transform func(*Message)) SubscriberDec
 			transform = func(*Message) {}
 		}
 		return &messageTransformer{
-			sub: sub,
-
-			outputChannelsWg: sync.WaitGroup{},
-
+			sub:       sub,
 			transform: transform,
-
-			closed:  false,
-			closing: make(chan struct{}),
 		}, nil
 	}
 }

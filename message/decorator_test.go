@@ -52,6 +52,36 @@ func TestMessageTransformer_Subscribe(t *testing.T) {
 	}
 }
 
+type mockSubscriber struct {
+	ch chan *message.Message
+}
+
+func (m mockSubscriber) Subscribe(topic string) (chan *message.Message, error) { return m.ch, nil }
+func (m mockSubscriber) Close() error                                          { close(m.ch); return nil }
+
+func TestMessageTransformer_transparent(t *testing.T) {
+	sub := mockSubscriber{make(chan *message.Message)}
+	noop := func(*message.Message) {}
+	decorated, err := message.MessageTransformSubscriberDecorator(noop)(sub)
+	require.NoError(t, err)
+
+	messages, err := decorated.Subscribe("topic")
+	require.NoError(t, err)
+
+	richMessage := message.NewMessage("uuid", []byte("serious payloads"))
+	richMessage.Metadata.Set("k1", "v1")
+	richMessage.Metadata.Set("k2", "v2")
+
+	go func() {
+		sub.ch <- richMessage
+	}()
+
+	received, all := subscriber.BulkRead(messages, 1, time.Second)
+	require.True(t, all)
+
+	assert.True(t, received[0].Equals(richMessage), "expected the message to pass unchanged through decorator")
+}
+
 var closingErr = errors.New("mock error on close")
 
 type closingSubscriber struct {
