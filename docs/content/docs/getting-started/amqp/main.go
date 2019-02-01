@@ -15,16 +15,12 @@ import (
 var amqpURI = "amqp://guest:guest@rabbitmq:5672/"
 
 func main() {
+	amqpConfig := amqp.NewDurableQueueConfig(amqpURI)
+
 	subscriber, err := amqp.NewSubscriber(
 		// This config is based on this example: https://www.rabbitmq.com/tutorials/tutorial-three-go.html
 		// to create just simple queue, you can use NewDurableQueueConfig or create your own config
-		amqp.NewDurablePubSubConfig(
-			amqpURI,
-			// queue name based on topic plus provided suffix,
-			// exchange is fanout, so when subscribe with suffix other than "test_consumer_group",
-			// it will also receive all messages
-			amqp.GenerateQueueNameTopicNameWithSuffix("test_consumer_group"),
-		),
+		amqpConfig,
 		watermill.NewStdLogger(false, false),
 	)
 	if err != nil {
@@ -38,13 +34,7 @@ func main() {
 
 	go process(messages)
 
-	publisher, err := amqp.NewPublisher(
-		amqp.NewDurablePubSubConfig(
-			amqpURI,
-			nil, // generateQueueName is not used with publisher
-		),
-		watermill.NewStdLogger(false, false),
-	)
+	publisher, err := amqp.NewPublisher(amqpConfig, watermill.NewStdLogger(false, false))
 	if err != nil {
 		panic(err)
 	}

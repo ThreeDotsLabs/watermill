@@ -15,11 +15,15 @@ var amqpURI = "amqp://guest:guest@rabbitmq:5672/"
 
 func createSubscriber(queueSuffix string) *amqp.Subscriber {
 	subscriber, err := amqp.NewSubscriber(
+		// This config is based on this example: https://www.rabbitmq.com/tutorials/tutorial-three-go.html
+		// to create just simple queue, you can use NewDurableQueueConfig or create your own config
 		amqp.NewDurablePubSubConfig(
 			amqpURI,
-			// queue name based on topic plus provided suffix,
-			// exchange is fanout, so every subscriber with other suffix,
-			// it will also receive all messages
+			// Rabbit's queue name in this example is based on Watermill's topic passed to Subscribe
+			// plus provided suffix.
+			//
+			// Exchange is Rabbit's "fanout", so when subscribing with suffix other than "test_consumer_group",
+			// it will also receive all messages. It will work like separate consumer groups in Kafka.
 			amqp.GenerateQueueNameTopicNameWithSuffix(queueSuffix),
 		),
 		watermill.NewStdLogger(false, false),
