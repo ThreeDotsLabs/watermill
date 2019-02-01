@@ -55,7 +55,9 @@ func (t messageTransformer) Close() (err error) {
 		return nil
 	}
 
-	defer t.onClose(err)
+	defer func() {
+		t.onClose(err)
+	}()
 
 	close(t.closing)
 	t.outputChannelsWg.Wait()
@@ -63,9 +65,10 @@ func (t messageTransformer) Close() (err error) {
 	return t.sub.Close()
 }
 
-// MessageTransformSubscriberDecorator creates a subscriber decorator that calls transform on each that passes
-// through the subscriber. When Close is called on the decorated subscriber, it closes the wrapped subscriber and calls
-// onClose with the resulting error.
+// MessageTransformSubscriberDecorator creates a subscriber decorator that calls transform
+// on each message that passes through the subscriber.
+// When Close is called on the decorated subscriber, it closes the wrapped subscriber
+// and calls onClose with the resulting error.
 func MessageTransformSubscriberDecorator(transform func(*Message), onClose func(error)) SubscriberDecorator {
 	return func(sub Subscriber) (Subscriber, error) {
 		if transform == nil {
