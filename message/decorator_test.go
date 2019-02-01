@@ -24,7 +24,7 @@ func TestMessageTransformer_Subscribe(t *testing.T) {
 	onMessage := func(msg *message.Message) {
 		msg.Metadata.Set("key", "value")
 	}
-	decorator := message.MessageTransformSubscriberDecorator(onMessage, nil)
+	decorator := message.MessageTransformSubscriberDecorator(onMessage)
 
 	decoratedSub, err := decorator(pubsub.(message.Subscriber))
 	require.NoError(t, err)
@@ -67,17 +67,11 @@ func (c *closingSubscriber) Close() error {
 func TestMessageTransformer_Close(t *testing.T) {
 	cs := &closingSubscriber{}
 
-	var callbackError error
-	onClose := func(err error) {
-		callbackError = err
-	}
-
-	decoratedSub, err := message.MessageTransformSubscriberDecorator(nil, onClose)(cs)
+	decoratedSub, err := message.MessageTransformSubscriberDecorator(nil)(cs)
 	require.NoError(t, err)
 
 	// given
 	require.False(t, cs.closed)
-	require.Nil(t, callbackError)
 
 	// when
 	decoratedCloseErr := decoratedSub.Close()
@@ -93,11 +87,5 @@ func TestMessageTransformer_Close(t *testing.T) {
 		closingErr,
 		decoratedCloseErr,
 		"expected the decorator to propagate the closing error from underlying subscriber",
-	)
-	assert.Equal(
-		t,
-		closingErr,
-		callbackError,
-		"expected the onClose callback to have been called with the error from Close()",
 	)
 }

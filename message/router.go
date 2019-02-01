@@ -295,7 +295,7 @@ func (r *Router) Run() (err error) {
 				handler.addMsgContext(msg)
 			}
 		}
-		sub, err = MessageTransformSubscriberDecorator(messageTransform, nil)(sub)
+		sub, err = MessageTransformSubscriberDecorator(messageTransform)(sub)
 		if err != nil {
 			return errors.Wrapf(err, "cannot wrap subscriber with context decorator")
 		}

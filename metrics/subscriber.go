@@ -38,14 +38,18 @@ func (s SubscriberPrometheusMetricsDecorator) recordMetrics(msg *message.Message
 		select {
 		case <-msg.Acked():
 			s.subscriberTimeToAckSeconds.With(labels).Observe(time.Since(now).Seconds())
+		case <-msg.Nacked():
+			// todo: record NACKs
+			return
 		case <-s.closing:
 			return
 		}
 	}()
 }
 
-func (s *SubscriberPrometheusMetricsDecorator) onClose(error) {
+func (s *SubscriberPrometheusMetricsDecorator) Close() error {
 	close(s.closing)
+	return s.Subscriber.Close()
 }
 
 // DecorateSubscriber wraps the underlying subscriber with Prometheus metrics.
@@ -79,7 +83,7 @@ func (b PrometheusMetricsBuilder) DecorateSubscriber(sub message.Subscriber) (me
 		},
 	)
 
-	d.Subscriber, err = message.MessageTransformSubscriberDecorator(d.recordMetrics, d.onClose)(sub)
+	d.Subscriber, err = message.MessageTransformSubscriberDecorator(d.recordMetrics)(sub)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not decorate subscriber with metrics decorator")
 	}

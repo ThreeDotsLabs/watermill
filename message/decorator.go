@@ -12,7 +12,6 @@ type messageTransformer struct {
 	outputChannelsWg sync.WaitGroup
 
 	transform func(*Message)
-	onClose   func(error)
 
 	closed  bool
 	closing chan struct{}
@@ -55,10 +54,6 @@ func (t messageTransformer) Close() (err error) {
 		return nil
 	}
 
-	defer func() {
-		t.onClose(err)
-	}()
-
 	close(t.closing)
 	t.outputChannelsWg.Wait()
 
@@ -69,13 +64,10 @@ func (t messageTransformer) Close() (err error) {
 // on each message that passes through the subscriber.
 // When Close is called on the decorated subscriber, it closes the wrapped subscriber
 // and calls onClose with the resulting error.
-func MessageTransformSubscriberDecorator(transform func(*Message), onClose func(error)) SubscriberDecorator {
+func MessageTransformSubscriberDecorator(transform func(*Message)) SubscriberDecorator {
 	return func(sub Subscriber) (Subscriber, error) {
 		if transform == nil {
 			transform = func(*Message) {}
-		}
-		if onClose == nil {
-			onClose = func(error) {}
 		}
 		return &messageTransformer{
 			sub: sub,
@@ -83,7 +75,6 @@ func MessageTransformSubscriberDecorator(transform func(*Message), onClose func(
 			outputChannelsWg: sync.WaitGroup{},
 
 			transform: transform,
-			onClose:   onClose,
 
 			closed:  false,
 			closing: make(chan struct{}),
