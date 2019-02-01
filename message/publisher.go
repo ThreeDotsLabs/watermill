@@ -7,6 +7,8 @@ type publisher interface {
 	//
 	// Most publishers implementations doesn't support atomic publishing of messages.
 	// That means, that when publishing one of messages failed next messages will be not published.
+	//
+	// Publish must be thread safe.
 	Publish(topic string, messages ...*Message) error
 }
 
