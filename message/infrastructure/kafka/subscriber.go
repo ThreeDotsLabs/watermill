@@ -53,6 +53,10 @@ func NewSubscriber(
 		overwriteSaramaConfig = DefaultSaramaSubscriberConfig()
 	}
 
+	logger = logger.With(watermill.LogFields{
+		"subscriber_uuid": shortuuid.New(),
+	})
+
 	return &Subscriber{
 		config:       config,
 		saramaConfig: overwriteSaramaConfig,
@@ -113,10 +117,10 @@ func (s *Subscriber) Subscribe(topic string) (chan *message.Message, error) {
 	s.subscribersWg.Add(1)
 
 	logFields := watermill.LogFields{
-		"provider":       "kafka",
-		"topic":          topic,
-		"consumer_group": s.config.ConsumerGroup,
-		"subscribe_uuid": shortuuid.New(),
+		"provider":            "kafka",
+		"topic":               topic,
+		"consumer_group":      s.config.ConsumerGroup,
+		"kafka_consumer_uuid": shortuuid.New(),
 	}
 	s.logger.Info("Subscribing to Kafka topic", logFields)
 

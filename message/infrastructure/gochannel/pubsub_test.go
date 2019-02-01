@@ -13,7 +13,7 @@ import (
 )
 
 func createPubSub(t *testing.T) message.PubSub {
-	return gochannel.NewGoChannel(
+	return gochannel.NewPersistentGoChannel(
 		0,
 		watermill.NewStdLogger(true, true),
 		time.Second*10,

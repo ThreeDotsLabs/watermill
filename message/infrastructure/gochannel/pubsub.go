@@ -34,6 +34,18 @@ type GoChannel struct {
 
 	closed  bool
 	closing chan struct{}
+
+	persistent    bool
+	messages      map[string][]*message.Message
+	messagesMutex sync.RWMutex
+}
+
+func (g *GoChannel) Publisher() message.Publisher {
+	return g
+}
+
+func (g *GoChannel) Subscriber() message.Subscriber {
+	return g
 }
 
 func NewGoChannel(buffer int64, logger watermill.LoggerAdapter, sendTimeout time.Duration) message.PubSub {
@@ -49,11 +61,37 @@ func NewGoChannel(buffer int64, logger watermill.LoggerAdapter, sendTimeout time
 	}
 }
 
+func NewPersistentGoChannel(buffer int64, logger watermill.LoggerAdapter, sendTimeout time.Duration) message.PubSub {
+	return &GoChannel{
+		sendTimeout: sendTimeout,
+		buffer:      buffer, // todo - 0?
+
+		subscribers:     make(map[string][]*subscriber),
+		subscribersLock: &sync.RWMutex{},
+		logger:          logger,
+
+		closing: make(chan struct{}),
+
+		persistent: true,
+		messages:   map[string][]*message.Message{},
+	}
+}
+
 // Publish in GoChannel is blocking until all consumers consume and acknowledge the message.
 // Sending message to one subscriber has timeout equal to GoChannel.sendTimeout configured via constructor.
 //
 // Messages are not persisted. If there are no subscribers and message is produced it will be gone.
 func (g *GoChannel) Publish(topic string, messages ...*message.Message) error {
+	if g.persistent {
+		g.messagesMutex.Lock()
+		if _, ok := g.messages[topic]; !ok {
+			g.messages[topic] = make([]*message.Message, 0)
+		}
+
+		g.messages[topic] = append(g.messages[topic], messages...)
+		g.messagesMutex.Unlock()
+	}
+
 	for _, msg := range messages {
 		if err := g.sendMessage(topic, msg); err != nil {
 			return err
@@ -64,10 +102,6 @@ func (g *GoChannel) Publish(topic string, messages ...*message.Message) error {
 }
 
 func (g *GoChannel) sendMessage(topic string, message *message.Message) error {
-	messageLogFields := watermill.LogFields{
-		"message_uuid": message.UUID,
-	}
-
 	g.subscribersLock.RLock()
 	defer g.subscribersLock.RUnlock()
 
@@ -77,7 +111,7 @@ func (g *GoChannel) sendMessage(topic string, message *message.Message) error {
 	}
 
 	for _, s := range subscribers {
-		if err := g.sendMessageToSubscriber(message, s, messageLogFields); err != nil {
+		if err := g.sendMessageToSubscriber(message, s); err != nil {
 			return err
 		}
 	}
@@ -85,10 +119,11 @@ func (g *GoChannel) sendMessage(topic string, message *message.Message) error {
 	return nil
 }
 
-func (g *GoChannel) sendMessageToSubscriber(msg *message.Message, s *subscriber, messageLogFields watermill.LogFields) error {
-	subscriberLogFields := messageLogFields.Add(watermill.LogFields{
+func (g *GoChannel) sendMessageToSubscriber(msg *message.Message, s *subscriber) error {
+	subscriberLogFields := watermill.LogFields{
+		"message_uuid":    msg.UUID,
 		"subscriber_uuid": s.uuid,
-	})
+	}
 
 SendToSubscriber:
 	for {
@@ -135,6 +170,9 @@ func (g *GoChannel) Subscribe(topic string) (chan *message.Message, error) {
 	g.subscribersLock.Lock()
 	defer g.subscribersLock.Unlock()
 
+	// todo - validate locks
+	g.messagesMutex.RLock()
+
 	if _, ok := g.subscribers[topic]; !ok {
 		g.subscribers[topic] = make([]*subscriber, 0)
 	}
@@ -144,6 +182,20 @@ func (g *GoChannel) Subscribe(topic string) (chan *message.Message, error) {
 		outputChannel: make(chan *message.Message, g.buffer),
 	}
 	g.subscribers[topic] = append(g.subscribers[topic], s)
+
+	go func() {
+		defer g.messagesMutex.RUnlock()
+
+		if messages, ok := g.messages[topic]; ok {
+			for _, msg := range messages {
+				if err := g.sendMessageToSubscriber(msg, s); err != nil {
+					// todo - don't panic?
+					panic(err)
+				}
+			}
+		}
+
+	}()
 
 	return s.outputChannel, nil
 }

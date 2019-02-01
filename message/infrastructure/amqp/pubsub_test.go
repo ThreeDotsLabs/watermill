@@ -126,5 +126,10 @@ func TestPublishSubscribe_transactional_publish(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	infrastructure.TestPublishSubscribe(t, message.NewPubSub(publisher, subscriber))
+	infrastructure.TestPublishSubscribe(t, message.NewPubSub(publisher, subscriber), infrastructure.Features{
+		ConsumerGroups:      false,
+		ExactlyOnceDelivery: false,
+		GuaranteedOrder:     true,
+		Persistent:          true,
+	})
 }

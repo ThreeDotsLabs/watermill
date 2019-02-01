@@ -16,7 +16,9 @@ type connectionWrapper struct {
 
 	amqpConnection     *amqp.Connection
 	amqpConnectionLock sync.Mutex
-	connected          chan struct{}
+
+	connected        chan struct{}
+	connectionClosed chan struct{}
 
 	publishBindingsLock     sync.RWMutex
 	publishBindingsPrepared map[string]struct{}
@@ -33,10 +35,11 @@ func newConnection(
 	logger watermill.LoggerAdapter,
 ) (*connectionWrapper, error) {
 	pubSub := &connectionWrapper{
-		config:    config,
-		logger:    logger,
-		closing:   make(chan struct{}),
-		connected: make(chan struct{}),
+		config:           config,
+		logger:           logger,
+		closing:          make(chan struct{}),
+		connected:        make(chan struct{}),
+		connectionClosed: make(chan struct{}),
 	}
 	if err := pubSub.connect(); err != nil {
 		return nil, err
@@ -104,6 +107,9 @@ func (c *connectionWrapper) connect() error {
 		return errors.Wrap(err, "cannot connect to AMQP")
 	}
 	c.amqpConnection = connection
+
+	// todo - to func?
+	c.connectionClosed = make(chan struct{})
 	close(c.connected)
 
 	c.logger.Info("Connected to AMQP", nil)
@@ -141,6 +147,9 @@ func (c *connectionWrapper) handleConnectionClose() {
 			c.logger.Debug("Stopping handleConnectionClose", nil)
 			return
 		case err := <-notifyCloseConnection:
+			c.logger.Debug("Received connection close notification", nil)
+			// todo - to func
+			close(c.connectionClosed)
 			c.connected = make(chan struct{})
 			c.logger.Error("Received close notification from AMQP, reconnecting", err, nil)
 			c.reconnect()

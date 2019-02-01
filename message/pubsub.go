@@ -1,41 +1,53 @@
 package message
 
-import "github.com/pkg/errors"
+import (
+	"github.com/hashicorp/go-multierror"
+	"github.com/pkg/errors"
+)
 
 type PubSub interface {
 	publisher
 	subscriber
 
+	Publisher() Publisher
+	Subscriber() Subscriber
 	Close() error
 }
 
 func NewPubSub(publisher Publisher, subscriber Subscriber) PubSub {
-	subInit, _ := subscriber.(SubscribeInitializer)
-
-	return pubSub{publisher, subscriber, subInit}
+	return pubSub{publisher, subscriber}
 }
 
 type pubSub struct {
-	Publisher
-	Subscriber
-	SubscribeInitializer
+	pub Publisher
+	sub Subscriber
+}
+
+func (p pubSub) Publish(topic string, messages ...*Message) error {
+	return p.pub.Publish(topic, messages...)
+}
+
+func (p pubSub) Subscribe(topic string) (chan *Message, error) {
+	return p.sub.Subscribe(topic)
+}
+
+func (p pubSub) Publisher() Publisher {
+	return p.pub
+}
+
+func (p pubSub) Subscriber() Subscriber {
+	return p.sub
 }
 
 func (p pubSub) Close() error {
-	publisherErr := p.Publisher.Close()
-	subscriberErr := p.Subscriber.Close()
+	var err error
 
-	if publisherErr == nil && subscriberErr == nil {
-		return nil
+	if publisherErr := p.pub.Close(); publisherErr != nil {
+		err = multierror.Append(err, errors.Wrap(publisherErr, "cannot close publisher"))
+	}
+	if subscriberErr := p.sub.Close(); subscriberErr != nil {
+		err = multierror.Append(err, errors.Wrap(subscriberErr, "cannot close subscriber"))
 	}
 
-	errMsg := "cannot close pubSub: "
-	if publisherErr != nil {
-		errMsg += "publisher err: " + publisherErr.Error()
-	}
-	if subscriberErr != nil {
-		errMsg += "subscriber err: " + subscriberErr.Error()
-	}
-
-	return errors.New(errMsg)
+	return err
 }
