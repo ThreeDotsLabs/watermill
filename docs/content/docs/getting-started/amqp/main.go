@@ -7,7 +7,6 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/amqp"
 
 	"github.com/ThreeDotsLabs/watermill"
-	"github.com/satori/go.uuid"
 
 	"github.com/ThreeDotsLabs/watermill/message"
 )
@@ -18,8 +17,11 @@ func main() {
 	amqpConfig := amqp.NewDurableQueueConfig(amqpURI)
 
 	subscriber, err := amqp.NewSubscriber(
-		// This config is based on this example: https://www.rabbitmq.com/tutorials/tutorial-three-go.html
-		// to create just simple queue, you can use NewDurableQueueConfig or create your own config
+		// This config is based on this example: https://www.rabbitmq.com/tutorials/tutorial-two-go.html
+		// It works as a simple queue.
+		//
+		// If you want to implement a Pub/Sub style service instead, check
+		// https://watermill.io/docs/pub-sub-implementations/#amqp-consumer-groups
 		amqpConfig,
 		watermill.NewStdLogger(false, false),
 	)
