@@ -12,9 +12,9 @@ type = "docs"
 
 Watermill is a Golang library for working efficiently with message streams. It is intended for building event-driven applications, enabling event sourcing, RPC over messages, sagas and basically whatever else comes to your mind. You can use conventional pub/sub implementations like Kafka or RabbitMQ, but also HTTP or MySQL binlog if that fits your use case.
 
-It comes with a set of Pub/Sub implementations which can be easily extended by your own implementations.
+It comes with a set of Pub/Sub implementations, which can be easily extended by your own implementations.
 
-Watermill is also shipped with the set of standard tools (middlewares) like instrumentation, poison queue, throttling, correlation and other tools used by every message-driven application.
+Watermill is also shipped with a set of standard tools (middlewares) like instrumentation, poison queue, throttling, correlation and other tools used by every message-driven application.
 
 ### Install
 
@@ -53,9 +53,9 @@ The easiest way to run Watermill locally with Kafka is using Docker.
 
 The source should go to `main.go`.
 
-To run please execute `docker-compose up` command.
+To run, please execute `docker-compose up` command.
 
-More detailed explanation of how it is running, and how to add live code reload, you can find in [*Go Docker dev environment* article](https://threedots.tech/post/go-docker-dev-environment-with-go-modules-and-live-code-reloading/).
+A more detailed explanation of how it is running (and how to add live code reload) can be found in [*Go Docker dev environment* article](https://threedots.tech/post/go-docker-dev-environment-with-go-modules-and-live-code-reloading/).
 
 {{% /collapse-box %}}
 {{< /collapse >}}
@@ -80,7 +80,7 @@ The source should go to `main.go`.
 
 To run please execute `docker-compose up` command.
 
-More detailed explanation of how it is running, and how to add live code reload, you can find in [*Go Docker dev environment* article](https://threedots.tech/post/go-docker-dev-environment-with-go-modules-and-live-code-reloading/).
+A more detailed explanation of how it is running (and how to add live code reload) can be found in [*Go Docker dev environment* article](https://threedots.tech/post/go-docker-dev-environment-with-go-modules-and-live-code-reloading/).
 {{% /collapse-box %}}
 {{< /collapse >}}
 
@@ -105,7 +105,7 @@ The source should go to `main.go`.
 
 To run, please execute `docker-compose up`.
 
-More detailed explanation of how it is running, and how to add live code reload you can find in [*Go Docker dev environment* article](https://threedots.tech/post/go-docker-dev-environment-with-go-modules-and-live-code-reloading/).
+A more detailed explanation of how it is running (and how to add live code reload) can be found in [*Go Docker dev environment* article](https://threedots.tech/post/go-docker-dev-environment-with-go-modules-and-live-code-reloading/).
 {{% /collapse-box %}}
 {{< /collapse >}}
 
@@ -127,7 +127,7 @@ The source should go to `main.go`.
 
 To run, please execute `docker-compose up`.
 
-More detailed explanation of how it is running, and how to add live code reload you can find in [*Go Docker dev environment* article](https://threedots.tech/post/go-docker-dev-environment-with-go-modules-and-live-code-reloading/).
+A more detailed explanation of how it is running (and how to add live code reload) can be found in [*Go Docker dev environment* article](https://threedots.tech/post/go-docker-dev-environment-with-go-modules-and-live-code-reloading/).
 {{% /collapse-box %}}
 {{< /collapse >}}
 
