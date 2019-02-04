@@ -16,7 +16,7 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/subscriber"
 
-	"github.com/satori/go.uuid"
+	uuid "github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -616,7 +616,8 @@ func TestMessageCtx(t *testing.T, pubSub message.PubSub, features Features) {
 	msg.SetContext(ctx)
 
 	require.NoError(t, publishWithRetry(pubSub, topicName, msg))
-	require.NoError(t, publishWithRetry(pubSub, topicName, msg))
+	// this might actually be an error in some pubsubs (http), because we close the subscriber without ACK.
+	_ = pubSub.Publish(topicName, msg)
 
 	messages, err := pubSub.Subscribe(topicName)
 	require.NoError(t, err)
