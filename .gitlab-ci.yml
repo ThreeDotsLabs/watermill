@@ -7,12 +7,12 @@ stages:
 build:
   stage: build
   image: golang:1.11.5
-  before_script:
-    - "[ -d $MOD_CACHE_DIR ] && cp -r $MOD_CACHE_DIR $GOPATH/pkg/mod"
+  #before_script:
+  #  - "[ -d $MOD_CACHE_DIR ] && cp -r $MOD_CACHE_DIR $GOPATH/pkg/mod"
   script:
     - go build ./...
-  after_script:
-    - cp -r $GOPATH/pkg/mod/. $MOD_CACHE_DIR
+  #after_script:
+  #- cp -r $GOPATH/pkg/mod/. $MOD_CACHE_DIR
   cache:
     key: $CI_PROJECT_ID
     paths:
