@@ -1,0 +1,24 @@
+stages:
+  - build
+  - test
+
+build:
+  stage: build
+  image: golang:1.11.5
+  script:
+    - go build ./...
+  only:
+    - branches
+
+test:
+  stage: test
+  image: docker:stable
+  services:
+    - docker:stable-dind
+  script:
+    - apk add py-pip
+    - pip install docker-compose
+    - docker-compose up -d
+    - sleep 10
+    - go test -v ./...
+    - docker-compose down
