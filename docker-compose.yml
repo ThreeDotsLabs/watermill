@@ -11,6 +11,8 @@ services:
       - .:/app
       - .mod-cache:/go/pkg/mod
     working_dir: /app
+    environment:
+      PUBSUB_EMULATOR_HOST: localhost:8085
 
   zookeeper:
     image: confluentinc/cp-zookeeper:5.0.1
