@@ -1,5 +1,5 @@
-# for Watermill development pourpses,
-# For Watermill based application docker plase check check https://watermill.io/docs/getting-started/
+# for Watermill development purposes.
+# For Watermill based application docker please check check https://watermill.io/docs/getting-started/
 
 version: '3'
 services:
@@ -36,3 +36,19 @@ services:
     entrypoint: gcloud --quiet beta emulators pubsub start --host-port=localhost:8085 --verbosity=debug --log-http
     network_mode: host
     restart: on-failure
+
+  rabbitmq:
+    image: rabbitmq:3.7-management
+    restart: on-failure
+    network_mode: host
+
+  prometheus:
+    image: prom/prometheus
+    restart: on-failure
+    network_mode: host
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+
+  grafana:
+    image: grafana/grafana:5.2.4
+    network_mode: host

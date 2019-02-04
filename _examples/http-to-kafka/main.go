@@ -10,10 +10,7 @@ import (
 	_ "net/http/pprof"
 	"time"
 
-	"github.com/go-chi/chi"
 	"github.com/pkg/errors"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	uuid "github.com/satori/go.uuid"
 
 	"github.com/ThreeDotsLabs/watermill"
@@ -65,8 +62,8 @@ func main() {
 		panic(err)
 	}
 
-	// todo: how to enforce that metrics are the last middleware?
-	prometheusRegistry := prometheus.NewRegistry()
+	prometheusRegistry, closeMetrics := metrics.ServeHTTP(*metricsAddr)
+	defer closeMetrics()
 	metrics.AddPrometheusRouterMetrics(r, prometheusRegistry, "", "")
 
 	r.AddMiddleware(
@@ -107,33 +104,7 @@ func main() {
 		_ = httpSubscriber.StartHTTPServer()
 	}()
 
-	wait := make(chan struct{})
-	go metricsServer(prometheusRegistry, wait)
-
 	_ = r.Run()
-	close(wait)
-}
-
-func metricsServer(prometheusRegistry *prometheus.Registry, wait chan struct{}) {
-	router := chi.NewRouter()
-	handler := promhttp.HandlerFor(prometheusRegistry, promhttp.HandlerOpts{})
-	router.Get("/metrics", func(w stdHttp.ResponseWriter, r *stdHttp.Request) {
-		handler.ServeHTTP(w, r)
-	})
-	server := stdHttp.Server{
-		Addr:    *metricsAddr,
-		Handler: handler,
-	}
-
-	go func() {
-		err := server.ListenAndServe()
-		if err != nil {
-			panic(err)
-		}
-	}()
-
-	<-wait
-	server.Close()
 }
 
 func delay(seconds float64) {

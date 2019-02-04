@@ -1,8 +1,6 @@
 package metrics
 
 import (
-	"time"
-
 	"github.com/pkg/errors"
 
 	"github.com/ThreeDotsLabs/watermill/message"
@@ -19,8 +17,8 @@ var (
 type SubscriberPrometheusMetricsDecorator struct {
 	message.Subscriber
 
-	subscriberTimeToAckSeconds *prometheus.HistogramVec
-	subscriberCountTotal       prometheus.Gauge
+	subscriberMessagesReceivedTotal *prometheus.CounterVec
+	subscriberCountTotal            prometheus.Gauge
 
 	closing chan struct{}
 }
@@ -30,23 +28,25 @@ func (s SubscriberPrometheusMetricsDecorator) recordMetrics(msg *message.Message
 		return
 	}
 
-	now := time.Now()
 	ctx := msg.Context()
 	labels := labelsFromCtx(ctx, subscriberLabelKeys...)
 
 	go func() {
 		select {
 		case <-msg.Acked():
-			s.subscriberTimeToAckSeconds.With(labels).Observe(time.Since(now).Seconds())
-		case <-s.closing:
-			return
+			labels[labelAcked] = "acked"
+		case <-msg.Nacked():
+			labels[labelAcked] = "nacked"
 		}
+		s.subscriberMessagesReceivedTotal.With(labels).Inc()
 	}()
 }
 
-func (s *SubscriberPrometheusMetricsDecorator) onClose(error) {
-	close(s.closing)
-}
+//
+//func (s *SubscriberPrometheusMetricsDecorator) Close() error {
+//	close(s.closing)
+//	return s.Subscriber.Close()
+//}
 
 // DecorateSubscriber wraps the underlying subscriber with Prometheus metrics.
 func (b PrometheusMetricsBuilder) DecorateSubscriber(sub message.Subscriber) (message.Subscriber, error) {
@@ -55,14 +55,14 @@ func (b PrometheusMetricsBuilder) DecorateSubscriber(sub message.Subscriber) (me
 		closing: make(chan struct{}),
 	}
 
-	d.subscriberTimeToAckSeconds, err = b.registerHistogramVec(prometheus.NewHistogramVec(
-		prometheus.HistogramOpts{
+	d.subscriberMessagesReceivedTotal, err = b.registerCounterVec(prometheus.NewCounterVec(
+		prometheus.CounterOpts{
 			Namespace: b.Namespace,
 			Subsystem: b.Subsystem,
-			Name:      "subscriber_time_to_ack_seconds",
-			Help:      "The time elapsed between obtaining a message and receiving an ACK",
+			Name:      "subscriber_messages_received_total",
+			Help:      "The total number of messages received by the subscriber",
 		},
-		subscriberLabelKeys,
+		append(subscriberLabelKeys, labelAcked),
 	))
 	if err != nil {
 		return nil, errors.Wrap(err, "could not register time to ack metric")
@@ -79,7 +79,7 @@ func (b PrometheusMetricsBuilder) DecorateSubscriber(sub message.Subscriber) (me
 		},
 	)
 
-	d.Subscriber, err = message.MessageTransformSubscriberDecorator(d.recordMetrics, d.onClose)(sub)
+	d.Subscriber, err = message.MessageTransformSubscriberDecorator(d.recordMetrics)(sub)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not decorate subscriber with metrics decorator")
 	}

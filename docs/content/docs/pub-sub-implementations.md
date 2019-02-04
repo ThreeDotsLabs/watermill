@@ -1,10 +1,10 @@
 +++
 title = "Pub/Sub's implementations"
-description = "Golang channel, Kafka, HTTP, Google Cloud Pub/Sub and more!"
+description = "Golang channel, Kafka, Google Cloud Pub/Sub, RabbitMQ and more!"
 date = 2018-12-05T12:47:48+01:00
 weight = -800
 draft = false
-bref = "Golang channel, Kafka, HTTP, Google Cloud Pub/Sub and more!"
+bref = "Golang channel, Kafka, Google Cloud Pub/Sub, RabbitMQ and more!"
 toc = false
 +++
 
@@ -15,6 +15,7 @@ toc = false
 |  [HTTP]({{< ref "#http" >}})  |   | x | `prod-ready` |
 |  [Google Cloud Pub/Sub]({{< ref "#google-cloud-pub-sub" >}})  | x | x | [`beta`](https://github.com/ThreeDotsLabs/watermill/pull/10) |
 |  [NATS Streaming]({{< ref "#nats-streaming" >}})  | x | x | `beta` |
+|  [RabbitMQ (AMQP)]({{< ref "#rabbitmq-amqp" >}})  | x | x | `beta` |
 |  MySQL Binlog  |  | x | [`idea`](https://github.com/ThreeDotsLabs/watermill/issues/5) |
 
 All built-in implementations can be found in [message/infrastructure](https://github.com/ThreeDotsLabs/watermill/tree/master/message/infrastructure).
@@ -253,11 +254,11 @@ Watermill will connect to the instance of Google Cloud Pub/Sub indicated by the 
 For development, you can use a Docker image with the emulator and the `PUBSUB_EMULATOR_HOST` env ([check out the Getting Started guide]({{< ref "getting-started#subscribing_gcloud" >}})).
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/docs/getting-started/googlecloud/main.go" first_line_contains="publisher, err :=" last_line_contains="panic(err)" %}}
+{{% load-snippet-partial file="content/docs/getting-started/googlecloud/main.go" first_line_contains="publisher, err :=" last_line_contains="panic(err)" padding_after="1" %}}
 {{% /render-md %}}
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/docs/getting-started/googlecloud/main.go" first_line_contains="subscriber, err :=" last_line_contains="panic(err)" %}}
+{{% load-snippet-partial file="content/docs/getting-started/googlecloud/main.go" first_line_contains="subscriber, err :=" last_line_contains="panic(err)" padding_after="1" %}}
 {{% /render-md %}}
 
 #### Publishing
@@ -311,14 +312,14 @@ By default NATS client will try to connect to `localhost:4222`. If you are using
 {{% load-snippet-partial file="content/src-link/message/infrastructure/nats/publisher.go" first_line_contains="// NewStreamingPublisher" last_line_contains="func NewStreamingPublisher" %}}
 
 Example:
-{{% load-snippet-partial file="content/docs/getting-started/nats-streaming/main.go" first_line_contains="publisher, err :=" last_line_contains="panic(err)" %}}
+{{% load-snippet-partial file="content/docs/getting-started/nats-streaming/main.go" first_line_contains="publisher, err :=" last_line_contains="panic(err)" padding_after="1" %}}
 {{% /render-md %}}
 
 {{% render-md %}}
 {{% load-snippet-partial file="content/src-link/message/infrastructure/nats/subscriber.go" first_line_contains="// NewStreamingSubscriber" last_line_contains="func NewStreamingSubscriber" %}}
 
 Example:
-{{% load-snippet-partial file="content/docs/getting-started/nats-streaming/main.go" first_line_contains="subscriber, err :=" last_line_contains="panic(err)" %}}
+{{% load-snippet-partial file="content/docs/getting-started/nats-streaming/main.go" first_line_contains="subscriber, err :=" last_line_contains="panic(err)" padding_after="1" %}}
 {{% /render-md %}}
 
 #### Publishing
@@ -348,6 +349,83 @@ When you have your own format of the messages, you can implement your own Marsha
 When needed, you can bypass both [UUID]({{< ref "message#message" >}}) and [Metadata]({{< ref "message#message" >}}) and send just a `message.Payload`,
 but some standard [middlewares]({{< ref "messages-router#middleware" >}}) may be not working.
 
+### RabbitMQ (AMQP)
+
+> RabbitMQ is the most widely deployed open source message broker.
+
+We are providing Pub/Sub implementation based on [github.com/streadway/amqp](https://github.com/streadway/amqp).
+
+{{% render-md %}}
+{{% load-snippet-partial file="content/src-link/message/infrastructure/amqp/doc.go" first_line_contains="// AMQP" last_line_contains="package amqp" padding_after="0" %}}
+{{% /render-md %}}
+
+#### Characteristics
+
+| Feature | Implements | Note |
+| ------- | ---------- | ---- |
+| ConsumerGroups | yes* | there are no literal consumer groups in AMQP, but we can achieve similar behaviour with `GenerateQueueNameTopicNameWithSuffix`. For more details please check [AMQP "Consumer Groups" section](#amqp-consumer-groups) |
+| ExactlyOnceDelivery | no |  |
+| GuaranteedOrder | yes |  yes, please check https://www.rabbitmq.com/semantics.html#ordering |
+| Persistent | yes* | when using `NewDurablePubSubConfig` or `NewDurableQueueConfig`  |
+
+#### Configuration
+
+Our AMQP is shipped with some pre-created configurations:
+
+{{% render-md %}}
+{{% load-snippet-partial file="content/src-link/message/infrastructure/amqp/config.go" first_line_contains="// NewDurablePubSubConfig" last_line_contains="type Config struct {" %}}
+{{% /render-md %}}
+
+For detailed configuration description, please check [message/infrastructure/amqp/pubsub_config.go](https://github.com/ThreeDotsLabs/watermill/tree/master/message/infrastructure/amqp/pubsub_config.go)
+
+##### TLS Config
+
+TLS config can be passed to `Config.TLSConfig`.
+
+
+##### Connecting
+
+{{% render-md %}}
+{{% load-snippet-partial file="content/docs/getting-started/amqp/main.go" first_line_contains="publisher, err :=" last_line_contains="panic(err)" padding_after="1" %}}
+{{% /render-md %}}
+
+{{% render-md %}}
+{{% load-snippet-partial file="content/docs/getting-started/amqp/main.go" first_line_contains="subscriber, err :=" last_line_contains="panic(err)" padding_after="1" %}}
+{{% /render-md %}}
+
+#### Publishing
+
+{{% render-md %}}
+{{% load-snippet-partial file="content/src-link/message/infrastructure/amqp/publisher.go" first_line_contains="// Publish" last_line_contains="func (p *Publisher) Publish" %}}
+{{% /render-md %}}
+
+#### Subscribing
+
+{{% render-md %}}
+{{% load-snippet-partial file="content/src-link/message/infrastructure/amqp/subscriber.go" first_line_contains="// Subscribe" last_line_contains="func (p *Subscriber) Subscribe" %}}
+{{% /render-md %}}
+
+#### Marshaler
+
+Marshaler is responsible for mapping AMQP's messages to Watermill's messages.
+
+Marshaller can be changed via the Configuration.
+If you need to customize thing in `amqp.Delivery`, you can do it `PostprocessPublishing` function.
+
+{{% render-md %}}
+{{% load-snippet-partial file="content/src-link/message/infrastructure/amqp/marshaler.go" first_line_contains="// Marshaler" last_line_contains="func (DefaultMarshaler)" padding_after="0" %}}
+{{% /render-md %}}
+
+#### AMQP "Consumer Groups"
+
+AMQP doesn't provide mechanism like Kafka's "consumer groups". You can still achieve similar behaviour with `GenerateQueueNameTopicNameWithSuffix` and `NewDurablePubSubConfig`.
+
+{{% render-md %}}
+{{% load-snippet-partial file="content/docs/snippets/amqp-consumer-groups/main.go" first_line_contains="func createSubscriber(" last_line_contains="go process(\"subscriber_2\", messages2)" %}}
+{{% /render-md %}}
+
+
+In this example both `pubSub1` and `pubSub2` will receive some messages independently.
 
 ### Implementing your own Pub/Sub
 
