@@ -2,11 +2,6 @@ package message
 
 type Metadata map[string]string
 
-type metadataItem struct {
-	Key   string `json:"key"`
-	Value string `json:"value"`
-}
-
 func (m Metadata) Get(key string) string {
 	if v, ok := m[key]; ok {
 		return v

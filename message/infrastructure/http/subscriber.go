@@ -27,16 +27,14 @@ func DefaultUnmarshalMessageFunc(topic string, req *http.Request) (*message.Mess
 	}
 
 	uuid := req.Header.Get(HeaderUUID)
-	if uuid == "" {
-		return nil, errors.New("No UUID encoded in header")
-	}
-
 	msg := message.NewMessage(uuid, body)
 
 	metadata := req.Header.Get(HeaderMetadata)
-	err = json.Unmarshal([]byte(metadata), &msg.Metadata)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not unmarshal metadata from request")
+	if metadata != "" {
+		err = json.Unmarshal([]byte(metadata), &msg.Metadata)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not unmarshal metadata from request")
+		}
 	}
 
 	return msg, nil
