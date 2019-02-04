@@ -97,7 +97,9 @@ func (p RetryPublisher) send(topic string, msg *message.Message) error {
 			return nil
 		}
 
-		p.config.Logger.Debug("publish failed, retrying in "+timeToNextRetry.String(), watermill.LogFields{})
+		p.config.Logger.Info("Publish failed, retrying in "+timeToNextRetry.String(), watermill.LogFields{
+			"error": err,
+		})
 		time.Sleep(timeToNextRetry)
 		timeToNextRetry *= 2
 	}
