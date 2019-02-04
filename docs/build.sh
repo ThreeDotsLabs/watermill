@@ -27,6 +27,7 @@ declare -a files_to_link=(
     "message/infrastructure/amqp/subscriber.go"
     "message/infrastructure/amqp/config.go"
     "message/infrastructure/amqp/marshaler.go"
+    "message/infrastructure/http/publisher.go"
     "message/message.go"
     "message/publisher.go"
     "message/subscriber.go"
