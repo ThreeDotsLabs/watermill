@@ -1,17 +1,17 @@
 +++
 title = "Troubleshooting"
-description = "When something went wrong"
+description = "When something goes wrong"
 weight = 0
 draft = false
 toc = true
-bref = "When something went wrong"
+bref = "When something goes wrong"
 type = "docs"
 +++
 
 ### Logging
 
-In most cases, you will find the answer to your problems in a log.
-Watermill offers a significant amount of logs of different severity levels.
+In most cases, you will find the answer to your problem in the logs.
+Watermill offers a significant amount of logs on different severity levels.
 
 If you are using `StdLoggerAdapter`, just change `debug`, and `trace` options to true:
 
@@ -19,16 +19,14 @@ If you are using `StdLoggerAdapter`, just change `debug`, and `trace` options to
 logger := watermill.NewStdLogger(true, true)
 {{< /highlight >}}
 
-### I had a deadlock
+### I have a deadlock
 
-When running locally, you can run:
+When running locally, you can send a `SIGQUIT` to the running process:
 
-- `CTRL + \` for Linux
-- `kill -s SIGQUIT [pid]` for another UNIX systems
+- `CTRL + \` on Linux
+- `kill -s SIGQUIT [pid]` on other UNIX systems
 
-
-to send `SIGQUIT` to the process.
-It will kill the process and print all goroutines with the line on which they are now.
+This will kill the process and print all goroutines along with lines on which they have stopped.
 
 ```
 SIGQUIT: quit
@@ -47,9 +45,10 @@ main.main()
 // ...
 ```
 
-When running in production, and you don't want to kill the entire process it is a good idea to use [pprof](https://golang.org/pkg/net/http/pprof/).
+When running in production and you don't want to kill the entire process, a better idea is to use [pprof](https://golang.org/pkg/net/http/pprof/).
 
-You can visit [http://localhost:6060/debug/pprof/goroutine?debug=1](http://localhost:6060/debug/pprof/goroutine?debug=1) to find all goroutines status.
+You can visit [http://localhost:6060/debug/pprof/goroutine?debug=1](http://localhost:6060/debug/pprof/goroutine?debug=1)
+on your local machine to see all goroutines status.
 
 
 ```
