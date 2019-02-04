@@ -36,4 +36,4 @@ test:
     - docker-compose pull -q
     - docker-compose up -d
     - sleep 10
-    - docker-compose run watermill go test ./...
+    - docker-compose run watermill go test ./... 2>stderr.out
