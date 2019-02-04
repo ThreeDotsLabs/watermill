@@ -12,7 +12,7 @@ toc = false
 |------|-----------|------------|--------|
 |  [Golang Channel]({{< ref "#golang-channel" >}}) | x | x | `prod-ready` |
 |  [Kafka]({{< ref "#kafka" >}}) | x | x | `prod-ready` |
-|  [HTTP]({{< ref "#http" >}})  |   | x | `prod-ready` |
+|  [HTTP]({{< ref "#http" >}})  | x | x | `prod-ready` |
 |  [Google Cloud Pub/Sub]({{< ref "#google-cloud-pub-sub" >}})  | x | x | [`beta`](https://github.com/ThreeDotsLabs/watermill/pull/10) |
 |  [NATS Streaming]({{< ref "#nats-streaming" >}})  | x | x | `beta` |
 |  [RabbitMQ (AMQP)]({{< ref "#rabbitmq-amqp" >}})  | x | x | `beta` |
@@ -147,36 +147,47 @@ marshaler := kafka.NewWithPartitioningMarshaler(func(topic string, msg *message.
 
 ### HTTP
 
-At this moment only HTTP subscriber is available. There is an issue for a [HTTP publisher](https://github.com/ThreeDotsLabs/watermill/issues/17).
-
-HTTP subscriber allows us to send messages received by HTTP request (for example - webhooks).
+The HTTP subscriber listens to HTTP requests (for example - webhooks) and outputs them as messages.
 You can then post them to any Publisher. Here is an example with [sending HTTP messages to Kafka](https://github.com/ThreeDotsLabs/watermill/blob/master/_examples/http-to-kafka/main.go).
 
-When implemented, HTTP publisher can be used as webhooks sender.
+The HTTP publisher sends HTTP requests as specified in its configuration. Here is an example with [transforming Kafka messages into HTTP webhook requests](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/kafka-to-http).
 
 #### Characteristics
 
 | Feature | Implements | Note |
 | ------- | ---------- | ---- |
 | ConsumerGroups | no | |
-| ExactlyOnceDelivery | no |  |
+| ExactlyOnceDelivery | yes |  |
 | GuaranteedOrder | yes |  |
 | Persistent | no| |
 
-#### Configuration
+#### Subscriber configuration
 
-The configuration of HTTP subscriber is done via the constructor.
+Subscriber configuration is done via the config struct passed to the constructor:
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/infrastructure/http/subscriber.go" first_line_contains="// NewSubscriber" last_line_contains="func NewSubscriber(" %}}
+{{% load-snippet-partial file="content/src-link/message/infrastructure/http/subscriber.go" first_line_contains="type SubscriberConfig struct" last_line_contains="}" %}}
 {{% /render-md %}}
 
-You can also use `NewSubscriberWithRouter` constructor to pass your own `chi.Router` (see [chi](https://github.com/go-chi/chi)).
+You can use the `Router` config option to `SubscriberConfig` to pass your own `chi.Router` (see [chi](https://github.com/go-chi/chi)).
 This may be helpful if you'd like to add your own HTTP handlers (e.g. a health check endpoint).
 
+#### Publisher configuration
+
+Publisher configuration is done via the config struct passed to the constructor:
+
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/infrastructure/http/subscriber.go" first_line_contains="// NewSubscriberWithRouter" last_line_contains="(*Subscriber, error)" %}}
+{{% load-snippet-partial file="content/src-link/message/infrastructure/http/publisher.go" first_line_contains="type PublisherConfig struct" last_line_contains="}" %}}
 {{% /render-md %}}
+
+How the message topic and body translate into the URL, method, headers, and payload of the HTTP request is highly configurable through the use of `MarshalMessageFunc`. 
+Use the provided `DefaultMarshalMessageFunc` to send POST requests to a specific url:
+
+{{% render-md %}}
+{{% load-snippet-partial file="content/src-link/message/infrastructure/http/publisher.go" first_line_contains="// MarshalMessageFunc" last_line_contains="return req, nil" padding_after="2" %}}
+{{% /render-md %}}
+
+You can pass your own `http.Client` to execute the requests or use Golang's default client. 
 
 #### Running
 
