@@ -1,9 +1,6 @@
 package main
 
 import (
-	"net/http"
-	"time"
-
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
 	watermill_http "github.com/ThreeDotsLabs/watermill/message/infrastructure/http"
@@ -12,9 +9,7 @@ import (
 )
 
 var (
-	brokers   = []string{"kafka:9092"}
-	logger    = watermill.NewStdLogger(false, false)
-	topicName = "kafka_to_http_example"
+	logger = watermill.NewStdLogger(false, false)
 )
 
 // filterMessages passes the message along if its event type is one of acceptedTypes.
@@ -34,36 +29,36 @@ func filterMessages(acceptedTypes ...string) message.HandlerFunc {
 	}
 }
 
-func marshalMessage(topic string, msg *message.Message) (*http.Request, error) {
-	return watermill_http.DefaultMarshalMessageFunc("http://webhooks-server:8001/"+topic, msg)
-}
-
 func main() {
 	publisher, err := watermill_http.NewPublisher(watermill_http.PublisherConfig{
-		MarshalMessageFunc: marshalMessage,
+		MarshalMessageFunc: watermill_http.DefaultMarshalMessageFunc,
 	}, logger)
 	if err != nil {
 		panic(err)
 	}
 
 	subscriber, err := kafka.NewSubscriber(kafka.SubscriberConfig{
-		Brokers: brokers,
+		Brokers: []string{"kafka:9092"},
 	}, nil, kafka.DefaultMarshaler{}, logger)
 	if err != nil {
 		panic(err)
 	}
 
-	pubSub := message.NewPubSub(publisher, subscriber)
-
-	router, err := message.NewRouter(message.RouterConfig{CloseTimeout: 5 * time.Second}, logger)
+	router, err := message.NewRouter(message.RouterConfig{}, logger)
 	if err != nil {
 		panic(err)
 	}
 
-	router.AddHandler("foo", topicName, "foo", pubSub, filterMessages("Foo"))
-	router.AddHandler("foo_or_bar", topicName, "foo_or_bar", pubSub, filterMessages("Foo", "Bar"))
-	router.AddHandler("all", topicName, "all", pubSub, filterMessages("Foo", "Bar", "Baz"))
+	topic := "kafka_to_http_example"
+	url := "http://webhooks-server:8001/"
+
+	router.AddHandler("foo", topic, subscriber, url+"foo", publisher, filterMessages("Foo"))
+	router.AddHandler("foo_or_bar", topic, subscriber, url+"foo_or_bar", publisher, filterMessages("Foo", "Bar"))
+	router.AddHandler("all", topic, subscriber, url+"all", publisher, filterMessages("Foo", "Bar", "Baz"))
 	router.AddPlugin(plugin.SignalsHandler)
 
 	err = router.Run()
+	if err != nil {
+		logger.Error("router exited with err", err, watermill.LogFields{})
+	}
 }

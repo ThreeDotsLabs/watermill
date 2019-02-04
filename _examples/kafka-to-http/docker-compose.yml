@@ -5,6 +5,7 @@ services:
     restart: on-failure
     volumes:
     - .:/app
+    - $GOPATH/pkg/mod:/go/pkg/mod
     working_dir: /app/webhooks-server/
     command: go run main.go
 
@@ -14,7 +15,8 @@ services:
     depends_on:
       - kafka
     volumes:
-      - .:/app
+    - .:/app
+    - $GOPATH/pkg/mod:/go/pkg/mod
     working_dir: /app/router/
     command: go run main.go
 
@@ -27,6 +29,7 @@ services:
     - router
     volumes:
     - .:/app
+    - $GOPATH/pkg/mod:/go/pkg/mod
     working_dir: /app/producer/
     command: go run main.go
 
