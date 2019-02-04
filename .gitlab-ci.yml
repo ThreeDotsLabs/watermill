@@ -1,3 +1,5 @@
+variables:
+  MOD_CACHE_DIR: .mod-cache
 stages:
   - build
   - test
@@ -5,8 +7,16 @@ stages:
 build:
   stage: build
   image: golang:1.11.5
+  before_script:
+    - "[ -d $MOD_CACHE_DIR ] && cp -r $MOD_CACHE_DIR $GOPATH/pkg/mod"
   script:
     - go build ./...
+  after_script:
+    - cp -r $GOPATH/pkg/mod/. $MOD_CACHE_DIR
+  cache:
+    key: $CI_PROJECT_ID
+    paths:
+      - .mod-cache/
   only:
     - branches
 
@@ -15,9 +25,15 @@ test:
   image: docker:stable
   services:
     - docker:stable-dind
+  cache:
+    key: $CI_PROJECT_ID
+    paths:
+      - .mod-cache/
+    policy: pull
   script:
     - apk add py-pip
     - pip install docker-compose
+    - docker-compose pull
     - docker-compose up -d
     - sleep 10
-    - docker-compose run watermill go test -v ./...
+    - docker-compose run watermill go test ./...
