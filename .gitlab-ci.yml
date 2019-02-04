@@ -33,7 +33,7 @@ test:
   script:
     - apk add py-pip
     - pip install docker-compose
-    - docker-compose pull
+    - docker-compose pull -q
     - docker-compose up -d
     - sleep 10
     - docker-compose run watermill go test ./...
