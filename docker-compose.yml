@@ -1,8 +1,16 @@
 # for Watermill development pourpses,
-# For Watermill based application docker plase check check https://watermill.io/docs/getting-started/
+# For Watermill based application docker plase check https://watermill.io/docs/getting-started/
 
 version: '3'
 services:
+  watermill:
+    image: golang:1.11.3
+    network_mode: host
+    command: /bin/true
+    volumes:
+      - .:/app
+    working_dir: /app
+
   zookeeper:
     image: confluentinc/cp-zookeeper:5.0.1
     network_mode: host

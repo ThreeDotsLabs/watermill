@@ -20,5 +20,4 @@ test:
     - pip install docker-compose
     - docker-compose up -d
     - sleep 10
-    - go test -v ./...
-    - docker-compose down
+    - docker-compose run watermill go test -v ./...
