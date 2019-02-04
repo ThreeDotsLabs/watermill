@@ -126,5 +126,11 @@ func TestPublishSubscribe_transactional_publish(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	infrastructure.TestPublishSubscribe(t, message.NewPubSub(publisher, subscriber))
+	infrastructure.TestPublishSubscribe(t, message.NewPubSub(publisher, subscriber), infrastructure.Features{
+		ConsumerGroups:        true,
+		ExactlyOnceDelivery:   false,
+		GuaranteedOrder:       true,
+		Persistent:            true,
+		RestartServiceCommand: []string{"docker", "restart", "watermill_rabbitmq_1"},
+	})
 }

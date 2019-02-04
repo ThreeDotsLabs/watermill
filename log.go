@@ -9,6 +9,8 @@ import (
 	"strings"
 )
 
+// todo - add tests & docs for changes
+
 type LogFields map[string]interface{}
 
 func (l LogFields) Add(newFields LogFields) LogFields {
@@ -94,7 +96,7 @@ func (l *StdLoggerAdapter) With(fields LogFields) LoggerAdapter {
 		InfoLogger:  l.InfoLogger,
 		DebugLogger: l.DebugLogger,
 		TraceLogger: l.TraceLogger,
-		fields:      l.fields.Copy().Add(fields),
+		fields:      l.fields.Add(fields),
 	}
 }
 
@@ -152,12 +154,17 @@ type CapturedMessage struct {
 
 type CaptureLoggerAdapter struct {
 	captured map[LogLevel][]CapturedMessage
+	fields   LogFields
 }
 
 func NewCaptureLogger() CaptureLoggerAdapter {
 	return CaptureLoggerAdapter{
 		captured: map[LogLevel][]CapturedMessage{},
 	}
+}
+
+func (c *CaptureLoggerAdapter) With(fields LogFields) LoggerAdapter {
+	return &CaptureLoggerAdapter{c.captured, c.fields.Add(fields)}
 }
 
 func (c *CaptureLoggerAdapter) capture(msg CapturedMessage) {
@@ -185,7 +192,7 @@ func (c CaptureLoggerAdapter) HasError(err error) bool {
 func (c *CaptureLoggerAdapter) Error(msg string, err error, fields LogFields) {
 	c.capture(CapturedMessage{
 		Level:  Error,
-		Fields: fields,
+		Fields: c.fields.Add(fields),
 		Msg:    msg,
 		Err:    err,
 	})
@@ -194,7 +201,7 @@ func (c *CaptureLoggerAdapter) Error(msg string, err error, fields LogFields) {
 func (c *CaptureLoggerAdapter) Info(msg string, fields LogFields) {
 	c.capture(CapturedMessage{
 		Level:  Info,
-		Fields: fields,
+		Fields: c.fields.Add(fields),
 		Msg:    msg,
 	})
 }
@@ -202,7 +209,7 @@ func (c *CaptureLoggerAdapter) Info(msg string, fields LogFields) {
 func (c *CaptureLoggerAdapter) Debug(msg string, fields LogFields) {
 	c.capture(CapturedMessage{
 		Level:  Debug,
-		Fields: fields,
+		Fields: c.fields.Add(fields),
 		Msg:    msg,
 	})
 }
@@ -210,7 +217,7 @@ func (c *CaptureLoggerAdapter) Debug(msg string, fields LogFields) {
 func (c *CaptureLoggerAdapter) Trace(msg string, fields LogFields) {
 	c.capture(CapturedMessage{
 		Level:  Trace,
-		Fields: fields,
+		Fields: c.fields.Add(fields),
 		Msg:    msg,
 	})
 }

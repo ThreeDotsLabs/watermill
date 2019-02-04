@@ -22,9 +22,11 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure"
 )
 
+// todo - test not persistent
+
 func createPubSub(t *testing.T) message.PubSub {
 	return gochannel.NewPersistentGoChannel(
-		0,
+		10000,
 		watermill.NewStdLogger(true, true),
 		time.Second*10,
 	)
@@ -45,7 +47,7 @@ func TestPublishSubscribe(t *testing.T) {
 }
 
 func TestPublishSubscribe_race_condition_on_subscribe(t *testing.T) {
-	for i := 0; i < 25; i++ {
+	for i := 0; i < 15; i++ {
 		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
 			t.Parallel()
 			testPublishSubscribeSubRace(t)
@@ -57,12 +59,12 @@ func testPublishSubscribeSubRace(t *testing.T) {
 	t.Helper()
 
 	const messagesCount = 1000
-	const subscribersCount = 100
+	const subscribersCount = 200
 
 	pubSub := gochannel.NewPersistentGoChannel(
 		messagesCount,
 		watermill.NewStdLogger(true, false),
-		time.Second*1,
+		time.Second*10,
 	)
 
 	allSent := sync.WaitGroup{}
@@ -97,10 +99,15 @@ func testPublishSubscribeSubRace(t *testing.T) {
 		}()
 	}
 
-	allReceived.Wait()
+	fmt.Println("waiting for all sent")
 	allSent.Wait()
 
+	fmt.Println("waiting for all received")
+	allReceived.Wait()
+
 	close(subscriberReceivedCh)
+
+	fmt.Println("asserting")
 
 	for subMsgs := range subscriberReceivedCh {
 		tests.AssertAllMessagesReceived(t, sentMessages, subMsgs)
