@@ -9,6 +9,8 @@ import (
 	"strings"
 )
 
+// todo - add tests & docs for changes
+
 type LogFields map[string]interface{}
 
 func (l LogFields) Add(newFields LogFields) LogFields {
@@ -24,11 +26,21 @@ func (l LogFields) Add(newFields LogFields) LogFields {
 	return resultFields
 }
 
+func (l LogFields) Copy() LogFields {
+	cpy := make(LogFields, len(l))
+	for k, v := range l {
+		cpy[k] = v
+	}
+
+	return cpy
+}
+
 type LoggerAdapter interface {
 	Error(msg string, err error, fields LogFields)
 	Info(msg string, fields LogFields)
 	Debug(msg string, fields LogFields)
 	Trace(msg string, fields LogFields)
+	With(fields LogFields) LoggerAdapter
 }
 
 type NopLogger struct{}
@@ -37,12 +49,15 @@ func (NopLogger) Error(msg string, err error, fields LogFields) {}
 func (NopLogger) Info(msg string, fields LogFields)             {}
 func (NopLogger) Debug(msg string, fields LogFields)            {}
 func (NopLogger) Trace(msg string, fields LogFields)            {}
+func (l NopLogger) With(fields LogFields) LoggerAdapter         { return l }
 
 type StdLoggerAdapter struct {
 	ErrorLogger *log.Logger
 	InfoLogger  *log.Logger
 	DebugLogger *log.Logger
 	TraceLogger *log.Logger
+
+	fields LogFields
 }
 
 func NewStdLogger(debug, trace bool) LoggerAdapter {
@@ -73,6 +88,16 @@ func (l *StdLoggerAdapter) Debug(msg string, fields LogFields) {
 
 func (l *StdLoggerAdapter) Trace(msg string, fields LogFields) {
 	l.log(l.TraceLogger, "TRACE", msg, fields)
+}
+
+func (l *StdLoggerAdapter) With(fields LogFields) LoggerAdapter {
+	return &StdLoggerAdapter{
+		ErrorLogger: l.ErrorLogger,
+		InfoLogger:  l.InfoLogger,
+		DebugLogger: l.DebugLogger,
+		TraceLogger: l.TraceLogger,
+		fields:      l.fields.Add(fields),
+	}
 }
 
 func (l *StdLoggerAdapter) log(logger *log.Logger, level string, msg string, fields LogFields) {
@@ -129,12 +154,17 @@ type CapturedMessage struct {
 
 type CaptureLoggerAdapter struct {
 	captured map[LogLevel][]CapturedMessage
+	fields   LogFields
 }
 
 func NewCaptureLogger() CaptureLoggerAdapter {
 	return CaptureLoggerAdapter{
 		captured: map[LogLevel][]CapturedMessage{},
 	}
+}
+
+func (c *CaptureLoggerAdapter) With(fields LogFields) LoggerAdapter {
+	return &CaptureLoggerAdapter{c.captured, c.fields.Add(fields)}
 }
 
 func (c *CaptureLoggerAdapter) capture(msg CapturedMessage) {
@@ -162,7 +192,7 @@ func (c CaptureLoggerAdapter) HasError(err error) bool {
 func (c *CaptureLoggerAdapter) Error(msg string, err error, fields LogFields) {
 	c.capture(CapturedMessage{
 		Level:  Error,
-		Fields: fields,
+		Fields: c.fields.Add(fields),
 		Msg:    msg,
 		Err:    err,
 	})
@@ -171,7 +201,7 @@ func (c *CaptureLoggerAdapter) Error(msg string, err error, fields LogFields) {
 func (c *CaptureLoggerAdapter) Info(msg string, fields LogFields) {
 	c.capture(CapturedMessage{
 		Level:  Info,
-		Fields: fields,
+		Fields: c.fields.Add(fields),
 		Msg:    msg,
 	})
 }
@@ -179,7 +209,7 @@ func (c *CaptureLoggerAdapter) Info(msg string, fields LogFields) {
 func (c *CaptureLoggerAdapter) Debug(msg string, fields LogFields) {
 	c.capture(CapturedMessage{
 		Level:  Debug,
-		Fields: fields,
+		Fields: c.fields.Add(fields),
 		Msg:    msg,
 	})
 }
@@ -187,7 +217,7 @@ func (c *CaptureLoggerAdapter) Debug(msg string, fields LogFields) {
 func (c *CaptureLoggerAdapter) Trace(msg string, fields LogFields) {
 	c.capture(CapturedMessage{
 		Level:  Trace,
-		Fields: fields,
+		Fields: c.fields.Add(fields),
 		Msg:    msg,
 	})
 }

@@ -7,25 +7,23 @@ import (
 )
 
 func BulkRead(messagesCh <-chan *message.Message, limit int, timeout time.Duration) (receivedMessages message.Messages, all bool) {
-	allMessagesReceived := make(chan struct{}, 1)
+	timeouted := time.After(timeout)
 
-	go func() {
-		for msg := range messagesCh {
+	// todo - copy move down
+
+MessagesLoop:
+	for len(receivedMessages) < limit {
+		select {
+		case msg, ok := <-messagesCh:
+			if !ok {
+				break MessagesLoop
+			}
+
 			receivedMessages = append(receivedMessages, msg)
 			msg.Ack()
-
-			if len(receivedMessages) == limit {
-				allMessagesReceived <- struct{}{}
-				break
-			}
+		case <-timeouted:
+			break MessagesLoop
 		}
-		// messagesCh closed
-		allMessagesReceived <- struct{}{}
-	}()
-
-	select {
-	case <-allMessagesReceived:
-	case <-time.After(timeout):
 	}
 
 	return receivedMessages, len(receivedMessages) == limit

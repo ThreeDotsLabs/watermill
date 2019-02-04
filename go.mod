@@ -3,7 +3,7 @@ module github.com/ThreeDotsLabs/watermill
 require (
 	cloud.google.com/go v0.33.1
 	github.com/DataDog/zstd v1.3.4 // indirect
-	github.com/Shopify/sarama v1.20.0
+	github.com/Shopify/sarama v1.20.1
 	github.com/Shopify/toxiproxy v2.1.3+incompatible // indirect
 	github.com/armon/go-metrics v0.0.0-20180917152333-f0300d1749da // indirect
 	github.com/boltdb/bolt v1.3.1 // indirect

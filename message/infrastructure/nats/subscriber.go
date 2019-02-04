@@ -194,6 +194,15 @@ func (s *StreamingSubscriber) Subscribe(topic string) (chan *message.Message, er
 	return output, nil
 }
 
+func (s *StreamingSubscriber) SubscribeInitialize(topic string) (err error) {
+	sub, err := s.subscribe(make(chan *message.Message), topic, nil)
+	if err != nil {
+		return errors.Wrap(err, "cannot initialize subscribe")
+	}
+
+	return errors.Wrap(sub.Close(), "cannot close after subscribe initialize")
+}
+
 func (s *StreamingSubscriber) subscribe(output chan *message.Message, topic string, subscriberLogFields watermill.LogFields) (stan.Subscription, error) {
 	if s.config.QueueGroup != "" {
 		return s.conn.QueueSubscribe(

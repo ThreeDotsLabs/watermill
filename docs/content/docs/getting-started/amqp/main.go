@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/amqp"
+	uuid "github.com/satori/go.uuid"
 
 	"github.com/ThreeDotsLabs/watermill"
 
