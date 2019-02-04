@@ -10,6 +10,12 @@ import (
 	"github.com/pkg/errors"
 )
 
+var (
+	// ErrOutputInNoPublisherHandler happens when a handler func returned some messages in a no-publisher handler.
+	// todo: maybe change the handler func signature in no-publisher handler so that there's no possibility for this
+	ErrOutputInNoPublisherHandler = errors.New("returned output messages in a handler without publisher")
+)
+
 // HandlerFunc is function called when message is received.
 //
 // msg.Ack() is called automatically when HandlerFunc doesn't return error.
@@ -127,7 +133,7 @@ func (r *Router) AddPlugin(p ...RouterPlugin) {
 //
 // subscribeTopic is a topic from which handler will receive messages.
 //
-// publishTopic is a topic to which router will produce messages retuened by handlerFunc.
+// publishTopic is a topic to which router will produce messages returned by handlerFunc.
 // When handler needs to publish to multiple topics,
 // it is recommended to just inject Publisher to Handler or implement middleware
 // which will catch messages and publish to topic based on metadata for example.
@@ -138,15 +144,35 @@ func (r *Router) AddPlugin(p ...RouterPlugin) {
 func (r *Router) AddHandler(
 	handlerName string,
 	subscribeTopic string,
+	subscriber Subscriber,
 	publishTopic string,
-	pubSub PubSub,
+	publisher Publisher,
 	handlerFunc HandlerFunc,
 ) error {
-	if err := r.AddNoPublisherHandler(handlerName, subscribeTopic, pubSub, handlerFunc); err != nil {
-		return err
+	r.logger.Info("Adding subscriber", watermill.LogFields{
+		"handler_name": handlerName,
+		"topic":        subscribeTopic,
+	})
+
+	if _, ok := r.handlers[handlerName]; ok {
+		return errors.Errorf("handler %s already exists", handlerName)
 	}
-	r.handlers[handlerName].publisher = pubSub
-	r.handlers[handlerName].publishTopic = publishTopic
+
+	r.handlers[handlerName] = &handler{
+		name:   handlerName,
+		logger: r.logger,
+
+		subscriber:     subscriber,
+		subscribeTopic: subscribeTopic,
+		publisher:      publisher,
+		publishTopic:   publishTopic,
+
+		runningHandlersWg: r.runningHandlersWg,
+		handlerFunc:       handlerFunc,
+		messagesCh:        nil,
+
+		closeCh: r.closeCh,
+	}
 
 	return nil
 }
@@ -166,26 +192,7 @@ func (r *Router) AddNoPublisherHandler(
 	subscriber Subscriber,
 	handlerFunc HandlerFunc,
 ) error {
-	r.logger.Info("Adding subscriber", watermill.LogFields{
-		"handler_name": handlerName,
-		"topic":        subscribeTopic,
-	})
-
-	if _, ok := r.handlers[handlerName]; ok {
-		return errors.Errorf("handler %s already exists", handlerName)
-	}
-
-	r.handlers[handlerName] = &handler{
-		name:              handlerName,
-		subscribeTopic:    subscribeTopic,
-		handlerFunc:       handlerFunc,
-		subscriber:        subscriber,
-		logger:            r.logger,
-		runningHandlersWg: r.runningHandlersWg,
-		closeCh:           r.closeCh,
-	}
-
-	return nil
+	return r.AddHandler(handlerName, subscribeTopic, subscriber, "", disabledPublisher{}, handlerFunc)
 }
 
 // Run runs all plugins and handlers and starts subscribing to provided topics.
@@ -288,17 +295,17 @@ func (r *Router) Close() error {
 }
 
 type handler struct {
-	name           string
+	name   string
+	logger watermill.LoggerAdapter
+
+	subscriber     Subscriber
 	subscribeTopic string
+	publisher      Publisher
 	publishTopic   string
-	handlerFunc    HandlerFunc
 
-	publisher         Publisher
-	subscriber        Subscriber
-	logger            watermill.LoggerAdapter
 	runningHandlersWg *sync.WaitGroup
-
-	messagesCh chan *Message
+	handlerFunc       HandlerFunc
+	messagesCh        chan *Message
 
 	closeCh chan struct{}
 }
@@ -386,7 +393,7 @@ func (h *handler) publishProducedMessages(producedMessages Messages, msgFields w
 	}
 
 	if h.publishTopic == "" {
-		return errors.New("router was created without publisher, cannot publish messages")
+		return ErrOutputInNoPublisherHandler
 	}
 
 	h.logger.Trace("Sending produced messages", msgFields.Add(watermill.LogFields{
@@ -404,5 +411,15 @@ func (h *handler) publishProducedMessages(producedMessages Messages, msgFields w
 		}
 	}
 
+	return nil
+}
+
+type disabledPublisher struct{}
+
+func (disabledPublisher) Publish(topic string, messages ...*Message) error {
+	return ErrOutputInNoPublisherHandler
+}
+
+func (disabledPublisher) Close() error {
 	return nil
 }

@@ -36,3 +36,8 @@ services:
     entrypoint: gcloud --quiet beta emulators pubsub start --host-port=localhost:8085 --verbosity=debug --log-http
     network_mode: host
     restart: on-failure
+
+  rabbitmq:
+    image: rabbitmq:3.7-management
+    restart: on-failure
+    network_mode: host
