@@ -1,6 +1,6 @@
 language: go
 go:
-  - "1.11"
+  - 1.11.x
 jobs:
   include:
     - stage: "Build"
