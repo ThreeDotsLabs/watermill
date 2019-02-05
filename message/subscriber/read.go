@@ -7,10 +7,6 @@ import (
 )
 
 func BulkRead(messagesCh <-chan *message.Message, limit int, timeout time.Duration) (receivedMessages message.Messages, all bool) {
-	timeouted := time.After(timeout)
-
-	// todo - copy move down
-
 MessagesLoop:
 	for len(receivedMessages) < limit {
 		select {
@@ -21,7 +17,7 @@ MessagesLoop:
 
 			receivedMessages = append(receivedMessages, msg)
 			msg.Ack()
-		case <-timeouted:
+		case <-time.After(timeout):
 			break MessagesLoop
 		}
 	}
@@ -31,30 +27,24 @@ MessagesLoop:
 
 // todo -add tests & deduplicate
 func BulkReadWithDeduplication(messagesCh <-chan *message.Message, limit int, timeout time.Duration) (receivedMessages message.Messages, all bool) {
-	allMessagesReceived := make(chan struct{}, 1)
-
 	receivedIDs := map[string]struct{}{}
 
-	go func() {
-		for msg := range messagesCh {
-			if _, alreadyReceived := receivedIDs[msg.UUID]; !alreadyReceived {
-				receivedMessages = append(receivedMessages, msg)
+MessagesLoop:
+	for len(receivedMessages) < limit {
+		select {
+		case msg, ok := <-messagesCh:
+			if !ok {
+				break MessagesLoop
+			}
+
+			if _, ok := receivedIDs[msg.UUID]; !ok {
 				receivedIDs[msg.UUID] = struct{}{}
+				receivedMessages = append(receivedMessages, msg)
 			}
 			msg.Ack()
-
-			if len(receivedMessages) == limit {
-				allMessagesReceived <- struct{}{}
-				break
-			}
+		case <-time.After(timeout):
+			break MessagesLoop
 		}
-		// messagesCh closed
-		allMessagesReceived <- struct{}{}
-	}()
-
-	select {
-	case <-allMessagesReceived:
-	case <-time.After(timeout):
 	}
 
 	return receivedMessages, len(receivedMessages) == limit

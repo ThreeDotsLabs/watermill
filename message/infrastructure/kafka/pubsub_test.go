@@ -24,8 +24,6 @@ func newPubSub(t *testing.T, marshaler kafka.MarshalerUnmarshaler, consumerGroup
 	saramaConfig := kafka.DefaultSaramaSubscriberConfig()
 	saramaConfig.Consumer.Offsets.Initial = sarama.OffsetOldest
 
-	//saramaConfig.Net.MaxOpenRequests = 10 // todo
-
 	saramaConfig.Admin.Timeout = time.Second * 30
 	saramaConfig.Producer.RequiredAcks = sarama.WaitForAll
 	saramaConfig.ChannelBufferSize = 10240
@@ -39,8 +37,6 @@ func newPubSub(t *testing.T, marshaler kafka.MarshalerUnmarshaler, consumerGroup
 			InitializeTopicDetails: &sarama.TopicDetail{
 				NumPartitions:     8,
 				ReplicationFactor: 1,
-				//ReplicaAssignment: nil,
-				//ConfigEntries:     nil,
 			},
 		},
 		saramaConfig,
@@ -91,20 +87,34 @@ func createNoGroupSubscriberConstructor(t *testing.T) message.Subscriber {
 }
 
 func TestPublishSubscribe(t *testing.T) {
+	features := infrastructure.Features{
+		ConsumerGroups:      true,
+		ExactlyOnceDelivery: false,
+		GuaranteedOrder:     false,
+		Persistent:          true,
+	}
+
+	if testing.Short() {
+		// Kafka tests are a bit slow
+		// todo - speed up
+		t.Log("Running only TestPublishSubscribe for Kafka with -short flag")
+		infrastructure.TestPublishSubscribe(t, createPubSub(t), features)
+		return
+	}
+
 	infrastructure.TestPubSub(
 		t,
-		infrastructure.Features{
-			ConsumerGroups:      true,
-			ExactlyOnceDelivery: false,
-			GuaranteedOrder:     false,
-			Persistent:          true,
-		},
+		features,
 		createPubSub,
 		createPubSubWithConsumerGrup,
 	)
 }
 
 func TestPublishSubscribe_ordered(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping long tests")
+	}
+
 	infrastructure.TestPubSub(
 		t,
 		infrastructure.Features{
@@ -119,5 +129,9 @@ func TestPublishSubscribe_ordered(t *testing.T) {
 }
 
 func TestNoGroupSubscriber(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping long tests")
+	}
+
 	infrastructure.TestNoGroupSubscriber(t, createPubSub, createNoGroupSubscriberConstructor)
 }

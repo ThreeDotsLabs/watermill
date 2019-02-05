@@ -2,6 +2,7 @@ package gochannel_test
 
 import (
 	"fmt"
+	"log"
 	"sync"
 	"testing"
 	"time"
@@ -22,9 +23,7 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure"
 )
 
-// todo - test not persistent
-
-func createPubSub(t *testing.T) message.PubSub {
+func createPersistentPubSub(t *testing.T) message.PubSub {
 	return gochannel.NewPersistentGoChannel(
 		10000,
 		watermill.NewStdLogger(true, true),
@@ -32,22 +31,45 @@ func createPubSub(t *testing.T) message.PubSub {
 	)
 }
 
-func TestPublishSubscribe(t *testing.T) {
+func TestPublishSubscribe_persistent(t *testing.T) {
 	infrastructure.TestPubSub(
 		t,
 		infrastructure.Features{
 			ConsumerGroups:      false,
 			ExactlyOnceDelivery: true,
-			GuaranteedOrder:     true,
+			GuaranteedOrder:     false,
 			Persistent:          false,
 		},
-		createPubSub,
+		createPersistentPubSub,
 		nil,
 	)
 }
 
+func TestPublishSubscribe_not_persistent(t *testing.T) {
+	messagesCount := 100
+	pubSub := gochannel.NewGoChannel(
+		int64(messagesCount),
+		watermill.NewStdLogger(true, true),
+		time.Second*10,
+	)
+	topicName := "test_topic_" + uuid.NewV4().String()
+
+	msgs, err := pubSub.Subscribe(topicName)
+	require.NoError(t, err)
+
+	sendMessages := infrastructure.AddSimpleMessages(t, messagesCount, pubSub, topicName)
+	receivedMsgs, _ := subscriber.BulkRead(msgs, messagesCount, time.Second)
+
+	tests.AssertAllMessagesReceived(t, sendMessages, receivedMsgs)
+}
+
 func TestPublishSubscribe_race_condition_on_subscribe(t *testing.T) {
-	for i := 0; i < 15; i++ {
+	testsCount := 15
+	if testing.Short() {
+		testsCount = 3
+	}
+
+	for i := 0; i < testsCount; i++ {
 		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
 			t.Parallel()
 			testPublishSubscribeSubRace(t)
@@ -58,13 +80,18 @@ func TestPublishSubscribe_race_condition_on_subscribe(t *testing.T) {
 func testPublishSubscribeSubRace(t *testing.T) {
 	t.Helper()
 
-	const messagesCount = 1000
-	const subscribersCount = 200
+	messagesCount := 500
+	subscribersCount := 200
+
+	if testing.Short() {
+		messagesCount = 200
+		subscribersCount = 20
+	}
 
 	pubSub := gochannel.NewPersistentGoChannel(
-		messagesCount,
+		int64(messagesCount),
 		watermill.NewStdLogger(true, false),
-		time.Second*10,
+		time.Second*20,
 	)
 
 	allSent := sync.WaitGroup{}
@@ -99,15 +126,15 @@ func testPublishSubscribeSubRace(t *testing.T) {
 		}()
 	}
 
-	fmt.Println("waiting for all sent")
+	log.Println("waiting for all sent")
 	allSent.Wait()
 
-	fmt.Println("waiting for all received")
+	log.Println("waiting for all received")
 	allReceived.Wait()
 
 	close(subscriberReceivedCh)
 
-	fmt.Println("asserting")
+	log.Println("asserting")
 
 	for subMsgs := range subscriberReceivedCh {
 		tests.AssertAllMessagesReceived(t, sentMessages, subMsgs)
