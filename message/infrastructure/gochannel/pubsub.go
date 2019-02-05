@@ -175,6 +175,11 @@ SendToSubscriber:
 			timeout = make(<-chan time.Time)
 		}
 
+		if g.closed {
+			g.logger.Info("Pub/Sub closed, discarding msg", subscriberLogFields)
+			return
+		}
+
 		select {
 		case s.outputChannel <- msgToSend:
 			g.logger.Trace("Sent message to subscriber", subscriberLogFields)
