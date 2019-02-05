@@ -16,7 +16,7 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/http"
 )
 
-func createPubSub(t *testing.T) message.PubSub {
+func createPubSub(t *testing.T) infrastructure.PubSub {
 	logger := watermill.NewStdLogger(true, true)
 
 	// use any free port to allow parallel tests
@@ -63,7 +63,7 @@ func createPubSub(t *testing.T) message.PubSub {
 	retryPub, err := publisher.NewRetryPublisher(pub, retryConf)
 	require.NoError(t, err)
 
-	return message.NewPubSub(retryPub, sub)
+	return message.NewPubSub(retryPub, sub).(infrastructure.PubSub)
 }
 
 func TestPublishSubscribe(t *testing.T) {

@@ -23,12 +23,12 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure"
 )
 
-func createPersistentPubSub(t *testing.T) message.PubSub {
+func createPersistentPubSub(t *testing.T) infrastructure.PubSub {
 	return gochannel.NewPersistentGoChannel(
 		10000,
 		watermill.NewStdLogger(true, true),
 		time.Second*10,
-	)
+	).(infrastructure.PubSub)
 }
 
 func TestPublishSubscribe_persistent(t *testing.T) {
@@ -82,7 +82,6 @@ func testPublishSubscribeSubRace(t *testing.T) {
 
 	messagesCount := 500
 	subscribersCount := 200
-
 	if testing.Short() {
 		messagesCount = 200
 		subscribersCount = 20

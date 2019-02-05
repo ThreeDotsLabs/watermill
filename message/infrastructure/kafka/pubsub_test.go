@@ -52,16 +52,16 @@ func generatePartitionKey(topic string, msg *message.Message) (string, error) {
 	return msg.Metadata.Get("partition_key"), nil
 }
 
-func createPubSubWithConsumerGrup(t *testing.T, consumerGroup string) message.PubSub {
-	return newPubSub(t, kafka.DefaultMarshaler{}, consumerGroup)
+func createPubSubWithConsumerGrup(t *testing.T, consumerGroup string) infrastructure.PubSub {
+	return newPubSub(t, kafka.DefaultMarshaler{}, consumerGroup).(infrastructure.PubSub)
 }
 
-func createPubSub(t *testing.T) message.PubSub {
-	return createPubSubWithConsumerGrup(t, "test")
+func createPubSub(t *testing.T) infrastructure.PubSub {
+	return createPubSubWithConsumerGrup(t, "test").(infrastructure.PubSub)
 }
 
-func createPartitionedPubSub(t *testing.T) message.PubSub {
-	return newPubSub(t, kafka.NewWithPartitioningMarshaler(generatePartitionKey), "test")
+func createPartitionedPubSub(t *testing.T) infrastructure.PubSub {
+	return newPubSub(t, kafka.NewWithPartitioningMarshaler(generatePartitionKey), "test").(infrastructure.PubSub)
 }
 
 func createNoGroupSubscriberConstructor(t *testing.T) message.Subscriber {
@@ -95,7 +95,7 @@ func TestPublishSubscribe(t *testing.T) {
 	}
 
 	if testing.Short() {
-		// Kafka tests are a bit slow
+		// Kafka tests are a bit slow, so let's run only basic test
 		// todo - speed up
 		t.Log("Running only TestPublishSubscribe for Kafka with -short flag")
 		infrastructure.TestPublishSubscribe(t, createPubSub(t), features)

@@ -25,7 +25,6 @@ MessagesLoop:
 	return receivedMessages, len(receivedMessages) == limit
 }
 
-// todo -add tests & deduplicate
 func BulkReadWithDeduplication(messagesCh <-chan *message.Message, limit int, timeout time.Duration) (receivedMessages message.Messages, all bool) {
 	receivedIDs := map[string]struct{}{}
 

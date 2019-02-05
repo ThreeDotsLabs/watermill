@@ -2,14 +2,13 @@ package watermill
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"reflect"
 	"sort"
 	"strings"
 )
-
-// todo - add tests & docs for changes
 
 type LogFields map[string]interface{}
 
@@ -61,7 +60,11 @@ type StdLoggerAdapter struct {
 }
 
 func NewStdLogger(debug, trace bool) LoggerAdapter {
-	l := log.New(os.Stderr, "[watermill] ", log.LstdFlags|log.Lmicroseconds|log.Lshortfile)
+	return NewStdLoggerWithOut(os.Stderr, debug, trace)
+}
+
+func NewStdLoggerWithOut(out io.Writer, debug bool, trace bool) LoggerAdapter {
+	l := log.New(out, "[watermill] ", log.LstdFlags|log.Lmicroseconds|log.Lshortfile)
 	a := &StdLoggerAdapter{InfoLogger: l, ErrorLogger: l}
 
 	if debug {
@@ -107,9 +110,11 @@ func (l *StdLoggerAdapter) log(logger *log.Logger, level string, msg string, fie
 
 	fieldsStr := ""
 
-	keys := make([]string, len(fields))
+	allFields := l.fields.Add(fields)
+
+	keys := make([]string, len(allFields))
 	i := 0
-	for field := range fields {
+	for field := range allFields {
 		keys[i] = field
 		i++
 	}
@@ -118,7 +123,7 @@ func (l *StdLoggerAdapter) log(logger *log.Logger, level string, msg string, fie
 
 	for _, key := range keys {
 		var valueStr string
-		value := fields[key]
+		value := allFields[key]
 
 		if stringer, ok := value.(fmt.Stringer); ok {
 			valueStr = stringer.String()

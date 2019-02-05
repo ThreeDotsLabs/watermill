@@ -199,9 +199,9 @@ func (s *Subscriber) openSubscribeChannel(logFields watermill.LogFields) (*amqp.
 
 	if s.config.Consume.Qos != (QosConfig{}) {
 		err = channel.Qos(
-			s.config.Consume.Qos.PrefetchCount, // prefetch count
-			s.config.Consume.Qos.PrefetchSize,  // prefetch size
-			s.config.Consume.Qos.Global,        // global
+			s.config.Consume.Qos.PrefetchCount,
+			s.config.Consume.Qos.PrefetchSize,
+			s.config.Consume.Qos.Global,
 		)
 		s.logger.Debug("Qos set", logFields)
 	}

@@ -2,8 +2,6 @@ package kafka
 
 import (
 	"context"
-	"log"
-	"os"
 	"sync"
 	"time"
 
@@ -18,10 +16,6 @@ import (
 
 	"github.com/pkg/errors"
 )
-
-func init() {
-	sarama.Logger = log.New(os.Stderr, "[Sarama] ", log.LstdFlags)
-}
 
 type Subscriber struct {
 	config       SubscriberConfig
@@ -82,7 +76,6 @@ type SubscriberConfig struct {
 	// How long about unsuccessful reconnecting next reconnect will occur.
 	ReconnectRetrySleep time.Duration
 
-	// todo - read defaults?
 	InitializeTopicDetails *sarama.TopicDetail
 }
 
