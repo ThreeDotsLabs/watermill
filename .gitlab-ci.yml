@@ -40,4 +40,4 @@ test:
     - docker-compose pull -q
     - docker-compose up -d
     - sleep 10
-    - docker-compose run watermill go test ./... >stdout
+    - docker-compose run watermill go test ./... -short >stdout
