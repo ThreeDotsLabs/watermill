@@ -30,10 +30,14 @@ test:
     paths:
       - .mod-cache/
     policy: pull
+  artifacts:
+    paths:
+      - ./stdout
+    when: always
   script:
     - apk add py-pip
     - pip install docker-compose
     - docker-compose pull -q
     - docker-compose up -d
     - sleep 10
-    - docker-compose run watermill go test ./... 2>stderr.out
+    - docker-compose run watermill go test ./... >stdout
