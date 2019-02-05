@@ -1,0 +1,12 @@
+# Configuration for the check_modules tool
+# which checks if the example compiles and works correctly
+
+# how to run the example
+cmd: "docker-compose up"
+
+# look for this string in the stdout
+# if anything is broken, it should not appear
+look_for: "POST /foo_or_bar: message"
+
+# stop looking after this amount of time (seconds)
+timeout: 10
