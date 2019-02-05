@@ -7,8 +7,6 @@ import (
 
 	"github.com/renstrom/shortuuid"
 
-	"github.com/hashicorp/go-multierror"
-
 	"github.com/pkg/errors"
 
 	"github.com/satori/go.uuid"
@@ -29,21 +27,28 @@ type subscriber struct {
 //
 // GoChannel has no global state,
 // that means that you need to use the same instance for Publishing and Subscribing!
+//
+// In when GoChannel is persistent, messages order is not guaranteed.
 type GoChannel struct {
 	sendTimeout         time.Duration
 	outputChannelBuffer int64
 
 	subscribers            map[string][]*subscriber
 	subscribersLock        sync.RWMutex
-	subscribersByTopicLock sync.Map // map of *sync.RWMutex, todo - change to mutex?
+	subscribersByTopicLock sync.Map // map of *sync.RMutex
 
 	logger watermill.LoggerAdapter
 
 	closed  bool
 	closing chan struct{}
 
+	// If persistent is set to true, when subscriber subscribes to the topic,
+	// it will receive all previously produced messages.
+	// All messages are persisted to the memory,
+	// so be aware that with large amount of messages you can go out of the memory.
 	persistent bool
-	messages   map[string][]*message.Message
+
+	messages map[string][]*message.Message
 }
 
 func (g *GoChannel) Publisher() message.Publisher {
@@ -54,6 +59,10 @@ func (g *GoChannel) Subscriber() message.Subscriber {
 	return g
 }
 
+// NewGoChannel creates new GoChannel Pub/Sub.
+//
+// This GoChannel is not persistent.
+// That means if we send message to topic to which no subscriber is subscribed, then message will be discarded.
 func NewGoChannel(outputChannelBuffer int64, logger watermill.LoggerAdapter, sendTimeout time.Duration) message.PubSub {
 	return &GoChannel{
 		sendTimeout:         sendTimeout,
@@ -62,13 +71,18 @@ func NewGoChannel(outputChannelBuffer int64, logger watermill.LoggerAdapter, sen
 		subscribers:            make(map[string][]*subscriber),
 		subscribersByTopicLock: sync.Map{},
 		logger: logger.With(watermill.LogFields{
-			"subscriber_uuid": shortuuid.New(),
+			"pubsub_uuid": shortuuid.New(),
 		}),
 
 		closing: make(chan struct{}),
 	}
 }
 
+// NewPersistentGoChannel creates new persistent GoChannel Pub/Sub.
+//
+// This GoChannel is persistent.
+// That means that when subscriber subscribes to the topic, it will receive all previously produced messages.
+// All messages are persisted to the memory, so be aware that with large amount of messages you can go out of the memory.
 func NewPersistentGoChannel(outputChannelBuffer int64, logger watermill.LoggerAdapter, sendTimeout time.Duration) message.PubSub {
 	return &GoChannel{
 		sendTimeout:         sendTimeout,
@@ -76,7 +90,7 @@ func NewPersistentGoChannel(outputChannelBuffer int64, logger watermill.LoggerAd
 
 		subscribers: make(map[string][]*subscriber),
 		logger: logger.With(watermill.LogFields{
-			"subscriber_uuid": shortuuid.New(),
+			"pubsub_uuid": shortuuid.New(),
 		}),
 
 		closing: make(chan struct{}),
@@ -104,13 +118,10 @@ func (g *GoChannel) Publish(topic string, messages ...*message.Message) error {
 	defer subLock.(*sync.Mutex).Unlock()
 
 	if g.persistent {
-		// todo - to func
-
 		if _, ok := g.messages[topic]; !ok {
 			g.messages[topic] = make([]*message.Message, 0)
 		}
 		g.messages[topic] = append(g.messages[topic], messages...)
-
 	}
 
 	for i := range messages {
@@ -128,36 +139,21 @@ func (g *GoChannel) sendMessage(topic string, message *message.Message) error {
 		return nil
 	}
 
-	subscribersWg := sync.WaitGroup{}
-	subscribersWg.Add(len(subscribers))
-
-	sendErrs := make(chan error, len(subscribers))
-
 	for i := range subscribers {
 		s := subscribers[i]
 
-		go func(subscriber *subscriber, sendErrs chan<- error) {
-			if err := g.sendMessageToSubscriber(message, subscriber, g.sendTimeout); err != nil {
-				sendErrs <- err
-			}
-			subscribersWg.Done()
-		}(s, sendErrs)
+		go func(subscriber *subscriber) {
+			g.sendMessageToSubscriber(message, subscriber, g.sendTimeout)
+		}(s)
 	}
 
-	subscribersWg.Wait()
-	close(sendErrs)
-
-	var err error
-	for sendErr := range sendErrs {
-		err = multierror.Append(err, sendErr)
-	}
-	return err
+	return nil
 }
 
-func (g *GoChannel) sendMessageToSubscriber(msg *message.Message, s *subscriber, sendTimeout time.Duration) error {
+func (g *GoChannel) sendMessageToSubscriber(msg *message.Message, s *subscriber, sendTimeout time.Duration) {
 	subscriberLogFields := watermill.LogFields{
-		"message_uuid":    msg.UUID,
-		"subscriber_uuid": s.uuid,
+		"message_uuid": msg.UUID,
+		"pubsub_uuid":  s.uuid,
 	}
 
 	ctx, cancelCtx := context.WithCancel(context.Background())
@@ -168,10 +164,9 @@ SendToSubscriber:
 		// copy the message to prevent ack/nack propagation to other consumers
 		// also allows to make retries on a fresh copy of the original message
 		msgToSend := msg.Copy()
+		msgToSend.SetContext(ctx)
 
 		g.logger.Trace("Sending msg to subscriber", subscriberLogFields)
-
-		msgToSend.SetContext(ctx)
 
 		var timeout <-chan time.Time
 		if sendTimeout != noTimeout {
@@ -184,24 +179,23 @@ SendToSubscriber:
 		case s.outputChannel <- msgToSend:
 			g.logger.Trace("Sent message to subscriber", subscriberLogFields)
 		case <-timeout:
-			return errors.Errorf("Sending message %s timeouted after %s", msgToSend.UUID, sendTimeout)
+			g.logger.Error("Sending message timeouted", nil, subscriberLogFields)
+			return
 		case <-g.closing:
 			g.logger.Trace("Closing, message discarded", subscriberLogFields)
-			return nil
+			return
 		}
 
 		select {
 		case <-msgToSend.Acked():
 			g.logger.Trace("Message acked", subscriberLogFields)
-			return nil
+			return
 		case <-msgToSend.Nacked():
 			g.logger.Trace("Nack received, resending message", subscriberLogFields)
 			continue SendToSubscriber
-		case <-timeout:
-			return errors.Errorf("Sending ACK for msg %s timeouted after %s", msgToSend.UUID, sendTimeout)
 		case <-g.closing:
 			g.logger.Trace("Closing, message discarded", subscriberLogFields)
-			return nil
+			return
 		}
 	}
 }
@@ -230,7 +224,6 @@ func (g *GoChannel) Subscribe(topic string) (chan *message.Message, error) {
 		defer g.subscribersLock.Unlock()
 		defer subLock.(*sync.Mutex).Unlock()
 
-		// todo - move to func
 		g.addSubscriber(topic, s)
 
 		return s.outputChannel, nil
@@ -244,24 +237,11 @@ func (g *GoChannel) Subscribe(topic string) (chan *message.Message, error) {
 			for i := range messages {
 				msg := g.messages[topic][i]
 
-				// todo - remove? refactor? move to send msg?-
-				g.logger.Trace("Sending msg to new consumer", watermill.LogFields{
-					"message_uuid": msg.UUID,
-					"subscriber":   s.uuid,
-				})
-
-				if err := g.sendMessageToSubscriber(msg, s, noTimeout); err != nil {
-					panic(err)
-				}
+				go func() {
+					g.sendMessageToSubscriber(msg, s, noTimeout)
+				}()
 			}
 		}
-
-		// todo - remove comment?
-		// todo - test out of order when publishing message during resending
-		// todo - better docs
-
-		// ensuring that there is no race condition between add to subscribers and read from g.messages
-		// for that reason we lock first, then unlock
 
 		g.addSubscriber(topic, s)
 	}(s)
@@ -290,14 +270,13 @@ func (g *GoChannel) Close() error {
 		return nil
 	}
 
+	g.closed = true
 	close(g.closing)
 
 	g.subscribersLock.Lock()
 	defer g.subscribersLock.Unlock()
 
 	g.logger.Info("Closing Pub/Sub", nil)
-
-	g.closed = true
 
 	for topic, topicSubscribers := range g.subscribers {
 		subLock, _ := g.subscribersByTopicLock.LoadOrStore(topic, &sync.Mutex{})
