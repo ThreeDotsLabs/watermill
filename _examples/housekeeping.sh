@@ -100,10 +100,17 @@ function check_examples() {
 
         echo -e "\nChecking examples"
 
+        pushd kafka-to-http &> /dev/null
         enumerate "checking if kafka-to-http runs and has expected output"
-        cd kafka-to-http
         check_example "docker-compose up" 20 "POST /foo_or_bar: message" || anyError=1
-        cd ..
+        popd &> /dev/null
+
+        pushd simple-app &> /dev/null
+        enumerate "checking simple-app/subscribing"
+        check_example "docker-compose up" 10 "msg=\"Starting handler\"" || anyError=1
+        enumerate "checking simple-app/publishing"
+        check_example "docker-compose up" 10 "msg=\"Message sent to Kafka\"" || anyError=1
+        popd &> /dev/null
 
         return $anyError
 }
@@ -119,14 +126,13 @@ function check_example() {
                 fail
                 anyError=1
         fi
-        cd ..
 
         return $anyError
 }
 
 if [ "$0" = "$BASH_SOURCE" ]
 then
-        # script executed directly, not sourced
+# script executed directly, not sourced
         update_gomod
         check_examples
         exit $?

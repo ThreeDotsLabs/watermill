@@ -6,7 +6,9 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/satori/go.uuid"
+	"github.com/ThreeDotsLabs/watermill"
+
+	uuid "github.com/satori/go.uuid"
 
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/kafka"
@@ -20,8 +22,9 @@ var (
 
 func main() {
 	log.Println("Starting publishing app")
+	logger := watermill.NewStdLogger(true, true)
 
-	publisher, err := kafka.NewPublisher(brokers, kafka.DefaultMarshaler{}, nil)
+	publisher, err := kafka.NewPublisher(brokers, kafka.DefaultMarshaler{}, nil, logger)
 	if err != nil {
 		panic(err)
 	}
