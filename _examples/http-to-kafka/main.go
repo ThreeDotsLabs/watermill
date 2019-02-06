@@ -7,7 +7,6 @@ import (
 	_ "net/http/pprof"
 
 	"github.com/pkg/errors"
-	uuid "github.com/satori/go.uuid"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
@@ -35,7 +34,7 @@ func main() {
 			return nil, errors.Wrap(err, "cannot read body")
 		}
 
-		return message.NewMessage(uuid.NewV4().String(), b), nil
+		return message.NewMessage(watermill.UUID(), b), nil
 	}, logger)
 	if err != nil {
 		panic(err)

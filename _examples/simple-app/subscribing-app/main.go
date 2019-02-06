@@ -13,7 +13,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	metrics "github.com/rcrowley/go-metrics"
-	uuid "github.com/satori/go.uuid"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
@@ -166,7 +165,7 @@ func (p PostsCounter) Count(msg *message.Message) ([]*message.Message, error) {
 		return nil, err
 	}
 
-	return []*message.Message{message.NewMessage(uuid.NewV4().String(), b)}, nil
+	return []*message.Message{message.NewMessage(watermill.UUID(), b)}, nil
 }
 
 // intentionally not importing type from app1, because we don't need all data and we want to avoid coupling

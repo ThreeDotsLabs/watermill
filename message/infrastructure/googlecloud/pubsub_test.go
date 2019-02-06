@@ -9,7 +9,6 @@ import (
 
 	"cloud.google.com/go/pubsub"
 	"github.com/pkg/errors"
-	uuid "github.com/satori/go.uuid"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ThreeDotsLabs/watermill"
@@ -132,7 +131,7 @@ func produceMessages(t *testing.T, ctx context.Context, topic string, howMany in
 
 	messages := make([]*message.Message, howMany)
 	for i := 0; i < howMany; i++ {
-		messages[i] = message.NewMessage(uuid.NewV4().String(), []byte{})
+		messages[i] = message.NewMessage(watermill.UUID(), []byte{})
 	}
 
 	require.NoError(t, pub.Publish(topic, messages...))

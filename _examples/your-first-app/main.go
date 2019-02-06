@@ -5,8 +5,6 @@ import (
 	"log"
 	"time"
 
-	uuid "github.com/satori/go.uuid"
-
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/kafka"
@@ -69,7 +67,7 @@ func publishEvents(publisher message.Publisher) {
 		}
 
 		err = publisher.Publish(consumeTopic, message.NewMessage(
-			uuid.NewV4().String(), // uuid of the message, very useful for debugging
+			watermill.UUID(), // uuid of the message, very useful for debugging
 			payload,
 		))
 		if err != nil {
@@ -131,7 +129,7 @@ func main() {
 				return nil, err
 			}
 
-			producedMessage := message.NewMessage(uuid.NewV4().String(), producedPayload)
+			producedMessage := message.NewMessage(watermill.UUID(), producedPayload)
 
 			return []*message.Message{producedMessage}, nil
 		},

@@ -13,7 +13,6 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure"
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/gochannel"
 	"github.com/ThreeDotsLabs/watermill/message/subscriber"
-	"github.com/satori/go.uuid"
 	"github.com/stretchr/testify/require"
 )
 
@@ -44,7 +43,7 @@ func TestPublishSubscribe_not_persistent(t *testing.T) {
 		int64(messagesCount),
 		watermill.NewStdLogger(true, true),
 	)
-	topicName := "test_topic_" + uuid.NewV4().String()
+	topicName := "test_topic_" + watermill.UUID()
 
 	msgs, err := pubSub.Subscribe(topicName)
 	require.NoError(t, err)
@@ -91,7 +90,7 @@ func testPublishSubscribeSubRace(t *testing.T) {
 	sentMessages := message.Messages{}
 	go func() {
 		for i := 0; i < messagesCount; i++ {
-			msg := message.NewMessage(uuid.NewV4().String(), nil)
+			msg := message.NewMessage(watermill.UUID(), nil)
 			sentMessages = append(sentMessages, msg)
 
 			go func() {

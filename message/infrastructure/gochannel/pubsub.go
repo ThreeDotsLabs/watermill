@@ -8,8 +8,6 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/satori/go.uuid"
-
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
 )
@@ -205,7 +203,7 @@ func (g *GoChannel) Subscribe(topic string) (chan *message.Message, error) {
 	subLock.(*sync.Mutex).Lock()
 
 	s := &subscriber{
-		uuid:          uuid.NewV4().String(),
+		uuid:          watermill.UUID(),
 		outputChannel: make(chan *message.Message, g.outputChannelBuffer),
 	}
 

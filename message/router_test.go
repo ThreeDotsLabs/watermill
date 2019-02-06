@@ -12,13 +12,12 @@ import (
 	"github.com/ThreeDotsLabs/watermill/internal/tests"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/subscriber"
-	uuid "github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestRouter_functional(t *testing.T) {
-	testID := uuid.NewV4().String()
+	testID := watermill.UUID()
 	subscribeTopic := "test_topic_" + testID
 
 	pubSub, err := createPubSub()
@@ -70,7 +69,7 @@ func TestRouter_functional(t *testing.T) {
 		func(msg *message.Message) (producedMessages []*message.Message, err error) {
 			receivedMessagesCh1 <- msg
 
-			toPublish := message.NewMessage(uuid.NewV4().String(), nil)
+			toPublish := message.NewMessage(watermill.UUID(), nil)
 			sentByHandlerCh <- toPublish
 
 			return []*message.Message{toPublish}, nil
@@ -319,7 +318,7 @@ func createBenchSubscriber(b *testing.B) benchMockSubscriber {
 	for i := 0; i < b.N; i++ {
 		messagesToSend = append(
 			messagesToSend,
-			message.NewMessage(uuid.NewV4().String(), []byte(fmt.Sprintf("%d", i))),
+			message.NewMessage(watermill.UUID(), []byte(fmt.Sprintf("%d", i))),
 		)
 	}
 
@@ -330,7 +329,7 @@ func publishMessagesForHandler(t *testing.T, messagesCount int, pubSub message.P
 	var messagesToPublish []*message.Message
 
 	for i := 0; i < messagesCount; i++ {
-		msg := message.NewMessage(uuid.NewV4().String(), []byte(fmt.Sprintf("%d", i)))
+		msg := message.NewMessage(watermill.UUID(), []byte(fmt.Sprintf("%d", i)))
 
 		messagesToPublish = append(messagesToPublish, msg)
 	}

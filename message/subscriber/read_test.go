@@ -4,11 +4,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/internal/tests"
 
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/subscriber"
-	"github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -37,7 +37,7 @@ func TestBulkRead(t *testing.T) {
 			messagesCh := make(chan *message.Message, messagesCount)
 
 			for i := 0; i < messagesCount; i++ {
-				msg := message.NewMessage(uuid.NewV4().String(), nil)
+				msg := message.NewMessage(watermill.UUID(), nil)
 
 				messages = append(messages, msg)
 				messagesCh <- msg
@@ -75,7 +75,7 @@ func TestBulkRead_timeout(t *testing.T) {
 			messagesCh := make(chan *message.Message, messagesCount)
 
 			for i := 0; i < messagesCount; i++ {
-				msg := message.NewMessage(uuid.NewV4().String(), nil)
+				msg := message.NewMessage(watermill.UUID(), nil)
 
 				messages = append(messages, msg)
 
@@ -118,7 +118,7 @@ func TestBulkRead_with_limit(t *testing.T) {
 			messagesCh := make(chan *message.Message, messagesCount)
 
 			for i := 0; i < messagesCount; i++ {
-				msg := message.NewMessage(uuid.NewV4().String(), nil)
+				msg := message.NewMessage(watermill.UUID(), nil)
 
 				messages = append(messages, msg)
 				messagesCh <- msg
@@ -156,7 +156,7 @@ func TestBulkRead_return_on_channel_close(t *testing.T) {
 			messagesChClosed := false
 
 			for i := 0; i < messagesCount; i++ {
-				msg := message.NewMessage(uuid.NewV4().String(), nil)
+				msg := message.NewMessage(watermill.UUID(), nil)
 				messages = append(messages, msg)
 
 				if i < sendLimit {
@@ -179,8 +179,8 @@ func TestBulkRead_return_on_channel_close(t *testing.T) {
 func TestBulkReadWithDeduplication(t *testing.T) {
 	messagesCh := make(chan *message.Message, 3)
 
-	msg1 := message.NewMessage(uuid.NewV4().String(), nil)
-	msg2 := message.NewMessage(uuid.NewV4().String(), nil)
+	msg1 := message.NewMessage(watermill.UUID(), nil)
+	msg2 := message.NewMessage(watermill.UUID(), nil)
 	messagesCh <- msg1
 	messagesCh <- msg1
 	messagesCh <- msg2
