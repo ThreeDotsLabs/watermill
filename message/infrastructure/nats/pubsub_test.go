@@ -4,15 +4,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/satori/go.uuid"
-
 	"github.com/ThreeDotsLabs/watermill"
-	"github.com/stretchr/testify/require"
-
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure"
-
 	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ThreeDotsLabs/watermill/message/infrastructure"
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/nats"
+	"github.com/nats-io/go-nats-streaming"
+	"github.com/satori/go.uuid"
+	"github.com/stretchr/testify/require"
 )
 
 func newPubSub(t *testing.T, clientID string, queueName string) message.PubSub {
@@ -21,6 +19,9 @@ func newPubSub(t *testing.T, clientID string, queueName string) message.PubSub {
 		ClusterID: "test-cluster",
 		ClientID:  clientID + "_pub",
 		Marshaler: nats.GobMarshaler{},
+		StanOptions: []stan.Option{
+			stan.NatsURL("nats://nats-streaming:4222"),
+		},
 	}, logger)
 	require.NoError(t, err)
 
