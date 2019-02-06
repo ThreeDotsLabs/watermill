@@ -144,10 +144,10 @@ func (l *StdLoggerAdapter) log(logger *log.Logger, level string, msg string, fie
 type LogLevel uint
 
 const (
-	Trace LogLevel = iota + 1
-	Debug
-	Info
-	Error
+	TraceLogLevel LogLevel = iota + 1
+	DebugLogLevel
+	InfoLogLevel
+	ErrorLogLevel
 )
 
 type CapturedMessage struct {
@@ -176,6 +176,10 @@ func (c *CaptureLoggerAdapter) capture(msg CapturedMessage) {
 	c.captured[msg.Level] = append(c.captured[msg.Level], msg)
 }
 
+func (c CaptureLoggerAdapter) Captured() map[LogLevel][]CapturedMessage {
+	return c.captured
+}
+
 func (c CaptureLoggerAdapter) Has(msg CapturedMessage) bool {
 	for _, capturedMsg := range c.captured[msg.Level] {
 		if reflect.DeepEqual(msg, capturedMsg) {
@@ -186,7 +190,7 @@ func (c CaptureLoggerAdapter) Has(msg CapturedMessage) bool {
 }
 
 func (c CaptureLoggerAdapter) HasError(err error) bool {
-	for _, capturedMsg := range c.captured[Error] {
+	for _, capturedMsg := range c.captured[ErrorLogLevel] {
 		if capturedMsg.Err == err {
 			return true
 		}
@@ -196,7 +200,7 @@ func (c CaptureLoggerAdapter) HasError(err error) bool {
 
 func (c *CaptureLoggerAdapter) Error(msg string, err error, fields LogFields) {
 	c.capture(CapturedMessage{
-		Level:  Error,
+		Level:  ErrorLogLevel,
 		Fields: c.fields.Add(fields),
 		Msg:    msg,
 		Err:    err,
@@ -205,7 +209,7 @@ func (c *CaptureLoggerAdapter) Error(msg string, err error, fields LogFields) {
 
 func (c *CaptureLoggerAdapter) Info(msg string, fields LogFields) {
 	c.capture(CapturedMessage{
-		Level:  Info,
+		Level:  InfoLogLevel,
 		Fields: c.fields.Add(fields),
 		Msg:    msg,
 	})
@@ -213,7 +217,7 @@ func (c *CaptureLoggerAdapter) Info(msg string, fields LogFields) {
 
 func (c *CaptureLoggerAdapter) Debug(msg string, fields LogFields) {
 	c.capture(CapturedMessage{
-		Level:  Debug,
+		Level:  DebugLogLevel,
 		Fields: c.fields.Add(fields),
 		Msg:    msg,
 	})
@@ -221,7 +225,7 @@ func (c *CaptureLoggerAdapter) Debug(msg string, fields LogFields) {
 
 func (c *CaptureLoggerAdapter) Trace(msg string, fields LogFields) {
 	c.capture(CapturedMessage{
-		Level:  Trace,
+		Level:  TraceLogLevel,
 		Fields: c.fields.Add(fields),
 		Msg:    msg,
 	})
