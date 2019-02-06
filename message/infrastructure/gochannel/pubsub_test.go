@@ -7,28 +7,21 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ThreeDotsLabs/watermill/internal/tests"
-
-	"github.com/ThreeDotsLabs/watermill/message/subscriber"
-
-	"github.com/stretchr/testify/require"
-
-	"github.com/satori/go.uuid"
-
 	"github.com/ThreeDotsLabs/watermill"
-
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure/gochannel"
-
+	"github.com/ThreeDotsLabs/watermill/internal/tests"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure"
+	"github.com/ThreeDotsLabs/watermill/message/infrastructure/gochannel"
+	"github.com/ThreeDotsLabs/watermill/message/subscriber"
+	"github.com/satori/go.uuid"
+	"github.com/stretchr/testify/require"
 )
 
-func createPersistentPubSub(t *testing.T) message.PubSub {
+func createPersistentPubSub(t *testing.T) infrastructure.PubSub {
 	return gochannel.NewPersistentGoChannel(
 		10000,
 		watermill.NewStdLogger(true, true),
-		time.Second*10,
-	)
+	).(infrastructure.PubSub)
 }
 
 func TestPublishSubscribe_persistent(t *testing.T) {
@@ -50,7 +43,6 @@ func TestPublishSubscribe_not_persistent(t *testing.T) {
 	pubSub := gochannel.NewGoChannel(
 		int64(messagesCount),
 		watermill.NewStdLogger(true, true),
-		time.Second*10,
 	)
 	topicName := "test_topic_" + uuid.NewV4().String()
 
@@ -82,7 +74,6 @@ func testPublishSubscribeSubRace(t *testing.T) {
 
 	messagesCount := 500
 	subscribersCount := 200
-
 	if testing.Short() {
 		messagesCount = 200
 		subscribersCount = 20
@@ -91,7 +82,6 @@ func testPublishSubscribeSubRace(t *testing.T) {
 	pubSub := gochannel.NewPersistentGoChannel(
 		int64(messagesCount),
 		watermill.NewStdLogger(true, false),
-		time.Second*20,
 	)
 
 	allSent := sync.WaitGroup{}

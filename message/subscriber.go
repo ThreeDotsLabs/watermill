@@ -17,5 +17,12 @@ type Subscriber interface {
 }
 
 type SubscribeInitializer interface {
+	// SubscribeInitialize can be called to initialize subscribe before consume.
+	// When calling Subscribe before Publish, SubscribeInitialize should be not required.
+	//
+	// Not every Pub/Sub requires this initialize and it may be optional for performance improvements etc.
+	// For detailed SubscribeInitialize functionality, please check Pub/Subs godoc.
+	//
+	// Implementing SubscribeInitialize is not obligatory.
 	SubscribeInitialize(topic string) error
 }

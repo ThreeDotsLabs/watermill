@@ -3,7 +3,6 @@ package main
 
 import (
 	"log"
-	"time"
 
 	"github.com/satori/go.uuid"
 
@@ -17,7 +16,6 @@ func main() {
 	pubSub := gochannel.NewGoChannel(
 		0, // buffer (channel) size
 		watermill.NewStdLogger(false, false),
-		time.Second, // send timeout
 	)
 
 	messages, err := pubSub.Subscribe("example.topic")

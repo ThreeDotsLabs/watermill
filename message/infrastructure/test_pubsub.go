@@ -44,11 +44,18 @@ type Features struct {
 	RestartServiceCommand []string
 }
 
-type PubSubConstructor func(t *testing.T) message.PubSub
-type ConsumerGroupPubSubConstructor func(t *testing.T, consumerGroup string) message.PubSub
+type PubSubConstructor func(t *testing.T) PubSub
+type ConsumerGroupPubSubConstructor func(t *testing.T, consumerGroup string) PubSub
 
 type SimpleMessage struct {
 	Num int `json:"num"`
+}
+
+type PubSub interface {
+	message.PubSub
+
+	// Subscriber is needed for unwrapped message.PubSub's subscriber, containing SubscribeInitializer.
+	Subscriber() message.Subscriber
 }
 
 func TestPubSub(
@@ -129,7 +136,7 @@ func TestPubSubStressTest(
 	}
 }
 
-func TestPublishSubscribe(t *testing.T, pubSub message.PubSub, features Features) {
+func TestPublishSubscribe(t *testing.T, pubSub PubSub, features Features) {
 	topicName := testTopicName()
 
 	if subscribeInitializer, ok := pubSub.Subscriber().(message.SubscribeInitializer); ok {
@@ -170,7 +177,7 @@ func TestPublishSubscribe(t *testing.T, pubSub message.PubSub, features Features
 	assertMessagesChannelClosed(t, messages)
 }
 
-func TestPublishSubscribeInOrder(t *testing.T, pubSub message.PubSub, features Features) {
+func TestPublishSubscribeInOrder(t *testing.T, pubSub PubSub, features Features) {
 	if !features.GuaranteedOrder {
 		t.Skipf("order is not guaranteed")
 	}
@@ -210,7 +217,6 @@ func TestPublishSubscribeInOrder(t *testing.T, pubSub message.PubSub, features F
 
 	receivedMessagesByType := map[string][]string{}
 	for _, msg := range receivedMessages {
-
 		if _, ok := receivedMessagesByType[string(msg.Payload)]; !ok {
 			receivedMessagesByType[string(msg.Payload)] = []string{}
 		}
@@ -225,7 +231,7 @@ func TestPublishSubscribeInOrder(t *testing.T, pubSub message.PubSub, features F
 	}
 }
 
-func TestResendOnError(t *testing.T, pubSub message.PubSub, features Features) {
+func TestResendOnError(t *testing.T, pubSub PubSub, features Features) {
 	defer closePubSub(t, pubSub)
 	topicName := testTopicName()
 
@@ -266,7 +272,7 @@ NackLoop:
 	tests.AssertAllMessagesReceived(t, publishedMessages, receivedMessages)
 }
 
-func TestNoAck(t *testing.T, pubSub message.PubSub, features Features) {
+func TestNoAck(t *testing.T, pubSub PubSub, features Features) {
 	if !features.GuaranteedOrder {
 		t.Skip("guaranteed order is required for this test")
 	}
@@ -375,6 +381,7 @@ func TestContinueAfterSubscribeClose(t *testing.T, createPubSub PubSubConstructo
 		}
 	}
 
+	// we need to deduplicate messages, because bulkRead will deduplicate only per one batch
 	uniqueReceivedMessages := message.Messages{}
 	for _, msg := range receivedMessages {
 		uniqueReceivedMessages = append(uniqueReceivedMessages, msg)
@@ -448,7 +455,7 @@ func TestContinueAfterErrors(t *testing.T, createPubSub PubSubConstructor, featu
 	messagesToPublish := AddSimpleMessages(t, totalMessagesCount, pubSub, topicName)
 
 	for i := 0; i < subscribersToNack; i++ {
-		var errorsPubSub message.PubSub
+		var errorsPubSub PubSub
 		if !features.Persistent {
 			errorsPubSub = pubSub
 		} else {
@@ -508,7 +515,7 @@ func TestConsumerGroups(t *testing.T, pubSubConstructor ConsumerGroupPubSubConst
 }
 
 // TestPublisherClose sends big amount of messages and them run close to ensure that messages are not lost during adding.
-func TestPublisherClose(t *testing.T, pubSub message.PubSub, features Features) {
+func TestPublisherClose(t *testing.T, pubSub PubSub, features Features) {
 	topicName := testTopicName()
 	if subscribeInitializer, ok := pubSub.Subscriber().(message.SubscribeInitializer); ok {
 		require.NoError(t, subscribeInitializer.SubscribeInitialize(topicName))
@@ -529,7 +536,7 @@ func TestPublisherClose(t *testing.T, pubSub message.PubSub, features Features) 
 	require.NoError(t, pubSub.Close())
 }
 
-func TestTopic(t *testing.T, pubSub message.PubSub, features Features) {
+func TestTopic(t *testing.T, pubSub PubSub, features Features) {
 	defer closePubSub(t, pubSub)
 
 	topic1 := testTopicName()
@@ -564,7 +571,7 @@ func TestTopic(t *testing.T, pubSub message.PubSub, features Features) {
 	assert.Equal(t, messagesConsumedTopic2.IDs()[0], topic2Msg.UUID)
 }
 
-func TestMessageCtx(t *testing.T, pubSub message.PubSub, features Features) {
+func TestMessageCtx(t *testing.T, pubSub PubSub, features Features) {
 	defer closePubSub(t, pubSub)
 
 	topicName := testTopicName()
@@ -633,7 +640,7 @@ func TestMessageCtx(t *testing.T, pubSub message.PubSub, features Features) {
 	}
 }
 
-func TestReconnect(t *testing.T, pubSub message.PubSub, features Features) {
+func TestReconnect(t *testing.T, pubSub PubSub, features Features) {
 	if len(features.RestartServiceCommand) == 0 {
 		t.Skip("no RestartServiceCommand provided, cannot test reconnect")
 	}
@@ -746,7 +753,7 @@ func testTopicName() string {
 	return "topic_" + uuid.NewV4().String()
 }
 
-func closePubSub(t *testing.T, pubSub message.PubSub) {
+func closePubSub(t *testing.T, pubSub PubSub) {
 	err := pubSub.Close()
 	require.NoError(t, err)
 }

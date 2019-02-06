@@ -2,14 +2,13 @@ package watermill
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"reflect"
 	"sort"
 	"strings"
 )
-
-// todo - add tests & docs for changes
 
 type LogFields map[string]interface{}
 
@@ -61,7 +60,11 @@ type StdLoggerAdapter struct {
 }
 
 func NewStdLogger(debug, trace bool) LoggerAdapter {
-	l := log.New(os.Stderr, "[watermill] ", log.LstdFlags|log.Lmicroseconds|log.Lshortfile)
+	return NewStdLoggerWithOut(os.Stderr, debug, trace)
+}
+
+func NewStdLoggerWithOut(out io.Writer, debug bool, trace bool) LoggerAdapter {
+	l := log.New(out, "[watermill] ", log.LstdFlags|log.Lmicroseconds|log.Lshortfile)
 	a := &StdLoggerAdapter{InfoLogger: l, ErrorLogger: l}
 
 	if debug {
@@ -107,9 +110,11 @@ func (l *StdLoggerAdapter) log(logger *log.Logger, level string, msg string, fie
 
 	fieldsStr := ""
 
-	keys := make([]string, len(fields))
+	allFields := l.fields.Add(fields)
+
+	keys := make([]string, len(allFields))
 	i := 0
-	for field := range fields {
+	for field := range allFields {
 		keys[i] = field
 		i++
 	}
@@ -118,7 +123,7 @@ func (l *StdLoggerAdapter) log(logger *log.Logger, level string, msg string, fie
 
 	for _, key := range keys {
 		var valueStr string
-		value := fields[key]
+		value := allFields[key]
 
 		if stringer, ok := value.(fmt.Stringer); ok {
 			valueStr = stringer.String()
@@ -139,10 +144,10 @@ func (l *StdLoggerAdapter) log(logger *log.Logger, level string, msg string, fie
 type LogLevel uint
 
 const (
-	Trace LogLevel = iota + 1
-	Debug
-	Info
-	Error
+	TraceLogLevel LogLevel = iota + 1
+	DebugLogLevel
+	InfoLogLevel
+	ErrorLogLevel
 )
 
 type CapturedMessage struct {
@@ -157,8 +162,8 @@ type CaptureLoggerAdapter struct {
 	fields   LogFields
 }
 
-func NewCaptureLogger() CaptureLoggerAdapter {
-	return CaptureLoggerAdapter{
+func NewCaptureLogger() *CaptureLoggerAdapter {
+	return &CaptureLoggerAdapter{
 		captured: map[LogLevel][]CapturedMessage{},
 	}
 }
@@ -171,6 +176,10 @@ func (c *CaptureLoggerAdapter) capture(msg CapturedMessage) {
 	c.captured[msg.Level] = append(c.captured[msg.Level], msg)
 }
 
+func (c CaptureLoggerAdapter) Captured() map[LogLevel][]CapturedMessage {
+	return c.captured
+}
+
 func (c CaptureLoggerAdapter) Has(msg CapturedMessage) bool {
 	for _, capturedMsg := range c.captured[msg.Level] {
 		if reflect.DeepEqual(msg, capturedMsg) {
@@ -181,7 +190,7 @@ func (c CaptureLoggerAdapter) Has(msg CapturedMessage) bool {
 }
 
 func (c CaptureLoggerAdapter) HasError(err error) bool {
-	for _, capturedMsg := range c.captured[Error] {
+	for _, capturedMsg := range c.captured[ErrorLogLevel] {
 		if capturedMsg.Err == err {
 			return true
 		}
@@ -191,7 +200,7 @@ func (c CaptureLoggerAdapter) HasError(err error) bool {
 
 func (c *CaptureLoggerAdapter) Error(msg string, err error, fields LogFields) {
 	c.capture(CapturedMessage{
-		Level:  Error,
+		Level:  ErrorLogLevel,
 		Fields: c.fields.Add(fields),
 		Msg:    msg,
 		Err:    err,
@@ -200,7 +209,7 @@ func (c *CaptureLoggerAdapter) Error(msg string, err error, fields LogFields) {
 
 func (c *CaptureLoggerAdapter) Info(msg string, fields LogFields) {
 	c.capture(CapturedMessage{
-		Level:  Info,
+		Level:  InfoLogLevel,
 		Fields: c.fields.Add(fields),
 		Msg:    msg,
 	})
@@ -208,7 +217,7 @@ func (c *CaptureLoggerAdapter) Info(msg string, fields LogFields) {
 
 func (c *CaptureLoggerAdapter) Debug(msg string, fields LogFields) {
 	c.capture(CapturedMessage{
-		Level:  Debug,
+		Level:  DebugLogLevel,
 		Fields: c.fields.Add(fields),
 		Msg:    msg,
 	})
@@ -216,7 +225,7 @@ func (c *CaptureLoggerAdapter) Debug(msg string, fields LogFields) {
 
 func (c *CaptureLoggerAdapter) Trace(msg string, fields LogFields) {
 	c.capture(CapturedMessage{
-		Level:  Trace,
+		Level:  TraceLogLevel,
 		Fields: c.fields.Add(fields),
 		Msg:    msg,
 	})

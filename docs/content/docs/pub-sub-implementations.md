@@ -413,7 +413,7 @@ TLS config can be passed to `Config.TLSConfig`.
 #### Subscribing
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/infrastructure/amqp/subscriber.go" first_line_contains="// Subscribe" last_line_contains="func (p *Subscriber) Subscribe" %}}
+{{% load-snippet-partial file="content/src-link/message/infrastructure/amqp/subscriber.go" first_line_contains="// Subscribe" last_line_contains="func (s *Subscriber) Subscribe" %}}
 {{% /render-md %}}
 
 #### Marshaler
