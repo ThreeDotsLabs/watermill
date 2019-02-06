@@ -16,7 +16,7 @@ services:
   zookeeper:
     image: confluentinc/cp-zookeeper:5.0.1
     ports:
-      - 2181
+      - 2181:2181
     restart: on-failure
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
@@ -25,7 +25,7 @@ services:
   kafka:
     image: confluentinc/cp-kafka:5.0.1
     ports:
-      - 9092
+      - 9092:9092
     restart: on-failure
     depends_on:
       - zookeeper
@@ -40,7 +40,7 @@ services:
   nats-streaming:
     image: nats-streaming:0.11.2
     ports:
-      - 8222
+      - 8222:8222
     restart: on-failure
     entrypoint: ["/nats-streaming-server", "-m=8222", "--max_channels=0"]
 
@@ -48,11 +48,11 @@ services:
     image: google/cloud-sdk:228.0.0
     entrypoint: gcloud --quiet beta emulators pubsub start --host-port=googlecloud:8085 --verbosity=debug --log-http
     ports:
-      - 8085
+      - 8085:8085
     restart: on-failure
 
   rabbitmq:
     image: rabbitmq:3.7-management
     restart: on-failure
     ports:
-      - 5672
+      - 5672:5672

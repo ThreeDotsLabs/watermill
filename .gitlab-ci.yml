@@ -1,6 +1,5 @@
 variables:
   MOD_CACHE_DIR: .mod-cache
-  WAIT_FOR_IT_URL: https://raw.githubusercontent.com/vishnubob/wait-for-it/master/wait-for-it.sh
 stages:
   - build
   - test
@@ -32,15 +31,10 @@ test:
       - $MOD_CACHE_DIR
     policy: pull
   before_script:
-    - apk add py-pip bash
+    - apk add py-pip
     - pip install docker-compose
-    - wget $WAIT_FOR_IT_URL
-    - chmod +x ./wait-for-it.sh
   script:
     - docker-compose pull -q
     - docker-compose up -d
-    - |
-      for port in 2181 5672 8085 8222 9092; do
-        ./wait-for-it.sh -h 127.0.0.1 -p $port -t 120
-      done
+    - docker-compose run watermill ./.ci/wait-for-services.sh
     - docker-compose run watermill go test ./... -short
