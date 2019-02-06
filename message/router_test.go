@@ -27,7 +27,7 @@ func TestRouter_functional(t *testing.T) {
 		assert.NoError(t, pubSub.Close())
 	}()
 
-	messagesCount := 100
+	messagesCount := 50
 
 	var expectedReceivedMessages message.Messages
 	allMessagesSent := make(chan struct{})
@@ -237,7 +237,7 @@ func TestRouterNoPublisherHandler(t *testing.T) {
 
 	r, err := message.NewRouter(
 		message.RouterConfig{},
-		&logger,
+		logger,
 	)
 	require.NoError(t, err)
 
@@ -344,7 +344,7 @@ func publishMessagesForHandler(t *testing.T, messagesCount int, pubSub message.P
 }
 
 func createPubSub() (message.PubSub, error) {
-	return gochannel.NewGoChannel(0, watermill.NewStdLogger(true, true), time.Second*10), nil
+	return gochannel.NewPersistentGoChannel(0, watermill.NewStdLogger(true, true)), nil
 }
 
 func readMessages(messagesCh <-chan *message.Message, limit int, timeout time.Duration) (receivedMessages []*message.Message, all bool) {

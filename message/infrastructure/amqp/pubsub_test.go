@@ -13,7 +13,7 @@ import (
 
 var amqpURI = "amqp://guest:guest@localhost:5672/"
 
-func createPubSub(t *testing.T) message.PubSub {
+func createPubSub(t *testing.T) infrastructure.PubSub {
 	publisher, err := amqp.NewPublisher(
 		amqp.NewDurablePubSubConfig(
 			amqpURI,
@@ -32,10 +32,10 @@ func createPubSub(t *testing.T) message.PubSub {
 	)
 	require.NoError(t, err)
 
-	return message.NewPubSub(publisher, subscriber)
+	return message.NewPubSub(publisher, subscriber).(infrastructure.PubSub)
 }
 
-func createPubSubWithConsumerGroup(t *testing.T, consumerGroup string) message.PubSub {
+func createPubSubWithConsumerGroup(t *testing.T, consumerGroup string) infrastructure.PubSub {
 	publisher, err := amqp.NewPublisher(
 		amqp.NewDurablePubSubConfig(
 			amqpURI,
@@ -54,7 +54,7 @@ func createPubSubWithConsumerGroup(t *testing.T, consumerGroup string) message.P
 	)
 	require.NoError(t, err)
 
-	return message.NewPubSub(publisher, subscriber)
+	return message.NewPubSub(publisher, subscriber).(infrastructure.PubSub)
 }
 
 func TestPublishSubscribe_pubsub(t *testing.T) {
@@ -72,7 +72,7 @@ func TestPublishSubscribe_pubsub(t *testing.T) {
 	)
 }
 
-func createQueuePubSub(t *testing.T) message.PubSub {
+func createQueuePubSub(t *testing.T) infrastructure.PubSub {
 	config := amqp.NewDurableQueueConfig(
 		amqpURI,
 	)
@@ -89,7 +89,7 @@ func createQueuePubSub(t *testing.T) message.PubSub {
 	)
 	require.NoError(t, err)
 
-	return message.NewPubSub(publisher, subscriber)
+	return message.NewPubSub(publisher, subscriber).(infrastructure.PubSub)
 }
 
 func TestPublishSubscribe_queue(t *testing.T) {
@@ -126,5 +126,15 @@ func TestPublishSubscribe_transactional_publish(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	infrastructure.TestPublishSubscribe(t, message.NewPubSub(publisher, subscriber))
+	infrastructure.TestPublishSubscribe(
+		t,
+		message.NewPubSub(publisher, subscriber).(infrastructure.PubSub),
+		infrastructure.Features{
+			ConsumerGroups:        true,
+			ExactlyOnceDelivery:   false,
+			GuaranteedOrder:       true,
+			Persistent:            true,
+			RestartServiceCommand: []string{"docker", "restart", "watermill_rabbitmq_1"},
+		},
+	)
 }

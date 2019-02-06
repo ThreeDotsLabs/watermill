@@ -69,5 +69,5 @@ func (r Retry) calculateWaitTime() time.Duration {
 }
 
 func (r Retry) shouldRetry(err error, retries int) bool {
-	return err != nil && (retries <= r.MaxRetries || r.MaxRetries == RetryForever)
+	return err != nil && (retries < r.MaxRetries || r.MaxRetries == RetryForever)
 }
