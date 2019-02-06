@@ -7,7 +7,6 @@ import (
 	_ "net/http/pprof"
 
 	"github.com/pkg/errors"
-	uuid "github.com/satori/go.uuid"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
@@ -24,7 +23,7 @@ type GitlabWebhook struct {
 func main() {
 	logger := watermill.NewStdLogger(true, true)
 
-	kafkaPublisher, err := kafka.NewPublisher([]string{"localhost:9092"}, kafka.DefaultMarshaler{}, nil)
+	kafkaPublisher, err := kafka.NewPublisher([]string{"localhost:9092"}, kafka.DefaultMarshaler{}, nil, logger)
 	if err != nil {
 		panic(err)
 	}
@@ -35,7 +34,7 @@ func main() {
 			return nil, errors.Wrap(err, "cannot read body")
 		}
 
-		return message.NewMessage(uuid.NewV4().String(), b), nil
+		return message.NewMessage(watermill.UUID(), b), nil
 	}, logger)
 	if err != nil {
 		panic(err)
@@ -58,8 +57,9 @@ func main() {
 	err = r.AddHandler(
 		"http_to_kafka",
 		"/gitlab-webhooks", // this is the URL of our API
+		httpSubscriber,
 		"webhooks",
-		message.NewPubSub(kafkaPublisher, httpSubscriber),
+		kafkaPublisher,
 		func(msg *message.Message) ([]*message.Message, error) {
 			webhook := GitlabWebhook{}
 

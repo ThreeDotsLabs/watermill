@@ -6,8 +6,6 @@ import (
 	"log"
 	"time"
 
-	"github.com/satori/go.uuid"
-
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/gochannel"
@@ -51,7 +49,7 @@ func main() {
 
 	// for simplicity we are using gochannel Pub/Sub here,
 	// you can replace it with any Pub/Sub implementation, it will work the same
-	pubSub := gochannel.NewGoChannel(0, logger, time.Second)
+	pubSub := gochannel.NewGoChannel(0, logger)
 
 	// producing some messages in background
 	go publishMessages(pubSub)
@@ -59,6 +57,7 @@ func main() {
 	if err := router.AddHandler(
 		"struct_handler",  // handler name, must be unique
 		"example.topic_1", // topic from which we will read events
+		pubSub,
 		"example.topic_2", // topic to which we will publish event
 		pubSub,
 		structHandler{}.Handler,
@@ -95,8 +94,8 @@ func main() {
 
 func publishMessages(publisher message.Publisher) {
 	for {
-		msg := message.NewMessage(uuid.NewV4().String(), []byte("Hello, world!"))
-		middleware.SetCorrelationID(uuid.NewV4().String(), msg)
+		msg := message.NewMessage(watermill.UUID(), []byte("Hello, world!"))
+		middleware.SetCorrelationID(watermill.UUID(), msg)
 
 		log.Printf("sending message %s, correlation id: %s\n", msg.UUID, middleware.MessageCorrelationID(msg))
 
@@ -123,6 +122,6 @@ type structHandler struct {
 func (s structHandler) Handler(msg *message.Message) ([]*message.Message, error) {
 	log.Println("structHandler received message", msg.UUID)
 
-	msg = message.NewMessage(uuid.NewV4().String(), []byte("message produced by structHandler"))
+	msg = message.NewMessage(watermill.UUID(), []byte("message produced by structHandler"))
 	return message.Messages{msg}, nil
 }

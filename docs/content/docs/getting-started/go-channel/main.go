@@ -3,9 +3,6 @@ package main
 
 import (
 	"log"
-	"time"
-
-	"github.com/satori/go.uuid"
 
 	"github.com/ThreeDotsLabs/watermill/message"
 
@@ -17,7 +14,6 @@ func main() {
 	pubSub := gochannel.NewGoChannel(
 		0, // buffer (channel) size
 		watermill.NewStdLogger(false, false),
-		time.Second, // send timeout
 	)
 
 	messages, err := pubSub.Subscribe("example.topic")
@@ -32,7 +28,7 @@ func main() {
 
 func publishMessages(publisher message.Publisher) {
 	for {
-		msg := message.NewMessage(uuid.NewV4().String(), []byte("Hello, world!"))
+		msg := message.NewMessage(watermill.UUID(), []byte("Hello, world!"))
 
 		if err := publisher.Publish("example.topic", msg); err != nil {
 			panic(err)
