@@ -1,5 +1,5 @@
 # Watermill
-[![Build Status](https://travis-ci.org/ThreeDotsLabs/watermill.svg?branch=master)](https://travis-ci.org/ThreeDotsLabs/watermill)
+[![Build Status](https://gitlab.com/threedotslabs/watermill/badges/master/build.svg)](https://gitlab.com/threedotslabs/watermill/pipelines)
 [![Go Report Card](https://goreportcard.com/badge/github.com/ThreeDotsLabs/watermill)](https://goreportcard.com/report/github.com/ThreeDotsLabs/watermill)
 [![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2FThreeDotsLabs%2Fwatermill.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2FThreeDotsLabs%2Fwatermill?ref=badge_shield)
 

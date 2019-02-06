@@ -7,16 +7,15 @@ stages:
 build:
   stage: build
   image: golang:1.11.5
-  #before_script:
-  #  - "[ -d $MOD_CACHE_DIR ] && cp -r $MOD_CACHE_DIR $GOPATH/pkg/mod"
+  before_script:
+    - "[ -d $MOD_CACHE_DIR ] && cp -r $MOD_CACHE_DIR/. $GOPATH/pkg/mod"
   script:
     - go build ./...
-  #after_script:
-  #- cp -r $GOPATH/pkg/mod/. $MOD_CACHE_DIR
+    - cp -r $GOPATH/pkg/mod/. $MOD_CACHE_DIR
   cache:
     key: $CI_PROJECT_ID
     paths:
-      - .mod-cache/
+      - $MOD_CACHE_DIR
   only:
     - branches
 
@@ -28,16 +27,12 @@ test:
   cache:
     key: $CI_PROJECT_ID
     paths:
-      - .mod-cache/
+      - $MOD_CACHE_DIR
     policy: pull
-  artifacts:
-    paths:
-      - ./stdout
-    when: always
   script:
     - apk add py-pip
     - pip install docker-compose
     - docker-compose pull -q
     - docker-compose up -d
     - sleep 10
-    - docker-compose run watermill go test ./... -short >stdout
+    - docker-compose run watermill go test ./... -short
