@@ -6,8 +6,6 @@ import (
 	"log"
 	"time"
 
-	uuid "github.com/satori/go.uuid"
-
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/gochannel"
@@ -96,8 +94,8 @@ func main() {
 
 func publishMessages(publisher message.Publisher) {
 	for {
-		msg := message.NewMessage(uuid.NewV4().String(), []byte("Hello, world!"))
-		middleware.SetCorrelationID(uuid.NewV4().String(), msg)
+		msg := message.NewMessage(watermill.UUID(), []byte("Hello, world!"))
+		middleware.SetCorrelationID(watermill.UUID(), msg)
 
 		log.Printf("sending message %s, correlation id: %s\n", msg.UUID, middleware.MessageCorrelationID(msg))
 
@@ -124,6 +122,6 @@ type structHandler struct {
 func (s structHandler) Handler(msg *message.Message) ([]*message.Message, error) {
 	log.Println("structHandler received message", msg.UUID)
 
-	msg = message.NewMessage(uuid.NewV4().String(), []byte("message produced by structHandler"))
+	msg = message.NewMessage(watermill.UUID(), []byte("message produced by structHandler"))
 	return message.Messages{msg}, nil
 }

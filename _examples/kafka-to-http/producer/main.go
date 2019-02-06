@@ -5,8 +5,6 @@ import (
 	"math/rand"
 	"time"
 
-	uuid "github.com/satori/go.uuid"
-
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/kafka"
@@ -35,7 +33,7 @@ func main() {
 
 	for {
 		eventType := eventTypes[rand.Intn(3)]
-		msg := message.NewMessage(uuid.NewV4().String(), []byte("message"))
+		msg := message.NewMessage(watermill.UUID(), []byte("message"))
 		msg.Metadata.Set("event_type", string(eventType))
 
 		fmt.Printf("%s Publishing %s\n\n", time.Now().String(), eventType)

@@ -8,8 +8,6 @@ import (
 
 	"github.com/ThreeDotsLabs/watermill"
 
-	"github.com/satori/go.uuid"
-
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/kafka"
 )
@@ -54,7 +52,7 @@ func main() {
 
 func publishMessages(publisher message.Publisher) {
 	for {
-		msg := message.NewMessage(uuid.NewV4().String(), []byte("Hello, world!"))
+		msg := message.NewMessage(watermill.UUID(), []byte("Hello, world!"))
 
 		if err := publisher.Publish("example.topic", msg); err != nil {
 			panic(err)
