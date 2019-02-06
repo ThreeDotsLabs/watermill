@@ -4,8 +4,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/satori/go.uuid"
-
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/stretchr/testify/require"
 
@@ -38,12 +36,12 @@ func newPubSub(t *testing.T, clientID string, queueName string) message.PubSub {
 	return message.NewPubSub(pub, sub)
 }
 
-func createPubSub(t *testing.T) message.PubSub {
-	return newPubSub(t, uuid.NewV4().String(), "test-queue")
+func createPubSub(t *testing.T) infrastructure.PubSub {
+	return newPubSub(t, watermill.UUID(), "test-queue").(infrastructure.PubSub)
 }
 
-func createPubSubWithDurable(t *testing.T, consumerGroup string) message.PubSub {
-	return newPubSub(t, consumerGroup, consumerGroup)
+func createPubSubWithDurable(t *testing.T, consumerGroup string) infrastructure.PubSub {
+	return newPubSub(t, consumerGroup, consumerGroup).(infrastructure.PubSub)
 }
 
 func TestPublishSubscribe(t *testing.T) {

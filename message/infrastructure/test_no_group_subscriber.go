@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/internal/tests"
 	"github.com/ThreeDotsLabs/watermill/message"
 	subscriber2 "github.com/ThreeDotsLabs/watermill/message/subscriber"
-	"github.com/satori/go.uuid"
 	"github.com/stretchr/testify/require"
 )
 
@@ -74,7 +74,7 @@ func testNoGroupSubscriberConcurrentSubscribers(
 	defer closePubSub(t, pubSub)
 
 	for i := 0; i < 10; i++ {
-		id := uuid.NewV4().String()
+		id := watermill.UUID()
 
 		msg := message.NewMessage(id, []byte(fmt.Sprintf("%d", i)))
 		messagesToPublish = append(messagesToPublish, msg)
@@ -138,7 +138,7 @@ func testNoGroupSubscriberJoiningSubscribers(
 		for {
 			time.Sleep(time.Millisecond * 500)
 
-			id := uuid.NewV4().String()
+			id := watermill.UUID()
 			err := pubSub.Publish(topicName, message.NewMessage(id, []byte(fmt.Sprintf("%d", i))))
 			require.NoError(t, err)
 
@@ -183,7 +183,7 @@ func testNoGroupSubscriber_Close(
 	defer closePubSub(t, pubSub)
 
 	for i := 0; i < 10; i++ {
-		id := uuid.NewV4().String()
+		id := watermill.UUID()
 
 		msg := message.NewMessage(id, []byte(fmt.Sprintf("%d", i)))
 		messagesToPublish = append(messagesToPublish, msg)

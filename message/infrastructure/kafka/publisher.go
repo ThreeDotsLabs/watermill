@@ -60,7 +60,9 @@ func (p *Publisher) Publish(topic string, msgs ...*message.Message) error {
 		return errors.New("publisher closed")
 	}
 
-	logFields := watermill.LogFields{"message_uuid": ""}
+	logFields := make(watermill.LogFields, 4)
+	logFields["topic"] = topic
+
 	for _, msg := range msgs {
 		logFields["message_uuid"] = msg.UUID
 		p.logger.Trace("Sending message to Kafka", logFields)
@@ -70,9 +72,15 @@ func (p *Publisher) Publish(topic string, msgs ...*message.Message) error {
 			return errors.Wrapf(err, "cannot marshal message %s", msg.UUID)
 		}
 
-		if _, _, err := p.producer.SendMessage(kafkaMsg); err != nil {
+		partition, offset, err := p.producer.SendMessage(kafkaMsg)
+		if err != nil {
 			return errors.Wrapf(err, "cannot produce message %s", msg.UUID)
 		}
+
+		logFields["kafka_partition"] = partition
+		logFields["kafka_partition_offset"] = offset
+
+		p.logger.Trace("Message sent to Kafka", logFields)
 	}
 
 	return nil

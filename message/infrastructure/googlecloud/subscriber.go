@@ -157,7 +157,6 @@ func (s *Subscriber) Subscribe(topic string) (chan *message.Message, error) {
 
 	sub, err := s.subscription(ctx, subscriptionName, topic)
 	if err != nil {
-		s.logger.Error("Could not obtain subscription", err, logFields)
 		return nil, err
 	}
 
@@ -182,6 +181,25 @@ func (s *Subscriber) Subscribe(topic string) (chan *message.Message, error) {
 	}()
 
 	return output, nil
+}
+
+func (s *Subscriber) SubscribeInitialize(topic string) (err error) {
+	ctx, cancel := context.WithCancel(s.ctx)
+	defer cancel()
+
+	subscriptionName := s.config.GenerateSubscriptionName(topic)
+	logFields := watermill.LogFields{
+		"provider":          ProviderName,
+		"topic":             topic,
+		"subscription_name": subscriptionName,
+	}
+	s.logger.Info("Subscribing to Google Cloud PubSub topic", logFields)
+
+	if _, err := s.subscription(ctx, subscriptionName, topic); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Close notifies the Subscriber to stop processing messages on all subscriptions, close all the output channels
@@ -218,9 +236,9 @@ func (s *Subscriber) receive(
 			return
 		}
 
-		msgCtx, cancel := context.WithCancel(ctx)
-		defer cancel()
-		msg.SetContext(msgCtx)
+		ctx, cancelCtx := context.WithCancel(context.Background())
+		msg.SetContext(ctx)
+		defer cancelCtx()
 
 		select {
 		case <-s.closing:
