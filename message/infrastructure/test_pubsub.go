@@ -217,7 +217,6 @@ func TestPublishSubscribeInOrder(t *testing.T, pubSub PubSub, features Features)
 
 	receivedMessagesByType := map[string][]string{}
 	for _, msg := range receivedMessages {
-
 		if _, ok := receivedMessagesByType[string(msg.Payload)]; !ok {
 			receivedMessagesByType[string(msg.Payload)] = []string{}
 		}
@@ -382,6 +381,7 @@ func TestContinueAfterSubscribeClose(t *testing.T, createPubSub PubSubConstructo
 		}
 	}
 
+	// we need to deduplicate messages, because bulkRead will deduplicate only per one batch
 	uniqueReceivedMessages := message.Messages{}
 	for _, msg := range receivedMessages {
 		uniqueReceivedMessages = append(uniqueReceivedMessages, msg)
