@@ -58,7 +58,7 @@ func TestMessage_Equals(t *testing.T) {
 
 func TestMessage_Ack(t *testing.T) {
 	msg := &message.Message{}
-	require.NoError(t, msg.Ack())
+	require.True(t, msg.Ack())
 
 	assertAcked(t, msg)
 	assertNoNack(t, msg)
@@ -66,22 +66,22 @@ func TestMessage_Ack(t *testing.T) {
 
 func TestMessage_Ack_idempotent(t *testing.T) {
 	msg := &message.Message{}
-	require.NoError(t, msg.Ack())
-	require.NoError(t, msg.Ack())
+	require.True(t, msg.Ack())
+	require.True(t, msg.Ack())
 
 	assertAcked(t, msg)
 }
 
 func TestMessage_Ack_already_Nack(t *testing.T) {
 	msg := &message.Message{}
-	require.NoError(t, msg.Nack())
+	require.True(t, msg.Nack())
 
-	assert.Equal(t, message.ErrAlreadyNacked, msg.Ack())
+	assert.False(t, msg.Ack())
 }
 
 func TestMessage_Nack(t *testing.T) {
 	msg := &message.Message{}
-	require.NoError(t, msg.Nack())
+	require.True(t, msg.Nack())
 
 	assertNoAck(t, msg)
 	assertNacked(t, msg)
@@ -89,24 +89,24 @@ func TestMessage_Nack(t *testing.T) {
 
 func TestMessage_Nack_idempotent(t *testing.T) {
 	msg := &message.Message{}
-	require.NoError(t, msg.Nack())
-	require.NoError(t, msg.Nack())
+	require.True(t, msg.Nack())
+	require.True(t, msg.Nack())
 
 	assertNacked(t, msg)
 }
 
 func TestMessage_Nack_already_Ack(t *testing.T) {
 	msg := &message.Message{}
-	require.NoError(t, msg.Ack())
+	require.True(t, msg.Ack())
 
-	assert.Equal(t, message.ErrAlreadyAcked, msg.Nack())
+	assert.False(t, msg.Nack())
 }
 
 func TestMessage_Copy(t *testing.T) {
 	msg := message.NewMessage("1", []byte("foo"))
 	msgCopy := msg.Copy()
 
-	require.NoError(t, msg.Ack())
+	require.True(t, msg.Ack())
 
 	assertAcked(t, msg)
 	assertNoAck(t, msgCopy)

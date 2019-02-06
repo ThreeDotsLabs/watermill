@@ -604,7 +604,7 @@ func TestMessageCtx(t *testing.T, pubSub PubSub, features Features) {
 			// ok
 		}
 
-		require.NoError(t, msg.Ack())
+		require.True(t, msg.Ack())
 
 		select {
 		case <-ctx.Done():
