@@ -1,10 +1,10 @@
 +++
 title = "Getting started"
-description = "Up and running Watermill"
+description = "Watermill up and running"
 weight = -9999
 draft = false
 toc = true
-bref = "Up and running Watermill"
+bref = "Watermill up and running"
 type = "docs"
 +++
 
@@ -12,9 +12,9 @@ type = "docs"
 
 Watermill is a Golang library for working efficiently with message streams. It is intended for building event-driven applications, enabling event sourcing, RPC over messages, sagas and basically whatever else comes to your mind. You can use conventional pub/sub implementations like Kafka or RabbitMQ, but also HTTP or MySQL binlog if that fits your use case.
 
-It comes with a set of Pub/Sub,  implementations which can be easily replaced by your own implementation
+It comes with a set of Pub/Sub implementations, which can be easily extended by your own implementations.
 
-Watermill is also shipped with the set of standard tools (middlewares) like instrumentation, poison queue, throttling, correlation and other tools used by every message-driven application.
+Watermill is also shipped with a set of standard tools (middlewares) like instrumentation, poison queue, throttling, correlation and other tools used by every message-driven application.
 
 ### Install
 
@@ -24,11 +24,11 @@ go get -u github.com/ThreeDotsLabs/watermill/
 
 ### Subscribing for messages
 
-One of the most important parts of the Watermill is [*Message*]({{< ref "/docs/message" >}}). It is as important as `http.Request` for `http` package.
+One of the most important parts of Watermill is the [*Message*]({{< ref "/docs/message" >}}). It is as important as `http.Request` is for `http` package.
 Almost every part of Watermill uses this type in some part.
 
-When we are building reactive/event-driven application/[insert your buzzword here] we always want to listen of incoming messages to react for them.
-Watermill is supporting multiple [publishers and subscribers implementations]({{< ref "/docs/pub-sub-implementations" >}}), with compatible interface and abstraction which provide similar behaviour.
+When you are building reactive/event-driven application/[insert your buzzword here] you always want to listen for incoming messages to react on them.
+Watermill is supporting multiple [publishers and subscribers implementations]({{< ref "/docs/pub-sub-implementations" >}}) with compatible interfaces and abstractions, which provide a similar behaviour.
 
 Let's start with subscribing for messages.
 
@@ -47,15 +47,15 @@ Let's start with subscribing for messages.
 Running in Docker
 {{% /collapse-toggle %}}
 {{% collapse-box id="docker" %}}
-Easiest way to run Watermill with Kafka locally is using Docker.
+The easiest way to run Watermill locally with Kafka is using Docker.
 
 {{% load-snippet file="content/docs/getting-started/kafka/docker-compose.yml" type="yaml" %}}
 
 The source should go to `main.go`.
 
-To run please execute `docker-compose up` command.
+To run, please execute `docker-compose up` command.
 
-More detailed explanation of how it is running, and how to add live reload you can find in [*Go Docker dev environment* article](https://threedots.tech/post/go-docker-dev-environment-with-go-modules-and-live-code-reloading/).
+A more detailed explanation of how it is running (and how to add live code reload) can be found in [*Go Docker dev environment* article](https://threedots.tech/post/go-docker-dev-environment-with-go-modules-and-live-code-reloading/).
 
 {{% /collapse-box %}}
 {{< /collapse >}}
@@ -72,7 +72,7 @@ More detailed explanation of how it is running, and how to add live reload you c
 Running in Docker
 {{% /collapse-toggle %}}
 {{% collapse-box id="nats-streaming-docker" %}}
-Easiest way to run Watermill with NATS locally is using Docker.
+The easiest way to run Watermill locally with NATS is using Docker.
 
 {{% load-snippet file="content/docs/getting-started/nats-streaming/docker-compose.yml" type="yaml" %}}
 
@@ -80,7 +80,7 @@ The source should go to `main.go`.
 
 To run please execute `docker-compose up` command.
 
-More detailed explanation of how it is running, and how to add live reload you can find in [*Go Docker dev environment* article](https://threedots.tech/post/go-docker-dev-environment-with-go-modules-and-live-code-reloading/).
+A more detailed explanation of how it is running (and how to add live code reload) can be found in [*Go Docker dev environment* article](https://threedots.tech/post/go-docker-dev-environment-with-go-modules-and-live-code-reloading/).
 {{% /collapse-box %}}
 {{< /collapse >}}
 
@@ -105,7 +105,7 @@ The source should go to `main.go`.
 
 To run, please execute `docker-compose up`.
 
-More detailed explanation of how it is running, and how to add live reload you can find in [*Go Docker dev environment* article](https://threedots.tech/post/go-docker-dev-environment-with-go-modules-and-live-code-reloading/).
+A more detailed explanation of how it is running (and how to add live code reload) can be found in [*Go Docker dev environment* article](https://threedots.tech/post/go-docker-dev-environment-with-go-modules-and-live-code-reloading/).
 {{% /collapse-box %}}
 {{< /collapse >}}
 
@@ -127,7 +127,7 @@ The source should go to `main.go`.
 
 To run, please execute `docker-compose up`.
 
-More detailed explanation of how it is running, and how to add live reload you can find in [*Go Docker dev environment* article](https://threedots.tech/post/go-docker-dev-environment-with-go-modules-and-live-code-reloading/).
+A more detailed explanation of how it is running (and how to add live code reload) can be found in [*Go Docker dev environment* article](https://threedots.tech/post/go-docker-dev-environment-with-go-modules-and-live-code-reloading/).
 {{% /collapse-box %}}
 {{< /collapse >}}
 
@@ -165,21 +165,21 @@ More detailed explanation of how it is running, and how to add live reload you c
 
 ##### Message format
 
-We don't enforce any message format. You can use strings, JSON, protobuf, Avro, gob or anything else what serializes to `[]byte`.
+We don't enforce any message format. You can use strings, JSON, protobuf, Avro, gob or anything else that serializes to `[]byte`.
 
 ### Using *Messages Router*
 
 [*Publishers and subscribers*]({{< ref "/docs/pub-sub" >}}) are rather low-level parts of Watermill.
-In production use, we want usually use something which is higher level and provides some features like [correlation, metrics, poison queue, retrying, throttling etc]({{< ref "/docs/messages-router#middleware" >}}).
+In production use, you'd usually want to use a high-level interface and features like [correlation, metrics, poison queue, retrying, throttling, etc.]({{< ref "/docs/messages-router#middleware" >}}).
 
-We also don't want to manually send Ack when processing was successful. Sometimes, we also want to send a message after processing another.
+You also might not want to send an Ack when processing was successful. Sometimes, you'd like to send a message after processing of another message finishes.
 
-To handle these requirements we created component named [*Router*]({{< ref "/docs/messages-router" >}}).
+To handle these requirements, there is a component named [*Router*]({{< ref "/docs/messages-router" >}}).
 
 The flow of our application looks like this:
 
 1. We are producing a message to the topic `example.topic_1` every second.
-2. `struct_handler` handler is listening to `example.topic_1`. When a message is received, UUID is printed and a new message is produced to `example.topic_2`.
+2. `struct_handler` handler is listening to `example.topic_1`. When a message is received, the UUID is printed and a new message is produced to `example.topic_2`.
 3. `print_events_topic_1` handler is listening to `example.topic_1` and printing message UUID, payload and metadata. Correlation ID should be the same as in message in `example.topic_1`.
 4. `print_events_topic_2` handler is listening to `example.topic_2` and printing message UUID, payload and metadata. Correlation ID should be the same as in message in `example.topic_2`.
 
@@ -195,7 +195,7 @@ We also will set up handlers which this router will support. Every handler will 
 
 #### Producing messages
 
-Producing messages work just like before. We only have added `middleware.SetCorrelationID` to set correlation ID.
+Producing messages works just like before. We have only added `middleware.SetCorrelationID` to set the correlation ID.
 Correlation ID will be added to all messages produced by the router (`middleware.CorrelationID`).
 
 {{% render-md %}}
@@ -209,8 +209,8 @@ You may notice that we have two types of *handler functions*:
 1. function `func(msg *message.Message) ([]*message.Message, error)`
 2. method `func (c structHandler) Handler(msg *message.Message) ([]*message.Message, error)`
 
-The second option is useful when our function requires some dependencies like database, logger etc.
-When we have just function without dependencies, it's fine to use just a function.
+The second option is useful when your function requires some dependencies like database, logger, etc.
+If you use a simple function without dependencies, it's fine to use the second option.
 
 {{% render-md %}}
 {{% load-snippet-partial file="content/docs/getting-started/router/main.go" first_line_contains="func printMessages" last_line_contains="return message.Messages{msg}, nil" padding_after="3" %}}
@@ -218,9 +218,9 @@ When we have just function without dependencies, it's fine to use just a functio
 
 #### Done!
 
-We can just run this example by `go run main.go`.
+You can run this example by `go run main.go`.
 
-We just created our first application with Watermill. The full source you can find in [/docs/getting-started/router/main.go](https://github.com/ThreeDotsLabs/watermill/tree/master/content/docs/getting-started/router/main.go).
+You've just created your first application with Watermill. You can find the full source in [/docs/getting-started/router/main.go](https://github.com/ThreeDotsLabs/watermill/tree/master/content/docs/getting-started/router/main.go).
 
 ### Deployment
 
@@ -232,10 +232,10 @@ For more detailed documentation you should check [documentation topics list]({{<
 
 #### Examples
 
-We also created some examples, which will show you how you can start using Watermill.
+We've also created some examples, that will show you how  to start using Watermill.
 The recommended entry point is [Your first Watermill application](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/your-first-app). It contains the entire environment in `docker-compose.yml`, including Golang and Kafka which you can run with one command.
 
-After that, you could check the [Simple app](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/simple-app) example. It uses more middlewares and contains two handlers. There is also a separate application for publishing messages.
+After that, you can check the [Simple app](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/simple-app) example. It uses more middlewares and contains two handlers. There is also a separate application for publishing messages.
 
 The [third example](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/http-to-kafka)  showcases the use of a different Subscriber implementation, namely **HTTP**. It is a very simple application, which can save GitLab webhooks to Kafka.
 
@@ -243,4 +243,4 @@ You may also find some useful informations in our [README](https://github.com/Th
 
 #### Support
 
-If anything is not clear feel free to use any of our [support channels]({{< ref "/support" >}}), we will we'll be glad to help.
+If anything is not clear, feel free to use any of our [support channels]({{< ref "/support" >}}), we will be glad to help.
