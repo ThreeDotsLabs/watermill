@@ -25,7 +25,7 @@ type subscriber struct {
 // GoChannel has no global state,
 // that means that you need to use the same instance for Publishing and Subscribing!
 //
-// In when GoChannel is persistent, messages order is not guaranteed.
+// When GoChannel is persistent, messages order is not guaranteed.
 type GoChannel struct {
 	outputChannelBuffer int64
 
@@ -58,7 +58,7 @@ func (g *GoChannel) Subscriber() message.Subscriber {
 // NewGoChannel creates new GoChannel Pub/Sub.
 //
 // This GoChannel is not persistent.
-// That means if we send message to topic to which no subscriber is subscribed, then message will be discarded.
+// That means if you send a message to a topic to which no subscriber is subscribed, that message will be discarded.
 func NewGoChannel(outputChannelBuffer int64, logger watermill.LoggerAdapter) message.PubSub {
 	return &GoChannel{
 		outputChannelBuffer: outputChannelBuffer,
@@ -79,7 +79,7 @@ func NewGoChannel(outputChannelBuffer int64, logger watermill.LoggerAdapter) mes
 // That means that when subscriber subscribes to the topic, it will receive all previously produced messages.
 // All messages are persisted to the memory, so be aware that with large amount of messages you can go out of the memory.
 //
-// Messages are persisted per GoChannel, so you must use same object to consume these persisted messages.
+// Messages are persisted per GoChannel, so you must use the same object to consume these persisted messages.
 func NewPersistentGoChannel(outputChannelBuffer int64, logger watermill.LoggerAdapter) message.PubSub {
 	return &GoChannel{
 		outputChannelBuffer: outputChannelBuffer,
