@@ -8,6 +8,7 @@ build:
   stage: build
   image: golang:1.11
   before_script:
+    - mkdir -p $GOPATH/pkg/mod
     - "[ -d $MOD_CACHE_DIR ] && cp -r $MOD_CACHE_DIR/. $GOPATH/pkg/mod"
   script:
     - go build ./...
