@@ -16,14 +16,16 @@ function check_output() {
         output=$(mktemp)
 
         # run the command and dump the logs
-        echo "running \`$cmd\` in $(pwd)..."
-        timeout "$timeout" "$cmd" &> "$output"
-
+        set +e
+        echo "$(pwd)"
+        echo "timeout $timeout "$cmd" &> "$output""
+        timeout $timeout $cmd &> $output
         exitCode=$?
+        set -e
 
         if [ "$exitCode" -eq 124 ]
         then
-                echo "Command timed out in ${timeout}s, checking logs"
+                echo "Command timed out in ${timeout}s"
         elif [ "$exitCode" -ne 0 ]
         then
                 echo "Command exited with error $exitCode"
@@ -32,17 +34,19 @@ function check_output() {
         fi
 
         # check the logs for the defined phrase
-        grep -qE "$look_for" "$output"
-        found=$?
+        echo "Checking logs for $look_for"
+        phrase="$(grep -E "$look_for" "$output")" || true
 
-        rm "$output"
-        if [ "$found" ]
+        if [ -z "$phrase" ]
         then
-                echo "Found phrase $look_for in output"
-                return
-        else
                 echo "Phrase $look_for not found in output"
+                echo "$output left for inspection"
                 return 125
+        else
+                echo "Found phrase $look_for in output:"
+                echo "$phrase" 
+                rm "$output"
+                return
         fi
 }
 
