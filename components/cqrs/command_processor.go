@@ -55,7 +55,7 @@ func (p CommandProcessor) AddHandlersToRouter(r *message.Router) error {
 		}
 
 		if err := r.AddNoPublisherHandler(
-			fmt.Sprintf("command_processor_%s", ObjectName(commandName)),
+			fmt.Sprintf("command_processor_%s", commandName),
 			p.commandsTopic,
 			p.subscriber,
 			handlerFunc,
