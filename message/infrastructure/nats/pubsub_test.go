@@ -20,7 +20,7 @@ func newPubSub(t *testing.T, clientID string, queueName string) message.PubSub {
 		ClientID:  clientID + "_pub",
 		Marshaler: nats.GobMarshaler{},
 		StanOptions: []stan.Option{
-			stan.NatsURL("nats://nats-streaming:4222"),
+			stan.NatsURL("nats://nats-streaming:8222"),
 		},
 	}, logger)
 	require.NoError(t, err)
