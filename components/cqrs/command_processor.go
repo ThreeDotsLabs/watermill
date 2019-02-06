@@ -2,7 +2,8 @@ package cqrs
 
 import (
 	"fmt"
-	"reflect"
+
+	"github.com/pkg/errors"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
@@ -42,6 +43,7 @@ func (p CommandProcessor) Handlers() []CommandHandler {
 	return p.handlers
 }
 
+// todo - add method which doesnt require router?
 func (p CommandProcessor) AddHandlersToRouter(r *message.Router) error {
 	for i := range p.Handlers() {
 		handler := p.handlers[i]
@@ -53,7 +55,7 @@ func (p CommandProcessor) AddHandlersToRouter(r *message.Router) error {
 		}
 
 		if err := r.AddNoPublisherHandler(
-			fmt.Sprintf("command_processor_%s", commandName),
+			fmt.Sprintf("command_processor_%s", ObjectName(commandName)),
 			p.commandsTopic,
 			p.subscriber,
 			handlerFunc,
@@ -66,10 +68,10 @@ func (p CommandProcessor) AddHandlersToRouter(r *message.Router) error {
 }
 
 func (p CommandProcessor) RouterHandlerFunc(handler CommandHandler) (message.HandlerFunc, error) {
-	initCommand := handler.NewCommand()
-	expectedCmdName := p.marshaler.Name(initCommand)
+	cmd := handler.NewCommand()
+	cmdName := p.marshaler.Name(cmd)
 
-	if err := p.validateCommand(initCommand); err != nil {
+	if err := p.validateCommand(cmd); err != nil {
 		return nil, err
 	}
 
@@ -77,10 +79,10 @@ func (p CommandProcessor) RouterHandlerFunc(handler CommandHandler) (message.Han
 		cmd := handler.NewCommand()
 		messageCmdName := p.marshaler.MarshaledName(msg)
 
-		if messageCmdName != expectedCmdName {
+		if messageCmdName != cmdName {
 			p.logger.Trace("Received different command type than expected, ignoring", watermill.LogFields{
 				"message_uuid":          msg.UUID,
-				"expected_command_type": expectedCmdName,
+				"expected_command_type": cmdName,
 				"received_command_type": messageCmdName,
 			})
 			return nil, nil
@@ -104,18 +106,9 @@ func (p CommandProcessor) RouterHandlerFunc(handler CommandHandler) (message.Han
 }
 
 func (p CommandProcessor) validateCommand(cmd interface{}) error {
-	rv := reflect.ValueOf(cmd)
-	if rv.Kind() != reflect.Ptr || rv.IsNil() {
-		return NonPointerCommandError{rv.Type()}
+	if err := isPointer(cmd); err != nil {
+		return errors.Wrap(err, "command must be a not nil pointer")
 	}
 
 	return nil
-}
-
-type NonPointerCommandError struct {
-	Type reflect.Type
-}
-
-func (e NonPointerCommandError) Error() string {
-	return "non-pointer command: " + e.Type.String() + ", handler.NewCommand() should return pointer to the command"
 }

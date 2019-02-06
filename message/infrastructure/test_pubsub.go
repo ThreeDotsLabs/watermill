@@ -148,8 +148,8 @@ func TestPublishSubscribe(t *testing.T, pubSub PubSub, features Features) {
 	messagesTestMetadata := map[string]string{}
 
 	for i := 0; i < 100; i++ {
-		id := watermill.UUID()
-		testMetadata := watermill.UUID()
+		id := watermill.NewUUID()
+		testMetadata := watermill.NewUUID()
 
 		payload := []byte(fmt.Sprintf("%d", i))
 		msg := message.NewMessage(id, payload)
@@ -193,7 +193,7 @@ func TestPublishSubscribeInOrder(t *testing.T, pubSub PubSub, features Features)
 	expectedMessages := map[string][]string{}
 
 	for i := 0; i < 100; i++ {
-		id := watermill.UUID()
+		id := watermill.NewUUID()
 		msgType := string(i % 16)
 
 		msg := message.NewMessage(id, []byte(msgType))
@@ -285,7 +285,7 @@ func TestNoAck(t *testing.T, pubSub PubSub, features Features) {
 	}
 
 	for i := 0; i < 2; i++ {
-		id := watermill.UUID()
+		id := watermill.NewUUID()
 		log.Printf("sending %s", id)
 
 		msg := message.NewMessage(id, nil)
@@ -494,7 +494,7 @@ func TestConsumerGroups(t *testing.T, pubSubConstructor ConsumerGroupPubSubConst
 		t.Skip("consumer groups are not supported")
 	}
 
-	publisherPubSub := pubSubConstructor(t, "test_"+watermill.UUID())
+	publisherPubSub := pubSubConstructor(t, "test_"+watermill.NewUUID())
 
 	topicName := testTopicName()
 	if subscribeInitializer, ok := publisherPubSub.Subscriber().(message.SubscribeInitializer); ok {
@@ -549,8 +549,8 @@ func TestTopic(t *testing.T, pubSub PubSub, features Features) {
 		require.NoError(t, subscribeInitializer.SubscribeInitialize(topic2))
 	}
 
-	topic1Msg := message.NewMessage(watermill.UUID(), nil)
-	topic2Msg := message.NewMessage(watermill.UUID(), nil)
+	topic1Msg := message.NewMessage(watermill.NewUUID(), nil)
+	topic2Msg := message.NewMessage(watermill.NewUUID(), nil)
 
 	require.NoError(t, publishWithRetry(pubSub, topic1, topic1Msg))
 	require.NoError(t, publishWithRetry(pubSub, topic2, topic2Msg))
@@ -579,7 +579,7 @@ func TestMessageCtx(t *testing.T, pubSub PubSub, features Features) {
 		require.NoError(t, subscribeInitializer.SubscribeInitialize(topicName))
 	}
 
-	msg := message.NewMessage(watermill.UUID(), nil)
+	msg := message.NewMessage(watermill.NewUUID(), nil)
 
 	// ensuring that context is not propagated via pub/sub
 	ctx, ctxCancel := context.WithCancel(context.Background())
@@ -685,7 +685,7 @@ func TestReconnect(t *testing.T, pubSub PubSub, features Features) {
 	for i := 0; i < publishersCount; i++ {
 		go func() {
 			for range publishMessage {
-				id := watermill.UUID()
+				id := watermill.NewUUID()
 				msg := message.NewMessage(id, nil)
 
 				for {
@@ -750,7 +750,7 @@ func assertConsumerGroupReceivedMessages(
 }
 
 func testTopicName() string {
-	return "topic_" + watermill.UUID()
+	return "topic_" + watermill.NewUUID()
 }
 
 func closePubSub(t *testing.T, pubSub PubSub) {
@@ -759,7 +759,7 @@ func closePubSub(t *testing.T, pubSub PubSub) {
 }
 
 func generateConsumerGroup(t *testing.T, pubSubConstructor ConsumerGroupPubSubConstructor, topicName string) string {
-	groupName := "cg_" + watermill.UUID()
+	groupName := "cg_" + watermill.NewUUID()
 
 	// create a pubsub to ensure that the consumer group exists
 	// for those providers that require subscription before publishing messages (e.g. Google Cloud PubSub)
@@ -775,7 +775,7 @@ func AddSimpleMessages(t *testing.T, messagesCount int, publisher message.Publis
 	var messagesToPublish []*message.Message
 
 	for i := 0; i < messagesCount; i++ {
-		id := watermill.UUID()
+		id := watermill.NewUUID()
 
 		msg := message.NewMessage(id, nil)
 		messagesToPublish = append(messagesToPublish, msg)
@@ -805,7 +805,7 @@ func AddSimpleMessagesParallel(t *testing.T, messagesCount int, publisher messag
 	}
 
 	for i := 0; i < messagesCount; i++ {
-		id := watermill.UUID()
+		id := watermill.NewUUID()
 
 		msg := message.NewMessage(id, nil)
 		messagesToPublish = append(messagesToPublish, msg)

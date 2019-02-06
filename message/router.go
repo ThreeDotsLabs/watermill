@@ -186,6 +186,7 @@ func (r *Router) AddHandler(
 // subscribeTopic is a topic from which handler will receive messages.
 //
 // subscriber is Subscriber from which messages will be consumed.
+// todo - panic instead of err?
 func (r *Router) AddNoPublisherHandler(
 	handlerName string,
 	subscribeTopic string,

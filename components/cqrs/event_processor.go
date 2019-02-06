@@ -2,7 +2,8 @@ package cqrs
 
 import (
 	"fmt"
-	"reflect"
+
+	"github.com/pkg/errors"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
@@ -105,18 +106,9 @@ func (p EventProcessor) RouterHandlerFunc(handler EventHandler) (message.Handler
 }
 
 func (p EventProcessor) validateEvent(event interface{}) error {
-	rv := reflect.ValueOf(event)
-	if rv.Kind() != reflect.Ptr || rv.IsNil() {
-		return NonPointerEventError{rv.Type()}
+	if err := isPointer(event); err != nil {
+		return errors.Wrap(err, "event must be a not nil pointer")
 	}
 
 	return nil
-}
-
-type NonPointerEventError struct {
-	Type reflect.Type
-}
-
-func (e NonPointerEventError) Error() string {
-	return "non-pointer event: " + e.Type.String() + ", handler.NewEvent() should return pointer to the event"
 }

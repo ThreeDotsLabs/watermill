@@ -15,7 +15,7 @@ import (
 func TestDefaultMarshaler(t *testing.T) {
 	marshaler := amqp.DefaultMarshaler{}
 
-	msg := message.NewMessage(watermill.UUID(), []byte("payload"))
+	msg := message.NewMessage(watermill.NewUUID(), []byte("payload"))
 	msg.Metadata.Set("foo", "bar")
 
 	marshaled, err := marshaler.Marshal(msg)
@@ -31,7 +31,7 @@ func TestDefaultMarshaler(t *testing.T) {
 func TestDefaultMarshaler_not_persistent(t *testing.T) {
 	marshaler := amqp.DefaultMarshaler{NotPersistentDeliveryMode: true}
 
-	msg := message.NewMessage(watermill.UUID(), []byte("payload"))
+	msg := message.NewMessage(watermill.NewUUID(), []byte("payload"))
 	msg.Metadata.Set("foo", "bar")
 
 	marshaled, err := marshaler.Marshal(msg)
@@ -50,7 +50,7 @@ func TestDefaultMarshaler_postprocess_publishing(t *testing.T) {
 		},
 	}
 
-	msg := message.NewMessage(watermill.UUID(), []byte("payload"))
+	msg := message.NewMessage(watermill.NewUUID(), []byte("payload"))
 	msg.Metadata.Set("foo", "bar")
 
 	marshaled, err := marshaler.Marshal(msg)
@@ -63,7 +63,7 @@ func TestDefaultMarshaler_postprocess_publishing(t *testing.T) {
 func BenchmarkDefaultMarshaler_Marshal(b *testing.B) {
 	m := amqp.DefaultMarshaler{}
 
-	msg := message.NewMessage(watermill.UUID(), []byte("payload"))
+	msg := message.NewMessage(watermill.NewUUID(), []byte("payload"))
 	msg.Metadata.Set("foo", "bar")
 
 	for i := 0; i < b.N; i++ {
@@ -74,7 +74,7 @@ func BenchmarkDefaultMarshaler_Marshal(b *testing.B) {
 func BenchmarkDefaultMarshaler_Unmarshal(b *testing.B) {
 	m := amqp.DefaultMarshaler{}
 
-	msg := message.NewMessage(watermill.UUID(), []byte("payload"))
+	msg := message.NewMessage(watermill.NewUUID(), []byte("payload"))
 	msg.Metadata.Set("foo", "bar")
 
 	marshaled, err := m.Marshal(msg)

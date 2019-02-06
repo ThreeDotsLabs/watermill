@@ -1,17 +1,17 @@
 package cqrs
 
 import (
-	"fmt"
 	"reflect"
+
+	"github.com/ThreeDotsLabs/watermill"
 
 	"github.com/pkg/errors"
 
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/gogo/protobuf/proto"
-	uuid "github.com/satori/go.uuid"
 )
 
-type ProtoBufMarshaler struct {
+type ProtobufMarshaler struct {
 	NewUUID func() string
 }
 
@@ -28,7 +28,7 @@ func (e NoProtoMessageError) Error() string {
 	return "v is not proto.Message"
 }
 
-func (m ProtoBufMarshaler) Marshal(v interface{}) (*message.Message, error) {
+func (m ProtobufMarshaler) Marshal(v interface{}) (*message.Message, error) {
 	protoMsg, ok := v.(proto.Message)
 	if !ok {
 		return nil, errors.WithStack(NoProtoMessageError{v})
@@ -48,24 +48,23 @@ func (m ProtoBufMarshaler) Marshal(v interface{}) (*message.Message, error) {
 	return msg, nil
 }
 
-func (m ProtoBufMarshaler) newUUID() string {
+func (m ProtobufMarshaler) newUUID() string {
 	if m.NewUUID != nil {
 		return m.NewUUID()
 	}
 
 	// default
-	return uuid.NewV4().String()
+	return watermill.NewUUID()
 }
 
-func (ProtoBufMarshaler) Unmarshal(msg *message.Message, v interface{}) (err error) {
+func (ProtobufMarshaler) Unmarshal(msg *message.Message, v interface{}) (err error) {
 	return proto.Unmarshal(msg.Payload, v.(proto.Message))
 }
 
-// todo - benchmark
-func (m ProtoBufMarshaler) Name(cmdOrEvent interface{}) string {
-	return fmt.Sprintf("%T", cmdOrEvent)
+func (m ProtobufMarshaler) Name(cmdOrEvent interface{}) string {
+	return ObjectName(cmdOrEvent)
 }
 
-func (m ProtoBufMarshaler) MarshaledName(msg *message.Message) string {
+func (m ProtobufMarshaler) MarshaledName(msg *message.Message) string {
 	return msg.Metadata.Get("name")
 }

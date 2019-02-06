@@ -8,14 +8,14 @@ import (
 	"github.com/renstrom/shortuuid"
 )
 
-func UUID() string {
+func NewUUID() string {
 	return uuid.New().String()
 }
 
-func ShortUUID() string {
+func NewShortUUID() string {
 	return shortuuid.New()
 }
 
-func ULID() string {
+func NewULID() string {
 	return ulid.MustNew(ulid.Now(), rand.Reader).String()
 }

@@ -43,6 +43,10 @@ type GoChannel struct {
 	persistent bool
 
 	persistedMessages map[string][]*message.Message
+
+	// todo - move to struct?
+	// todo - validate with persistent? (not allowed?)
+	blockPublishUntilSubscriberAck bool
 }
 
 func (g *GoChannel) Publisher() message.Publisher {
@@ -68,6 +72,23 @@ func NewGoChannel(outputChannelBuffer int64, logger watermill.LoggerAdapter) mes
 		}),
 
 		closing: make(chan struct{}),
+	}
+}
+
+// todo - rename
+func NewGoChannelBlockingUntilAckedByConsumer(outputChannelBuffer int64, logger watermill.LoggerAdapter) message.PubSub {
+	return &GoChannel{
+		outputChannelBuffer: outputChannelBuffer,
+
+		subscribers:            make(map[string][]*subscriber),
+		subscribersByTopicLock: sync.Map{},
+		logger: logger.With(watermill.LogFields{
+			"pubsub_uuid": shortuuid.New(),
+		}),
+
+		closing: make(chan struct{}),
+
+		blockPublishUntilSubscriberAck: true,
 	}
 }
 
@@ -118,29 +139,39 @@ func (g *GoChannel) Publish(topic string, messages ...*message.Message) error {
 	}
 
 	for i := range messages {
-		if err := g.sendMessage(topic, messages[i]); err != nil {
+		done, err := g.sendMessage(topic, messages[i])
+		if err != nil {
 			return err
+		}
+
+		if g.blockPublishUntilSubscriberAck {
+			// todo - better blocking
+			// todo - wahat if no subscribers? blocking?
+			<-done
 		}
 	}
 
 	return nil
 }
 
-func (g *GoChannel) sendMessage(topic string, message *message.Message) error {
+func (g *GoChannel) sendMessage(topic string, message *message.Message) (<-chan struct{}, error) {
 	subscribers := g.topicSubscribers(topic)
+	done := make(chan struct{})
+
 	if len(subscribers) == 0 {
-		return nil
+		close(done)
+		return done, nil
 	}
 
-	for i := range subscribers {
-		s := subscribers[i]
-
-		go func(subscriber *subscriber) {
+	go func(subscribers []*subscriber) {
+		for i := range subscribers {
+			subscriber := subscribers[i]
 			g.sendMessageToSubscriber(message, subscriber)
-		}(s)
-	}
+		}
+		close(done)
+	}(subscribers)
 
-	return nil
+	return done, nil
 }
 
 func (g *GoChannel) sendMessageToSubscriber(msg *message.Message, s *subscriber) {
@@ -203,7 +234,7 @@ func (g *GoChannel) Subscribe(topic string) (chan *message.Message, error) {
 	subLock.(*sync.Mutex).Lock()
 
 	s := &subscriber{
-		uuid:          watermill.UUID(),
+		uuid:          watermill.NewUUID(),
 		outputChannel: make(chan *message.Message, g.outputChannelBuffer),
 	}
 

@@ -6,7 +6,7 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/ThreeDotsLabs/watermill/cqrs"
+	"github.com/ThreeDotsLabs/watermill/components/cqrs"
 
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/gochannel"
 
@@ -85,10 +85,10 @@ func (b OrderBeerHandler) Handle(c interface{}) error {
 
 func main() {
 	logger := watermill.NewStdLogger(true, false)
-	marshaler := cqrs.ProtoBufMarshaler{}
+	marshaler := cqrs.ProtobufMarshaler{}
 
 	// you can use any Pub/Sub implementation from here: https://watermill.io/docs/pub-sub-implementations/
-	pubSub := gochannel.NewGoChannel(0, logger, time.Second)
+	pubSub := gochannel.NewGoChannel(0, logger)
 
 	// cqrs is built on already existing messages router: https://watermill.io/docs/messages-router/
 	router, err := message.NewRouter(message.RouterConfig{}, logger)

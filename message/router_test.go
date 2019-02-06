@@ -17,7 +17,7 @@ import (
 )
 
 func TestRouter_functional(t *testing.T) {
-	testID := watermill.UUID()
+	testID := watermill.NewUUID()
 	subscribeTopic := "test_topic_" + testID
 
 	pubSub, err := createPubSub()
@@ -69,7 +69,7 @@ func TestRouter_functional(t *testing.T) {
 		func(msg *message.Message) (producedMessages []*message.Message, err error) {
 			receivedMessagesCh1 <- msg
 
-			toPublish := message.NewMessage(watermill.UUID(), nil)
+			toPublish := message.NewMessage(watermill.NewUUID(), nil)
 			sentByHandlerCh <- toPublish
 
 			return []*message.Message{toPublish}, nil
@@ -318,7 +318,7 @@ func createBenchSubscriber(b *testing.B) benchMockSubscriber {
 	for i := 0; i < b.N; i++ {
 		messagesToSend = append(
 			messagesToSend,
-			message.NewMessage(watermill.UUID(), []byte(fmt.Sprintf("%d", i))),
+			message.NewMessage(watermill.NewUUID(), []byte(fmt.Sprintf("%d", i))),
 		)
 	}
 
@@ -329,7 +329,7 @@ func publishMessagesForHandler(t *testing.T, messagesCount int, pubSub message.P
 	var messagesToPublish []*message.Message
 
 	for i := 0; i < messagesCount; i++ {
-		msg := message.NewMessage(watermill.UUID(), []byte(fmt.Sprintf("%d", i)))
+		msg := message.NewMessage(watermill.NewUUID(), []byte(fmt.Sprintf("%d", i)))
 
 		messagesToPublish = append(messagesToPublish, msg)
 	}

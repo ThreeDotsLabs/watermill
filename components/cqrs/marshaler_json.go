@@ -2,10 +2,10 @@ package cqrs
 
 import (
 	"encoding/json"
-	"fmt"
+
+	"github.com/ThreeDotsLabs/watermill"
 
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/satori/go.uuid"
 )
 
 type JsonMarshaler struct {
@@ -33,16 +33,15 @@ func (m JsonMarshaler) newUUID() string {
 	}
 
 	// default
-	return uuid.NewV4().String()
+	return watermill.NewUUID()
 }
 
 func (JsonMarshaler) Unmarshal(msg *message.Message, v interface{}) (err error) {
 	return json.Unmarshal(msg.Payload, v)
 }
 
-// todo - benchmark
 func (m JsonMarshaler) Name(cmdOrEvent interface{}) string {
-	return fmt.Sprintf("%T", cmdOrEvent)
+	return ObjectName(cmdOrEvent)
 }
 
 func (m JsonMarshaler) MarshaledName(msg *message.Message) string {

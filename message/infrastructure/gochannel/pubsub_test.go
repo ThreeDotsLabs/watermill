@@ -43,7 +43,7 @@ func TestPublishSubscribe_not_persistent(t *testing.T) {
 		int64(messagesCount),
 		watermill.NewStdLogger(true, true),
 	)
-	topicName := "test_topic_" + watermill.UUID()
+	topicName := "test_topic_" + watermill.NewUUID()
 
 	msgs, err := pubSub.Subscribe(topicName)
 	require.NoError(t, err)
@@ -90,7 +90,7 @@ func testPublishSubscribeSubRace(t *testing.T) {
 	sentMessages := message.Messages{}
 	go func() {
 		for i := 0; i < messagesCount; i++ {
-			msg := message.NewMessage(watermill.UUID(), nil)
+			msg := message.NewMessage(watermill.NewUUID(), nil)
 			sentMessages = append(sentMessages, msg)
 
 			go func() {

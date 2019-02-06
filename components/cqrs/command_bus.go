@@ -1,6 +1,9 @@
 package cqrs
 
-import "github.com/ThreeDotsLabs/watermill/message"
+import (
+	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/pkg/errors"
+)
 
 type CommandBus struct {
 	publisher message.Publisher
@@ -17,9 +20,13 @@ func NewCommandBus(
 }
 
 func (c CommandBus) Send(cmd interface{}) error {
+	if err := isPointer(cmd); err != nil {
+		return errors.Wrapf(err, "command must be a not nil pointer")
+	}
+
 	msg, err := c.marshaler.Marshal(cmd)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	return c.publisher.Publish(c.topic, msg)

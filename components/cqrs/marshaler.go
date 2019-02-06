@@ -1,8 +1,10 @@
 package cqrs
 
-import "github.com/ThreeDotsLabs/watermill/message"
+import (
+	"github.com/ThreeDotsLabs/watermill/message"
+)
 
-// todo - rename?
+// todo - rename? confusing with message marshaler?
 type Marshaler interface {
 	Marshal(v interface{}) (*message.Message, error)
 	Unmarshal(msg *message.Message, v interface{}) (err error)

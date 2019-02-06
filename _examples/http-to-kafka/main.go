@@ -34,7 +34,7 @@ func main() {
 			return nil, errors.Wrap(err, "cannot read body")
 		}
 
-		return message.NewMessage(watermill.UUID(), b), nil
+		return message.NewMessage(watermill.NewUUID(), b), nil
 	}, logger)
 	if err != nil {
 		panic(err)
