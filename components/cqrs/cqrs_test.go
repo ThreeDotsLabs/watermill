@@ -70,7 +70,7 @@ func (h *TestCommandHandler) Handle(cmd interface{}) error {
 	return nil
 }
 
-// TestCQRS is functional test of CQRS command handler.
+// TestCQRS_command_handler is functional test of CQRS command handler.
 func TestCQRS_command_handler(t *testing.T) {
 	ts := NewTestServices()
 
@@ -106,4 +106,54 @@ func TestCQRS_command_handler(t *testing.T) {
 type TestEvent struct {
 	ID   string
 	When time.Time
+}
+
+type TestEventHandler struct {
+	handledEvents []*TestEvent
+}
+
+func (h TestEventHandler) HandledEvents() []*TestEvent {
+	return h.handledEvents
+}
+
+func (TestEventHandler) NewEvent() interface{} {
+	return &TestEvent{}
+}
+
+func (h *TestEventHandler) Handle(cmd interface{}) error {
+	h.handledEvents = append(h.handledEvents, cmd.(*TestEvent))
+	return nil
+}
+
+// TestCQRS_event_handler is functional test of CQRS event handler.
+func TestCQRS_event_handler(t *testing.T) {
+	ts := NewTestServices()
+
+	eventHandler := &TestEventHandler{}
+	eventProcessor := cqrs.NewEventProcessor(
+		[]cqrs.EventHandler{eventHandler},
+		ts.EventsTopic,
+		ts.PubSub,
+		ts.Marshaler,
+		ts.Logger,
+	)
+
+	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
+	require.NoError(t, err)
+
+	require.NoError(t, eventProcessor.AddHandlersToRouter(router))
+
+	// process is complicated a bit? create command bus, router, add command bus to router, run router in exact order aaand <-router.Running()
+	// todo - simplify?
+	go func() {
+		require.NoError(t, router.Run())
+	}()
+
+	<-router.Running()
+
+	cmd := &TestEvent{ID: watermill.NewULID()}
+	require.NoError(t, ts.EventBus.Publish(cmd))
+
+	assert.EqualValues(t, []*TestEvent{cmd}, eventHandler.HandledEvents())
+	assert.NoError(t, router.Close())
 }
