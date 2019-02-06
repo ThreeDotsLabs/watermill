@@ -41,6 +41,6 @@ test:
     - docker-compose up -d
     - |
       for port in 2181 5672 8085 8222 9092; do
-        ./wait-for-it.sh -h 127.0.0.1 -p $port -t 30
+        ./wait-for-it.sh -h 127.0.0.1 -p $port -t 120
       done
     - docker-compose run watermill go test ./... -short
