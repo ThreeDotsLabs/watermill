@@ -104,80 +104,22 @@ function check_output() {
 function check_examples() {
         anyError=0
 
-        echo -e "\nChecking examples..."
-        pushd _examples &> /dev/null
+        echo "Checking output of snippets and examples..."
 
-        pushd kafka-to-http &> /dev/null
-        enumerate "checking if kafka-to-http runs and has expected output"
-        wrap_check_output "docker-compose up" 30 "POST /foo_or_bar: message" || anyError=1
-        popd &> /dev/null
-
-        pushd simple-app &> /dev/null
-        enumerate "checking simple-app/subscribing"
-        wrap_check_output "docker-compose up" 10 "msg=\"Starting handler\"" || anyError=1
-        enumerate "checking simple-app/publishing"
-        wrap_check_output "docker-compose up" 10 "msg=\"Message sent to Kafka\"" || anyError=1
-        popd &> /dev/null
-
-        pushd your-first-app &> /dev/null
-        enumerate "checking if your-first-app runs and has expected output"
-        wrap_check_output "docker-compose up" 20 "received event [0-9]+" || anyError=1
-        popd &> /dev/null
-
-        echo "...done"
-        popd &> /dev/null
-        return $anyError
-}
-
-function check_docs_snippets() {
-        anyError=0
-
-        echo -e "\nChecking docs snippets..."
-        pushd docs/content/docs &> /dev/null
-
-        pushd snippets/amqp-consumer-groups &> /dev/null
-        enumerate "checking amqp-consumer-groups snippet"
-        wrap_check_output "docker-compose up" 10 " received message: [0-9a-f\\-]+, payload: Hello, world!" || anyError=1
-        popd &> /dev/null
-
-        pushd message &> /dev/null
-        enumerate "checking the receiving-ack snippet"
-        wrap_check_output "go run receiving-ack.go" 1 "ack received" || anyError=1
-        popd &> /dev/null
-
-        pushd getting-started/router &> /dev/null
-        enumerate "checking the router getting-started snippet"
-        wrap_check_output "go run main.go" 3 "structHandler received message [0-9a-f\\-]+" || anyError=1
-        popd &> /dev/null
-
-        pushd getting-started/kafka &> /dev/null
-        enumerate "checking the kafka getting-started snippet"
-        wrap_check_output "docker-compose up" 30 "payload: Hello, world!" || anyError=1
-        popd &> /dev/null
-
-        pushd getting-started/nats-streaming &> /dev/null
-        enumerate "checking the nats getting-started snippet"
-        wrap_check_output "docker-compose up" 5 "payload: Hello, world!" || anyError=1
-        popd &> /dev/null
-
-        pushd getting-started/googlecloud &> /dev/null
-        enumerate "checking the google cloud pubsub getting-started snippet"
-        wrap_check_output "docker-compose up" 5 "payload: Hello, world!" || anyError=1
-        popd &> /dev/null
-
-        pushd getting-started/amqp &> /dev/null
-        enumerate "checking the rabbitmq getting-started snippet"
-        wrap_check_output "docker-compose up" 10 "payload: Hello, world!" || anyError=1
-        popd &> /dev/null
-
-        pushd getting-started/go-channel &> /dev/null
-        enumerate "checking the go channel pubsub getting-started snippet"
-        wrap_check_output "go run main.go" 1 "payload: Hello, world!" || anyError=1
-        popd &> /dev/null
+        for conf in $(find . -name ".validate_example*.sh")
+        do
+                dir="$(dirname $conf)"
+                # we expect $conf to supply $CMD, $TIMEOUT and $EXPECTED_OUTPUT
+                source "$conf"
+                pushd $dir &> /dev/null
+                enumerate "$conf"
+                wrap_check_output "$CMD" $TIMEOUT "$EXPECTED_OUTPUT"  || anyError=1
+                popd &> /dev/null
+                unset CMD && unset TIMEOUT && unset EXPECTED_OUTPUT
+        done
         
 
         echo "...done"
-        popd &> /dev/null
         return $anyError
 }
 
@@ -210,8 +152,6 @@ then
         anyError=0
 
         check_examples || anyError=1
-        check_docs_snippets || anyError=1
-
         exit $anyError
 fi
 
