@@ -102,7 +102,7 @@ function check_examples() {
 
         pushd kafka-to-http &> /dev/null
         enumerate "checking if kafka-to-http runs and has expected output"
-        check_example "docker-compose up" 20 "POST /foo_or_bar: message" || anyError=1
+        check_example "docker-compose up" 30 "POST /foo_or_bar: message" || anyError=1
         popd &> /dev/null
 
         pushd simple-app &> /dev/null
@@ -110,6 +110,11 @@ function check_examples() {
         check_example "docker-compose up" 10 "msg=\"Starting handler\"" || anyError=1
         enumerate "checking simple-app/publishing"
         check_example "docker-compose up" 10 "msg=\"Message sent to Kafka\"" || anyError=1
+        popd &> /dev/null
+
+        pushd your-first-app &> /dev/null
+        enumerate "checking if your-first-app runs and has expected output"
+        check_example "docker-compose up" 20 "received event [0-9]+" || anyError=1
         popd &> /dev/null
 
         return $anyError
