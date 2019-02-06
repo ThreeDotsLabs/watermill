@@ -33,7 +33,7 @@ function update_gomod() {
         revision="$2"
         if [ -z "$revision" ]; then revision="master"; fi
 
-        echo "Setting $dependency to $revision..."
+        echo "Pinning $dependency to current $revision..."
 
         for gomod in $(find . -name "go.mod")
         do
