@@ -344,7 +344,7 @@ func publishMessagesForHandler(t *testing.T, messagesCount int, pubSub message.P
 }
 
 func createPubSub() (message.PubSub, error) {
-	return gochannel.NewPersistentGoChannel(0, watermill.NewStdLogger(true, true), time.Second*10), nil
+	return gochannel.NewPersistentGoChannel(0, watermill.NewStdLogger(true, true)), nil
 }
 
 func readMessages(messagesCh <-chan *message.Message, limit int, timeout time.Duration) (receivedMessages []*message.Message, all bool) {

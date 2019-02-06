@@ -3,7 +3,6 @@ package gochannel
 import (
 	"context"
 	"sync"
-	"time"
 
 	"github.com/renstrom/shortuuid"
 
@@ -14,8 +13,6 @@ import (
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
 )
-
-const NoTimeout time.Duration = -1
 
 type subscriber struct {
 	uuid          string
@@ -30,9 +27,6 @@ type subscriber struct {
 //
 // In when GoChannel is persistent, messages order is not guaranteed.
 type GoChannel struct {
-	// how long GoChannel will try to publish message to consumer.
-	// -1 means no timeout
-	sendTimeout         time.Duration
 	outputChannelBuffer int64
 
 	subscribers            map[string][]*subscriber
@@ -65,9 +59,8 @@ func (g *GoChannel) Subscriber() message.Subscriber {
 //
 // This GoChannel is not persistent.
 // That means if we send message to topic to which no subscriber is subscribed, then message will be discarded.
-func NewGoChannel(outputChannelBuffer int64, logger watermill.LoggerAdapter, sendTimeout time.Duration) message.PubSub {
+func NewGoChannel(outputChannelBuffer int64, logger watermill.LoggerAdapter) message.PubSub {
 	return &GoChannel{
-		sendTimeout:         sendTimeout,
 		outputChannelBuffer: outputChannelBuffer,
 
 		subscribers:            make(map[string][]*subscriber),
@@ -87,9 +80,8 @@ func NewGoChannel(outputChannelBuffer int64, logger watermill.LoggerAdapter, sen
 // All messages are persisted to the memory, so be aware that with large amount of messages you can go out of the memory.
 //
 // Messages are persisted per GoChannel, so you must use same object to consume these persisted messages.
-func NewPersistentGoChannel(outputChannelBuffer int64, logger watermill.LoggerAdapter, sendTimeout time.Duration) message.PubSub {
+func NewPersistentGoChannel(outputChannelBuffer int64, logger watermill.LoggerAdapter) message.PubSub {
 	return &GoChannel{
-		sendTimeout:         sendTimeout,
 		outputChannelBuffer: outputChannelBuffer,
 
 		subscribers: make(map[string][]*subscriber),
@@ -105,8 +97,7 @@ func NewPersistentGoChannel(outputChannelBuffer int64, logger watermill.LoggerAd
 }
 
 // Publish in GoChannel is NOT blocking until all consumers consume.
-// Messages will be send in background add send time will be limited to g.sendTimeout.
-// Sending message to one subscriber has timeout equal to GoChannel.sendTimeout configured via constructor.
+// Messages will be send in background.
 //
 // Messages may be persisted or not, depending of persistent attribute.
 func (g *GoChannel) Publish(topic string, messages ...*message.Message) error {
@@ -147,14 +138,14 @@ func (g *GoChannel) sendMessage(topic string, message *message.Message) error {
 		s := subscribers[i]
 
 		go func(subscriber *subscriber) {
-			g.sendMessageToSubscriber(message, subscriber, g.sendTimeout)
+			g.sendMessageToSubscriber(message, subscriber)
 		}(s)
 	}
 
 	return nil
 }
 
-func (g *GoChannel) sendMessageToSubscriber(msg *message.Message, s *subscriber, sendTimeout time.Duration) {
+func (g *GoChannel) sendMessageToSubscriber(msg *message.Message, s *subscriber) {
 	subscriberLogFields := watermill.LogFields{
 		"message_uuid": msg.UUID,
 		"pubsub_uuid":  s.uuid,
@@ -172,13 +163,6 @@ SendToSubscriber:
 
 		g.logger.Trace("Sending msg to subscriber", subscriberLogFields)
 
-		var timeout <-chan time.Time
-		if sendTimeout != NoTimeout {
-			timeout = time.After(sendTimeout)
-		} else {
-			timeout = make(<-chan time.Time)
-		}
-
 		if g.closed {
 			g.logger.Info("Pub/Sub closed, discarding msg", subscriberLogFields)
 			return
@@ -187,9 +171,6 @@ SendToSubscriber:
 		select {
 		case s.outputChannel <- msgToSend:
 			g.logger.Trace("Sent message to subscriber", subscriberLogFields)
-		case <-timeout:
-			g.logger.Error("Sending message timeouted", nil, subscriberLogFields)
-			return
 		case <-g.closing:
 			g.logger.Trace("Closing, message discarded", subscriberLogFields)
 			return
@@ -246,7 +227,7 @@ func (g *GoChannel) Subscribe(topic string) (chan *message.Message, error) {
 				msg := g.persistedMessages[topic][i]
 
 				go func() {
-					g.sendMessageToSubscriber(msg, s, NoTimeout)
+					g.sendMessageToSubscriber(msg, s)
 				}()
 			}
 		}

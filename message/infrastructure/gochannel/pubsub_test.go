@@ -21,7 +21,6 @@ func createPersistentPubSub(t *testing.T) infrastructure.PubSub {
 	return gochannel.NewPersistentGoChannel(
 		10000,
 		watermill.NewStdLogger(true, true),
-		time.Second*10,
 	).(infrastructure.PubSub)
 }
 
@@ -44,7 +43,6 @@ func TestPublishSubscribe_not_persistent(t *testing.T) {
 	pubSub := gochannel.NewGoChannel(
 		int64(messagesCount),
 		watermill.NewStdLogger(true, true),
-		time.Second*10,
 	)
 	topicName := "test_topic_" + uuid.NewV4().String()
 
@@ -84,7 +82,6 @@ func testPublishSubscribeSubRace(t *testing.T) {
 	pubSub := gochannel.NewPersistentGoChannel(
 		int64(messagesCount),
 		watermill.NewStdLogger(true, false),
-		time.Second*20,
 	)
 
 	allSent := sync.WaitGroup{}

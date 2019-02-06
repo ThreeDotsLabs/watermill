@@ -51,7 +51,7 @@ func main() {
 
 	// for simplicity we are using gochannel Pub/Sub here,
 	// you can replace it with any Pub/Sub implementation, it will work the same
-	pubSub := gochannel.NewGoChannel(0, logger, time.Second)
+	pubSub := gochannel.NewGoChannel(0, logger)
 
 	// producing some messages in background
 	go publishMessages(pubSub)
