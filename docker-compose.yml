@@ -4,7 +4,7 @@
 version: '3'
 services:
   watermill:
-    image: golang:1.11.3
+    image: golang:1.11
     network_mode: host
     command: /bin/true
     volumes:
