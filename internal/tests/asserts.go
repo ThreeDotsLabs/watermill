@@ -47,7 +47,9 @@ func AssertAllMessagesReceived(t *testing.T, sent message.Messages, received mes
 
 	return assert.Equal(
 		t, sentIDs, receivedIDs,
-		"received different messages ID's, missing: %s", MissingMessages(sent, received),
+		"received different messages ID's, missing: %s, extra %s",
+		MissingMessages(sent, received),
+		MissingMessages(received, sent),
 	)
 }
 

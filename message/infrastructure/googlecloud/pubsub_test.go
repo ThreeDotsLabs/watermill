@@ -48,14 +48,14 @@ func newPubSub(t *testing.T, marshaler googlecloud.MarshalerUnmarshaler, subscri
 	return message.NewPubSub(publisher, subscriber)
 }
 
-func createPubSubWithSubscriptionName(t *testing.T, subscriptionName string) message.PubSub {
+func createPubSubWithSubscriptionName(t *testing.T, subscriptionName string) infrastructure.PubSub {
 	return newPubSub(t, googlecloud.DefaultMarshalerUnmarshaler{},
 		googlecloud.TopicSubscriptionNameWithSuffix(subscriptionName),
-	)
+	).(infrastructure.PubSub)
 }
 
-func createPubSub(t *testing.T) message.PubSub {
-	return newPubSub(t, googlecloud.DefaultMarshalerUnmarshaler{}, googlecloud.TopicSubscriptionName)
+func createPubSub(t *testing.T) infrastructure.PubSub {
+	return newPubSub(t, googlecloud.DefaultMarshalerUnmarshaler{}, googlecloud.TopicSubscriptionName).(infrastructure.PubSub)
 }
 
 func TestPublishSubscribe(t *testing.T) {

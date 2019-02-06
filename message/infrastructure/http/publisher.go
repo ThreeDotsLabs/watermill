@@ -100,6 +100,8 @@ func (p *Publisher) Publish(topic string, messages ...*message.Message) error {
 			"provider": ProviderName,
 		}
 
+		p.logger.Trace("Publishing message", logFields)
+
 		resp, err := p.config.Client.Do(req)
 		if err != nil {
 			return errors.Wrapf(err, "publishing message %s failed", msg.UUID)

@@ -2,6 +2,7 @@ package kafka_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/Shopify/sarama"
 
@@ -23,10 +24,20 @@ func newPubSub(t *testing.T, marshaler kafka.MarshalerUnmarshaler, consumerGroup
 	saramaConfig := kafka.DefaultSaramaSubscriberConfig()
 	saramaConfig.Consumer.Offsets.Initial = sarama.OffsetOldest
 
+	saramaConfig.Admin.Timeout = time.Second * 30
+	saramaConfig.Producer.RequiredAcks = sarama.WaitForAll
+	saramaConfig.ChannelBufferSize = 10240
+	saramaConfig.Consumer.Group.Heartbeat.Interval = time.Millisecond * 500
+	saramaConfig.Consumer.Group.Rebalance.Timeout = time.Millisecond * 500
+
 	subscriber, err := kafka.NewSubscriber(
 		kafka.SubscriberConfig{
 			Brokers:       brokers,
 			ConsumerGroup: consumerGroup,
+			InitializeTopicDetails: &sarama.TopicDetail{
+				NumPartitions:     8,
+				ReplicationFactor: 1,
+			},
 		},
 		saramaConfig,
 		marshaler,
@@ -41,16 +52,16 @@ func generatePartitionKey(topic string, msg *message.Message) (string, error) {
 	return msg.Metadata.Get("partition_key"), nil
 }
 
-func createPubSubWithConsumerGrup(t *testing.T, consumerGroup string) message.PubSub {
-	return newPubSub(t, kafka.DefaultMarshaler{}, consumerGroup)
+func createPubSubWithConsumerGrup(t *testing.T, consumerGroup string) infrastructure.PubSub {
+	return newPubSub(t, kafka.DefaultMarshaler{}, consumerGroup).(infrastructure.PubSub)
 }
 
-func createPubSub(t *testing.T) message.PubSub {
-	return createPubSubWithConsumerGrup(t, "test")
+func createPubSub(t *testing.T) infrastructure.PubSub {
+	return createPubSubWithConsumerGrup(t, "test").(infrastructure.PubSub)
 }
 
-func createPartitionedPubSub(t *testing.T) message.PubSub {
-	return newPubSub(t, kafka.NewWithPartitioningMarshaler(generatePartitionKey), "test")
+func createPartitionedPubSub(t *testing.T) infrastructure.PubSub {
+	return newPubSub(t, kafka.NewWithPartitioningMarshaler(generatePartitionKey), "test").(infrastructure.PubSub)
 }
 
 func createNoGroupSubscriberConstructor(t *testing.T) message.Subscriber {
@@ -76,20 +87,34 @@ func createNoGroupSubscriberConstructor(t *testing.T) message.Subscriber {
 }
 
 func TestPublishSubscribe(t *testing.T) {
+	features := infrastructure.Features{
+		ConsumerGroups:      true,
+		ExactlyOnceDelivery: false,
+		GuaranteedOrder:     false,
+		Persistent:          true,
+	}
+
+	if testing.Short() {
+		// Kafka tests are a bit slow, so let's run only basic test
+		// todo - speed up
+		t.Log("Running only TestPublishSubscribe for Kafka with -short flag")
+		infrastructure.TestPublishSubscribe(t, createPubSub(t), features)
+		return
+	}
+
 	infrastructure.TestPubSub(
 		t,
-		infrastructure.Features{
-			ConsumerGroups:      true,
-			ExactlyOnceDelivery: false,
-			GuaranteedOrder:     false,
-			Persistent:          true,
-		},
+		features,
 		createPubSub,
 		createPubSubWithConsumerGrup,
 	)
 }
 
 func TestPublishSubscribe_ordered(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping long tests")
+	}
+
 	infrastructure.TestPubSub(
 		t,
 		infrastructure.Features{
@@ -104,5 +129,9 @@ func TestPublishSubscribe_ordered(t *testing.T) {
 }
 
 func TestNoGroupSubscriber(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping long tests")
+	}
+
 	infrastructure.TestNoGroupSubscriber(t, createPubSub, createNoGroupSubscriberConstructor)
 }
