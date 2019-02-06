@@ -93,7 +93,7 @@ func NewSubscriber(addr string, config SubscriberConfig, logger watermill.Logger
 //
 // When request is sent, it will wait for the `Ack`. When Ack is received 200 HTTP status wil be sent.
 // When Nack is sent, 500 HTTP status will be sent.
-func (s *Subscriber) Subscribe(url string) (chan *message.Message, error) {
+func (s *Subscriber) Subscribe(ctx context.Context, url string) (<-chan *message.Message, error) {
 	messages := make(chan *message.Message)
 
 	s.outputChannelsLock.Lock()
@@ -109,7 +109,7 @@ func (s *Subscriber) Subscribe(url string) (chan *message.Message, error) {
 	s.config.Router.Post(url, func(w http.ResponseWriter, r *http.Request) {
 		msg, err := s.config.UnmarshalMessageFunc(url, r)
 
-		ctx, cancelCtx := context.WithCancel(context.Background())
+		ctx, cancelCtx := context.WithCancel(ctx)
 		msg.SetContext(ctx)
 		defer cancelCtx()
 

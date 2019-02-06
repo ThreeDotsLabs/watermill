@@ -1,6 +1,8 @@
 package message
 
 import (
+	"context"
+
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 )
@@ -25,8 +27,8 @@ func (p pubSub) Publish(topic string, messages ...*Message) error {
 	return p.pub.Publish(topic, messages...)
 }
 
-func (p pubSub) Subscribe(topic string) (chan *Message, error) {
-	return p.sub.Subscribe(topic)
+func (p pubSub) Subscribe(ctx context.Context, topic string) (<-chan *Message, error) {
+	return p.sub.Subscribe(ctx, topic)
 }
 
 func (p pubSub) Publisher() Publisher {
