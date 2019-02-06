@@ -8,8 +8,6 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/satori/go.uuid"
-
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
 )
@@ -157,7 +155,7 @@ func (g *GoChannel) Subscribe(ctx context.Context, topic string) (<-chan *messag
 
 	s := &subscriber{
 		ctx:           ctx,
-		uuid:          uuid.NewV4().String(),
+		uuid:          watermill.UUID(),
 		outputChannel: make(chan *message.Message, g.outputChannelBuffer),
 		logger:        g.logger,
 		closing:       make(chan struct{}),
