@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var brokers = []string{"localhost:9092"}
+var brokers = []string{"kafka:9092"}
 
 func newPubSub(t *testing.T, marshaler kafka.MarshalerUnmarshaler, consumerGroup string) message.PubSub {
 	logger := watermill.NewStdLogger(true, true)

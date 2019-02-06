@@ -11,7 +11,7 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure"
 )
 
-var amqpURI = "amqp://guest:guest@localhost:5672/"
+var amqpURI = "amqp://guest:guest@rabbitmq:5672/"
 
 func createPubSub(t *testing.T) infrastructure.PubSub {
 	publisher, err := amqp.NewPublisher(
