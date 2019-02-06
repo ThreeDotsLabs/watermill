@@ -3,7 +3,7 @@ module main.go
 require (
 	cloud.google.com/go v0.34.0 // indirect
 	git.apache.org/thrift.git v0.0.0-20181217171848-56ac72e74ae3 // indirect
-	github.com/ThreeDotsLabs/watermill v0.2.1
+	github.com/ThreeDotsLabs/watermill v0.2.2-0.20190206131903-8b7b9a7381ea
 	github.com/confluentinc/confluent-kafka-go v0.11.6 // indirect
 	github.com/golang/mock v1.2.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway v1.6.2 // indirect

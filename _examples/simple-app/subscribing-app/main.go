@@ -9,6 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	prometheusmetrics "github.com/deathowl/go-metrics-prometheus"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -24,11 +25,10 @@ import (
 var (
 	marshaler = kafka.DefaultMarshaler{}
 	brokers   = []string{"kafka:9092"}
-
-	logger = watermill.NewStdLogger(false, false)
 )
 
 func main() {
+	logger := watermill.NewStdLogger(true, true)
 	pub, err := kafka.NewPublisher(brokers, marshaler, nil, logger)
 	if err != nil {
 		panic(err)
@@ -83,8 +83,9 @@ func main() {
 	if err = r.AddHandler(
 		"posts_counter",
 		"posts_published",
+		createSubscriber("posts_counter_v2", logger),
 		"posts_count",
-		message.NewPubSub(pub, createSubscriber("posts_counter_v2", logger)),
+		pub,
 		PostsCounter{memoryCountStorage{new(int64)}}.Count,
 	); err != nil {
 		panic(err)

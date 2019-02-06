@@ -220,7 +220,7 @@ If you use a simple function without dependencies, it's fine to use the second o
 
 You can run this example by `go run main.go`.
 
-You've just created your first application with Watermill. You can find the full source in [/docs/getting-started/router/main.go](https://github.com/ThreeDotsLabs/watermill/tree/master/content/docs/getting-started/router/main.go).
+You've just created your first application with Watermill. You can find the full source in [/docs/content/docs/getting-started/router/main.go](https://github.com/ThreeDotsLabs/watermill/blob/master/docs/content/docs/getting-started/router/main.go).
 
 ### Deployment
 
