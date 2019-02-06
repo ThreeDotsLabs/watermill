@@ -19,8 +19,9 @@ var (
 
 func main() {
 	log.Println("Starting publishing app")
+	logger := watermill.NewStdLogger(true, true)
 
-	publisher, err := kafka.NewPublisher(brokers, kafka.DefaultMarshaler{}, nil)
+	publisher, err := kafka.NewPublisher(brokers, kafka.DefaultMarshaler{}, nil, logger)
 	if err != nil {
 		panic(err)
 	}

@@ -18,3 +18,6 @@ test_stress:
 
 test_reconnect:
 	go test -tags=reconnect ./...
+
+validate_examples:
+	bash dev/validate_examples.sh

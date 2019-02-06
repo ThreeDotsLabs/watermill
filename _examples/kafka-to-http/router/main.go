@@ -59,6 +59,6 @@ func main() {
 
 	err = router.Run()
 	if err != nil {
-		logger.Error("router exited with err", err, watermill.LogFields{})
+		panic(err)
 	}
 }
