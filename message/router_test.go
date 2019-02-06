@@ -237,7 +237,7 @@ func TestRouterNoPublisherHandler(t *testing.T) {
 
 	r, err := message.NewRouter(
 		message.RouterConfig{},
-		&logger,
+		logger,
 	)
 	require.NoError(t, err)
 

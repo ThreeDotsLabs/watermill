@@ -162,8 +162,8 @@ type CaptureLoggerAdapter struct {
 	fields   LogFields
 }
 
-func NewCaptureLogger() CaptureLoggerAdapter {
-	return CaptureLoggerAdapter{
+func NewCaptureLogger() *CaptureLoggerAdapter {
+	return &CaptureLoggerAdapter{
 		captured: map[LogLevel][]CapturedMessage{},
 	}
 }
