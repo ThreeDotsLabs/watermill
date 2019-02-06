@@ -9,10 +9,6 @@ type PubSub interface {
 	publisher
 	subscriber
 
-	Publisher() Publisher
-	Subscriber() Subscriber
-
-	// todo - add docs
 	Close() error
 }
 
