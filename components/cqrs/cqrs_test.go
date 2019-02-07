@@ -36,6 +36,7 @@ func createCQRS(ts TestServices, t *testing.T, commandHandler *CaptureCommandHan
 		Logger:                ts.Logger,
 		CommandEventMarshaler: ts.Marshaler,
 	})
+	require.NoError(t, err)
 
 	go func() {
 		require.NoError(t, router.Run())
