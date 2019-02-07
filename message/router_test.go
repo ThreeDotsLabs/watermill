@@ -1,6 +1,7 @@
 package message_test
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"testing"
@@ -40,7 +41,7 @@ func TestRouter_functional(t *testing.T) {
 	sentByHandlerCh := make(chan *message.Message, messagesCount)
 
 	publishedEventsTopic := "published_events_" + testID
-	publishedByHandlerCh, err := pubSub.Subscribe(publishedEventsTopic)
+	publishedByHandlerCh, err := pubSub.Subscribe(context.Background(), publishedEventsTopic)
 
 	var publishedByHandler message.Messages
 	allPublishedByHandler := make(chan struct{}, 0)
@@ -156,7 +157,7 @@ type benchMockSubscriber struct {
 	messagesToSend []*message.Message
 }
 
-func (m benchMockSubscriber) Subscribe(topic string) (chan *message.Message, error) {
+func (m benchMockSubscriber) Subscribe(_ context.Context, topic string) (<-chan *message.Message, error) {
 	out := make(chan *message.Message)
 
 	go func() {
@@ -244,7 +245,7 @@ func TestRouterNoPublisherHandler(t *testing.T) {
 		pubSub,
 		func(msg *message.Message) (producedMessages []*message.Message, err error) {
 			if msgReceived {
-				require.NoError(t, msg.Ack())
+				require.True(t, msg.Ack())
 				close(wait)
 				return nil, nil
 			}

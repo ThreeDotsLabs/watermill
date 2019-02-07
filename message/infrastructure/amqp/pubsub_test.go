@@ -1,6 +1,7 @@
 package amqp_test
 
 import (
+	"os"
 	"testing"
 
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/amqp"
@@ -11,12 +12,19 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure"
 )
 
-var amqpURI = "amqp://guest:guest@localhost:5672/"
+func amqpURI() string {
+	uri := os.Getenv("WATERMILL_TEST_AMQP_URI")
+	if uri != "" {
+		return uri
+	}
+
+	return "amqp://guest:guest@localhost:5672/"
+}
 
 func createPubSub(t *testing.T) infrastructure.PubSub {
 	publisher, err := amqp.NewPublisher(
 		amqp.NewDurablePubSubConfig(
-			amqpURI,
+			amqpURI(),
 			nil,
 		),
 		watermill.NewStdLogger(true, true),
@@ -25,7 +33,7 @@ func createPubSub(t *testing.T) infrastructure.PubSub {
 
 	subscriber, err := amqp.NewSubscriber(
 		amqp.NewDurablePubSubConfig(
-			amqpURI,
+			amqpURI(),
 			amqp.GenerateQueueNameTopicNameWithSuffix("test"),
 		),
 		watermill.NewStdLogger(true, true),
@@ -38,7 +46,7 @@ func createPubSub(t *testing.T) infrastructure.PubSub {
 func createPubSubWithConsumerGroup(t *testing.T, consumerGroup string) infrastructure.PubSub {
 	publisher, err := amqp.NewPublisher(
 		amqp.NewDurablePubSubConfig(
-			amqpURI,
+			amqpURI(),
 			nil,
 		),
 		watermill.NewStdLogger(true, true),
@@ -47,7 +55,7 @@ func createPubSubWithConsumerGroup(t *testing.T, consumerGroup string) infrastru
 
 	subscriber, err := amqp.NewSubscriber(
 		amqp.NewDurablePubSubConfig(
-			amqpURI,
+			amqpURI(),
 			amqp.GenerateQueueNameTopicNameWithSuffix(consumerGroup),
 		),
 		watermill.NewStdLogger(true, true),
@@ -74,7 +82,7 @@ func TestPublishSubscribe_pubsub(t *testing.T) {
 
 func createQueuePubSub(t *testing.T) infrastructure.PubSub {
 	config := amqp.NewDurableQueueConfig(
-		amqpURI,
+		amqpURI(),
 	)
 
 	publisher, err := amqp.NewPublisher(
@@ -109,7 +117,7 @@ func TestPublishSubscribe_queue(t *testing.T) {
 
 func TestPublishSubscribe_transactional_publish(t *testing.T) {
 	config := amqp.NewDurablePubSubConfig(
-		amqpURI,
+		amqpURI(),
 		amqp.GenerateQueueNameTopicNameWithSuffix("test"),
 	)
 	config.Publish.Transactional = true

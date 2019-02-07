@@ -1,6 +1,8 @@
 package kafka_test
 
 import (
+	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -13,12 +15,18 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var brokers = []string{"localhost:9092"}
+func kafkaBrokers() []string {
+	brokers := os.Getenv("WATERMILL_TEST_KAFKA_BROKERS")
+	if brokers != "" {
+		return strings.Split(brokers, ",")
+	}
+	return []string{"localhost:9092"}
+}
 
 func newPubSub(t *testing.T, marshaler kafka.MarshalerUnmarshaler, consumerGroup string) message.PubSub {
 	logger := watermill.NewStdLogger(true, true)
 
-	publisher, err := kafka.NewPublisher(brokers, marshaler, nil, logger)
+	publisher, err := kafka.NewPublisher(kafkaBrokers(), marshaler, nil, logger)
 	require.NoError(t, err)
 
 	saramaConfig := kafka.DefaultSaramaSubscriberConfig()
@@ -32,7 +40,7 @@ func newPubSub(t *testing.T, marshaler kafka.MarshalerUnmarshaler, consumerGroup
 
 	subscriber, err := kafka.NewSubscriber(
 		kafka.SubscriberConfig{
-			Brokers:       brokers,
+			Brokers:       kafkaBrokers(),
 			ConsumerGroup: consumerGroup,
 			InitializeTopicDetails: &sarama.TopicDetail{
 				NumPartitions:     8,
@@ -74,7 +82,7 @@ func createNoGroupSubscriberConstructor(t *testing.T) message.Subscriber {
 
 	sub, err := kafka.NewSubscriber(
 		kafka.SubscriberConfig{
-			Brokers:       brokers,
+			Brokers:       kafkaBrokers(),
 			ConsumerGroup: "",
 		},
 		saramaConfig,

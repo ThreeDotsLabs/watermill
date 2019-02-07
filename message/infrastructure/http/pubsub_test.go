@@ -1,6 +1,7 @@
 package http_test
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -58,7 +59,7 @@ func TestHttpPubSub(t *testing.T) {
 		require.NoError(t, sub.Close())
 	}()
 
-	msgs, err := sub.Subscribe("/test")
+	msgs, err := sub.Subscribe(context.Background(), "/test")
 	require.NoError(t, err)
 
 	go sub.StartHTTPServer()

@@ -1,6 +1,7 @@
 package message
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"time"
@@ -231,7 +232,7 @@ func (r *Router) Run() (err error) {
 			"topic":           h.subscribeTopic,
 		})
 
-		messages, err := h.subscriber.Subscribe(h.subscribeTopic)
+		messages, err := h.subscriber.Subscribe(context.Background(), h.subscribeTopic)
 		if err != nil {
 			return errors.Wrapf(err, "cannot subscribe topic %s", h.subscribeTopic)
 		}
@@ -311,7 +312,7 @@ type handler struct {
 
 	runningHandlersWg *sync.WaitGroup
 	handlerFunc       HandlerFunc
-	messagesCh        chan *Message
+	messagesCh        <-chan *Message
 
 	closeCh chan struct{}
 }

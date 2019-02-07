@@ -102,7 +102,7 @@ func (c SubscriberConfig) Validate() error {
 // Subscribe subscribers for messages in Kafka.
 //
 // There are multiple subscribers spawned
-func (s *Subscriber) Subscribe(topic string) (chan *message.Message, error) {
+func (s *Subscriber) Subscribe(ctx context.Context, topic string) (<-chan *message.Message, error) {
 	if s.closed {
 		return nil, errors.New("subscriber closed")
 	}
@@ -120,7 +120,7 @@ func (s *Subscriber) Subscribe(topic string) (chan *message.Message, error) {
 	// we don't want to have buffered channel to not consume message from Kafka when consumer is not consuming
 	output := make(chan *message.Message, 0)
 
-	consumeClosed, err := s.consumeMessages(topic, output, logFields)
+	consumeClosed, err := s.consumeMessages(ctx, topic, output, logFields)
 	if err != nil {
 		s.subscribersWg.Done()
 		return nil, err
@@ -128,7 +128,7 @@ func (s *Subscriber) Subscribe(topic string) (chan *message.Message, error) {
 
 	go func() {
 		// blocking, until s.closing is closed
-		s.handleReconnects(topic, output, consumeClosed, logFields)
+		s.handleReconnects(ctx, topic, output, consumeClosed, logFields)
 		close(output)
 		s.subscribersWg.Done()
 	}()
@@ -137,6 +137,7 @@ func (s *Subscriber) Subscribe(topic string) (chan *message.Message, error) {
 }
 
 func (s *Subscriber) handleReconnects(
+	ctx context.Context,
 	topic string,
 	output chan *message.Message,
 	consumeClosed chan struct{},
@@ -156,6 +157,9 @@ func (s *Subscriber) handleReconnects(
 		case <-s.closing:
 			s.logger.Debug("Closing subscriber, no reconnect needed", logFields)
 			return
+		case <-ctx.Done():
+			s.logger.Debug("Ctx cancelled, no reconnect needed", logFields)
+			return
 		default:
 			// not closing
 		}
@@ -163,7 +167,7 @@ func (s *Subscriber) handleReconnects(
 		s.logger.Info("Reconnecting consumer", logFields)
 
 		var err error
-		consumeClosed, err = s.consumeMessages(topic, output, logFields)
+		consumeClosed, err = s.consumeMessages(ctx, topic, output, logFields)
 		if err != nil {
 			s.logger.Error("Cannot reconnect messages consumer", err, logFields)
 
@@ -176,6 +180,7 @@ func (s *Subscriber) handleReconnects(
 }
 
 func (s *Subscriber) consumeMessages(
+	ctx context.Context,
 	topic string,
 	output chan *message.Message,
 	logFields watermill.LogFields,
@@ -189,9 +194,9 @@ func (s *Subscriber) consumeMessages(
 	}
 
 	if s.config.ConsumerGroup == "" {
-		consumeMessagesClosed, err = s.consumeWithoutConsumerGroups(client, topic, output, logFields)
+		consumeMessagesClosed, err = s.consumeWithoutConsumerGroups(ctx, client, topic, output, logFields)
 	} else {
-		consumeMessagesClosed, err = s.consumeGroupMessages(client, topic, output, logFields)
+		consumeMessagesClosed, err = s.consumeGroupMessages(ctx, client, topic, output, logFields)
 	}
 
 	go func() {
@@ -205,12 +210,13 @@ func (s *Subscriber) consumeMessages(
 }
 
 func (s *Subscriber) consumeGroupMessages(
+	ctx context.Context,
 	client sarama.Client,
 	topic string,
 	output chan *message.Message,
 	logFields watermill.LogFields,
 ) (chan struct{}, error) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(ctx)
 	go func() {
 		<-s.closing
 		cancel()
@@ -228,6 +234,7 @@ func (s *Subscriber) consumeGroupMessages(
 	}()
 
 	handler := consumerGroupHandler{
+		ctx:              ctx,
 		messageHandler:   s.createMessagesHandler(output),
 		logger:           s.logger,
 		closing:          s.closing,
@@ -252,6 +259,7 @@ func (s *Subscriber) consumeGroupMessages(
 }
 
 func (s *Subscriber) consumeWithoutConsumerGroups(
+	ctx context.Context,
 	client sarama.Client,
 	topic string,
 	output chan *message.Message,
@@ -282,7 +290,7 @@ func (s *Subscriber) consumeWithoutConsumerGroups(
 
 		messageHandler := s.createMessagesHandler(output)
 
-		go s.consumePartition(partitionConsumer, messageHandler, partitionConsumersWg, logFields)
+		go s.consumePartition(ctx, partitionConsumer, messageHandler, partitionConsumersWg, logFields)
 	}
 
 	closed := make(chan struct{})
@@ -295,6 +303,7 @@ func (s *Subscriber) consumeWithoutConsumerGroups(
 }
 
 func (s *Subscriber) consumePartition(
+	ctx context.Context,
 	partitionConsumer sarama.PartitionConsumer,
 	messageHandler messageHandler,
 	partitionConsumersWg *sync.WaitGroup,
@@ -313,12 +322,14 @@ func (s *Subscriber) consumePartition(
 		select {
 		case <-s.closing:
 			return
+		case <-ctx.Done():
+			return
 		case kafkaMsg := <-kafkaMessages:
 			if kafkaMsg == nil {
 				// kafkaMessages is closed
 				return
 			}
-			if err := messageHandler.processMessage(kafkaMsg, nil, logFields); err != nil {
+			if err := messageHandler.processMessage(ctx, kafkaMsg, nil, logFields); err != nil {
 				return
 			}
 		}
@@ -350,6 +361,7 @@ func (s *Subscriber) Close() error {
 }
 
 type consumerGroupHandler struct {
+	ctx              context.Context
 	messageHandler   messageHandler
 	logger           watermill.LoggerAdapter
 	closing          chan struct{}
@@ -377,12 +389,15 @@ func (h consumerGroupHandler) ConsumeClaim(sess sarama.ConsumerGroupSession, cla
 				// kafkaMessages is closed
 				return nil
 			}
-			if err := h.messageHandler.processMessage(kafkaMsg, sess, logFields); err != nil {
+			if err := h.messageHandler.processMessage(h.ctx, kafkaMsg, sess, logFields); err != nil {
 				// error will stop consumerGroupHandler
 				return err
 			}
 
 		case <-h.closing:
+			return nil
+
+		case <-h.ctx.Done():
 			return nil
 		}
 	}
@@ -399,6 +414,7 @@ type messageHandler struct {
 }
 
 func (h messageHandler) processMessage(
+	ctx context.Context,
 	kafkaMsg *sarama.ConsumerMessage,
 	sess sarama.ConsumerGroupSession,
 	messageLogFields watermill.LogFields,
@@ -416,7 +432,7 @@ func (h messageHandler) processMessage(
 		return errors.Wrap(err, "message unmarshal failed")
 	}
 
-	ctx, cancelCtx := context.WithCancel(context.Background())
+	ctx, cancelCtx := context.WithCancel(ctx)
 	msg.SetContext(ctx)
 	defer cancelCtx()
 

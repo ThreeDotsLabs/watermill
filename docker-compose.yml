@@ -1,11 +1,12 @@
 # for Watermill development pourpses,
-# For Watermill based application docker plase check check https://watermill.io/docs/getting-started/
+# For Watermill based application docker please check https://watermill.io/docs/getting-started/
 
 version: '3'
 services:
   zookeeper:
     image: confluentinc/cp-zookeeper:5.0.1
-    network_mode: host
+    ports:
+      - 2181:2181
     restart: on-failure
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
@@ -13,13 +14,14 @@ services:
 
   kafka:
     image: confluentinc/cp-kafka:5.0.1
-    network_mode: host
+    ports:
+      - 9092:9092
     restart: on-failure
     depends_on:
       - zookeeper
     environment:
       KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: localhost:2181
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_NUM_PARTITIONS: 8
@@ -27,17 +29,20 @@ services:
 
   nats-streaming:
     image: nats-streaming:0.11.2
-    network_mode: host
+    ports:
+      - 4222:4222
     restart: on-failure
-    entrypoint: ["/nats-streaming-server", "-m=8222", "--max_channels=0"]
+    entrypoint: ["/nats-streaming-server", "--max_channels=0"]
 
   googlecloud:
     image: google/cloud-sdk:228.0.0
     entrypoint: gcloud --quiet beta emulators pubsub start --host-port=localhost:8085 --verbosity=debug --log-http
-    network_mode: host
+    ports:
+      - 8085:8085
     restart: on-failure
 
   rabbitmq:
     image: rabbitmq:3.7-management
     restart: on-failure
-    network_mode: host
+    ports:
+      - 5672:5672

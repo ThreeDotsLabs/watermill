@@ -17,7 +17,7 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/googlecloud"
 )
 
-// Run `docker-compose up` and set PUBSUB_EMULATOR_HOST=localhost:8085 for this to work
+// Run `docker-compose up` and set PUBSUB_EMULATOR_HOST=googlecloud:8085 for this to work
 
 func newPubSub(t *testing.T, marshaler googlecloud.MarshalerUnmarshaler, subscriptionName googlecloud.SubscriptionNameFn) message.PubSub {
 	ctx := context.Background()
@@ -96,7 +96,7 @@ func TestSubscriberUnexpectedTopicForSubscription(t *testing.T) {
 
 	howManyMessages := 100
 
-	messagesTopic1, err := sub1.Subscribe(topic1)
+	messagesTopic1, err := sub1.Subscribe(context.Background(), topic1)
 	require.NoError(t, err)
 
 	allMessagesReceived := make(chan struct{})
@@ -120,7 +120,7 @@ func TestSubscriberUnexpectedTopicForSubscription(t *testing.T) {
 		t.Fatal("Test timed out")
 	}
 
-	_, err = sub2.Subscribe(topic2)
+	_, err = sub2.Subscribe(context.Background(), topic2)
 	require.Equal(t, googlecloud.ErrUnexpectedTopic, errors.Cause(err))
 }
 

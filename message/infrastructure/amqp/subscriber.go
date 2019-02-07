@@ -36,7 +36,7 @@ func NewSubscriber(config Config, logger watermill.LoggerAdapter) (*Subscriber, 
 // Watermill's topic in Subscribe is not mapped to AMQP's topic, but depending on configuration it can be mapped
 // to exchange, queue or routing key.
 // For detailed description of nomenclature mapping, please check "Nomenclature" paragraph in doc.go file.
-func (s *Subscriber) Subscribe(topic string) (chan *message.Message, error) {
+func (s *Subscriber) Subscribe(ctx context.Context, topic string) (<-chan *message.Message, error) {
 	if s.closed {
 		return nil, errors.New("pub/sub is closed")
 	}
@@ -60,7 +60,7 @@ func (s *Subscriber) Subscribe(topic string) (chan *message.Message, error) {
 	}
 
 	s.subscribingWg.Add(1)
-	go func() {
+	go func(ctx context.Context) {
 		defer func() {
 			close(out)
 			s.logger.Info("Stopped consuming from AMQP channel", logFields)
@@ -75,15 +75,18 @@ func (s *Subscriber) Subscribe(topic string) (chan *message.Message, error) {
 			case <-s.connected:
 				s.logger.Debug("Connection established in ReconnectLoop", logFields)
 				// runSubscriber blocks until connection fails or Close() is called
-				s.runSubscriber(out, queueName, exchangeName, logFields)
+				s.runSubscriber(ctx, out, queueName, exchangeName, logFields)
 			case <-s.closing:
-				s.logger.Debug("Stopping ReconnectLoop", logFields)
+				s.logger.Debug("Stopping ReconnectLoop (closing)", logFields)
+				break ReconnectLoop
+			case <-ctx.Done():
+				s.logger.Debug("Stopping ReconnectLoop (ctx done)", logFields)
 				break ReconnectLoop
 			}
 
 			time.Sleep(time.Millisecond * 100)
 		}
-	}()
+	}(ctx)
 
 	return out, nil
 }
@@ -157,7 +160,13 @@ func (s *Subscriber) prepareConsume(queueName string, exchangeName string, logFi
 	return nil
 }
 
-func (s *Subscriber) runSubscriber(out chan *message.Message, queueName string, exchangeName string, logFields watermill.LogFields) {
+func (s *Subscriber) runSubscriber(
+	ctx context.Context,
+	out chan *message.Message,
+	queueName string,
+	exchangeName string,
+	logFields watermill.LogFields,
+) {
 	channel, err := s.openSubscribeChannel(logFields)
 	if err != nil {
 		s.logger.Error("Failed to open channel", err, logFields)
@@ -183,7 +192,7 @@ func (s *Subscriber) runSubscriber(out chan *message.Message, queueName string, 
 
 	s.logger.Info("Starting consuming from AMQP channel", logFields)
 
-	sub.ProcessMessages()
+	sub.ProcessMessages(ctx)
 }
 
 func (s *Subscriber) openSubscribeChannel(logFields watermill.LogFields) (*amqp.Channel, error) {
@@ -221,7 +230,7 @@ type subscription struct {
 	config  Config
 }
 
-func (s *subscription) ProcessMessages() {
+func (s *subscription) ProcessMessages(ctx context.Context) {
 	amqpMsgs, err := s.createConsumer(s.queueName, s.channel)
 	if err != nil {
 		s.logger.Error("Failed to start consuming messages", err, s.logFields)
@@ -232,7 +241,7 @@ ConsumingLoop:
 	for {
 		select {
 		case amqpMsg := <-amqpMsgs:
-			if err := s.processMessage(amqpMsg, s.out, s.logFields); err != nil {
+			if err := s.processMessage(ctx, amqpMsg, s.out, s.logFields); err != nil {
 				s.logger.Error("Processing message failed, sending nack", err, s.logFields)
 
 				if err := s.nackMsg(amqpMsg); err != nil {
@@ -249,6 +258,11 @@ ConsumingLoop:
 			break ConsumingLoop
 
 		case <-s.closing:
+			s.logger.Info("Closing from Subscriber received", s.logFields)
+			break ConsumingLoop
+
+		case <-ctx.Done():
+			s.logger.Info("Closing from ctx received", s.logFields)
 			break ConsumingLoop
 		}
 	}
@@ -271,13 +285,18 @@ func (s *subscription) createConsumer(queueName string, channel *amqp.Channel) (
 	return amqpMsgs, nil
 }
 
-func (s *subscription) processMessage(amqpMsg amqp.Delivery, out chan *message.Message, logFields watermill.LogFields) error {
+func (s *subscription) processMessage(
+	ctx context.Context,
+	amqpMsg amqp.Delivery,
+	out chan *message.Message,
+	logFields watermill.LogFields,
+) error {
 	msg, err := s.config.Marshaler.Unmarshal(amqpMsg)
 	if err != nil {
 		return err
 	}
 
-	ctx, cancelCtx := context.WithCancel(context.Background())
+	ctx, cancelCtx := context.WithCancel(ctx)
 	msg.SetContext(ctx)
 	defer cancelCtx()
 

@@ -15,7 +15,7 @@ func BenchmarkSubscriber(b *testing.B) {
 	infrastructure.BenchSubscriber(b, func(n int) message.PubSub {
 		logger := watermill.NopLogger{}
 
-		publisher, err := kafka.NewPublisher(brokers, kafka.DefaultMarshaler{}, nil, logger)
+		publisher, err := kafka.NewPublisher(kafkaBrokers(), kafka.DefaultMarshaler{}, nil, logger)
 		if err != nil {
 			panic(err)
 		}
@@ -25,7 +25,7 @@ func BenchmarkSubscriber(b *testing.B) {
 
 		subscriber, err := kafka.NewSubscriber(
 			kafka.SubscriberConfig{
-				Brokers:       brokers,
+				Brokers:       kafkaBrokers(),
 				ConsumerGroup: "test",
 			},
 			saramaConfig,
