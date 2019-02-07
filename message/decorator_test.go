@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ThreeDotsLabs/watermill/internal/tests"
 	"github.com/pkg/errors"
 
 	"github.com/ThreeDotsLabs/watermill/message/subscriber"
@@ -18,43 +19,6 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/gochannel"
 )
 
-var noop = func(*message.Message) {}
-
-func TestMessageTransformer_Subscribe(t *testing.T) {
-	numMessages := 1000
-	pubsub := gochannel.NewGoChannel(0, watermill.NewStdLogger(true, true))
-
-	onMessage := func(msg *message.Message) {
-		msg.Metadata.Set("key", "value")
-	}
-	decorator := message.MessageTransformSubscriberDecorator(onMessage)
-
-	decoratedSub, err := decorator(pubsub.(message.Subscriber))
-	require.NoError(t, err)
-
-	messages, err := decoratedSub.Subscribe(context.Background(), "topic")
-	require.NoError(t, err)
-
-	go func() {
-		for i := 0; i < numMessages; i++ {
-			err = pubsub.Publish("topic", message.NewMessage(strconv.Itoa(i), []byte{}))
-			require.NoError(t, err)
-		}
-	}()
-
-	received, all := subscriber.BulkRead(messages, numMessages, time.Second)
-	require.True(t, all)
-
-	for _, msg := range received {
-		assert.Equal(
-			t,
-			"value",
-			msg.Metadata.Get("key"),
-			"expected onMessage callback to have set metadata",
-		)
-	}
-}
-
 type mockSubscriber struct {
 	ch chan *message.Message
 }
@@ -62,7 +26,13 @@ type mockSubscriber struct {
 func (m mockSubscriber) Subscribe(context.Context, string) (<-chan *message.Message, error) {
 	return m.ch, nil
 }
-func (m mockSubscriber) Close() error { close(m.ch); return nil }
+
+func (m mockSubscriber) Close() error {
+	close(m.ch)
+	return nil
+}
+
+var noop = func(*message.Message) {}
 
 func TestMessageTransformer_transparent(t *testing.T) {
 	sub := mockSubscriber{make(chan *message.Message)}
@@ -87,9 +57,13 @@ func TestMessageTransformer_transparent(t *testing.T) {
 }
 
 func TestMessageTransformer_nil_panics(t *testing.T) {
-	require.Panics(t, func() {
-		_ = message.MessageTransformSubscriberDecorator(nil)
-	})
+	require.Panics(
+		t,
+		func() {
+			_ = message.MessageTransformSubscriberDecorator(nil)
+		},
+		"expected to panic if transform is nil",
+	)
 }
 
 var closingErr = errors.New("mock error on close")
@@ -101,6 +75,7 @@ type closingSubscriber struct {
 func (closingSubscriber) Subscribe(context.Context, string) (<-chan *message.Message, error) {
 	return nil, nil
 }
+
 func (c *closingSubscriber) Close() error {
 	c.closed = true
 	return closingErr
@@ -130,4 +105,44 @@ func TestMessageTransformer_Close(t *testing.T) {
 		decoratedCloseErr,
 		"expected the decorator to propagate the closing error from underlying subscriber",
 	)
+}
+
+func TestMessageTransformer_Subscribe(t *testing.T) {
+	numMessages := 1000
+	pubsub := gochannel.NewGoChannel(0, watermill.NewStdLogger(true, true))
+
+	onMessage := func(msg *message.Message) {
+		msg.Metadata.Set("key", "value")
+	}
+	decorator := message.MessageTransformSubscriberDecorator(onMessage)
+
+	decoratedSub, err := decorator(pubsub.(message.Subscriber))
+	require.NoError(t, err)
+
+	messages, err := decoratedSub.Subscribe(context.Background(), "topic")
+	require.NoError(t, err)
+
+	sent := message.Messages{}
+
+	go func() {
+		for i := 0; i < numMessages; i++ {
+			msg := message.NewMessage(strconv.Itoa(i), []byte{})
+			err = pubsub.Publish("topic", msg)
+			require.NoError(t, err)
+			sent = append(sent, msg)
+		}
+	}()
+
+	received, all := subscriber.BulkRead(messages, numMessages, time.Second)
+	require.True(t, all)
+	tests.AssertAllMessagesReceived(t, sent, received)
+
+	for _, msg := range received {
+		assert.Equal(
+			t,
+			"value",
+			msg.Metadata.Get("key"),
+			"expected onMessage callback to have set metadata",
+		)
+	}
 }

@@ -5,14 +5,14 @@ import (
 	"sync"
 )
 
-type messageTransformer struct {
+type messageTransformSubscriberDecorator struct {
 	sub Subscriber
 
 	transform   func(*Message)
 	subscribeWg sync.WaitGroup
 }
 
-func (t *messageTransformer) Subscribe(ctx context.Context, topic string) (<-chan *Message, error) {
+func (t *messageTransformSubscriberDecorator) Subscribe(ctx context.Context, topic string) (<-chan *Message, error) {
 	in, err := t.sub.Subscribe(ctx, topic)
 	if err != nil {
 		return nil, err
@@ -32,7 +32,7 @@ func (t *messageTransformer) Subscribe(ctx context.Context, topic string) (<-cha
 	return out, nil
 }
 
-func (t *messageTransformer) Close() error {
+func (t *messageTransformSubscriberDecorator) Close() error {
 	err := t.sub.Close()
 
 	t.subscribeWg.Wait()
@@ -48,7 +48,7 @@ func MessageTransformSubscriberDecorator(transform func(*Message)) SubscriberDec
 		panic("transform function is nil")
 	}
 	return func(sub Subscriber) (Subscriber, error) {
-		return &messageTransformer{
+		return &messageTransformSubscriberDecorator{
 			sub:       sub,
 			transform: transform,
 		}, nil

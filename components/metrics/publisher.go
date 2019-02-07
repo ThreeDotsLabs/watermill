@@ -31,7 +31,7 @@ func (m PublisherPrometheusMetricsDecorator) Publish(topic string, messages ...*
 	// TODO: take ctx not only from first msg. Might require changing the signature of Publish, which is planned anyway.
 	ctx := messages[0].Context()
 	labels := labelsFromCtx(ctx, publisherLabelKeys...)
-	now := time.Now()
+	start := time.Now()
 
 	defer func() {
 		if err != nil {
@@ -39,7 +39,7 @@ func (m PublisherPrometheusMetricsDecorator) Publish(topic string, messages ...*
 		} else {
 			labels[labelSuccess] = "true"
 		}
-		m.publishTimeSeconds.With(labels).Observe(time.Since(now).Seconds())
+		m.publishTimeSeconds.With(labels).Observe(time.Since(start).Seconds())
 	}()
 	return m.pub.Publish(topic, messages...)
 }

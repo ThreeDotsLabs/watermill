@@ -53,7 +53,7 @@ services:
     ports:
       - 9090:9090
     volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - dev/prometheus.yml:/etc/prometheus/prometheus.yml
 
   grafana:
     image: grafana/grafana:5.2.4
