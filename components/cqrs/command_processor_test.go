@@ -29,7 +29,7 @@ func TestCommandProcessor_non_pointer_command(t *testing.T) {
 	commandProcessor := cqrs.NewCommandProcessor(
 		[]cqrs.CommandHandler{nonPointerCommandHandler{}},
 		"commands",
-		ts.PubSub,
+		ts.CommandsPubSub,
 		ts.Marshaler,
 		ts.Logger,
 	)
@@ -51,7 +51,7 @@ func TestCommandProcessor_multiple_same_command_handlers(t *testing.T) {
 			&CaptureCommandHandler{},
 		},
 		"commands",
-		ts.PubSub,
+		ts.CommandsPubSub,
 		ts.Marshaler,
 		ts.Logger,
 	)

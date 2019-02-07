@@ -29,7 +29,7 @@ func TestEventProcessor_non_pointer_event(t *testing.T) {
 	eventProcessor := cqrs.NewEventProcessor(
 		[]cqrs.EventHandler{nonPointerEventProcessor{}},
 		"events",
-		ts.PubSub,
+		ts.EventsPubSub,
 		ts.Marshaler,
 		ts.Logger,
 	)
@@ -66,7 +66,7 @@ func TestEventProcessor_multiple_same_event_handlers(t *testing.T) {
 			&duplicateTestEventHandler2{},
 		},
 		"events",
-		ts.PubSub,
+		ts.EventsPubSub,
 		ts.Marshaler,
 		ts.Logger,
 	)

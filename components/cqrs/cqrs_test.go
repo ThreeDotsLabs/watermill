@@ -32,8 +32,8 @@ func createCQRS(ts TestServices, t *testing.T, commandHandler *CaptureCommandHan
 			return []cqrs.EventHandler{eventHandler}
 		},
 		Router:                router,
-		CommandsPubSub:        ts.PubSub,
-		EventsPubSub:          ts.PubSub,
+		CommandsPubSub:        ts.CommandsPubSub,
+		EventsPubSub:          ts.EventsPubSub,
 		Logger:                ts.Logger,
 		CommandEventMarshaler: ts.Marshaler,
 	})
@@ -83,20 +83,26 @@ func TestCQRS(t *testing.T) {
 }
 
 type TestServices struct {
-	Logger    watermill.LoggerAdapter
-	PubSub    message.PubSub
-	Marshaler cqrs.CommandEventMarshaler
+	Logger         watermill.LoggerAdapter
+	CommandsPubSub message.PubSub
+	EventsPubSub   message.PubSub
+	Marshaler      cqrs.CommandEventMarshaler
 }
 
 func NewTestServices() TestServices {
 	logger := watermill.NewStdLogger(true, true)
-	pubSub := gochannel.NewGoChannel(gochannel.Config{BlockPublishUntilSubscriberAck: true}, logger)
-	marshaler := cqrs.JsonMarshaler{}
 
 	return TestServices{
-		Logger:    logger,
-		PubSub:    pubSub,
-		Marshaler: marshaler,
+		Logger: logger,
+		CommandsPubSub: gochannel.NewGoChannel(
+			gochannel.Config{BlockPublishUntilSubscriberAck: true},
+			logger,
+		),
+		EventsPubSub: gochannel.NewGoChannel(
+			gochannel.Config{BlockPublishUntilSubscriberAck: true},
+			logger,
+		),
+		Marshaler: cqrs.JsonMarshaler{},
 	}
 }
 
