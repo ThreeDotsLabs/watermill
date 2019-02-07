@@ -4,18 +4,12 @@ import (
 	"encoding/json"
 	"flag"
 	"io/ioutil"
-	"math"
-	"math/rand"
 	stdHttp "net/http"
 	_ "net/http/pprof"
-	"time"
-
-	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/pkg/errors"
 
 	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill/components/metrics"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/http"
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/kafka"
@@ -24,10 +18,8 @@ import (
 )
 
 var (
-	kafkaAddr    = flag.String("kafka", "localhost:9092", "The address of the kafka broker")
-	httpAddr     = flag.String("http", ":8080", "The address for the http subscriber")
-	metricsAddr  = flag.String("metrics", ":8081", "The address that will expose /metrics for Prometheus")
-	handlerDelay = flag.Float64("delay", 0, "The stdev of normal distribution of delay in handler, to simulate load")
+	kafkaAddr = flag.String("kafka", "localhost:9092", "The address of the kafka broker")
+	httpAddr  = flag.String("http", ":8080", "The address for the http subscriber")
 )
 
 type GitlabWebhook struct {
@@ -69,11 +61,6 @@ func main() {
 		panic(err)
 	}
 
-	prometheusRegistry := prometheus.NewRegistry()
-	closeMetrics := metrics.ServeHTTP(*metricsAddr, prometheusRegistry)
-	defer closeMetrics()
-	metrics.AddPrometheusRouterMetrics(r, prometheusRegistry, "", "")
-
 	r.AddMiddleware(
 		middleware.Recoverer,
 		middleware.CorrelationID,
@@ -87,7 +74,6 @@ func main() {
 		"webhooks",
 		kafkaPublisher,
 		func(msg *message.Message) ([]*message.Message, error) {
-			delay(*handlerDelay)
 			webhook := GitlabWebhook{}
 
 			// simple validation
@@ -113,12 +99,4 @@ func main() {
 	}()
 
 	_ = r.Run()
-}
-
-func delay(seconds float64) {
-	if seconds == 0 {
-		return
-	}
-	delay := math.Abs(rand.NormFloat64() * seconds)
-	time.Sleep(time.Duration(float64(time.Second) * delay))
 }
