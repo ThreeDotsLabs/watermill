@@ -31,14 +31,15 @@ test:
       - $MOD_CACHE_DIR
     policy: pull
   before_script:
-    - apk add py-pip
-    - pip install docker-compose
-    - cp -v ./.ci/docker-compose.override.yml .
+    - apk add -q py-pip
+    - pip install -q docker-compose
+    - cp ./.ci/docker-compose.override.yml .
   script:
     - docker-compose pull -q
     - docker-compose up -d
     - docker-compose run watermill ./.ci/wait-for-services.sh
     - "[[ $CI_COMMIT_REF_NAME != master ]] && export FLAGS=-short"
+    - "echo Running tests with flags: $FLAGS"
     - docker-compose run watermill go test ./... $FLAGS
   only:
     - branches
