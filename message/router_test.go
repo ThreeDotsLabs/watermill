@@ -60,7 +60,7 @@ func TestRouter_functional(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	err = r.AddHandler(
+	r.AddHandler(
 		"test_subscriber_1",
 		subscribeTopic,
 		pubSub,
@@ -75,9 +75,8 @@ func TestRouter_functional(t *testing.T) {
 			return []*message.Message{toPublish}, nil
 		},
 	)
-	require.NoError(t, err)
 
-	err = r.AddNoPublisherHandler(
+	r.AddNoPublisherHandler(
 		"test_subscriber_2",
 		subscribeTopic,
 		pubSub,
@@ -86,7 +85,6 @@ func TestRouter_functional(t *testing.T) {
 			return nil, nil
 		},
 	)
-	require.NoError(t, err)
 
 	go r.Run()
 	defer func() {
@@ -124,7 +122,7 @@ func TestRouter_functional_nack(t *testing.T) {
 	nackSend := false
 	messageReceived := make(chan *message.Message, 2)
 
-	err = r.AddNoPublisherHandler(
+	r.AddNoPublisherHandler(
 		"test_subscriber_1",
 		"subscribe_topic",
 		pubSub,
@@ -139,7 +137,6 @@ func TestRouter_functional_nack(t *testing.T) {
 			return nil, nil
 		},
 	)
-	require.NoError(t, err)
 
 	go r.Run()
 	defer r.Close()
@@ -202,7 +199,7 @@ func BenchmarkRouterHandler(b *testing.B) {
 
 	sub := createBenchSubscriber(b)
 
-	if err := router.AddHandler(
+	router.AddHandler(
 		"handler",
 		"benchmark_topic",
 		sub,
@@ -212,9 +209,7 @@ func BenchmarkRouterHandler(b *testing.B) {
 			allProcessedWg.Done()
 			return []*message.Message{msg}, nil
 		},
-	); err != nil {
-		b.Fatal(err)
-	}
+	)
 
 	go func() {
 		allProcessedWg.Wait()
@@ -243,7 +238,7 @@ func TestRouterNoPublisherHandler(t *testing.T) {
 	msgReceived := false
 	wait := make(chan struct{})
 
-	err = r.AddNoPublisherHandler(
+	r.AddNoPublisherHandler(
 		"test_no_publisher_handler",
 		"subscribe_topic",
 		pubSub,
@@ -257,7 +252,6 @@ func TestRouterNoPublisherHandler(t *testing.T) {
 			return message.Messages{msg}, nil
 		},
 	)
-	require.NoError(t, err)
 
 	go r.Run()
 	defer r.Close()
@@ -290,7 +284,7 @@ func BenchmarkRouterNoPublisherHandler(b *testing.B) {
 
 	sub := createBenchSubscriber(b)
 
-	if err := router.AddNoPublisherHandler(
+	router.AddNoPublisherHandler(
 		"handler",
 		"benchmark_topic",
 		sub,
@@ -298,9 +292,7 @@ func BenchmarkRouterNoPublisherHandler(b *testing.B) {
 			allProcessedWg.Done()
 			return nil, nil
 		},
-	); err != nil {
-		b.Fatal(err)
-	}
+	)
 
 	go func() {
 		allProcessedWg.Wait()

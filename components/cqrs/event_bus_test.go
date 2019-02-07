@@ -12,6 +12,7 @@ import (
 
 func TestEventBus_Publish_non_pointer(t *testing.T) {
 	ts := NewTestServices()
+	eventBus := cqrs.NewEventBus(ts.PubSub, "events", ts.Marshaler)
 
-	assert.IsType(t, cqrs.NonPointerError{}, errors.Cause(ts.EventBus.Publish(TestEvent{})))
+	assert.IsType(t, cqrs.NonPointerError{}, errors.Cause(eventBus.Publish(TestEvent{})))
 }

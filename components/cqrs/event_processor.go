@@ -19,7 +19,7 @@ type EventProcessor struct {
 	eventsTopic string
 
 	subscriber message.Subscriber
-	marshaler  Marshaler
+	marshaler  CommandEventMarshaler
 	logger     watermill.LoggerAdapter
 }
 
@@ -27,7 +27,7 @@ func NewEventProcessor(
 	handlers []EventHandler,
 	eventsTopic string,
 	subscriber message.Subscriber,
-	marshaler Marshaler,
+	marshaler CommandEventMarshaler,
 	logger watermill.LoggerAdapter,
 ) EventProcessor {
 	return EventProcessor{
@@ -39,34 +39,30 @@ func NewEventProcessor(
 	}
 }
 
-func (p EventProcessor) Handlers() []EventHandler {
-	return p.handlers
-}
-
 func (p EventProcessor) AddHandlersToRouter(r *message.Router) error {
 	for i := range p.Handlers() {
 		handler := p.handlers[i]
-		eventName := p.marshaler.Name(handler.NewEvent())
 
 		handlerFunc, err := p.RouterHandlerFunc(handler)
 		if err != nil {
 			return err
 		}
 
-		if err := r.AddNoPublisherHandler(
-			fmt.Sprintf("event_processor_%s", eventName),
+		r.AddNoPublisherHandler(
+			fmt.Sprintf("event_processor-%s", ObjectName(handler)),
 			p.eventsTopic,
 			p.subscriber,
 			handlerFunc,
-		); err != nil {
-			return err
-		}
+		)
 	}
 
 	return nil
 }
 
-// todo - deduplicate with command processor
+func (p EventProcessor) Handlers() []EventHandler {
+	return p.handlers
+}
+
 func (p EventProcessor) RouterHandlerFunc(handler EventHandler) (message.HandlerFunc, error) {
 	initEvent := handler.NewEvent()
 	expectedEventName := p.marshaler.Name(initEvent)
@@ -77,7 +73,7 @@ func (p EventProcessor) RouterHandlerFunc(handler EventHandler) (message.Handler
 
 	return func(msg *message.Message) ([]*message.Message, error) {
 		event := handler.NewEvent()
-		messageEventName := p.marshaler.MarshaledName(msg)
+		messageEventName := p.marshaler.NameFromMessage(msg)
 
 		if messageEventName != expectedEventName {
 			p.logger.Trace("Received different event type than expected, ignoring", watermill.LogFields{

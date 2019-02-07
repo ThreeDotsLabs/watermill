@@ -44,6 +44,6 @@ func (m JsonMarshaler) Name(cmdOrEvent interface{}) string {
 	return ObjectName(cmdOrEvent)
 }
 
-func (m JsonMarshaler) MarshaledName(msg *message.Message) string {
+func (m JsonMarshaler) NameFromMessage(msg *message.Message) string {
 	return msg.Metadata.Get("name")
 }

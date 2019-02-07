@@ -41,3 +41,30 @@ func TestCommandProcessor_non_pointer_command(t *testing.T) {
 	err = commandProcessor.AddHandlersToRouter(router)
 	assert.IsType(t, cqrs.NonPointerError{}, errors.Cause(err))
 }
+
+// TestCommandProcessor_multiple_same_command_handlers checks, that we don't register multiple handlers for the same commend.
+func TestCommandProcessor_multiple_same_command_handlers(t *testing.T) {
+	ts := NewTestServices()
+
+	commandProcessor := cqrs.NewCommandProcessor(
+		[]cqrs.CommandHandler{
+			&CaptureCommandHandler{},
+			&CaptureCommandHandler{},
+		},
+		"commands",
+		ts.PubSub,
+		ts.Marshaler,
+		ts.Logger,
+	)
+
+	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
+	require.NoError(t, err)
+
+	assert.PanicsWithValue(t,
+		message.DuplicateHandlerNameError{HandlerName: "command_processor-cqrs_test.TestCommand"},
+		func() {
+			err := commandProcessor.AddHandlersToRouter(router)
+			require.NoError(t, err)
+		},
+	)
+}

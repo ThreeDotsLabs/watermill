@@ -65,6 +65,6 @@ func (m ProtobufMarshaler) Name(cmdOrEvent interface{}) string {
 	return ObjectName(cmdOrEvent)
 }
 
-func (m ProtobufMarshaler) MarshaledName(msg *message.Message) string {
+func (m ProtobufMarshaler) NameFromMessage(msg *message.Message) string {
 	return msg.Metadata.Get("name")
 }

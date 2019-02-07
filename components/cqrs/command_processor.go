@@ -19,7 +19,7 @@ type CommandProcessor struct {
 	commandsTopic string
 
 	subscriber message.Subscriber
-	marshaler  Marshaler
+	marshaler  CommandEventMarshaler
 	logger     watermill.LoggerAdapter
 }
 
@@ -27,7 +27,7 @@ func NewCommandProcessor(
 	handlers []CommandHandler,
 	commandsTopic string,
 	subscriber message.Subscriber,
-	marshaler Marshaler,
+	marshaler CommandEventMarshaler,
 	logger watermill.LoggerAdapter,
 ) CommandProcessor {
 	return CommandProcessor{
@@ -39,11 +39,6 @@ func NewCommandProcessor(
 	}
 }
 
-func (p CommandProcessor) Handlers() []CommandHandler {
-	return p.handlers
-}
-
-// todo - add method which doesnt require router?
 func (p CommandProcessor) AddHandlersToRouter(r *message.Router) error {
 	for i := range p.Handlers() {
 		handler := p.handlers[i]
@@ -54,17 +49,24 @@ func (p CommandProcessor) AddHandlersToRouter(r *message.Router) error {
 			return err
 		}
 
-		if err := r.AddNoPublisherHandler(
-			fmt.Sprintf("command_processor_%s", commandName),
+		handlerName := fmt.Sprintf("command_processor-%s", commandName)
+		p.logger.Debug("Adding CQRS handler to router", watermill.LogFields{
+			"handler_name": handlerName,
+		})
+
+		r.AddNoPublisherHandler(
+			handlerName,
 			p.commandsTopic,
 			p.subscriber,
 			handlerFunc,
-		); err != nil {
-			return err
-		}
+		)
 	}
 
 	return nil
+}
+
+func (p CommandProcessor) Handlers() []CommandHandler {
+	return p.handlers
 }
 
 func (p CommandProcessor) RouterHandlerFunc(handler CommandHandler) (message.HandlerFunc, error) {
@@ -77,7 +79,7 @@ func (p CommandProcessor) RouterHandlerFunc(handler CommandHandler) (message.Han
 
 	return func(msg *message.Message) ([]*message.Message, error) {
 		cmd := handler.NewCommand()
-		messageCmdName := p.marshaler.MarshaledName(msg)
+		messageCmdName := p.marshaler.NameFromMessage(msg)
 
 		if messageCmdName != cmdName {
 			p.logger.Trace("Received different command type than expected, ignoring", watermill.LogFields{

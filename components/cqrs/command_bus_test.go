@@ -12,6 +12,7 @@ import (
 
 func TestCommandBus_Send_non_pointer(t *testing.T) {
 	ts := NewTestServices()
+	commandBus := cqrs.NewCommandBus(ts.PubSub, "commands", ts.Marshaler)
 
-	assert.IsType(t, cqrs.NonPointerError{}, errors.Cause(ts.CommandBus.Send(TestCommand{})))
+	assert.IsType(t, cqrs.NonPointerError{}, errors.Cause(commandBus.Send(TestCommand{})))
 }

@@ -8,13 +8,13 @@ import (
 type CommandBus struct {
 	publisher message.Publisher
 	topic     string
-	marshaler Marshaler
+	marshaler CommandEventMarshaler
 }
 
 func NewCommandBus(
 	publisher message.Publisher,
 	topic string,
-	marshaler Marshaler,
+	marshaler CommandEventMarshaler,
 ) CommandBus {
 	return CommandBus{publisher, topic, marshaler}
 }

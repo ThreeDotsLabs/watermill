@@ -96,37 +96,32 @@ func main() {
 		panic(err)
 	}
 
-	commandBus := cqrs.NewCommandBus(pubSub, "commands", marshaler)
-	eventBus := cqrs.NewEventBus(pubSub, "events", marshaler)
+	// todo - add middlewares
 
-	commandProcessor := cqrs.NewCommandProcessor(
-		[]cqrs.CommandHandler{
-			BookRoomHandler{eventBus},
-			OrderBeerHandler{eventBus},
+	c, err := cqrs.NewCQRS(cqrs.DefaultConfig{
+		CommandsTopic: "commands",
+		EventsTopic:   "events",
+		CommandHandlers: func(cb cqrs.CommandBus, eb cqrs.EventBus) []cqrs.CommandHandler {
+			return []cqrs.CommandHandler{
+				BookRoomHandler{eb},
+				OrderBeerHandler{eb},
+			}
 		},
-		"commands",
-		pubSub,
-		marshaler,
-		logger,
-	)
-	if err := commandProcessor.AddHandlersToRouter(router); err != nil {
+		EventHandlers: func(cb cqrs.CommandBus, eb cqrs.EventBus) []cqrs.EventHandler {
+			return []cqrs.EventHandler{
+				OrderBeerOnRoomBooked{cb},
+			}
+		},
+		Router:                router,
+		PubSub:                pubSub,
+		Logger:                logger,
+		CommandEventMarshaler: marshaler,
+	})
+	if err != nil {
 		panic(err)
 	}
 
-	eventProcessor := cqrs.NewEventProcessor(
-		[]cqrs.EventHandler{
-			OrderBeerOnRoomBooked{commandBus},
-		},
-		"events",
-		pubSub,
-		marshaler,
-		logger,
-	)
-	if err := eventProcessor.AddHandlersToRouter(router); err != nil {
-		panic(err)
-	}
-
-	go publishCommands(commandBus)
+	go publishCommands(c.CommandBus())
 
 	if err := router.Run(); err != nil {
 		panic(err)

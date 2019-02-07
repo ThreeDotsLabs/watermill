@@ -29,7 +29,7 @@ func TestEventProcessor_non_pointer_event(t *testing.T) {
 
 	eventProcessor := cqrs.NewEventProcessor(
 		[]cqrs.EventHandler{nonPointerEventProcessor{}},
-		"commands",
+		"events",
 		ts.PubSub,
 		ts.Marshaler,
 		ts.Logger,
@@ -40,4 +40,41 @@ func TestEventProcessor_non_pointer_event(t *testing.T) {
 
 	err = eventProcessor.AddHandlersToRouter(router)
 	assert.IsType(t, cqrs.NonPointerError{}, errors.Cause(err))
+}
+
+type duplicateTestEventHandler1 struct{}
+
+func (duplicateTestEventHandler1) NewEvent() interface{} {
+	return &TestEvent{}
+}
+
+func (h *duplicateTestEventHandler1) Handle(cmd interface{}) error { return nil }
+
+type duplicateTestEventHandler2 struct{}
+
+func (duplicateTestEventHandler2) NewEvent() interface{} {
+	return &TestEvent{}
+}
+
+func (h *duplicateTestEventHandler2) Handle(cmd interface{}) error { return nil }
+
+func TestEventProcessor_multiple_same_event_handlers(t *testing.T) {
+	ts := NewTestServices()
+
+	eventProcessor := cqrs.NewEventProcessor(
+		[]cqrs.EventHandler{
+			&duplicateTestEventHandler1{},
+			&duplicateTestEventHandler2{},
+		},
+		"events",
+		ts.PubSub,
+		ts.Marshaler,
+		ts.Logger,
+	)
+
+	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
+	require.NoError(t, err)
+
+	err = eventProcessor.AddHandlersToRouter(router)
+	require.NoError(t, err)
 }
