@@ -1,4 +1,4 @@
-# for Watermill development pourpses,
+# for Watermill development purposes.
 # For Watermill based application docker please check https://watermill.io/docs/getting-started/
 
 version: '3'
@@ -46,3 +46,4 @@ services:
     restart: on-failure
     ports:
       - 5672:5672
+
