@@ -3,6 +3,7 @@ package message
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -48,6 +49,12 @@ type HandlerMiddleware func(h HandlerFunc) HandlerFunc
 
 // RouterPlugin is function which is executed on Router start.
 type RouterPlugin func(*Router) error
+
+// PublisherDecorator wraps the underlying Publisher, adding some functionality.
+type PublisherDecorator func(pub Publisher) (Publisher, error)
+
+// SubscriberDecorator wraps the underlying Subscriber, adding some functionality.
+type SubscriberDecorator func(sub Subscriber) (Subscriber, error)
 
 type RouterConfig struct {
 	// CloseTimeout determines how long router should work for handlers when closing.
@@ -105,6 +112,9 @@ type Router struct {
 
 	logger watermill.LoggerAdapter
 
+	publisherDecorators  []PublisherDecorator
+	subscriberDecorators []SubscriberDecorator
+
 	isRunning bool
 	running   chan struct{}
 }
@@ -126,6 +136,22 @@ func (r *Router) AddPlugin(p ...RouterPlugin) {
 	r.logger.Debug("Adding plugins", watermill.LogFields{"count": fmt.Sprintf("%d", len(p))})
 
 	r.plugins = append(r.plugins, p...)
+}
+
+// AddPublisherDecorators wraps the router's Publisher.
+// The first decorator is the innermost, i.e. calls the original publisher.
+func (r *Router) AddPublisherDecorators(dec ...PublisherDecorator) {
+	r.logger.Debug("Adding publisher decorators", watermill.LogFields{"count": fmt.Sprintf("%d", len(dec))})
+
+	r.publisherDecorators = append(r.publisherDecorators, dec...)
+}
+
+// AddSubscriberDecorators wraps the router's Subscriber.
+// The first decorator is the innermost, i.e. calls the original subscriber.
+func (r *Router) AddSubscriberDecorators(dec ...SubscriberDecorator) {
+	r.logger.Debug("Adding subscriber decorators", watermill.LogFields{"count": fmt.Sprintf("%d", len(dec))})
+
+	r.subscriberDecorators = append(r.subscriberDecorators, dec...)
 }
 
 // AddHandler adds a new handler.
@@ -150,7 +176,7 @@ func (r *Router) AddHandler(
 	publisher Publisher,
 	handlerFunc HandlerFunc,
 ) error {
-	r.logger.Info("Adding subscriber", watermill.LogFields{
+	r.logger.Info("Adding handler", watermill.LogFields{
 		"handler_name": handlerName,
 		"topic":        subscribeTopic,
 	})
@@ -159,23 +185,63 @@ func (r *Router) AddHandler(
 		return errors.Errorf("handler %s already exists", handlerName)
 	}
 
+	publisherName, subscriberName := r.pubName(publisher), r.subName(subscriber)
+
 	r.handlers[handlerName] = &handler{
 		name:   handlerName,
 		logger: r.logger,
 
 		subscriber:     subscriber,
 		subscribeTopic: subscribeTopic,
-		publisher:      publisher,
-		publishTopic:   publishTopic,
+		subscriberName: subscriberName,
 
-		runningHandlersWg: r.runningHandlersWg,
+		publisher:     publisher,
+		publishTopic:  publishTopic,
+		publisherName: publisherName,
+
 		handlerFunc:       handlerFunc,
+		runningHandlersWg: r.runningHandlersWg,
 		messagesCh:        nil,
-
-		closeCh: r.closeCh,
+		closeCh:           r.closeCh,
 	}
 
 	return nil
+}
+
+// pubName resolves the name of publisher.
+// It is then stored in the context of the message.
+func (r *Router) pubName(pub Publisher) string {
+	var publisherName string
+
+	if pubStringer, ok := pub.(fmt.Stringer); ok {
+		publisherName = pubStringer.String()
+	} else {
+		// trim the pointer indicator, if any
+		publisherName = strings.TrimLeft(
+			fmt.Sprintf("%T", pub),
+			"*",
+		)
+	}
+
+	return publisherName
+}
+
+// subName resolves the name of subscriber.
+// It is then stored in the context of the message.
+func (r *Router) subName(sub Subscriber) string {
+	var subscriberName string
+
+	if pubStringer, ok := sub.(fmt.Stringer); ok {
+		subscriberName = pubStringer.String()
+	} else {
+		// trim the pointer indicator, if any
+		subscriberName = strings.TrimLeft(
+			fmt.Sprintf("%T", sub),
+			"*",
+		)
+	}
+
+	return subscriberName
 }
 
 // AddNoPublisherHandler adds a new handler.
@@ -217,6 +283,16 @@ func (r *Router) Run() (err error) {
 	for _, plugin := range r.plugins {
 		if err := plugin(r); err != nil {
 			return errors.Wrapf(err, "cannot initialize plugin %v", plugin)
+		}
+	}
+
+	r.logger.Debug("Applying decorators", nil)
+	for name, h := range r.handlers {
+		if err = r.decorateHandlerPublisher(h); err != nil {
+			return errors.Wrapf(err, "could not decorate publisher of handler %s", name)
+		}
+		if err = r.decorateHandlerSubscriber(h); err != nil {
+			return errors.Wrapf(err, "could not decorate subscriber of handler %s", name)
 		}
 	}
 
@@ -301,12 +377,17 @@ type handler struct {
 
 	subscriber     Subscriber
 	subscribeTopic string
-	publisher      Publisher
-	publishTopic   string
+	subscriberName string
+
+	publisher     Publisher
+	publishTopic  string
+	publisherName string
+
+	handlerFunc HandlerFunc
 
 	runningHandlersWg *sync.WaitGroup
-	handlerFunc       HandlerFunc
-	messagesCh        <-chan *Message
+
+	messagesCh <-chan *Message
 
 	closeCh chan struct{}
 }
@@ -340,7 +421,67 @@ func (h *handler) run(middlewares []HandlerMiddleware) {
 	}
 
 	h.logger.Debug("Router handler stopped", nil)
+}
 
+// decorateHandlerPublisher applies the decorator chain to handler's publisher.
+// They are applied in reverse order, so that the later decorators use the result of former ones.
+func (r *Router) decorateHandlerPublisher(h *handler) error {
+	var err error
+	pub := h.publisher
+	for i := len(r.publisherDecorators) - 1; i >= 0; i-- {
+		decorator := r.publisherDecorators[i]
+		pub, err = decorator(pub)
+		if err != nil {
+			return errors.Wrap(err, "could not apply publisher decorator")
+		}
+	}
+	r.handlers[h.name].publisher = pub
+	return nil
+}
+
+// decorateHandlerSubscriber applies the decorator chain to handler's subscriber.
+// They are applied in regular order, so that the later decorators use the result of former ones.
+func (r *Router) decorateHandlerSubscriber(h *handler) error {
+	var err error
+	sub := h.subscriber
+
+	// add values to message context to subscriber
+	// it goes before other decorators, so that they may take advantage of these values
+	messageTransform := func(msg *Message) {
+		if msg != nil {
+			h.addMsgContext(msg)
+		}
+	}
+	sub, err = MessageTransformSubscriberDecorator(messageTransform)(sub)
+	if err != nil {
+		return errors.Wrapf(err, "cannot wrap subscriber with context decorator")
+	}
+
+	for _, decorator := range r.subscriberDecorators {
+		sub, err = decorator(sub)
+		if err != nil {
+			return errors.Wrap(err, "could not apply subscriber decorator")
+		}
+	}
+	r.handlers[h.name].subscriber = sub
+	return nil
+}
+
+func (h handler) addMsgContext(messages ...*Message) {
+	for i, msg := range messages {
+		ctx := msg.ctx
+
+		if h.name != "" {
+			ctx = context.WithValue(ctx, handlerNameKey, h.name)
+		}
+		if h.publisherName != "" {
+			ctx = context.WithValue(ctx, publisherNameKey, h.publisherName)
+		}
+		if h.subscriberName != "" {
+			ctx = context.WithValue(ctx, subscriberNameKey, h.subscriberName)
+		}
+		messages[i].SetContext(ctx)
+	}
 }
 
 func (h *handler) handleClose() {
@@ -378,6 +519,8 @@ func (h *handler) handleMessage(msg *Message, handler HandlerFunc) {
 		msg.Nack()
 		return
 	}
+
+	h.addMsgContext(producedMessages...)
 
 	if err := h.publishProducedMessages(producedMessages, msgFields); err != nil {
 		h.logger.Error("Publishing produced messages failed", err, nil)

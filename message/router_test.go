@@ -179,16 +179,10 @@ func (benchMockSubscriber) Close() error {
 	return nil
 }
 
-type nopPublisher struct {
-}
+type nopPublisher struct{}
 
-func (nopPublisher) Publish(topic string, messages ...*message.Message) error {
-	return nil
-}
-
-func (nopPublisher) Close() error {
-	return nil
-}
+func (nopPublisher) Publish(topic string, messages ...*message.Message) error { return nil }
+func (nopPublisher) Close() error                                             { return nil }
 
 func BenchmarkRouterHandler(b *testing.B) {
 	logger := watermill.NopLogger{}
@@ -312,6 +306,79 @@ func BenchmarkRouterNoPublisherHandler(b *testing.B) {
 	if err := router.Run(); err != nil {
 		b.Fatal(err)
 	}
+}
+
+// TestRouterDecoratorsOrder checks that the publisher/subscriber decorators are applied in the order they are registered.
+func TestRouterDecoratorsOrder(t *testing.T) {
+	logger := watermill.NewStdLogger(true, true)
+
+	router, err := message.NewRouter(message.RouterConfig{}, logger)
+	require.NoError(t, err)
+
+	pubSub, err := createPubSub()
+	require.NoError(t, err)
+
+	pubDecorator1 := message.MessageTransformPublisherDecorator(func(m *message.Message) {
+		m.Metadata.Set("pub", m.Metadata.Get("pub")+"foo")
+	})
+	pubDecorator2 := message.MessageTransformPublisherDecorator(func(m *message.Message) {
+		m.Metadata.Set("pub", m.Metadata.Get("pub")+"bar")
+	})
+
+	subDecorator1 := message.MessageTransformSubscriberDecorator(func(m *message.Message) {
+		m.Metadata.Set("sub", m.Metadata.Get("sub")+"foo")
+	})
+	subDecorator2 := message.MessageTransformSubscriberDecorator(func(m *message.Message) {
+		m.Metadata.Set("sub", m.Metadata.Get("sub")+"bar")
+	})
+
+	router.AddPublisherDecorators(pubDecorator1, pubDecorator2)
+	router.AddSubscriberDecorators(subDecorator1, subDecorator2)
+
+	err = router.AddHandler(
+		"handler",
+		"subTopic",
+		pubSub,
+		"pubTopic",
+		pubSub,
+		func(msg *message.Message) ([]*message.Message, error) {
+			return message.Messages{msg}, nil
+		},
+	)
+	require.NoError(t, err)
+
+	go func() {
+		if err := router.Run(); err != nil {
+			panic(err)
+		}
+	}()
+	defer func() {
+		if err := router.Close(); err != nil {
+			panic(err)
+		}
+	}()
+	<-router.Running()
+
+	transformedMessages, err := pubSub.Subscribe(context.Background(), "pubTopic")
+	require.NoError(t, err)
+
+	var transformedMessage *message.Message
+	messageObtained := make(chan struct{})
+	go func() {
+		transformedMessage = <-transformedMessages
+		close(messageObtained)
+	}()
+
+	require.NoError(t, pubSub.Publish("subTopic", message.NewMessage(watermill.UUID(), []byte{})))
+
+	select {
+	case <-time.After(5 * time.Second):
+		t.Fatal("test timed out")
+	case <-messageObtained:
+	}
+
+	assert.Equal(t, "foobar", transformedMessage.Metadata.Get("pub"))
+	assert.Equal(t, "foobar", transformedMessage.Metadata.Get("sub"))
 }
 
 func createBenchSubscriber(b *testing.B) benchMockSubscriber {

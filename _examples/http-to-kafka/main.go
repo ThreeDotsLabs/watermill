@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"io/ioutil"
 	stdHttp "net/http"
 	_ "net/http/pprof"
@@ -16,26 +17,38 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message/router/plugin"
 )
 
+var (
+	kafkaAddr = flag.String("kafka", "localhost:9092", "The address of the kafka broker")
+	httpAddr  = flag.String("http", ":8080", "The address for the http subscriber")
+)
+
 type GitlabWebhook struct {
 	ObjectKind string `json:"object_kind"`
 }
 
 func main() {
+	flag.Parse()
 	logger := watermill.NewStdLogger(true, true)
 
-	kafkaPublisher, err := kafka.NewPublisher([]string{"localhost:9092"}, kafka.DefaultMarshaler{}, nil, logger)
+	kafkaPublisher, err := kafka.NewPublisher([]string{*kafkaAddr}, kafka.DefaultMarshaler{}, nil, logger)
 	if err != nil {
 		panic(err)
 	}
 
-	httpSubscriber, err := http.NewSubscriber(":8080", func(topic string, request *stdHttp.Request) (*message.Message, error) {
-		b, err := ioutil.ReadAll(request.Body)
-		if err != nil {
-			return nil, errors.Wrap(err, "cannot read body")
-		}
+	httpSubscriber, err := http.NewSubscriber(
+		*httpAddr,
+		http.SubscriberConfig{
+			UnmarshalMessageFunc: func(topic string, request *stdHttp.Request) (*message.Message, error) {
+				b, err := ioutil.ReadAll(request.Body)
+				if err != nil {
+					return nil, errors.Wrap(err, "cannot read body")
+				}
 
-		return message.NewMessage(watermill.UUID(), b), nil
-	}, logger)
+				return message.NewMessage(watermill.UUID(), b), nil
+			},
+		},
+		logger,
+	)
 	if err != nil {
 		panic(err)
 	}
@@ -82,8 +95,8 @@ func main() {
 	go func() {
 		// HTTP server needs to be started after router is ready.
 		<-r.Running()
-		httpSubscriber.StartHTTPServer()
+		_ = httpSubscriber.StartHTTPServer()
 	}()
 
-	r.Run()
+	_ = r.Run()
 }

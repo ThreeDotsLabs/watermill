@@ -34,6 +34,7 @@ require (
 	github.com/pascaldekloe/goe v0.0.0-20180627143212-57f6aae5913c // indirect
 	github.com/pierrec/lz4 v2.0.5+incompatible // indirect
 	github.com/pkg/errors v0.8.0
+	github.com/prometheus/client_golang v0.8.0
 	github.com/rcrowley/go-metrics v0.0.0-20181016184325-3113b8401b8a
 	github.com/renstrom/shortuuid v3.0.0+incompatible
 	github.com/satori/go.uuid v1.2.0
