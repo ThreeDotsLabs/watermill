@@ -102,31 +102,40 @@ func (g *GoChannel) Publish(topic string, messages ...*message.Message) error {
 	}
 
 	for i := range messages {
-		ackedByConsumer, err := g.sendMessage(topic, messages[i])
+		msg := messages[i]
+
+		ackedBySubscribers, err := g.sendMessage(topic, msg)
 		if err != nil {
 			return err
 		}
 
 		if g.config.BlockPublishUntilSubscriberAck {
-			select {
-			case <-ackedByConsumer:
-				// ok
-			case <-g.closing:
-				// closing Pub/Sub
-			}
+			g.waitForAckFromSubscribers(msg, ackedBySubscribers)
 		}
 	}
 
 	return nil
 }
 
+func (g *GoChannel) waitForAckFromSubscribers(msg *message.Message, ackedByConsumer <-chan struct{}) {
+	logFields := watermill.LogFields{"message_uuid": msg.UUID}
+	g.logger.Debug("Waiting for subscribers ack", logFields)
+
+	select {
+	case <-ackedByConsumer:
+		g.logger.Trace("Message acked by subscribers", logFields)
+	case <-g.closing:
+		g.logger.Trace("Closing Pub/Sub before ack from subscribers", logFields)
+	}
+}
+
 func (g *GoChannel) sendMessage(topic string, message *message.Message) (<-chan struct{}, error) {
 	subscribers := g.topicSubscribers(topic)
-	done := make(chan struct{})
+	ackedBySubscribers := make(chan struct{})
 
 	if len(subscribers) == 0 {
-		close(done)
-		return done, nil
+		close(ackedBySubscribers)
+		return ackedBySubscribers, nil
 	}
 
 	go func(subscribers []*subscriber) {
@@ -134,10 +143,10 @@ func (g *GoChannel) sendMessage(topic string, message *message.Message) (<-chan 
 			subscriber := subscribers[i]
 			subscriber.sendMessageToSubscriber(message)
 		}
-		close(done)
+		close(ackedBySubscribers)
 	}(subscribers)
 
-	return done, nil
+	return ackedBySubscribers, nil
 }
 
 // Subscribe returns channel to which all published messages are sent.
