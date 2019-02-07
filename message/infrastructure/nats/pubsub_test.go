@@ -10,7 +10,6 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure"
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/nats"
 	"github.com/nats-io/go-nats-streaming"
-	"github.com/satori/go.uuid"
 	"github.com/stretchr/testify/require"
 )
 

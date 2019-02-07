@@ -193,6 +193,27 @@ func (g *GoChannel) Subscribe(ctx context.Context, topic string) (<-chan *messag
 	}
 	g.subscribersWg.Add(1)
 
+	go func(s *subscriber, g *GoChannel) {
+		select {
+		case <-ctx.Done():
+			// unblock
+		case <-g.closing:
+			// unblock
+		}
+
+		s.Close()
+
+		g.subscribersLock.Lock()
+		defer g.subscribersLock.Unlock()
+
+		subLock, _ := g.subscribersByTopicLock.Load(topic)
+		subLock.(*sync.Mutex).Lock()
+		defer subLock.(*sync.Mutex).Unlock()
+
+		g.removeSubscriber(topic, s)
+		g.subscribersWg.Done()
+	}(s, g)
+
 	if !g.persistent {
 		defer g.subscribersLock.Unlock()
 		defer subLock.(*sync.Mutex).Unlock()
@@ -215,22 +236,6 @@ func (g *GoChannel) Subscribe(ctx context.Context, topic string) (<-chan *messag
 		}
 
 		g.addSubscriber(topic, s)
-
-		go func(s *subscriber) {
-			select {
-			case <-ctx.Done():
-				// unblock
-			case <-g.closing:
-				// unblock
-			}
-
-			subLock, _ := g.subscribersByTopicLock.Load(topic)
-			subLock.(*sync.Mutex).Lock()
-			defer subLock.(*sync.Mutex).Unlock()
-
-			g.removeSubscriber(topic, s)
-			g.subscribersWg.Done()
-		}(s)
 	}(s)
 
 	return s.outputChannel, nil
@@ -255,8 +260,6 @@ func (g *GoChannel) removeSubscriber(topic string, toRemove *subscriber) {
 	if !removed {
 		panic("cannot remove subscriber, not found " + toRemove.uuid)
 	}
-
-	toRemove.Close()
 }
 
 func (g *GoChannel) topicSubscribers(topic string) []*subscriber {
@@ -302,12 +305,16 @@ func (s *subscriber) Close() {
 	if s.closed {
 		return
 	}
-	s.closed = true
 	close(s.closing)
+
+	s.logger.Debug("Closing subscriber, waiting for sending lock", nil)
 
 	// ensuring that we are not sending to closed channel
 	s.sending.Lock()
 	defer s.sending.Unlock()
+
+	s.logger.Debug("GoChannel Pub/Sub Subscriber closed", nil)
+	s.closed = true
 
 	close(s.outputChannel)
 }

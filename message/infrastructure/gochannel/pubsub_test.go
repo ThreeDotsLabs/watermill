@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/internal/tests"
 	"github.com/ThreeDotsLabs/watermill/message"
@@ -53,6 +55,8 @@ func TestPublishSubscribe_not_persistent(t *testing.T) {
 	receivedMsgs, _ := subscriber.BulkRead(msgs, messagesCount, time.Second)
 
 	tests.AssertAllMessagesReceived(t, sendMessages, receivedMsgs)
+
+	assert.NoError(t, pubSub.Close())
 }
 
 func TestPublishSubscribe_race_condition_on_subscribe(t *testing.T) {
