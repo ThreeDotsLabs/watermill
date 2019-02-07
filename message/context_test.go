@@ -40,16 +40,13 @@ func TestRouter_Context_Stringer(t *testing.T) {
 	pub := namedMockPublisher{}
 
 	handlerName := "handler_name_stringer_test"
-	require.NoError(
-		t,
-		router.AddHandler(
-			handlerName,
-			"",
-			sub,
-			"",
-			pub,
-			handlerFunc,
-		),
+	router.AddHandler(
+		handlerName,
+		"",
+		sub,
+		"",
+		pub,
+		handlerFunc,
 	)
 
 	go func() {
@@ -100,16 +97,13 @@ func TestRouter_Context_TypeName(t *testing.T) {
 	pub := unnamedMockPublisher{}
 
 	handlerName := "handler_name_typename_test"
-	require.NoError(
-		t,
-		router.AddHandler(
-			handlerName,
-			"",
-			sub,
-			"",
-			pub,
-			handlerFunc,
-		),
+	router.AddHandler(
+		handlerName,
+		"",
+		sub,
+		"",
+		pub,
+		handlerFunc,
 	)
 
 	go func() {
