@@ -273,6 +273,9 @@ func (s *StreamingSubscriber) processMessage(
 	case <-s.closing:
 		s.logger.Trace("Closing, message discarded", messageLogFields)
 		return
+	case <-ctx.Done():
+		s.logger.Trace("Context cancelled, message discarded", messageLogFields)
+		return
 	}
 
 	select {
@@ -289,6 +292,9 @@ func (s *StreamingSubscriber) processMessage(
 		return
 	case <-s.closing:
 		s.logger.Trace("Closing, message discarded before ack", messageLogFields)
+		return
+	case <-ctx.Done():
+		s.logger.Trace("Context cancelled, message discarded before ack", messageLogFields)
 		return
 	}
 }
