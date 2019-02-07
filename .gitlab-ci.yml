@@ -33,6 +33,7 @@ test:
   before_script:
     - apk add py-pip
     - pip install docker-compose
+    - cp -v ./.ci/docker-compose.override.yml .
   script:
     - docker-compose pull -q
     - docker-compose up -d

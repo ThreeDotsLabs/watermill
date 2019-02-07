@@ -1,6 +1,7 @@
 package nats_test
 
 import (
+	"os"
 	"testing"
 	"time"
 
@@ -15,12 +16,18 @@ import (
 
 func newPubSub(t *testing.T, clientID string, queueName string) message.PubSub {
 	logger := watermill.NewStdLogger(true, true)
+
+	natsURL := os.Getenv("WATERMILL_TEST_NATS_URL")
+	if natsURL == "" {
+		natsURL = "nats://localhost:8222"
+	}
+
 	pub, err := nats.NewStreamingPublisher(nats.StreamingPublisherConfig{
 		ClusterID: "test-cluster",
 		ClientID:  clientID + "_pub",
 		Marshaler: nats.GobMarshaler{},
 		StanOptions: []stan.Option{
-			stan.NatsURL("nats://nats-streaming:8222"),
+			stan.NatsURL(natsURL),
 		},
 	}, logger)
 	require.NoError(t, err)

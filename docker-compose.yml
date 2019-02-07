@@ -3,16 +3,6 @@
 
 version: '3'
 services:
-  watermill:
-    image: golang:1.11
-    command: /bin/true
-    volumes:
-      - .:/app
-      - .mod-cache:/go/pkg/mod
-    working_dir: /app
-    environment:
-      PUBSUB_EMULATOR_HOST: googlecloud:8085
-
   zookeeper:
     image: confluentinc/cp-zookeeper:5.0.1
     ports:
@@ -32,7 +22,7 @@ services:
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_NUM_PARTITIONS: 8
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
@@ -46,7 +36,7 @@ services:
 
   googlecloud:
     image: google/cloud-sdk:228.0.0
-    entrypoint: gcloud --quiet beta emulators pubsub start --host-port=googlecloud:8085 --verbosity=debug --log-http
+    entrypoint: gcloud --quiet beta emulators pubsub start --host-port=localhost:8085 --verbosity=debug --log-http
     ports:
       - 8085:8085
     restart: on-failure
