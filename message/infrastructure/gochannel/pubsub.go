@@ -12,6 +12,22 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
+type Config struct {
+	// Output channel buffer size.
+	OutputChannelBuffer int64
+
+	// If persistent is set to true, when subscriber subscribes to the topic,
+	// it will receive all previously produced messages.
+	//
+	// All messages are persisted to the memory (simple slice),
+	// so be aware that with large amount of messages you can go out of the memory.
+	Persistent bool
+
+	// When true, Publish will block until subscriber Ack's the message.
+	// If there are no subscribers, Publish will not block (also when Persistent is true).
+	BlockPublishUntilSubscriberAck bool
+}
+
 // GoChannel is the simplest Pub/Sub implementation.
 // It is based on Golang's channels which are sent within the process.
 //
@@ -20,29 +36,18 @@ import (
 //
 // When GoChannel is persistent, messages order is not guaranteed.
 type GoChannel struct {
-	outputChannelBuffer int64
+	config Config
+	logger watermill.LoggerAdapter
 
 	subscribersWg          sync.WaitGroup
 	subscribers            map[string][]*subscriber
 	subscribersLock        sync.RWMutex
 	subscribersByTopicLock sync.Map // map of *sync.Mutex
 
-	logger watermill.LoggerAdapter
-
 	closed  bool
 	closing chan struct{}
 
-	// If persistent is set to true, when subscriber subscribes to the topic,
-	// it will receive all previously produced messages.
-	// All messages are persisted to the memory,
-	// so be aware that with large amount of messages you can go out of the memory.
-	persistent bool
-
 	persistedMessages map[string][]*message.Message
-
-	// todo - move to struct?
-	// todo - validate with persistent? (not allowed?)
-	blockPublishUntilSubscriberAck bool
 }
 
 func (g *GoChannel) Publisher() message.Publisher {
@@ -57,24 +62,9 @@ func (g *GoChannel) Subscriber() message.Subscriber {
 //
 // This GoChannel is not persistent.
 // That means if you send a message to a topic to which no subscriber is subscribed, that message will be discarded.
-func NewGoChannel(outputChannelBuffer int64, logger watermill.LoggerAdapter) message.PubSub {
+func NewGoChannel(config Config, logger watermill.LoggerAdapter) message.PubSub {
 	return &GoChannel{
-		outputChannelBuffer: outputChannelBuffer,
-
-		subscribers:            make(map[string][]*subscriber),
-		subscribersByTopicLock: sync.Map{},
-		logger: logger.With(watermill.LogFields{
-			"pubsub_uuid": shortuuid.New(),
-		}),
-
-		closing: make(chan struct{}),
-	}
-}
-
-// todo - rename
-func NewGoChannelBlockingUntilAckedByConsumer(outputChannelBuffer int64, logger watermill.LoggerAdapter) message.PubSub {
-	return &GoChannel{
-		outputChannelBuffer: outputChannelBuffer,
+		config: config,
 
 		subscribers:            make(map[string][]*subscriber),
 		subscribersByTopicLock: sync.Map{},
@@ -84,29 +74,6 @@ func NewGoChannelBlockingUntilAckedByConsumer(outputChannelBuffer int64, logger 
 
 		closing: make(chan struct{}),
 
-		blockPublishUntilSubscriberAck: true,
-	}
-}
-
-// NewPersistentGoChannel creates new persistent GoChannel Pub/Sub.
-//
-// This GoChannel is persistent.
-// That means that when subscriber subscribes to the topic, it will receive all previously produced messages.
-// All messages are persisted to the memory, so be aware that with large amount of messages you can go out of the memory.
-//
-// Messages are persisted per GoChannel, so you must use the same object to consume these persisted messages.
-func NewPersistentGoChannel(outputChannelBuffer int64, logger watermill.LoggerAdapter) message.PubSub {
-	return &GoChannel{
-		outputChannelBuffer: outputChannelBuffer,
-
-		subscribers: make(map[string][]*subscriber),
-		logger: logger.With(watermill.LogFields{
-			"pubsub_uuid": shortuuid.New(),
-		}),
-
-		closing: make(chan struct{}),
-
-		persistent:        true,
 		persistedMessages: map[string][]*message.Message{},
 	}
 }
@@ -127,7 +94,7 @@ func (g *GoChannel) Publish(topic string, messages ...*message.Message) error {
 	subLock.(*sync.Mutex).Lock()
 	defer subLock.(*sync.Mutex).Unlock()
 
-	if g.persistent {
+	if g.config.Persistent {
 		if _, ok := g.persistedMessages[topic]; !ok {
 			g.persistedMessages[topic] = make([]*message.Message, 0)
 		}
@@ -135,15 +102,18 @@ func (g *GoChannel) Publish(topic string, messages ...*message.Message) error {
 	}
 
 	for i := range messages {
-		done, err := g.sendMessage(topic, messages[i])
+		ackedByConsumer, err := g.sendMessage(topic, messages[i])
 		if err != nil {
 			return err
 		}
 
-		if g.blockPublishUntilSubscriberAck {
-			// todo - better blocking
-			// todo - wahat if no subscribers? blocking?
-			<-done
+		if g.config.BlockPublishUntilSubscriberAck {
+			select {
+			case <-ackedByConsumer:
+				// ok
+			case <-g.closing:
+				// closing Pub/Sub
+			}
 		}
 	}
 
@@ -187,7 +157,7 @@ func (g *GoChannel) Subscribe(ctx context.Context, topic string) (<-chan *messag
 	s := &subscriber{
 		ctx:           ctx,
 		uuid:          watermill.NewUUID(),
-		outputChannel: make(chan *message.Message, g.outputChannelBuffer),
+		outputChannel: make(chan *message.Message, g.config.OutputChannelBuffer),
 		logger:        g.logger,
 		closing:       make(chan struct{}),
 	}
@@ -214,7 +184,7 @@ func (g *GoChannel) Subscribe(ctx context.Context, topic string) (<-chan *messag
 		g.subscribersWg.Done()
 	}(s, g)
 
-	if !g.persistent {
+	if !g.config.Persistent {
 		defer g.subscribersLock.Unlock()
 		defer subLock.(*sync.Mutex).Unlock()
 

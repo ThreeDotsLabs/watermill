@@ -22,7 +22,7 @@ func TestCQRS(t *testing.T) {
 	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
 	require.NoError(t, err)
 
-	c, err := cqrs.NewCQRS(cqrs.DefaultConfig{
+	c, err := cqrs.NewFacade(cqrs.FacadeConfig{
 		CommandsTopic: "commands",
 		EventsTopic:   "events",
 		CommandHandlers: func(_ cqrs.CommandBus, _ cqrs.EventBus) []cqrs.CommandHandler {
@@ -62,7 +62,7 @@ type TestServices struct {
 
 func NewTestServices() TestServices {
 	logger := watermill.NewStdLogger(true, true)
-	pubSub := gochannel.NewGoChannelBlockingUntilAckedByConsumer(0, logger)
+	pubSub := gochannel.NewGoChannel(gochannel.Config{BlockPublishUntilSubscriberAck: true}, logger)
 	marshaler := cqrs.JsonMarshaler{}
 
 	return TestServices{

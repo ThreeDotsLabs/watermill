@@ -6,6 +6,8 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
+
 	"github.com/ThreeDotsLabs/watermill/components/cqrs"
 
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/gochannel"
@@ -88,17 +90,16 @@ func main() {
 	marshaler := cqrs.ProtobufMarshaler{}
 
 	// you can use any Pub/Sub implementation from here: https://watermill.io/docs/pub-sub-implementations/
-	pubSub := gochannel.NewGoChannel(0, logger)
+	pubSub := gochannel.NewGoChannel(gochannel.Config{}, logger)
 
 	// cqrs is built on already existing messages router: https://watermill.io/docs/messages-router/
 	router, err := message.NewRouter(message.RouterConfig{}, logger)
 	if err != nil {
 		panic(err)
 	}
+	router.AddMiddleware(middleware.Recoverer)
 
-	// todo - add middlewares
-
-	c, err := cqrs.NewCQRS(cqrs.DefaultConfig{
+	cqrsFacade, err := cqrs.NewFacade(cqrs.FacadeConfig{
 		CommandsTopic: "commands",
 		EventsTopic:   "events",
 		CommandHandlers: func(cb cqrs.CommandBus, eb cqrs.EventBus) []cqrs.CommandHandler {
@@ -121,7 +122,7 @@ func main() {
 		panic(err)
 	}
 
-	go publishCommands(c.CommandBus())
+	go publishCommands(cqrsFacade.CommandBus())
 
 	if err := router.Run(); err != nil {
 		panic(err)

@@ -3,15 +3,14 @@ package cqrs
 import (
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/hashicorp/go-multierror"
+	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 )
 
 // todo - link to docs
 // todo - glossary and schema
 
-// todo - rename
-type DefaultConfig struct {
+type FacadeConfig struct {
 	CommandsTopic   string
 	CommandHandlers func(commandBus CommandBus, eventBus EventBus) []CommandHandler
 
@@ -24,7 +23,7 @@ type DefaultConfig struct {
 	CommandEventMarshaler CommandEventMarshaler
 }
 
-func (c DefaultConfig) Validate() error {
+func (c FacadeConfig) Validate() error {
 	var err error
 
 	if c.CommandsTopic != "" && c.CommandHandlers == nil {
@@ -50,8 +49,7 @@ func (c DefaultConfig) Validate() error {
 	return err
 }
 
-// todo - rename?
-type CQRS struct {
+type Facade struct {
 	commandsTopic string
 	commandBus    CommandBus
 
@@ -61,32 +59,32 @@ type CQRS struct {
 	commandEventMarshaler CommandEventMarshaler
 }
 
-func (c CQRS) CommandsTopic() string {
-	return c.commandsTopic
+func (f Facade) CommandsTopic() string {
+	return f.commandsTopic
 }
 
-func (c CQRS) CommandBus() CommandBus {
-	return c.commandBus
+func (f Facade) CommandBus() CommandBus {
+	return f.commandBus
 }
 
-func (c CQRS) EventsTopic() string {
-	return c.eventsTopic
+func (f Facade) EventsTopic() string {
+	return f.eventsTopic
 }
 
-func (c CQRS) EventBus() EventBus {
-	return c.eventBus
+func (f Facade) EventBus() EventBus {
+	return f.eventBus
 }
 
-func (c CQRS) CommandEventMarshaler() CommandEventMarshaler {
-	return c.commandEventMarshaler
+func (f Facade) CommandEventMarshaler() CommandEventMarshaler {
+	return f.commandEventMarshaler
 }
 
-func NewCQRS(config DefaultConfig) (CQRS, error) {
+func NewFacade(config FacadeConfig) (Facade, error) {
 	if err := config.Validate(); err != nil {
-		return CQRS{}, errors.Wrap(err, "invalid config")
+		return Facade{}, errors.Wrap(err, "invalid config")
 	}
 
-	c := CQRS{
+	c := Facade{
 		commandsTopic:         config.CommandsTopic,
 		eventsTopic:           config.EventsTopic,
 		commandEventMarshaler: config.CommandEventMarshaler,
@@ -105,7 +103,7 @@ func NewCQRS(config DefaultConfig) (CQRS, error) {
 
 		err := commandProcessor.AddHandlersToRouter(config.Router)
 		if err != nil {
-			return CQRS{}, err
+			return Facade{}, err
 		}
 	} else {
 		config.Logger.Info("Empty CommandsTopic, command bus will be not created", nil)
@@ -124,7 +122,7 @@ func NewCQRS(config DefaultConfig) (CQRS, error) {
 
 		err := eventProcessor.AddHandlersToRouter(config.Router)
 		if err != nil {
-			return CQRS{}, err
+			return Facade{}, err
 		}
 	} else {
 		config.Logger.Info("Empty EventsTopic, event bus will be not created", nil)
