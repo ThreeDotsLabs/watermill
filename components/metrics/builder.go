@@ -2,19 +2,16 @@ package metrics
 
 import (
 	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-func AddPrometheusRouterMetrics(r *message.Router, prometheusRegistry *prometheus.Registry, namespace string, subsystem string) {
-	builder := PrometheusMetricsBuilder{
+func NewPrometheusMetricsBuilder(prometheusRegistry *prometheus.Registry, namespace string, subsystem string) PrometheusMetricsBuilder {
+	return PrometheusMetricsBuilder{
 		Namespace:          namespace,
 		Subsystem:          subsystem,
 		PrometheusRegistry: prometheusRegistry,
 	}
-
-	r.AddPublisherDecorators(builder.DecoratePublisher)
-	r.AddSubscriberDecorators(builder.DecorateSubscriber)
-	r.AddMiddleware(builder.NewRouterMiddleware().Middleware)
 }
 
 // PrometheusMetricsBuilder provides methods to decorate publishers, subscribers and handlers.
@@ -24,6 +21,75 @@ type PrometheusMetricsBuilder struct {
 
 	Namespace string
 	Subsystem string
+}
+
+func (b PrometheusMetricsBuilder) AddPrometheusRouterMetrics(r *message.Router) {
+	r.AddPublisherDecorators(b.DecoratePublisher)
+	r.AddSubscriberDecorators(b.DecorateSubscriber)
+	r.AddMiddleware(b.NewRouterMiddleware().Middleware)
+}
+
+// DecoratePublisher wraps the underlying publisher with Prometheus metrics.
+func (b PrometheusMetricsBuilder) DecoratePublisher(pub message.Publisher) (message.Publisher, error) {
+	var err error
+	d := PublisherPrometheusMetricsDecorator{
+		pub: pub,
+	}
+
+	d.publishTimeSeconds, err = b.registerHistogramVec(prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Namespace: b.Namespace,
+			Subsystem: b.Subsystem,
+			Name:      "publish_time_seconds",
+			Help:      "The time that a publishing attempt (success or not) took in seconds",
+		},
+		publisherLabelKeys,
+	))
+	if err != nil {
+		return nil, errors.Wrap(err, "could not register publish time metric")
+	}
+	return d, nil
+}
+
+// DecorateSubscriber wraps the underlying subscriber with Prometheus metrics.
+func (b PrometheusMetricsBuilder) DecorateSubscriber(sub message.Subscriber) (message.Subscriber, error) {
+	var err error
+	d := &SubscriberPrometheusMetricsDecorator{
+		closing: make(chan struct{}),
+	}
+
+	d.subscriberMessagesReceivedTotal, err = b.registerCounterVec(prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: b.Namespace,
+			Subsystem: b.Subsystem,
+			Name:      "subscriber_messages_received_total",
+			Help:      "The total number of messages received by the subscriber",
+		},
+		append(subscriberLabelKeys, labelAcked),
+	))
+	if err != nil {
+		return nil, errors.Wrap(err, "could not register time to ack metric")
+	}
+
+	d.Subscriber, err = message.MessageTransformSubscriberDecorator(d.recordMetrics)(sub)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not decorate subscriber with metrics decorator")
+	}
+
+	return d, nil
+}
+
+func (b PrometheusMetricsBuilder) DecoratePubSub(pubSub message.PubSub) (message.PubSub, error) {
+	pub, err := b.DecoratePublisher(pubSub)
+	if err != nil {
+		return nil, err
+	}
+	sub, err := b.DecorateSubscriber(pubSub)
+	if err != nil {
+		return nil, err
+	}
+
+	return message.NewPubSub(pub, sub), nil
 }
 
 func (b PrometheusMetricsBuilder) register(c prometheus.Collector) (prometheus.Collector, error) {
@@ -38,8 +104,6 @@ func (b PrometheusMetricsBuilder) register(c prometheus.Collector) (prometheus.C
 
 	return nil, err
 }
-
-// could use some generics lol
 
 func (b PrometheusMetricsBuilder) registerCounterVec(c *prometheus.CounterVec) (*prometheus.CounterVec, error) {
 	col, err := b.register(c)
