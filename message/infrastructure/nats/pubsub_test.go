@@ -40,6 +40,9 @@ func newPubSub(t *testing.T, clientID string, queueName string) message.PubSub {
 		SubscribersCount: 1,
 		AckWaitTimeout:   time.Second, // AckTiemout < 5 required for continueAfterErrors
 		Unmarshaler:      nats.GobMarshaler{},
+		StanOptions: []stan.Option{
+			stan.NatsURL(natsURL),
+		},
 	}, logger)
 	require.NoError(t, err)
 
