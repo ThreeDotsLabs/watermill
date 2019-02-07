@@ -249,7 +249,7 @@ func TestRouterNoPublisherHandler(t *testing.T) {
 		pubSub,
 		func(msg *message.Message) (producedMessages []*message.Message, err error) {
 			if msgReceived {
-				require.NoError(t, msg.Ack())
+				require.True(t, msg.Ack())
 				close(wait)
 				return nil, nil
 			}
