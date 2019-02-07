@@ -1,6 +1,7 @@
 package infrastructure
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"sync"
@@ -55,7 +56,7 @@ func testNoGroupSubscriberConcurrentSubscribers(
 
 		go func() {
 			subscriber := noGroupSubscriberConstructor(t)
-			ch, err := subscriber.Subscribe(topicName)
+			ch, err := subscriber.Subscribe(context.Background(), topicName)
 			require.NoError(t, err)
 
 			consumersStarted.Done()
@@ -116,7 +117,7 @@ func testNoGroupSubscriberJoiningSubscribers(
 
 				subscriberCreated <- struct{}{}
 
-				ch, err := subscriber.Subscribe(topicName)
+				ch, err := subscriber.Subscribe(context.Background(), topicName)
 				require.NoError(t, err)
 
 				for msg := range ch {
@@ -193,7 +194,7 @@ func testNoGroupSubscriber_Close(
 	}
 
 	subscriber := noGroupSubscriberConstructor(t)
-	ch, err := subscriber.Subscribe(topicName)
+	ch, err := subscriber.Subscribe(context.Background(), topicName)
 	require.NoError(t, err)
 
 	_, all := subscriber2.BulkRead(ch, 10, defaultTimeout)

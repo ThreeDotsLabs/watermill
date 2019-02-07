@@ -5,8 +5,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hashicorp/go-multierror"
-
 	internalSync "github.com/ThreeDotsLabs/watermill/internal/sync"
 
 	"github.com/ThreeDotsLabs/watermill"
@@ -161,17 +159,9 @@ func NewStreamingSubscriber(config StreamingSubscriberConfig, logger watermill.L
 // Subscribe subscribes messages from NATS Streaming.
 //
 // Subscribe will spawn SubscribersCount goroutines making subscribe.
-func (s *StreamingSubscriber) Subscribe(topic string) (chan *message.Message, error) {
+func (s *StreamingSubscriber) Subscribe(ctx context.Context, topic string) (<-chan *message.Message, error) {
 	output := make(chan *message.Message, 0)
 	s.outputsWg.Add(1)
-
-	go func() {
-		<-s.closing
-		s.processingMessagesWg.Wait()
-
-		close(output)
-		s.outputsWg.Done()
-	}()
 
 	for i := 0; i < s.config.SubscribersCount; i++ {
 		subscriberLogFields := watermill.LogFields{
@@ -181,10 +171,25 @@ func (s *StreamingSubscriber) Subscribe(topic string) (chan *message.Message, er
 
 		s.logger.Debug("Starting subscriber", subscriberLogFields)
 
-		sub, err := s.subscribe(output, topic, subscriberLogFields)
+		sub, err := s.subscribe(ctx, output, topic, subscriberLogFields)
 		if err != nil {
 			return nil, errors.Wrap(err, "cannot subscribe")
 		}
+
+		go func(subscriber stan.Subscription, subscriberLogFields watermill.LogFields) {
+			select {
+			case <-s.closing:
+				// unblock
+			case <-ctx.Done():
+				// unblock
+			}
+			if err := sub.Close(); err != nil {
+				s.logger.Error("Cannot close subscriber", err, subscriberLogFields)
+			}
+
+			close(output)
+			s.outputsWg.Done()
+		}(sub, subscriberLogFields)
 
 		s.subsLock.Lock()
 		s.subs = append(s.subs, sub)
@@ -195,7 +200,7 @@ func (s *StreamingSubscriber) Subscribe(topic string) (chan *message.Message, er
 }
 
 func (s *StreamingSubscriber) SubscribeInitialize(topic string) (err error) {
-	sub, err := s.subscribe(make(chan *message.Message), topic, nil)
+	sub, err := s.subscribe(context.Background(), make(chan *message.Message), topic, nil)
 	if err != nil {
 		return errors.Wrap(err, "cannot initialize subscribe")
 	}
@@ -203,13 +208,18 @@ func (s *StreamingSubscriber) SubscribeInitialize(topic string) (err error) {
 	return errors.Wrap(sub.Close(), "cannot close after subscribe initialize")
 }
 
-func (s *StreamingSubscriber) subscribe(output chan *message.Message, topic string, subscriberLogFields watermill.LogFields) (stan.Subscription, error) {
+func (s *StreamingSubscriber) subscribe(
+	ctx context.Context,
+	output chan *message.Message,
+	topic string,
+	subscriberLogFields watermill.LogFields,
+) (stan.Subscription, error) {
 	if s.config.QueueGroup != "" {
 		return s.conn.QueueSubscribe(
 			topic,
 			s.config.QueueGroup,
 			func(m *stan.Msg) {
-				s.processMessage(m, output, subscriberLogFields)
+				s.processMessage(ctx, m, output, subscriberLogFields)
 			},
 			s.config.StanSubscriptionOptions...,
 		)
@@ -218,13 +228,18 @@ func (s *StreamingSubscriber) subscribe(output chan *message.Message, topic stri
 	return s.conn.Subscribe(
 		topic,
 		func(m *stan.Msg) {
-			s.processMessage(m, output, subscriberLogFields)
+			s.processMessage(ctx, m, output, subscriberLogFields)
 		},
 		s.config.StanSubscriptionOptions...,
 	)
 }
 
-func (s *StreamingSubscriber) processMessage(m *stan.Msg, output chan *message.Message, logFields watermill.LogFields) {
+func (s *StreamingSubscriber) processMessage(
+	ctx context.Context,
+	m *stan.Msg,
+	output chan *message.Message,
+	logFields watermill.LogFields,
+) {
 	if s.closed {
 		return
 	}
@@ -240,7 +255,7 @@ func (s *StreamingSubscriber) processMessage(m *stan.Msg, output chan *message.M
 		return
 	}
 
-	ctx, cancelCtx := context.WithCancel(context.Background())
+	ctx, cancelCtx := context.WithCancel(ctx)
 	msg.SetContext(ctx)
 	defer cancelCtx()
 
@@ -283,21 +298,16 @@ func (s *StreamingSubscriber) Close() error {
 	s.closed = true
 
 	s.logger.Debug("Closing subscriber", nil)
-	defer s.logger.Debug("StreamingSubscriber closed", nil)
+	defer s.logger.Info("StreamingSubscriber closed", nil)
 
 	var result error
-	for _, sub := range s.subs {
-		if err := sub.Close(); err != nil {
-			result = multierror.Append(result, errors.Wrap(err, "cannot close sub"))
-		}
-	}
-
-	if err := s.conn.Close(); err != nil {
-		result = multierror.Append(result, errors.Wrap(err, "cannot close conn"))
-	}
 
 	close(s.closing)
 	internalSync.WaitGroupTimeout(&s.outputsWg, s.config.CloseTimeout)
+
+	if err := s.conn.Close(); err != nil {
+		return errors.Wrap(err, "cannot close conn")
+	}
 
 	return result
 }

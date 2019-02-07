@@ -12,11 +12,6 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
-type subscriber struct {
-	uuid          string
-	outputChannel chan *message.Message
-}
-
 // GoChannel is the simplest Pub/Sub implementation.
 // It is based on Golang's channels which are sent within the process.
 //
@@ -27,6 +22,7 @@ type subscriber struct {
 type GoChannel struct {
 	outputChannelBuffer int64
 
+	subscribersWg          sync.WaitGroup
 	subscribers            map[string][]*subscriber
 	subscribersLock        sync.RWMutex
 	subscribersByTopicLock sync.Map // map of *sync.Mutex
@@ -136,63 +132,18 @@ func (g *GoChannel) sendMessage(topic string, message *message.Message) error {
 		s := subscribers[i]
 
 		go func(subscriber *subscriber) {
-			g.sendMessageToSubscriber(message, subscriber)
+			subscriber.sendMessageToSubscriber(message)
 		}(s)
 	}
 
 	return nil
 }
 
-func (g *GoChannel) sendMessageToSubscriber(msg *message.Message, s *subscriber) {
-	subscriberLogFields := watermill.LogFields{
-		"message_uuid": msg.UUID,
-		"pubsub_uuid":  s.uuid,
-	}
-
-	ctx, cancelCtx := context.WithCancel(context.Background())
-	defer cancelCtx()
-
-SendToSubscriber:
-	for {
-		// copy the message to prevent ack/nack propagation to other consumers
-		// also allows to make retries on a fresh copy of the original message
-		msgToSend := msg.Copy()
-		msgToSend.SetContext(ctx)
-
-		g.logger.Trace("Sending msg to subscriber", subscriberLogFields)
-
-		if g.closed {
-			g.logger.Info("Pub/Sub closed, discarding msg", subscriberLogFields)
-			return
-		}
-
-		select {
-		case s.outputChannel <- msgToSend:
-			g.logger.Trace("Sent message to subscriber", subscriberLogFields)
-		case <-g.closing:
-			g.logger.Trace("Closing, message discarded", subscriberLogFields)
-			return
-		}
-
-		select {
-		case <-msgToSend.Acked():
-			g.logger.Trace("Message acked", subscriberLogFields)
-			return
-		case <-msgToSend.Nacked():
-			g.logger.Trace("Nack received, resending message", subscriberLogFields)
-			continue SendToSubscriber
-		case <-g.closing:
-			g.logger.Trace("Closing, message discarded", subscriberLogFields)
-			return
-		}
-	}
-}
-
 // Subscribe returns channel to which all published messages are sent.
 // Messages are not persisted. If there are no subscribers and message is produced it will be gone.
 //
 // There are no consumer groups support etc. Every consumer will receive every produced message.
-func (g *GoChannel) Subscribe(topic string) (chan *message.Message, error) {
+func (g *GoChannel) Subscribe(ctx context.Context, topic string) (<-chan *message.Message, error) {
 	if g.closed {
 		return nil, errors.New("Pub/Sub closed")
 	}
@@ -203,9 +154,13 @@ func (g *GoChannel) Subscribe(topic string) (chan *message.Message, error) {
 	subLock.(*sync.Mutex).Lock()
 
 	s := &subscriber{
+		ctx:           ctx,
 		uuid:          watermill.UUID(),
 		outputChannel: make(chan *message.Message, g.outputChannelBuffer),
+		logger:        g.logger,
+		closing:       make(chan struct{}),
 	}
+	g.subscribersWg.Add(1)
 
 	if !g.persistent {
 		defer g.subscribersLock.Unlock()
@@ -224,13 +179,27 @@ func (g *GoChannel) Subscribe(topic string) (chan *message.Message, error) {
 			for i := range messages {
 				msg := g.persistedMessages[topic][i]
 
-				go func() {
-					g.sendMessageToSubscriber(msg, s)
-				}()
+				go s.sendMessageToSubscriber(msg)
 			}
 		}
 
 		g.addSubscriber(topic, s)
+
+		go func(s *subscriber) {
+			select {
+			case <-ctx.Done():
+				// unblock
+			case <-g.closing:
+				// unblock
+			}
+
+			subLock, _ := g.subscribersByTopicLock.Load(topic)
+			subLock.(*sync.Mutex).Lock()
+			defer subLock.(*sync.Mutex).Unlock()
+
+			g.removeSubscriber(topic, s)
+			g.subscribersWg.Done()
+		}(s)
 	}(s)
 
 	return s.outputChannel, nil
@@ -241,6 +210,22 @@ func (g *GoChannel) addSubscriber(topic string, s *subscriber) {
 		g.subscribers[topic] = make([]*subscriber, 0)
 	}
 	g.subscribers[topic] = append(g.subscribers[topic], s)
+}
+
+func (g *GoChannel) removeSubscriber(topic string, toRemove *subscriber) {
+	removed := false
+	for i, sub := range g.subscribers[topic] {
+		if sub == toRemove {
+			g.subscribers[topic] = append(g.subscribers[topic][:i], g.subscribers[topic][i+1:]...)
+			removed = true
+			break
+		}
+	}
+	if !removed {
+		panic("cannot remove subscriber, not found " + toRemove.uuid)
+	}
+
+	toRemove.Close()
 }
 
 func (g *GoChannel) topicSubscribers(topic string) []*subscriber {
@@ -260,27 +245,86 @@ func (g *GoChannel) Close() error {
 	g.closed = true
 	close(g.closing)
 
-	g.subscribersLock.Lock()
-	defer g.subscribersLock.Unlock()
-
-	g.logger.Info("Closing Pub/Sub", nil)
-
-	for topic, topicSubscribers := range g.subscribers {
-		subLock, _ := g.subscribersByTopicLock.LoadOrStore(topic, &sync.Mutex{})
-		subLock.(*sync.Mutex).Lock()
-
-		for _, subscriber := range topicSubscribers {
-			g.logger.Debug("Closing subscriber channel", watermill.LogFields{
-				"subscriber_uuid": subscriber.uuid,
-			})
-			close(subscriber.outputChannel)
-		}
-
-		subLock.(*sync.Mutex).Unlock()
-	}
+	g.logger.Debug("Closing Pub/Sub, waiting for subscribers", nil)
+	g.subscribersWg.Wait()
 
 	g.logger.Info("Pub/Sub closed", nil)
 	g.persistedMessages = nil
 
 	return nil
+}
+
+type subscriber struct {
+	ctx context.Context
+
+	uuid string
+
+	sending       sync.Mutex
+	outputChannel chan *message.Message
+
+	logger  watermill.LoggerAdapter
+	closed  bool
+	closing chan struct{}
+}
+
+func (s *subscriber) Close() {
+	if s.closed {
+		return
+	}
+	s.closed = true
+	close(s.closing)
+
+	// ensuring that we are not sending to closed channel
+	s.sending.Lock()
+	defer s.sending.Unlock()
+
+	close(s.outputChannel)
+}
+
+func (s *subscriber) sendMessageToSubscriber(msg *message.Message) {
+	s.sending.Lock()
+	defer s.sending.Unlock()
+
+	subscriberLogFields := watermill.LogFields{
+		"message_uuid": msg.UUID,
+		"pubsub_uuid":  s.uuid,
+	}
+
+	ctx, cancelCtx := context.WithCancel(s.ctx)
+	defer cancelCtx()
+
+SendToSubscriber:
+	for {
+		// copy the message to prevent ack/nack propagation to other consumers
+		// also allows to make retries on a fresh copy of the original message
+		msgToSend := msg.Copy()
+		msgToSend.SetContext(ctx)
+
+		s.logger.Trace("Sending msg to subscriber", subscriberLogFields)
+
+		if s.closed {
+			s.logger.Info("Pub/Sub closed, discarding msg", subscriberLogFields)
+			return
+		}
+
+		select {
+		case s.outputChannel <- msgToSend:
+			s.logger.Trace("Sent message to subscriber", subscriberLogFields)
+		case <-s.closing:
+			s.logger.Trace("Closing, message discarded", subscriberLogFields)
+			return
+		}
+
+		select {
+		case <-msgToSend.Acked():
+			s.logger.Trace("Message acked", subscriberLogFields)
+			return
+		case <-msgToSend.Nacked():
+			s.logger.Trace("Nack received, resending message", subscriberLogFields)
+			continue SendToSubscriber
+		case <-s.closing:
+			s.logger.Trace("Closing, message discarded", subscriberLogFields)
+			return
+		}
+	}
 }

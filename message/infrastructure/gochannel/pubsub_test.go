@@ -1,6 +1,7 @@
 package gochannel_test
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"sync"
@@ -45,7 +46,7 @@ func TestPublishSubscribe_not_persistent(t *testing.T) {
 	)
 	topicName := "test_topic_" + watermill.UUID()
 
-	msgs, err := pubSub.Subscribe(topicName)
+	msgs, err := pubSub.Subscribe(context.Background(), topicName)
 	require.NoError(t, err)
 
 	sendMessages := infrastructure.AddSimpleMessages(t, messagesCount, pubSub, topicName)
@@ -105,7 +106,7 @@ func testPublishSubscribeSubRace(t *testing.T) {
 		allReceived.Add(1)
 
 		go func() {
-			msgs, err := pubSub.Subscribe("topic")
+			msgs, err := pubSub.Subscribe(context.Background(), "topic")
 			require.NoError(t, err)
 
 			received, _ := subscriber.BulkRead(msgs, messagesCount, time.Second*10)

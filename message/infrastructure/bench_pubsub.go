@@ -1,6 +1,7 @@
 package infrastructure
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -15,7 +16,7 @@ func BenchSubscriber(b *testing.B, pubSubConstructor BenchmarkPubSubConstructor)
 	pubSub := pubSubConstructor(b.N)
 	topicName := testTopicName()
 
-	messages, err := pubSub.Subscribe(topicName)
+	messages, err := pubSub.Subscribe(context.Background(), topicName)
 	if err != nil {
 		b.Fatal(err)
 	}

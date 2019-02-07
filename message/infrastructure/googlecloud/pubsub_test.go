@@ -96,7 +96,7 @@ func TestSubscriberUnexpectedTopicForSubscription(t *testing.T) {
 
 	howManyMessages := 100
 
-	messagesTopic1, err := sub1.Subscribe(topic1)
+	messagesTopic1, err := sub1.Subscribe(context.Background(), topic1)
 	require.NoError(t, err)
 
 	allMessagesReceived := make(chan struct{})
@@ -120,7 +120,7 @@ func TestSubscriberUnexpectedTopicForSubscription(t *testing.T) {
 		t.Fatal("Test timed out")
 	}
 
-	_, err = sub2.Subscribe(topic2)
+	_, err = sub2.Subscribe(context.Background(), topic2)
 	require.Equal(t, googlecloud.ErrUnexpectedTopic, errors.Cause(err))
 }
 

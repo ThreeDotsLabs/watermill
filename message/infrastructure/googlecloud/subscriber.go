@@ -30,7 +30,6 @@ var (
 //
 // For more info on how Google Cloud Pub/Sub Subscribers work, check https://cloud.google.com/pubsub/docs/subscriber.
 type Subscriber struct {
-	ctx     context.Context
 	closing chan struct{}
 	closed  bool
 
@@ -112,7 +111,6 @@ func NewSubscriber(
 	}
 
 	return &Subscriber{
-		ctx:     ctx,
 		closing: make(chan struct{}, 1),
 		closed:  false,
 
@@ -138,12 +136,12 @@ func NewSubscriber(
 // Be aware that in Google Cloud Pub/Sub, only messages sent after the subscription was created can be consumed.
 //
 // See https://cloud.google.com/pubsub/docs/subscriber to find out more about how Google Cloud Pub/Sub Subscriptions work.
-func (s *Subscriber) Subscribe(topic string) (chan *message.Message, error) {
+func (s *Subscriber) Subscribe(ctx context.Context, topic string) (<-chan *message.Message, error) {
 	if s.closed {
 		return nil, ErrSubscriberClosed
 	}
 
-	ctx, cancel := context.WithCancel(s.ctx)
+	ctx, cancel := context.WithCancel(ctx)
 	subscriptionName := s.config.GenerateSubscriptionName(topic)
 
 	logFields := watermill.LogFields{
@@ -174,7 +172,9 @@ func (s *Subscriber) Subscribe(topic string) (chan *message.Message, error) {
 		<-s.closing
 		s.logger.Debug("Closing message consumer", logFields)
 		cancel()
+	}()
 
+	go func() {
 		<-receiveFinished
 		close(output)
 		s.allSubscriptionsWaitGroup.Done()
@@ -184,7 +184,7 @@ func (s *Subscriber) Subscribe(topic string) (chan *message.Message, error) {
 }
 
 func (s *Subscriber) SubscribeInitialize(topic string) (err error) {
-	ctx, cancel := context.WithCancel(s.ctx)
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	subscriptionName := s.config.GenerateSubscriptionName(topic)
@@ -193,7 +193,7 @@ func (s *Subscriber) SubscribeInitialize(topic string) (err error) {
 		"topic":             topic,
 		"subscription_name": subscriptionName,
 	}
-	s.logger.Info("Subscribing to Google Cloud PubSub topic", logFields)
+	s.logger.Info("Initializing subscription to Google Cloud PubSub topic", logFields)
 
 	if _, err := s.subscription(ctx, subscriptionName, topic); err != nil {
 		return err
@@ -236,7 +236,7 @@ func (s *Subscriber) receive(
 			return
 		}
 
-		ctx, cancelCtx := context.WithCancel(context.Background())
+		ctx, cancelCtx := context.WithCancel(ctx)
 		msg.SetContext(ctx)
 		defer cancelCtx()
 
@@ -248,6 +248,13 @@ func (s *Subscriber) receive(
 			)
 			pubsubMsg.Nack()
 			return
+		case <-ctx.Done():
+			s.logger.Info(
+				"Message not consumed, ctx canceled",
+				logFields,
+			)
+			pubsubMsg.Nack()
+			return
 		case output <- msg:
 			// message consumed, wait for ack (or nack)
 		}
@@ -255,10 +262,28 @@ func (s *Subscriber) receive(
 		select {
 		case <-s.closing:
 			pubsubMsg.Nack()
+			s.logger.Trace(
+				"Closing, nacking message",
+				logFields,
+			)
+		case <-ctx.Done():
+			pubsubMsg.Nack()
+			s.logger.Trace(
+				"Ctx done, nacking message",
+				logFields,
+			)
 		case <-msg.Acked():
+			s.logger.Trace(
+				"Msg acked",
+				logFields,
+			)
 			pubsubMsg.Ack()
 		case <-msg.Nacked():
 			pubsubMsg.Nack()
+			s.logger.Trace(
+				"Msg nacked",
+				logFields,
+			)
 		}
 	})
 
