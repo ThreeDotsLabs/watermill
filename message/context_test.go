@@ -1,6 +1,7 @@
 package message_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/ThreeDotsLabs/watermill/message"
@@ -19,8 +20,10 @@ func (namedMockPublisher) String() string {
 
 type namedMockSubscriber struct{ ch chan *message.Message }
 
-func (s namedMockSubscriber) Subscribe(topic string) (chan *message.Message, error) { return s.ch, nil }
-func (s *namedMockSubscriber) Close() error                                         { close(s.ch); return nil }
+func (s namedMockSubscriber) Subscribe(context.Context, string) (<-chan *message.Message, error) {
+	return s.ch, nil
+}
+func (s *namedMockSubscriber) Close() error { close(s.ch); return nil }
 func (namedMockSubscriber) String() string {
 	return "this subscriber implements Stringer"
 }
@@ -72,7 +75,7 @@ func (unnamedMockPublisher) Close() error                                       
 
 type unnamedMockSubscriber struct{ ch chan *message.Message }
 
-func (s unnamedMockSubscriber) Subscribe(topic string) (chan *message.Message, error) {
+func (s unnamedMockSubscriber) Subscribe(context.Context, string) (<-chan *message.Message, error) {
 	return s.ch, nil
 }
 func (s *unnamedMockSubscriber) Close() error { close(s.ch); return nil }
@@ -125,7 +128,7 @@ func setupPubsubNameTests(t *testing.T, capturedMessages chan (*message.Message)
 
 	handlerFunc := func(msg *message.Message) ([]*message.Message, error) {
 		capturedMessages <- msg
-		require.NoError(t, msg.Ack())
+		require.True(t, msg.Ack())
 		return message.Messages{message.NewMessage(msg.UUID+"_copy", msg.Payload)}, nil
 	}
 

@@ -41,14 +41,20 @@ func main() {
 		panic(err)
 	}
 
-	httpSubscriber, err := http.NewSubscriber(*httpAddr, func(topic string, request *stdHttp.Request) (*message.Message, error) {
-		b, err := ioutil.ReadAll(request.Body)
-		if err != nil {
-			return nil, errors.Wrap(err, "cannot read body")
-		}
+	httpSubscriber, err := http.NewSubscriber(
+		*httpAddr,
+		http.SubscriberConfig{
+			UnmarshalMessageFunc: func(topic string, request *stdHttp.Request) (*message.Message, error) {
+				b, err := ioutil.ReadAll(request.Body)
+				if err != nil {
+					return nil, errors.Wrap(err, "cannot read body")
+				}
 
-		return message.NewMessage(watermill.UUID(), b), nil
-	}, logger)
+				return message.NewMessage(watermill.UUID(), b), nil
+			},
+		},
+		logger,
+	)
 	if err != nil {
 		panic(err)
 	}

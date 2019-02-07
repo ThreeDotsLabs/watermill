@@ -1,6 +1,7 @@
 package message_test
 
 import (
+	"context"
 	"sync"
 	"testing"
 
@@ -15,7 +16,7 @@ type benchSubscriber struct {
 	running sync.Mutex
 }
 
-func (b *benchSubscriber) Subscribe(topic string) (chan *message.Message, error) {
+func (b *benchSubscriber) Subscribe(ctx context.Context, topic string) (<-chan *message.Message, error) {
 	return b.msgCh, nil
 }
 
@@ -60,7 +61,7 @@ func BenchmarkMessageTransformSubscriberDecorator(b *testing.B) {
 func benchmarkNoDecorator(b *testing.B) {
 	sub := newBenchSubscriber()
 
-	in, err := sub.Subscribe("")
+	in, err := sub.Subscribe(context.Background(), "")
 	require.NoError(b, err)
 
 	b.ResetTimer()
@@ -77,7 +78,7 @@ func benchmarkMessageTransformSubscriberDecorator(b *testing.B) {
 	decoratedSub, err := noopDecorator(sub)
 	require.NoError(b, err)
 
-	in, err := decoratedSub.Subscribe("")
+	in, err := decoratedSub.Subscribe(context.Background(), "")
 	require.NoError(b, err)
 
 	b.ResetTimer()

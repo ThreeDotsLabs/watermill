@@ -1,6 +1,9 @@
 package message
 
-import "sync"
+import (
+	"context"
+	"sync"
+)
 
 type messageTransformer struct {
 	sub Subscriber
@@ -9,8 +12,8 @@ type messageTransformer struct {
 	subscribeWg sync.WaitGroup
 }
 
-func (t *messageTransformer) Subscribe(topic string) (chan *Message, error) {
-	in, err := t.sub.Subscribe(topic)
+func (t *messageTransformer) Subscribe(ctx context.Context, topic string) (<-chan *Message, error) {
+	in, err := t.sub.Subscribe(ctx, topic)
 	if err != nil {
 		return nil, err
 	}

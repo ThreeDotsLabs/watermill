@@ -1,6 +1,7 @@
 package message_test
 
 import (
+	"context"
 	"strconv"
 	"testing"
 	"time"
@@ -21,7 +22,7 @@ var noop = func(*message.Message) {}
 
 func TestMessageTransformer_Subscribe(t *testing.T) {
 	numMessages := 1000
-	pubsub := gochannel.NewGoChannel(0, watermill.NewStdLogger(true, true), time.Second)
+	pubsub := gochannel.NewGoChannel(0, watermill.NewStdLogger(true, true))
 
 	onMessage := func(msg *message.Message) {
 		msg.Metadata.Set("key", "value")
@@ -31,7 +32,7 @@ func TestMessageTransformer_Subscribe(t *testing.T) {
 	decoratedSub, err := decorator(pubsub.(message.Subscriber))
 	require.NoError(t, err)
 
-	messages, err := decoratedSub.Subscribe("topic")
+	messages, err := decoratedSub.Subscribe(context.Background(), "topic")
 	require.NoError(t, err)
 
 	go func() {
@@ -58,15 +59,17 @@ type mockSubscriber struct {
 	ch chan *message.Message
 }
 
-func (m mockSubscriber) Subscribe(topic string) (chan *message.Message, error) { return m.ch, nil }
-func (m mockSubscriber) Close() error                                          { close(m.ch); return nil }
+func (m mockSubscriber) Subscribe(context.Context, string) (<-chan *message.Message, error) {
+	return m.ch, nil
+}
+func (m mockSubscriber) Close() error { close(m.ch); return nil }
 
 func TestMessageTransformer_transparent(t *testing.T) {
 	sub := mockSubscriber{make(chan *message.Message)}
 	decorated, err := message.MessageTransformSubscriberDecorator(noop)(sub)
 	require.NoError(t, err)
 
-	messages, err := decorated.Subscribe("topic")
+	messages, err := decorated.Subscribe(context.Background(), "topic")
 	require.NoError(t, err)
 
 	richMessage := message.NewMessage("uuid", []byte("serious payloads"))
@@ -95,7 +98,9 @@ type closingSubscriber struct {
 	closed bool
 }
 
-func (closingSubscriber) Subscribe(topic string) (chan *message.Message, error) { return nil, nil }
+func (closingSubscriber) Subscribe(context.Context, string) (<-chan *message.Message, error) {
+	return nil, nil
+}
 func (c *closingSubscriber) Close() error {
 	c.closed = true
 	return closingErr
