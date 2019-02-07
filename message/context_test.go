@@ -52,8 +52,16 @@ func TestRouter_Context_Stringer(t *testing.T) {
 		),
 	)
 
-	go router.Run()
-	defer router.Close()
+	go func() {
+		if err := router.Run(); err != nil {
+			panic(err)
+		}
+	}()
+	defer func() {
+		if err := router.Close(); err != nil {
+			panic(err)
+		}
+	}()
 	<-router.Running()
 
 	// when
@@ -104,8 +112,16 @@ func TestRouter_Context_TypeName(t *testing.T) {
 		),
 	)
 
-	go router.Run()
-	defer router.Close()
+	go func() {
+		if err := router.Run(); err != nil {
+			panic(err)
+		}
+	}()
+	defer func() {
+		if err := router.Close(); err != nil {
+			panic(err)
+		}
+	}()
 	<-router.Running()
 
 	// when
