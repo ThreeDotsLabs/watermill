@@ -327,7 +327,7 @@ func TestRouterDecoratorsOrder(t *testing.T) {
 	router.AddPublisherDecorators(pubDecorator1, pubDecorator2)
 	router.AddSubscriberDecorators(subDecorator1, subDecorator2)
 
-	err = router.AddHandler(
+	router.AddHandler(
 		"handler",
 		"subTopic",
 		pubSub,
@@ -337,7 +337,6 @@ func TestRouterDecoratorsOrder(t *testing.T) {
 			return message.Messages{msg}, nil
 		},
 	)
-	require.NoError(t, err)
 
 	go func() {
 		if err := router.Run(); err != nil {
@@ -361,7 +360,7 @@ func TestRouterDecoratorsOrder(t *testing.T) {
 		close(messageObtained)
 	}()
 
-	require.NoError(t, pubSub.Publish("subTopic", message.NewMessage(watermill.UUID(), []byte{})))
+	require.NoError(t, pubSub.Publish("subTopic", message.NewMessage(watermill.NewUUID(), []byte{})))
 
 	select {
 	case <-time.After(5 * time.Second):
