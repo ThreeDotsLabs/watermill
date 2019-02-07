@@ -2,7 +2,6 @@ package cqrs
 
 import (
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/pkg/errors"
 )
 
 type CommandBus struct {
@@ -20,10 +19,6 @@ func NewCommandBus(
 }
 
 func (c CommandBus) Send(cmd interface{}) error {
-	if err := isPointer(cmd); err != nil {
-		return errors.Wrapf(err, "command must be a not nil pointer")
-	}
-
 	msg, err := c.marshaler.Marshal(cmd)
 	if err != nil {
 		return err
