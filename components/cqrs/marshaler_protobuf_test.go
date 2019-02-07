@@ -4,11 +4,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ThreeDotsLabs/watermill"
+	"github.com/ThreeDotsLabs/watermill/components/cqrs"
+
 	"github.com/golang/protobuf/ptypes"
 
-	"github.com/ThreeDotsLabs/watermill"
-
-	"github.com/ThreeDotsLabs/watermill/components/cqrs"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
