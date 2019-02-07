@@ -41,8 +41,6 @@ func (t *messageTransformSubscriberDecorator) Close() error {
 
 // MessageTransformSubscriberDecorator creates a subscriber decorator that calls transform
 // on each message that passes through the subscriber.
-// When Close is called on the decorated subscriber, it closes the wrapped subscriber
-// and calls onClose with the resulting error.
 func MessageTransformSubscriberDecorator(transform func(*Message)) SubscriberDecorator {
 	if transform == nil {
 		panic("transform function is nil")
@@ -50,6 +48,33 @@ func MessageTransformSubscriberDecorator(transform func(*Message)) SubscriberDec
 	return func(sub Subscriber) (Subscriber, error) {
 		return &messageTransformSubscriberDecorator{
 			sub:       sub,
+			transform: transform,
+		}, nil
+	}
+}
+
+type messageTransformPublisherDecorator struct {
+	Publisher
+	transform func(*Message)
+}
+
+// Publish applies the transform to each message and returns the underlying Publisher's result.
+func (d messageTransformPublisherDecorator) Publish(topic string, messages ...*Message) error {
+	for i := range messages {
+		d.transform(messages[i])
+	}
+	return d.Publisher.Publish(topic, messages...)
+}
+
+// MessageTransformPublisherDecorator creates a publisher decorator that calls transform
+// on each message that passes through the publisher.
+func MessageTransformPublisherDecorator(transform func(*Message)) PublisherDecorator {
+	if transform == nil {
+		panic("transform function is nil")
+	}
+	return func(pub Publisher) (Publisher, error) {
+		return &messageTransformPublisherDecorator{
+			Publisher: pub,
 			transform: transform,
 		}, nil
 	}

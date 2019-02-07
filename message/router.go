@@ -287,38 +287,13 @@ func (r *Router) Run() (err error) {
 	}
 
 	r.logger.Debug("Applying decorators", nil)
-	for name, handler := range r.handlers {
-		pub := handler.publisher
-		for _, decorator := range r.publisherDecorators {
-			pub, err = decorator(pub)
-			if err != nil {
-				return errors.Wrap(err, "could not apply publisher decorator")
-			}
+	for name, h := range r.handlers {
+		if err = r.decorateHandlerPublisher(h); err != nil {
+			return errors.Wrapf(err, "could not decorate publisher of handler %s", name)
 		}
-		r.handlers[name].publisher = pub
-
-		sub := handler.subscriber
-
-		// add a special decorator to add context to subscriber even before handler obtains the message
-		// it goes before other decorators, so that they may take advantage of ctx
-		messageTransform := func(msg *Message) {
-			if msg != nil {
-				handler.addMsgContext(msg)
-			}
+		if err = r.decorateHandlerSubscriber(h); err != nil {
+			return errors.Wrapf(err, "could not decorate subscriber of handler %s", name)
 		}
-		sub, err = MessageTransformSubscriberDecorator(messageTransform)(sub)
-		if err != nil {
-			return errors.Wrapf(err, "cannot wrap subscriber with context decorator")
-		}
-
-		for _, decorator := range r.subscriberDecorators {
-			sub, err = decorator(sub)
-			if err != nil {
-				return errors.Wrap(err, "could not apply subscriber decorator")
-			}
-		}
-		r.handlers[name].subscriber = sub
-
 	}
 
 	for _, h := range r.handlers {
@@ -446,6 +421,50 @@ func (h *handler) run(middlewares []HandlerMiddleware) {
 	}
 
 	h.logger.Debug("Router handler stopped", nil)
+}
+
+// decorateHandlerPublisher applies the decorator chain to handler's publisher.
+// They are applied in reverse order, so that the later decorators use the result of former ones.
+func (r *Router) decorateHandlerPublisher(h *handler) error {
+	var err error
+	pub := h.publisher
+	for i := len(r.publisherDecorators) - 1; i >= 0; i-- {
+		decorator := r.publisherDecorators[i]
+		pub, err = decorator(pub)
+		if err != nil {
+			return errors.Wrap(err, "could not apply publisher decorator")
+		}
+	}
+	r.handlers[h.name].publisher = pub
+	return nil
+}
+
+// decorateHandlerSubscriber applies the decorator chain to handler's subscriber.
+// They are applied in regular order, so that the later decorators use the result of former ones.
+func (r *Router) decorateHandlerSubscriber(h *handler) error {
+	var err error
+	sub := h.subscriber
+
+	// add values to message context to subscriber
+	// it goes before other decorators, so that they may take advantage of these values
+	messageTransform := func(msg *Message) {
+		if msg != nil {
+			h.addMsgContext(msg)
+		}
+	}
+	sub, err = MessageTransformSubscriberDecorator(messageTransform)(sub)
+	if err != nil {
+		return errors.Wrapf(err, "cannot wrap subscriber with context decorator")
+	}
+
+	for _, decorator := range r.subscriberDecorators {
+		sub, err = decorator(sub)
+		if err != nil {
+			return errors.Wrap(err, "could not apply subscriber decorator")
+		}
+	}
+	r.handlers[h.name].subscriber = sub
+	return nil
 }
 
 func (h handler) addMsgContext(messages ...*Message) {
