@@ -16,4 +16,5 @@ func TestRecoverer(t *testing.T) {
 
 	_, err := h(message.NewMessage("1", nil))
 	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "message/router/middleware/recoverer.go") // stacktrace part
 }
