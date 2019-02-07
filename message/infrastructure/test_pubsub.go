@@ -650,8 +650,8 @@ func TestSubscribeCtx(t *testing.T, pubSub PubSub, features Features) {
 
 	const messagesCount = 20
 
-	cancelCtx, cancel := context.WithCancel(context.Background())
-	cancelCtx = context.WithValue(cancelCtx, "foo", "bar")
+	ctxWithCancel, cancel := context.WithCancel(context.Background())
+	ctxWithCancel = context.WithValue(ctxWithCancel, "foo", "bar")
 
 	topicName := testTopicName()
 	if subscribeInitializer, ok := pubSub.Subscriber().(message.SubscribeInitializer); ok {
@@ -659,7 +659,7 @@ func TestSubscribeCtx(t *testing.T, pubSub PubSub, features Features) {
 	}
 	publishedMessages := AddSimpleMessages(t, messagesCount, pubSub, topicName)
 
-	msgsToCancel, err := pubSub.Subscribe(cancelCtx, topicName)
+	msgsToCancel, err := pubSub.Subscribe(ctxWithCancel, topicName)
 	require.NoError(t, err)
 	cancel()
 
