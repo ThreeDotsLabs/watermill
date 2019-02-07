@@ -56,11 +56,3 @@ func (b PrometheusMetricsBuilder) registerHistogramVec(h *prometheus.HistogramVe
 	}
 	return col.(*prometheus.HistogramVec), nil
 }
-
-func (b PrometheusMetricsBuilder) registerGauge(g prometheus.Gauge) (prometheus.Gauge, error) {
-	col, err := b.register(g)
-	if err != nil {
-		return nil, err
-	}
-	return col.(prometheus.Gauge), nil
-}

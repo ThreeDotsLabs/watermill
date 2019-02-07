@@ -18,10 +18,8 @@ var (
 )
 
 type PublisherPrometheusMetricsDecorator struct {
-	pub message.Publisher
-
-	publishTimeSeconds  *prometheus.HistogramVec
-	publisherCountTotal prometheus.Gauge
+	pub                message.Publisher
+	publishTimeSeconds *prometheus.HistogramVec
 }
 
 // Publish updates the relevant publisher metrics and calls the wrapped publisher's Publish.
@@ -48,7 +46,6 @@ func (m PublisherPrometheusMetricsDecorator) Publish(topic string, messages ...*
 
 // Close decreases the total publisher count, closes the Prometheus HTTP server and calls wrapped Close.
 func (m PublisherPrometheusMetricsDecorator) Close() error {
-	m.publisherCountTotal.Dec()
 	return m.pub.Close()
 }
 
@@ -71,18 +68,5 @@ func (b PrometheusMetricsBuilder) DecoratePublisher(pub message.Publisher) (mess
 	if err != nil {
 		return nil, errors.Wrap(err, "could not register publish time metric")
 	}
-
-	// todo: unclear if decrementing the gauge when publisher dies is trustworthy
-	// don't register yet, WIP
-	d.publisherCountTotal = prometheus.NewGauge(
-		prometheus.GaugeOpts{
-			Namespace: b.Namespace,
-			Subsystem: b.Subsystem,
-			Name:      "publisher_count_total",
-			Help:      "The total count of active publishers",
-		},
-	)
-
-	d.publisherCountTotal.Inc()
 	return d, nil
 }

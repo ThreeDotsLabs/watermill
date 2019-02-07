@@ -15,7 +15,7 @@ func ServeHTTP(addr string) (registry *prometheus.Registry, cancel func()) {
 	return registry, ServeHTTPWithRegistry(addr, registry)
 }
 
-// ServeHTTP establishes an HTTP server that exposes the /metrics endpoint for Prometheus at the given address.
+// ServeHTTPWithRegistry establishes an HTTP server that exposes the /metrics endpoint for Prometheus at the given address.
 // It takes an existing Prometheus registry and returns a canceling function that ends the server.
 func ServeHTTPWithRegistry(addr string, registry *prometheus.Registry) (cancel func()) {
 	router := chi.NewRouter()

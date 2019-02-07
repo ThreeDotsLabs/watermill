@@ -34,13 +34,9 @@ var (
 
 type HandlerPrometheusMetricsMiddleware struct {
 	handlerExecutionTimeSeconds *prometheus.HistogramVec
-	handlerCountTotal           prometheus.Gauge
 }
 
 func (m HandlerPrometheusMetricsMiddleware) Middleware(h message.HandlerFunc) message.HandlerFunc {
-
-	m.handlerCountTotal.Inc()
-
 	return func(msg *message.Message) (msgs []*message.Message, err error) {
 		now := time.Now()
 		ctx := msg.Context()
@@ -76,17 +72,6 @@ func (b PrometheusMetricsBuilder) NewRouterMiddleware() HandlerPrometheusMetrics
 	if err != nil {
 		panic(errors.Wrap(err, "could not register handler execution time metric"))
 	}
-
-	// todo: unclear how to decrement the gauge when handler dies
-	// don't register yet, WIP
-	m.handlerCountTotal = prometheus.NewGauge(
-		prometheus.GaugeOpts{
-			Namespace: b.Namespace,
-			Subsystem: b.Subsystem,
-			Name:      "handler_count_total",
-			Help:      "The total count of active handlers",
-		},
-	)
 
 	return m
 }

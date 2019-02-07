@@ -16,11 +16,8 @@ var (
 
 type SubscriberPrometheusMetricsDecorator struct {
 	message.Subscriber
-
 	subscriberMessagesReceivedTotal *prometheus.CounterVec
-	subscriberCountTotal            prometheus.Gauge
-
-	closing chan struct{}
+	closing                         chan struct{}
 }
 
 func (s SubscriberPrometheusMetricsDecorator) recordMetrics(msg *message.Message) {
@@ -42,12 +39,6 @@ func (s SubscriberPrometheusMetricsDecorator) recordMetrics(msg *message.Message
 	}()
 }
 
-//
-//func (s *SubscriberPrometheusMetricsDecorator) Close() error {
-//	close(s.closing)
-//	return s.Subscriber.Close()
-//}
-
 // DecorateSubscriber wraps the underlying subscriber with Prometheus metrics.
 func (b PrometheusMetricsBuilder) DecorateSubscriber(sub message.Subscriber) (message.Subscriber, error) {
 	var err error
@@ -68,22 +59,10 @@ func (b PrometheusMetricsBuilder) DecorateSubscriber(sub message.Subscriber) (me
 		return nil, errors.Wrap(err, "could not register time to ack metric")
 	}
 
-	// todo: unclear if decrementing the gauge when subscriber dies is trustworthy
-	// don't register yet, WIP
-	d.subscriberCountTotal = prometheus.NewGauge(
-		prometheus.GaugeOpts{
-			Namespace: b.Namespace,
-			Subsystem: b.Subsystem,
-			Name:      "subscriber_count_total",
-			Help:      "The total count of active subscribers",
-		},
-	)
-
 	d.Subscriber, err = message.MessageTransformSubscriberDecorator(d.recordMetrics)(sub)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not decorate subscriber with metrics decorator")
 	}
 
-	d.subscriberCountTotal.Inc()
 	return d, nil
 }
