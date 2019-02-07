@@ -1,0 +1,44 @@
+variables:
+  MOD_CACHE_DIR: .mod-cache
+stages:
+  - build
+  - test
+
+build:
+  stage: build
+  image: golang:1.11
+  before_script:
+    - mkdir -p $GOPATH/pkg/mod
+    - "[ -d $MOD_CACHE_DIR ] && cp -r $MOD_CACHE_DIR/. $GOPATH/pkg/mod"
+  script:
+    - go build ./...
+    - cp -r $GOPATH/pkg/mod/. $MOD_CACHE_DIR
+  cache:
+    key: $CI_PROJECT_ID
+    paths:
+      - $MOD_CACHE_DIR
+  only:
+    - branches
+
+test:
+  stage: test
+  image: docker:stable
+  services:
+    - docker:stable-dind
+  cache:
+    key: $CI_PROJECT_ID
+    paths:
+      - $MOD_CACHE_DIR
+    policy: pull
+  before_script:
+    - apk add py-pip
+    - pip install docker-compose
+    - cp -v ./.ci/docker-compose.override.yml .
+  script:
+    - docker-compose pull -q
+    - docker-compose up -d
+    - docker-compose run watermill ./.ci/wait-for-services.sh
+    - "[[ $CI_COMMIT_REF_NAME != master ]] && export FLAGS=-short"
+    - docker-compose run watermill go test ./... $FLAGS
+  only:
+    - branches
