@@ -32,7 +32,8 @@ func createCQRS(ts TestServices, t *testing.T, commandHandler *CaptureCommandHan
 			return []cqrs.EventHandler{eventHandler}
 		},
 		Router:                router,
-		PubSub:                ts.PubSub,
+		CommandsPubSub:        ts.PubSub,
+		EventsPubSub:          ts.PubSub,
 		Logger:                ts.Logger,
 		CommandEventMarshaler: ts.Marshaler,
 	})

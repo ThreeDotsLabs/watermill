@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"math/rand"
@@ -15,20 +16,24 @@ import (
 	"github.com/golang/protobuf/ptypes"
 )
 
+// BookRoomHandler is a command processor, which handles BookRoom command and emits RoomBooked.
 type BookRoomHandler struct {
 	eventBus *cqrs.EventBus
 }
 
+// NewCommand returns type of command which this handle should handle. It must be a pointer.
 func (b BookRoomHandler) NewCommand() interface{} {
 	return &BookRoom{}
 }
 
 func (b BookRoomHandler) Handle(c interface{}) error {
 	// c is always the type returned by `NewCommand`, so casting is always safe
-	cmd := c.(*BookRoom) // todo - get rid of interface{} when generics are added to Go
+	cmd := c.(*BookRoom)
 
 	log.Printf("Booked %s for %s from %s to %s", cmd.RoomId, cmd.GuestName, cmd.StartDate, cmd.EndDate)
 
+	// RoomBooked will be handled by OrderBeerOnRoomBooked event processor,
+	// in future RoomBooked may be handled by multiple event processor
 	if err := b.eventBus.Publish(&RoomBooked{
 		RoomId:    cmd.RoomId,
 		GuestName: cmd.GuestName,
@@ -41,6 +46,7 @@ func (b BookRoomHandler) Handle(c interface{}) error {
 	return nil
 }
 
+// OrderBeerOnRoomBooked is a event processor, which handles RoomBooked event and emits OrderBeer command.
 type OrderBeerOnRoomBooked struct {
 	commandBus *cqrs.CommandBus
 }
@@ -60,6 +66,8 @@ func (o OrderBeerOnRoomBooked) Handle(e interface{}) error {
 	return o.commandBus.Send(orderBeerCmd)
 }
 
+// OrderBeerHandler is a command handler, which handles OrderBeer command and emits BeerOrdered.
+// BeerOrdered is not handled by any event processor, but we may use persistent Pub/Sub to handle it in the future.
 type OrderBeerHandler struct {
 	eventBus *cqrs.EventBus
 }
@@ -70,6 +78,11 @@ func (b OrderBeerHandler) NewCommand() interface{} {
 
 func (b OrderBeerHandler) Handle(c interface{}) error {
 	cmd := c.(*OrderBeer)
+
+	if rand.Int63n(10) == 0 {
+		// sometimes there is no beer left, command will be retried
+		return errors.New("no beer left, please try later")
+	}
 
 	if err := b.eventBus.Publish(&BeerOrdered{
 		RoomId: cmd.RoomId,
@@ -94,8 +107,16 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	// Simple middleware which will recover panics from event or command handlers.
+	// More about router middlewares you can find in the documentation:
+	// https://watermill.io/docs/messages-router/#middleware
+	//
+	// List of available middlewares you can find in message/router/middleware.
 	router.AddMiddleware(middleware.Recoverer)
 
+	// cqrs.Facade is facade for Command and Event buses and processors.
+	// You can use facade, or create buses and processors manually (you can inspire with cqrs.NewFacade)
 	cqrsFacade, err := cqrs.NewFacade(cqrs.FacadeConfig{
 		CommandsTopic: "commands",
 		EventsTopic:   "events",
@@ -111,7 +132,8 @@ func main() {
 			}
 		},
 		Router:                router,
-		PubSub:                pubSub,
+		CommandsPubSub:        pubSub,
+		EventsPubSub:          pubSub,
 		Logger:                logger,
 		CommandEventMarshaler: marshaler,
 	})
@@ -119,8 +141,10 @@ func main() {
 		panic(err)
 	}
 
+	// publishing BookRoom commands every second
 	go publishCommands(cqrsFacade.CommandBus())
 
+	// processors are based on router, so they will work when router will start
 	if err := router.Run(); err != nil {
 		panic(err)
 	}
