@@ -347,8 +347,16 @@ func TestRouterDecoratorsOrder(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	go router.Run()
-	defer router.Close()
+	go func() {
+		if err := router.Run(); err != nil {
+			panic(err)
+		}
+	}()
+	defer func() {
+		if err := router.Close(); err != nil {
+			panic(err)
+		}
+	}()
 	<-router.Running()
 
 	transformedMessages, err := pubSub.Subscribe(context.Background(), "pubTopic")
