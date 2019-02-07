@@ -47,16 +47,3 @@ services:
     ports:
       - 5672:5672
 
-  prometheus:
-    image: prom/prometheus
-    restart: on-failure
-    ports:
-      - 9090:9090
-    volumes:
-      - dev/prometheus.yml:/etc/prometheus/prometheus.yml
-
-  grafana:
-    image: grafana/grafana:5.2.4
-    restart: on-failure
-    ports:
-      - 3000:3000
