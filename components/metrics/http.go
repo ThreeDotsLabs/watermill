@@ -8,16 +8,16 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-// ServeHTTP establishes an HTTP server that exposes the /metrics endpoint for Prometheus at the given address.
-// It returns the prometheus registry (to register the metrics on) and a canceling function that ends the server.
-func ServeHTTP(addr string) (registry *prometheus.Registry, cancel func()) {
+// CreateRegistryAndServeHTTP establishes an HTTP server that exposes the /metrics endpoint for Prometheus at the given address.
+// It returns a new prometheus registry (to register the metrics on) and a canceling function that ends the server.
+func CreateRegistryAndServeHTTP(addr string) (registry *prometheus.Registry, cancel func()) {
 	registry = prometheus.NewRegistry()
-	return registry, ServeHTTPWithRegistry(addr, registry)
+	return registry, ServeHTTP(addr, registry)
 }
 
-// ServeHTTPWithRegistry establishes an HTTP server that exposes the /metrics endpoint for Prometheus at the given address.
+// ServeHTTP establishes an HTTP server that exposes the /metrics endpoint for Prometheus at the given address.
 // It takes an existing Prometheus registry and returns a canceling function that ends the server.
-func ServeHTTPWithRegistry(addr string, registry *prometheus.Registry) (cancel func()) {
+func ServeHTTP(addr string, registry *prometheus.Registry) (cancel func()) {
 	router := chi.NewRouter()
 
 	handler := promhttp.HandlerFor(registry, promhttp.HandlerOpts{})

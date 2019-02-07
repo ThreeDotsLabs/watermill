@@ -10,6 +10,8 @@ import (
 	_ "net/http/pprof"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+
 	"github.com/pkg/errors"
 
 	"github.com/ThreeDotsLabs/watermill"
@@ -67,7 +69,8 @@ func main() {
 		panic(err)
 	}
 
-	prometheusRegistry, closeMetrics := metrics.ServeHTTP(*metricsAddr)
+	prometheusRegistry := prometheus.NewRegistry()
+	closeMetrics := metrics.ServeHTTP(*metricsAddr)
 	defer closeMetrics()
 	metrics.AddPrometheusRouterMetrics(r, prometheusRegistry, "", "")
 
