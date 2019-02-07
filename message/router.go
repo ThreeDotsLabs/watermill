@@ -185,7 +185,7 @@ func (r *Router) AddHandler(
 		return errors.Errorf("handler %s already exists", handlerName)
 	}
 
-	publisherName, subscriberName := r.pubSubNames(publisher, subscriber)
+	publisherName, subscriberName := r.pubName(publisher), r.subName(subscriber)
 
 	r.handlers[handlerName] = &handler{
 		name:   handlerName,
@@ -208,10 +208,11 @@ func (r *Router) AddHandler(
 	return nil
 }
 
-// pubSubNames resolves the names of publisher and subscriber.
-// They are then stored in the context of the message.
-func (r *Router) pubSubNames(pub Publisher, sub Subscriber) (string, string) {
-	var publisherName, subscriberName string
+// pubName resolves the name of publisher.
+// It is then stored in the context of the message.
+func (r *Router) pubName(pub Publisher) string {
+	var publisherName string
+
 	if pubStringer, ok := pub.(fmt.Stringer); ok {
 		publisherName = pubStringer.String()
 	} else {
@@ -221,8 +222,17 @@ func (r *Router) pubSubNames(pub Publisher, sub Subscriber) (string, string) {
 			"*",
 		)
 	}
-	if subStringer, ok := sub.(fmt.Stringer); ok {
-		subscriberName = subStringer.String()
+
+	return publisherName
+}
+
+// subName resolves the name of subscriber.
+// It is then stored in the context of the message.
+func (r *Router) subName(sub Subscriber) string {
+	var subscriberName string
+
+	if pubStringer, ok := sub.(fmt.Stringer); ok {
+		subscriberName = pubStringer.String()
 	} else {
 		// trim the pointer indicator, if any
 		subscriberName = strings.TrimLeft(
@@ -230,7 +240,8 @@ func (r *Router) pubSubNames(pub Publisher, sub Subscriber) (string, string) {
 			"*",
 		)
 	}
-	return publisherName, subscriberName
+
+	return subscriberName
 }
 
 // AddNoPublisherHandler adds a new handler.
