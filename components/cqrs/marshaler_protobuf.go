@@ -4,11 +4,10 @@ import (
 	"reflect"
 
 	"github.com/ThreeDotsLabs/watermill"
-
-	"github.com/pkg/errors"
-
 	"github.com/ThreeDotsLabs/watermill/message"
+
 	"github.com/gogo/protobuf/proto"
+	"github.com/pkg/errors"
 )
 
 type ProtobufMarshaler struct {

@@ -6,16 +6,13 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/ThreeDotsLabs/watermill"
+	"github.com/ThreeDotsLabs/watermill/components/cqrs"
+	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ThreeDotsLabs/watermill/message/infrastructure/gochannel"
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
 
-	"github.com/ThreeDotsLabs/watermill/components/cqrs"
-
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure/gochannel"
-
 	"github.com/golang/protobuf/ptypes"
-
-	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill/message"
 )
 
 type BookRoomHandler struct {
@@ -27,10 +24,10 @@ func (b BookRoomHandler) NewCommand() interface{} {
 }
 
 func (b BookRoomHandler) Handle(c interface{}) error {
-	// c is always type returned by `NewCommand`, so cast is always safe
-	cmd := c.(*BookRoom) // todo - get rid of interface{} when generics added to Go
+	// c is always the type returned by `NewCommand`, so casting is always safe
+	cmd := c.(*BookRoom) // todo - get rid of interface{} when generics are added to Go
 
-	log.Printf("booked %s for %s from %s to %s", cmd.RoomId, cmd.GuestName, cmd.StartDate, cmd.EndDate)
+	log.Printf("Booked %s for %s from %s to %s", cmd.RoomId, cmd.GuestName, cmd.StartDate, cmd.EndDate)
 
 	if err := b.eventBus.Publish(&RoomBooked{
 		RoomId:    cmd.RoomId,
@@ -89,10 +86,10 @@ func main() {
 	logger := watermill.NewStdLogger(true, false)
 	marshaler := cqrs.ProtobufMarshaler{}
 
-	// you can use any Pub/Sub implementation from here: https://watermill.io/docs/pub-sub-implementations/
+	// You can use any Pub/Sub implementation from here: https://watermill.io/docs/pub-sub-implementations/
 	pubSub := gochannel.NewGoChannel(gochannel.Config{}, logger)
 
-	// cqrs is built on already existing messages router: https://watermill.io/docs/messages-router/
+	// CQRS is built on already existing messages router: https://watermill.io/docs/messages-router/
 	router, err := message.NewRouter(message.RouterConfig{}, logger)
 	if err != nil {
 		panic(err)
@@ -146,7 +143,7 @@ func publishCommands(commandBus cqrs.CommandBus) func() {
 
 		bookRoomCmd := &BookRoom{
 			RoomId:    fmt.Sprintf("%d", i),
-			GuestName: "Andrzej",
+			GuestName: "John",
 			StartDate: startDate,
 			EndDate:   endDate,
 		}
