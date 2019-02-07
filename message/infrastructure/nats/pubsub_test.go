@@ -19,7 +19,7 @@ func newPubSub(t *testing.T, clientID string, queueName string) message.PubSub {
 
 	natsURL := os.Getenv("WATERMILL_TEST_NATS_URL")
 	if natsURL == "" {
-		natsURL = "nats://localhost:8222"
+		natsURL = "nats://localhost:4222"
 	}
 
 	pub, err := nats.NewStreamingPublisher(nats.StreamingPublisherConfig{

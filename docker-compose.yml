@@ -30,9 +30,9 @@ services:
   nats-streaming:
     image: nats-streaming:0.11.2
     ports:
-      - 8222:8222
+      - 4222:4222
     restart: on-failure
-    entrypoint: ["/nats-streaming-server", "-m=8222", "--max_channels=0"]
+    entrypoint: ["/nats-streaming-server", "--max_channels=0"]
 
   googlecloud:
     image: google/cloud-sdk:228.0.0

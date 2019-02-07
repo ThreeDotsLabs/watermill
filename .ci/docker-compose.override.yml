@@ -9,7 +9,7 @@ services:
     working_dir: /app
     environment:
       PUBSUB_EMULATOR_HOST: googlecloud:8085
-      WATERMILL_TEST_NATS_URL: nats://nats-streaming:8222
+      WATERMILL_TEST_NATS_URL: nats://nats-streaming:4222
       WATERMILL_TEST_AMQP_URI: amqp://guest:guest@rabbitmq:5672
       WATERMILL_TEST_KAFKA_BROKERS: kafka:9092
 
