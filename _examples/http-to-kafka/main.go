@@ -70,7 +70,7 @@ func main() {
 	}
 
 	prometheusRegistry := prometheus.NewRegistry()
-	closeMetrics := metrics.ServeHTTP(*metricsAddr)
+	closeMetrics := metrics.ServeHTTP(*metricsAddr, prometheusRegistry)
 	defer closeMetrics()
 	metrics.AddPrometheusRouterMetrics(r, prometheusRegistry, "", "")
 

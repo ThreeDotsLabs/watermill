@@ -7,8 +7,8 @@ github.com/Shopify/sarama v1.20.1 h1:Bb0h3I++r4eX333Y0uZV2vwUXepJbt6ig05TUU1qt9I
 github.com/Shopify/sarama v1.20.1/go.mod h1:FVkBWblsNy7DGZRfXLU0O9RCGt5g3g3yEuWXgklEdEo=
 github.com/Shopify/toxiproxy v2.1.3+incompatible h1:awiJqUYH4q4OmoBiRccJykjd7B+w0loJi2keSna4X/M=
 github.com/Shopify/toxiproxy v2.1.3+incompatible/go.mod h1:OXgGpZ6Cli1/URJOF1DMxUHB2q5Ap20/P/eIdh4G0pI=
-github.com/ThreeDotsLabs/watermill v0.2.2-0.20190207105127-4af9286d2007 h1:SdYw7Hv4yy8vi4SmKWwIIquWELHEpvsTFgJUIkvs2+4=
-github.com/ThreeDotsLabs/watermill v0.2.2-0.20190207105127-4af9286d2007/go.mod h1:C3AQ1+71tzW4F3jFkKMfjwbYVoc3sBhl7nbZKAWfZCM=
+github.com/ThreeDotsLabs/watermill v0.2.2-0.20190207112047-671f1a6d0e6e h1:igaFYMXh4JfNTG1h7pM3DsXuy6oBBmxSASG2cT4R3K4=
+github.com/ThreeDotsLabs/watermill v0.2.2-0.20190207112047-671f1a6d0e6e/go.mod h1:C3AQ1+71tzW4F3jFkKMfjwbYVoc3sBhl7nbZKAWfZCM=
 github.com/armon/go-metrics v0.0.0-20180917152333-f0300d1749da/go.mod h1:Q73ZrmVTwzkszR9V5SSuryQ31EELlFMUz1kKyl939pY=
 github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973 h1:xJ4a3vCFaGF/jqvzLMYoU8P317H5OQ+Via4RmuPwCS0=
 github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973/go.mod h1:Dwedo/Wpr24TaqPxmxbtue+5NUziq4I4S80YR8gNf3Q=
