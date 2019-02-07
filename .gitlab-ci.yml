@@ -38,4 +38,7 @@ test:
     - docker-compose pull -q
     - docker-compose up -d
     - docker-compose run watermill ./.ci/wait-for-services.sh
-    - docker-compose run watermill go test ./... -short
+    - "[[ $CI_COMMIT_REF_NAME != master ]] && export FLAGS=-short"
+    - docker-compose run watermill go test ./... $FLAGS
+  only:
+    - branches
