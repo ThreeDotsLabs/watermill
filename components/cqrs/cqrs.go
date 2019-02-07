@@ -12,10 +12,10 @@ import (
 
 type FacadeConfig struct {
 	CommandsTopic   string
-	CommandHandlers func(commandBus CommandBus, eventBus EventBus) []CommandHandler
+	CommandHandlers func(commandBus *CommandBus, eventBus *EventBus) []CommandHandler
 
 	EventsTopic   string
-	EventHandlers func(commandBus CommandBus, eventBus EventBus) []EventHandler
+	EventHandlers func(commandBus *CommandBus, eventBus *EventBus) []EventHandler
 
 	Router                *message.Router
 	PubSub                message.PubSub
@@ -51,10 +51,10 @@ func (c FacadeConfig) Validate() error {
 
 type Facade struct {
 	commandsTopic string
-	commandBus    CommandBus
+	commandBus    *CommandBus
 
 	eventsTopic string
-	eventBus    EventBus
+	eventBus    *EventBus
 
 	commandEventMarshaler CommandEventMarshaler
 }
@@ -63,7 +63,7 @@ func (f Facade) CommandsTopic() string {
 	return f.commandsTopic
 }
 
-func (f Facade) CommandBus() CommandBus {
+func (f Facade) CommandBus() *CommandBus {
 	return f.commandBus
 }
 
@@ -71,7 +71,7 @@ func (f Facade) EventsTopic() string {
 	return f.eventsTopic
 }
 
-func (f Facade) EventBus() EventBus {
+func (f Facade) EventBus() *EventBus {
 	return f.eventBus
 }
 
@@ -79,12 +79,12 @@ func (f Facade) CommandEventMarshaler() CommandEventMarshaler {
 	return f.commandEventMarshaler
 }
 
-func NewFacade(config FacadeConfig) (Facade, error) {
+func NewFacade(config FacadeConfig) (*Facade, error) {
 	if err := config.Validate(); err != nil {
-		return Facade{}, errors.Wrap(err, "invalid config")
+		return nil, errors.Wrap(err, "invalid config")
 	}
 
-	c := Facade{
+	c := &Facade{
 		commandsTopic:         config.CommandsTopic,
 		eventsTopic:           config.EventsTopic,
 		commandEventMarshaler: config.CommandEventMarshaler,
@@ -92,7 +92,16 @@ func NewFacade(config FacadeConfig) (Facade, error) {
 
 	if config.CommandsTopic != "" {
 		c.commandBus = NewCommandBus(config.PubSub, config.CommandsTopic, config.CommandEventMarshaler)
+	} else {
+		config.Logger.Info("Empty CommandsTopic, command bus will be not created", nil)
+	}
+	if config.EventsTopic != "" {
+		c.eventBus = NewEventBus(config.PubSub, config.EventsTopic, config.CommandEventMarshaler)
+	} else {
+		config.Logger.Info("Empty EventsTopic, event bus will be not created", nil)
+	}
 
+	if config.CommandHandlers != nil {
 		commandProcessor := NewCommandProcessor(
 			config.CommandHandlers(c.commandBus, c.eventBus),
 			config.CommandsTopic,
@@ -103,15 +112,10 @@ func NewFacade(config FacadeConfig) (Facade, error) {
 
 		err := commandProcessor.AddHandlersToRouter(config.Router)
 		if err != nil {
-			return Facade{}, err
+			return nil, err
 		}
-	} else {
-		config.Logger.Info("Empty CommandsTopic, command bus will be not created", nil)
 	}
-
-	if config.EventsTopic != "" {
-		c.eventBus = NewEventBus(config.PubSub, config.EventsTopic, config.CommandEventMarshaler)
-
+	if config.CommandHandlers != nil {
 		eventProcessor := NewEventProcessor(
 			config.EventHandlers(c.commandBus, c.eventBus),
 			config.EventsTopic,
@@ -122,10 +126,8 @@ func NewFacade(config FacadeConfig) (Facade, error) {
 
 		err := eventProcessor.AddHandlersToRouter(config.Router)
 		if err != nil {
-			return Facade{}, err
+			return nil, err
 		}
-	} else {
-		config.Logger.Info("Empty EventsTopic, event bus will be not created", nil)
 	}
 
 	return c, nil

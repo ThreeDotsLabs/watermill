@@ -15,8 +15,8 @@ func NewCommandBus(
 	publisher message.Publisher,
 	topic string,
 	marshaler CommandEventMarshaler,
-) CommandBus {
-	return CommandBus{publisher, topic, marshaler}
+) *CommandBus {
+	return &CommandBus{publisher, topic, marshaler}
 }
 
 func (c CommandBus) Send(cmd interface{}) error {

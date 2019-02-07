@@ -29,8 +29,8 @@ func NewEventProcessor(
 	subscriber message.Subscriber,
 	marshaler CommandEventMarshaler,
 	logger watermill.LoggerAdapter,
-) EventProcessor {
-	return EventProcessor{
+) *EventProcessor {
+	return &EventProcessor{
 		handlers,
 		eventsTopic,
 		subscriber,

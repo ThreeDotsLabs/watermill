@@ -25,10 +25,16 @@ func TestCQRS(t *testing.T) {
 	c, err := cqrs.NewFacade(cqrs.FacadeConfig{
 		CommandsTopic: "commands",
 		EventsTopic:   "events",
-		CommandHandlers: func(_ cqrs.CommandBus, _ cqrs.EventBus) []cqrs.CommandHandler {
+		CommandHandlers: func(cb *cqrs.CommandBus, eb *cqrs.EventBus) []cqrs.CommandHandler {
+			require.NotNil(t, cb)
+			require.NotNil(t, eb)
+
 			return []cqrs.CommandHandler{commandHandler}
 		},
-		EventHandlers: func(_ cqrs.CommandBus, _ cqrs.EventBus) []cqrs.EventHandler {
+		EventHandlers: func(cb *cqrs.CommandBus, eb *cqrs.EventBus) []cqrs.EventHandler {
+			require.NotNil(t, cb)
+			require.NotNil(t, eb)
+
 			return []cqrs.EventHandler{eventHandler}
 		},
 		Router:                router,

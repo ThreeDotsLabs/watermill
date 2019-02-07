@@ -19,7 +19,7 @@ import (
 )
 
 type BookRoomHandler struct {
-	eventBus cqrs.EventBus
+	eventBus *cqrs.EventBus
 }
 
 func (b BookRoomHandler) NewCommand() interface{} {
@@ -45,7 +45,7 @@ func (b BookRoomHandler) Handle(c interface{}) error {
 }
 
 type OrderBeerOnRoomBooked struct {
-	commandBus cqrs.CommandBus
+	commandBus *cqrs.CommandBus
 }
 
 func (OrderBeerOnRoomBooked) NewEvent() interface{} {
@@ -64,7 +64,7 @@ func (o OrderBeerOnRoomBooked) Handle(e interface{}) error {
 }
 
 type OrderBeerHandler struct {
-	eventBus cqrs.EventBus
+	eventBus *cqrs.EventBus
 }
 
 func (b OrderBeerHandler) NewCommand() interface{} {
@@ -102,13 +102,13 @@ func main() {
 	cqrsFacade, err := cqrs.NewFacade(cqrs.FacadeConfig{
 		CommandsTopic: "commands",
 		EventsTopic:   "events",
-		CommandHandlers: func(cb cqrs.CommandBus, eb cqrs.EventBus) []cqrs.CommandHandler {
+		CommandHandlers: func(cb *cqrs.CommandBus, eb *cqrs.EventBus) []cqrs.CommandHandler {
 			return []cqrs.CommandHandler{
 				BookRoomHandler{eb},
 				OrderBeerHandler{eb},
 			}
 		},
-		EventHandlers: func(cb cqrs.CommandBus, eb cqrs.EventBus) []cqrs.EventHandler {
+		EventHandlers: func(cb *cqrs.CommandBus, eb *cqrs.EventBus) []cqrs.EventHandler {
 			return []cqrs.EventHandler{
 				OrderBeerOnRoomBooked{cb},
 			}
@@ -129,7 +129,7 @@ func main() {
 	}
 }
 
-func publishCommands(commandBus cqrs.CommandBus) func() {
+func publishCommands(commandBus *cqrs.CommandBus) func() {
 	i := 0
 	for {
 		i++

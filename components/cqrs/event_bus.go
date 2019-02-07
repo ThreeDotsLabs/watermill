@@ -15,8 +15,8 @@ func NewEventBus(
 	publisher message.Publisher,
 	topic string,
 	marshaler CommandEventMarshaler,
-) EventBus {
-	return EventBus{publisher, topic, marshaler}
+) *EventBus {
+	return &EventBus{publisher, topic, marshaler}
 }
 
 func (c EventBus) Publish(event interface{}) error {
