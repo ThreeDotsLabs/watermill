@@ -1,9 +1,9 @@
 package middleware_test
 
 import (
+	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/pkg/errors"
-	"github.com/satori/go.uuid"
 )
 
 type mockPublisherBehaviour int
@@ -55,8 +55,8 @@ func (mp *mockPublisher) PopMessages() []*message.Message {
 }
 
 var handlerFuncAlwaysOKMessages = []*message.Message{
-	message.NewMessage(uuid.NewV4().String(), nil),
-	message.NewMessage(uuid.NewV4().String(), nil),
+	message.NewMessage(watermill.UUID(), nil),
+	message.NewMessage(watermill.UUID(), nil),
 }
 
 func handlerFuncAlwaysOK(*message.Message) ([]*message.Message, error) {

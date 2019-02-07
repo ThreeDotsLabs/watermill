@@ -9,11 +9,11 @@ import (
 	"sync/atomic"
 	"time"
 
+	prometheusmetrics "github.com/deathowl/go-metrics-prometheus"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	metrics "github.com/rcrowley/go-metrics"
-	uuid "github.com/satori/go.uuid"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
@@ -25,11 +25,10 @@ import (
 var (
 	marshaler = kafka.DefaultMarshaler{}
 	brokers   = []string{"kafka:9092"}
-
-	logger = watermill.NewStdLogger(false, false)
 )
 
 func main() {
+	logger := watermill.NewStdLogger(true, true)
 	pub, err := kafka.NewPublisher(brokers, marshaler, nil, logger)
 	if err != nil {
 		panic(err)
@@ -84,8 +83,9 @@ func main() {
 	if err = r.AddHandler(
 		"posts_counter",
 		"posts_published",
+		createSubscriber("posts_counter_v2", logger),
 		"posts_count",
-		message.NewPubSub(pub, createSubscriber("posts_counter_v2", logger)),
+		pub,
 		PostsCounter{memoryCountStorage{new(int64)}}.Count,
 	); err != nil {
 		panic(err)
@@ -166,7 +166,7 @@ func (p PostsCounter) Count(msg *message.Message) ([]*message.Message, error) {
 		return nil, err
 	}
 
-	return []*message.Message{message.NewMessage(uuid.NewV4().String(), b)}, nil
+	return []*message.Message{message.NewMessage(watermill.UUID(), b)}, nil
 }
 
 // intentionally not importing type from app1, because we don't need all data and we want to avoid coupling

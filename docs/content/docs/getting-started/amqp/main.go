@@ -4,11 +4,11 @@ package main
 import (
 	"log"
 
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure/amqp"
+	uuid "github.com/satori/go.uuid"
 
 	"github.com/ThreeDotsLabs/watermill"
-
 	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ThreeDotsLabs/watermill/message/infrastructure/amqp"
 )
 
 var amqpURI = "amqp://guest:guest@rabbitmq:5672/"
@@ -46,7 +46,7 @@ func main() {
 
 func publishMessages(publisher message.Publisher) {
 	for {
-		msg := message.NewMessage(uuid.NewV4().String(), []byte("Hello, world!"))
+		msg := message.NewMessage(watermill.UUID(), []byte("Hello, world!"))
 
 		if err := publisher.Publish("example.topic", msg); err != nil {
 			panic(err)

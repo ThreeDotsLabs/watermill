@@ -6,9 +6,8 @@ require (
 	dmitri.shuralyov.com/service/change v0.0.0-20190125044705-3bb9b99b3801 // indirect
 	git.apache.org/thrift.git v0.12.0 // indirect
 	github.com/DataDog/zstd v1.3.5 // indirect
-	github.com/Shopify/sarama v1.20.1 // indirect
 	github.com/Shopify/toxiproxy v2.1.4+incompatible // indirect
-	github.com/ThreeDotsLabs/watermill v0.2.2-0.20190125213323-5d0668c15896 // indirect
+	github.com/ThreeDotsLabs/watermill v0.2.2-0.20190206131903-8b7b9a7381ea // indirect
 	github.com/coreos/go-systemd v0.0.0-20181031085051-9002847aa142 // indirect
 	github.com/go-chi/chi v4.0.1+incompatible // indirect
 	github.com/go-logfmt/logfmt v0.4.0 // indirect
@@ -27,6 +26,7 @@ require (
 	github.com/prometheus/common v0.1.0 // indirect
 	github.com/prometheus/procfs v0.0.0-20190117184657-bf6a532e95b1 // indirect
 	github.com/russross/blackfriday v2.0.0+incompatible // indirect
+	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/shurcooL/go v0.0.0-20190121191506-3fef8c783dec // indirect
 	github.com/shurcooL/gofontwoff v0.0.0-20181114050219-180f79e6909d // indirect
 	github.com/shurcooL/highlight_diff v0.0.0-20181222201841-111da2e7d480 // indirect

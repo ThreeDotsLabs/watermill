@@ -8,9 +8,9 @@ bref = "Bring Your Own Pub/Sub"
 toc = true
 +++
 
-### Pub/Sub interface
+### The Pub/Sub interface
 
-In simple words - to implement Pub/Sub you need to implement `message.PubSub` interface.
+To add support for a custom Pub/Sub, you have to implement the `message.PubSub` interface.
 
 {{% render-md %}}
 {{% load-snippet file="content/src-link/message/publisher.go" %}}
@@ -20,20 +20,20 @@ In simple words - to implement Pub/Sub you need to implement `message.PubSub` in
 
 ### TODO list
 
-But they are some things about which you cannot forget:
+Here are a few things you shouldn't forget about:
 
-1. Good logging
-2. Replaceable and configureable messages marshaler
-3. `Close()` implementation for publisher and subscriber which is:
+1. Logging (good messages and proper levels).
+2. Replaceable and configurable messages marshaller.
+3. `Close()` implementation for the publisher and subscriber that is:
     - idempotent
-    - working event when publisher or subscriber is blocked (for example: when waiting for Ack)
-    - working when subscriber output channel is blocked (because nothing is listening for it)
-4. `Ack()` **and** `Nack()` support for consumed messages
-5. Redelivery on `Nack()` on consumed message
+    - working correctly even when the publisher or the subscriber is blocked (for example, waiting for an Ack).
+    - working correctly when the subscriber output channel is blocked (because nothing is listening on it).
+4. `Ack()` **and** `Nack()` support for consumed messages.
+5. Redelivery on `Nack()` for a consumed message.
 6. Use [Universal Pub/Sub tests]({{< ref "/docs/pub-sub#universal-tests" >}})
-7. Performance optimizations
-8. godoc's, [Markdown docs]({{< ref "/docs/pub-sub-implementations" >}}) and [examples Getting Started](/docs/getting-started)
+7. Performance optimizations.
+8. GoDocs, [Markdown docs]({{< ref "/docs/pub-sub-implementations" >}}) and [Getting Started examples](/docs/getting-started).
 
-We will be also thankful for submitting [merge requests](https://github.com/ThreeDotsLabs/watermill/pulls) with new Pub/Subs implementation.
+We will also be thankful for submitting a [pull requests](https://github.com/ThreeDotsLabs/watermill/pulls) with the new Pub/Sub implementation.
 
-If anything is not clear feel free to use any of our [support channels]({{< ref "/support" >}}), we will we'll be glad to help.
+If anything is not clear, feel free to use any of our [support channels]({{< ref "/support" >}}) to reach us, we will be glad to help.

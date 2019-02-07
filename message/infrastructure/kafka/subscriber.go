@@ -5,6 +5,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hashicorp/go-multierror"
+
 	"github.com/renstrom/shortuuid"
 
 	"github.com/Shopify/sarama"
@@ -45,6 +47,10 @@ func NewSubscriber(
 		overwriteSaramaConfig = DefaultSaramaSubscriberConfig()
 	}
 
+	logger = logger.With(watermill.LogFields{
+		"subscriber_uuid": shortuuid.New(),
+	})
+
 	return &Subscriber{
 		config:       config,
 		saramaConfig: overwriteSaramaConfig,
@@ -69,6 +75,8 @@ type SubscriberConfig struct {
 
 	// How long about unsuccessful reconnecting next reconnect will occur.
 	ReconnectRetrySleep time.Duration
+
+	InitializeTopicDetails *sarama.TopicDetail
 }
 
 // NoSleep can be set to SubscriberConfig.NackResendSleep and SubscriberConfig.ReconnectRetrySleep.
@@ -102,10 +110,10 @@ func (s *Subscriber) Subscribe(topic string) (chan *message.Message, error) {
 	s.subscribersWg.Add(1)
 
 	logFields := watermill.LogFields{
-		"provider":       "kafka",
-		"topic":          topic,
-		"consumer_group": s.config.ConsumerGroup,
-		"subscribe_uuid": shortuuid.New(),
+		"provider":            "kafka",
+		"topic":               topic,
+		"consumer_group":      s.config.ConsumerGroup,
+		"kafka_consumer_uuid": shortuuid.New(),
 	}
 	s.logger.Info("Subscribing to Kafka topic", logFields)
 
@@ -119,8 +127,10 @@ func (s *Subscriber) Subscribe(topic string) (chan *message.Message, error) {
 	}
 
 	go func() {
-		defer s.subscribersWg.Done()
+		// blocking, until s.closing is closed
 		s.handleReconnects(topic, output, consumeClosed, logFields)
+		close(output)
+		s.subscribersWg.Done()
 	}()
 
 	return output, nil
@@ -219,6 +229,7 @@ func (s *Subscriber) consumeGroupMessages(
 
 	handler := consumerGroupHandler{
 		messageHandler:   s.createMessagesHandler(output),
+		logger:           s.logger,
 		closing:          s.closing,
 		messageLogFields: logFields,
 	}
@@ -340,14 +351,24 @@ func (s *Subscriber) Close() error {
 
 type consumerGroupHandler struct {
 	messageHandler   messageHandler
+	logger           watermill.LoggerAdapter
 	closing          chan struct{}
 	messageLogFields watermill.LogFields
 }
 
-func (consumerGroupHandler) Setup(_ sarama.ConsumerGroupSession) error   { return nil }
+func (consumerGroupHandler) Setup(_ sarama.ConsumerGroupSession) error { return nil }
+
 func (consumerGroupHandler) Cleanup(_ sarama.ConsumerGroupSession) error { return nil }
+
 func (h consumerGroupHandler) ConsumeClaim(sess sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
 	kafkaMessages := claim.Messages()
+
+	logFields := h.messageLogFields.Copy().Add(watermill.LogFields{
+		"kafka_partition":      claim.Partition(),
+		"kafka_initial_offset": claim.InitialOffset(),
+	})
+
+	h.logger.Debug("Consume claimed", logFields)
 
 	for {
 		select {
@@ -356,7 +377,7 @@ func (h consumerGroupHandler) ConsumeClaim(sess sarama.ConsumerGroupSession, cla
 				// kafkaMessages is closed
 				return nil
 			}
-			if err := h.messageHandler.processMessage(kafkaMsg, sess, h.messageLogFields); err != nil {
+			if err := h.messageHandler.processMessage(kafkaMsg, sess, logFields); err != nil {
 				// error will stop consumerGroupHandler
 				return err
 			}
@@ -383,8 +404,8 @@ func (h messageHandler) processMessage(
 	messageLogFields watermill.LogFields,
 ) error {
 	receivedMsgLogFields := messageLogFields.Add(watermill.LogFields{
-		"kafka_partition":        kafkaMsg.Partition,
 		"kafka_partition_offset": kafkaMsg.Offset,
+		"kafka_partition":        kafkaMsg.Partition,
 	})
 
 	h.logger.Trace("Received message from Kafka", receivedMsgLogFields)
@@ -435,6 +456,26 @@ ResendLoop:
 			return nil
 		}
 	}
+
+	return nil
+}
+
+func (s *Subscriber) SubscribeInitialize(topic string) (err error) {
+	clusterAdmin, err := sarama.NewClusterAdmin(s.config.Brokers, s.saramaConfig)
+	if err != nil {
+		return errors.Wrap(err, "cannot create cluster admin")
+	}
+	defer func() {
+		if closeErr := clusterAdmin.Close(); closeErr != nil {
+			err = multierror.Append(err, closeErr)
+		}
+	}()
+
+	if err := clusterAdmin.CreateTopic(topic, s.config.InitializeTopicDetails, false); err != nil {
+		return errors.Wrap(err, "cannot create topic")
+	}
+
+	s.logger.Info("Created Kafka topic", watermill.LogFields{"topic": topic})
 
 	return nil
 }
