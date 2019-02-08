@@ -17,6 +17,9 @@ import (
 )
 
 // BookRoomHandler is a command processor, which handles BookRoom command and emits RoomBooked.
+//
+// In CQRS, one command must be handled by only one handler.
+// When another handler with this command is added to command processor, error will be retuerned.
 type BookRoomHandler struct {
 	eventBus *cqrs.EventBus
 }
