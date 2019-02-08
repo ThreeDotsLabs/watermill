@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+
+
+    <link rel="stylesheet" href="ui.css"/>
+    <link href="https://fonts.googleapis.com/css?family=Reenie+Beanie" rel="stylesheet">
+
+    <link rel="stylesheet" href="node_modules/bootstrap/dist/css/bootstrap.min.css">
+    <link
+            rel="stylesheet"
+            href="https://use.fontawesome.com/releases/v5.7.1/css/all.css"
+            integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr"
+            crossorigin="anonymous">
+
+    <script src="node_modules/jquery/dist/jquery.min.js"></script>
+    <script src="node_modules/scroller/lib/animate.js"></script>
+    <script src="node_modules/scroller/lib/Scroller.js"></script>
+
+    <script src="render.js"></script>
+
+    <style>
+        #content {
+            font-family: 'Reenie Beanie';
+        }
+
+        .random-rotate {
+            display: inline-block;
+            -webkit-backface-visibility: hidden;
+            outline: 1px solid transparent;
+            -webkit-transform-style: preserve-3d;
+            -webkit-transform: rotateZ(2deg);
+        }
+
+        .postit {
+            line-height: 1;
+            text-align: center;
+            margin: 25px;
+            height: 219px;
+            width: 219px;
+            padding-top: 8px;
+            position: relative;
+            border: 1px solid #E8E8E8;
+            font-size: 37px;
+            display: inline-block;
+        }
+
+        .postit-fold-2 {
+            border-bottom-right-radius: 60px 2px; /* change 5 */
+        }
+
+        .postit-fold-2:after {
+            box-shadow: 2px 10px 5px rgba(0, 0, 0, 0.40);
+            -moz-transform: matrix(-1, -0.1, 0, 1, 0, 0);
+            -webkit-transform: matrix(-1, -0.1, 0, 1, 0, 0);
+            -o-transform: matrix(-1, -0.1, 0, 1, 0, 0);
+            -ms-transform: matrix(-1, -0.1, 0, 1, 0, 0);
+        }
+
+        .postit-fold-5 {
+            border-bottom-right-radius: 60px 5px; /* change 5 */
+        }
+
+        .postit-fold-5:after {
+            box-shadow: 2px 15px 5px rgba(0, 0, 0, 0.40);
+            -moz-transform: matrix(-1, -0.1, 0, 1, 0, 0);
+            -webkit-transform: matrix(-1, -0.1, 0, 1, 0, 0);
+            -o-transform: matrix(-1, -0.1, 0, 1, 0, 0);
+            -ms-transform: matrix(-1, -0.1, 0, 1, 0, 0);
+        }
+
+        .postit-fold-7 {
+            border-bottom-right-radius: 60px 7px; /* change 5 */
+        }
+
+        .postit-fold-7:after {
+            box-shadow: 2px 16px 5px rgba(0, 0, 0, 0.40);
+            -moz-transform: matrix(-1, -0.1, 0, 1, 0, 0);
+            -webkit-transform: matrix(-1, -0.1, 0, 1, 0, 0);
+            -o-transform: matrix(-1, -0.1, 0, 1, 0, 0);
+            -ms-transform: matrix(-1, -0.1, 0, 1, 0, 0);
+        }
+
+        .postit-fold-8 {
+            border-bottom-right-radius: 60px 9px; /* change 5 */
+        }
+
+        .postit-fold-8:after {
+            box-shadow: 2px 18px 5px rgba(0, 0, 0, 0.40);
+            -moz-transform: matrix(-1, -0.1, 0, 1, 0, 0);
+            -webkit-transform: matrix(-1, -0.1, 0, 1, 0, 0);
+            -o-transform: matrix(-1, -0.1, 0, 1, 0, 0);
+            -ms-transform: matrix(-1, -0.1, 0, 1, 0, 0);
+        }
+
+        .postit-neutral {
+            border-top: 60px solid #fdfd86;
+            background: #ffff88; /* Old browsers */
+            background: linear-gradient(135deg, #ffff88 81%, #ffff88 82%, #ffff88 82%, #ffffc6 100%); /* W3C */
+        }
+
+
+        .postit-event {
+            border-top: 60px solid #fc8700;
+            background: #ff8a00; /* Old browsers */
+            background: linear-gradient(135deg, #ff8a00 81%, #ff8a00 82%, #ff8a00 82%, #ff9408 100%); /* W3C */
+        }
+
+        .postit-command {
+            border-top: 60px solid #28a5fa;
+            background: #2ca9fd; /* Old browsers */
+            background: linear-gradient(135deg, #2ca9fd 81%, #2ca9fd 82%, #2ca9fd 82%, #71c8fd 100%); /* W3C */
+        }
+
+        .postit-policy {
+            border-top: 60px solid #ecddfd;
+            background: #eedfff; /* Old browsers */
+            background: linear-gradient(135deg, #eedfff 81%, #eedfff 82%, #eedfff 82%, #fbf8ff 100%); /* W3C */
+        }
+
+        .postit-hotspot {
+            border-top: 60px solid #d709b8;
+            background: #da0cbb; /* Old browsers */
+            background: linear-gradient(135deg, #da0cbb 81%, #da0cbb 82%, #da0cbb 82%, #da0cbb 100%); /* W3C */
+        }
+
+        .postit-actor {
+            border-top: none;
+            font-size: 27px;
+            height: 101px;
+            width: 79px;
+            background: #f9f530; /* Old browsers */
+            background: linear-gradient(135deg, #f9f530 81%, #f9f530 82%, #f9f530 82%, #f9f530 100%); /* W3C */
+            padding-top: 28px;
+        }
+
+        .postit-on-another {
+            margin-left: 0;
+            margin-top: -93px;
+            z-index: 100;
+            position: absolute;
+        }
+
+        .postit-actor:after {
+            display: none;
+        }
+
+        .postit:after {
+            content: "";
+            position: absolute;
+            z-index: -1;
+            right: -0px;
+            bottom: 20px;
+            width: 200px;
+            height: 25px;
+            background: rgba(0, 0, 0, 0.2);
+            box-shadow: 2px 15px 5px rgba(0, 0, 0, 0.40);
+            -moz-transform: matrix(-1, -0.1, 0, 1, 0, 0);
+            -webkit-transform: matrix(-1, -0.1, 0, 1, 0, 0);
+            -o-transform: matrix(-1, -0.1, 0, 1, 0, 0);
+            -ms-transform: matrix(-1, -0.1, 0, 1, 0, 0);
+            transform: matrix(-1, -0.1, 0, 1, 0, 0);
+        }
+    </style>
+</head>
+
+<body>
+
+<div id="container">
+    <div id="content">
+        <div style="text-align: center; font-weight: bold; font-size: 50px;">time -></div>
+        <br>
+
+
+        <div class="row">
+            <div class="offset-sm-1">
+                <div class="postit-wrapper random-rotate float-left">
+                    <div class="postit postit-command">
+                        <div class="postit-content">
+                            Book Room
+                        </div>
+                    </div>
+                    <div class="postit postit-actor postit-on-another">
+                        <i class="fas fa-user"></i><br>
+                        Guest
+                    </div>
+                </div>
+
+
+                <div class="postit-wrapper random-rotate float-left">
+                    <div class="postit postit-event">
+                        <div class="postit-content">
+                            Room Booked
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col"></div>
+
+        </div>
+        <div class="clearfix"></div>
+        <div style="margin-top: 40px"></div>
+
+        <div class="row">
+            <div class="offset-sm-4">
+                <div class="postit-wrapper random-rotate float-left">
+                    <div class="postit postit-policy">
+                        <div class="postit-content">
+                            Whenever<br>
+                            Room is booked
+                        </div>
+                    </div>
+                </div>
+
+                <div class="postit-wrapper random-rotate float-left">
+                    <div class="postit postit-command">
+                        <div class="postit-content">
+                            Order Beer
+                        </div>
+                    </div>
+                    <div class="postit-wrapper random-rotate float-left postit-on-another">
+                        <div class="postit postit-hotspot">
+                            <div class="postit-content">
+                                Sometimes there is not enough of beer
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="postit-wrapper random-rotate float-left">
+                    <div class="postit postit-event">
+                        <div class="postit-content">
+                            Beer Ordered
+                        </div>
+                    </div>
+                </div>
+
+
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<div id="settings">
+    <div><label for="scrollingX">ScrollingX: </label><input type="checkbox" id="scrollingX" checked/></div>
+    <div><label for="scrollingY">ScrollingY: </label><input type="checkbox" id="scrollingY" checked/></div>
+    <div><label for="animating">Animating: </label><input type="checkbox" id="animating" checked/></div>
+    <div><label for="bouncing">Bouncing: </label><input type="checkbox" id="bouncing" checked/></div>
+    <div><label for="locking">Locking: </label><input type="checkbox" id="locking" checked/></div>
+
+    <div><label for="zooming">Zooming: </label><input type="checkbox" id="zooming" checked/></div>
+    <div><label for="minZoom">Min Zoom: </label><input type="text" id="minZoom" size="5" value="0.5"/></div>
+    <div><label for="maxZoom">Max Zoom: </label><input type="text" id="maxZoom" size="5" value="3"/></div>
+    <div><label for="zoomLevel">Zoom Level: </label><input type="text" id="zoomLevel" size="5"/></div>
+    <div>
+        <button id="zoom">Zoom to Level</button>
+        <button id="zoomIn">+</button>
+        <button id="zoomOut">-</button>
+    </div>
+
+    <div><label for="scrollLeft">Scroll Left: </label><input type="text" id="scrollLeft" size="9"/></div>
+    <div><label for="scrollTop">Scroll Top: </label><input type="text" id="scrollTop" size="9"/></div>
+    <div>
+        <button id="scrollTo">Scroll to Coords</button>
+    </div>
+
+    <div>
+        <button id="scrollByUp">&uarr;</button>
+        <button id="scrollByDown">&darr;</button>
+        <button id="scrollByLeft">&larr;</button>
+        <button id="scrollByRight">&rarr;</button>
+    </div>
+</div>
+
+
+<script>
+    function random(seed, max) {
+        var x = Math.sin(seed) * 10000;
+        var rand = x - Math.floor(x);
+
+        return Math.floor((rand * max))
+    }
+
+    $(".postit-wrapper").each(function () {
+        if ($(this).find('.postit').hasClass('postit-on-another')) {
+            return;
+        }
+
+        var seed = $(this).text().length;
+
+        $(this).find('.postit').css('padding-top', random(seed, 30));
+
+        var baseMargin = 15;
+        var marginMinDelta = 0;
+        var marginMaxDelta = 40;
+        $(this).find('.postit').css('margin', (baseMargin + random(seed, marginMinDelta) + marginMaxDelta) + 'px ' + (baseMargin + random(seed, marginMaxDelta) + marginMinDelta) + 'px ' + (baseMargin + random(seed, marginMaxDelta) + marginMinDelta) + 'px ' + (baseMargin + random(seed, marginMaxDelta) + marginMinDelta) + 'px');
+
+        $(this).find('.postit-content').css('transform', 'rotate(' + (random(seed, 3) - 3) + 'deg)');
+
+        $(this).find('.postit').addClass('postit-fold-' + ['2', '5', '7', '8'][random(seed, 3)]);
+    });
+
+    $(".random-rotate").each(function () {
+        var seed = $(this).text().length * 3;
+        $(this).css('transform', 'rotate(' + (random(seed, 13) - 6) + 'deg)');
+    })
+</script>
+
+<!-- Custom rendering code -->
+<script type="text/javascript">
+
+    // Settings
+    var contentWidth = 2000;
+    var contentHeight = 2000;
+
+    // Initialize layout
+    var content = document.getElementById("content");
+
+    content.style.width = contentWidth + "px";
+    content.style.height = contentHeight + "px";
+</script>
+
+<!-- Create Scroller, bind UI layer and mouse/touch events -->
+<script src="ui.js"></script>
+
+</body>
+</html>

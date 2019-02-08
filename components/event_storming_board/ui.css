@@ -1,0 +1,77 @@
+*{
+	margin: 0;
+	padding: 0;
+}
+
+input{
+	color: inherit;
+	font: inherit;
+}
+
+body{
+	font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+	font-size: 14px;
+	line-height: 1.8;
+}
+
+#container{
+	position: absolute;
+	left: 20px;
+	top: 20px;
+	bottom: 20px;
+	right: 240px;
+	border: 5px solid black;
+	cursor: default;
+	overflow: hidden;
+
+	-webkit-user-select: none;
+	-moz-user-select: none;
+	-ms-user-select: none;
+	-o-user-select: none;
+	user-select: none;
+}
+
+#content{
+	background: white;
+
+	-webkit-transform-origin: left top;
+	-webkit-transform: translateZ(0);
+	-moz-transform-origin: left top;
+	-moz-transform: translateZ(0);
+	-ms-transform-origin: left top;
+	-ms-transform: translateZ(0);
+	-o-transform-origin: left top;
+	-o-transform: translateZ(0);
+	transform-origin: left top;
+	transform: translateZ(0);
+}
+
+#settings{
+	position: absolute;
+	top: 20px;
+	bottom: 20px;
+	right: 20px;
+	width: 180px;
+	background: #eee;
+	padding: 10px;
+	border: 5px solid black;
+}
+
+#settings > div{
+	vertical-align: middle;
+	padding: 4px 0;
+}
+
+#settings > div > *{
+	display: inline-block;
+	vertical-align: middle;
+}
+
+#settings label{
+	width: 100px;
+}
+
+button{
+	padding: 6px 10px;
+	margin-right: 1px;
+}
