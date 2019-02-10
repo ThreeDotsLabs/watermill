@@ -126,6 +126,12 @@
             background: linear-gradient(135deg, #da0cbb 81%, #da0cbb 82%, #da0cbb 82%, #da0cbb 100%); /* W3C */
         }
 
+        .postit-readmodel {
+            border-top: 60px solid #adde00;
+            background: #b1e200; /* Old browsers */
+            background: linear-gradient(135deg, #b1e200 81%, #b1e200 82%, #b1e200 82%, #b7e211 100%); /* W3C */
+        }
+
         .postit-actor {
             border-top: none;
             font-size: 27px;
@@ -195,6 +201,13 @@
                             Room Booked
                         </div>
                     </div>
+                    <div class="postit-wrapper random-rotate float-left postit-on-another">
+                        <div class="postit postit-readmodel">
+                            <div class="postit-content">
+                                Bookings Financial Report
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="col"></div>
@@ -204,7 +217,7 @@
         <div style="margin-top: 40px"></div>
 
         <div class="row">
-            <div class="offset-sm-4">
+            <div class="offset-sm-5">
                 <div class="postit-wrapper random-rotate float-left">
                     <div class="postit postit-policy">
                         <div class="postit-content">
@@ -305,7 +318,7 @@
 
     $(".random-rotate").each(function () {
         var seed = $(this).text().length * 3;
-        $(this).css('transform', 'rotate(' + (random(seed, 13) - 6) + 'deg)');
+        $(this).css('transform', 'rotate(' + (random(seed, 6) - 3) + 'deg)');
     })
 </script>
 
