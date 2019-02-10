@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"sync"
 	"time"
 
 	"github.com/ThreeDotsLabs/watermill"
@@ -33,15 +34,20 @@ func (b BookRoomHandler) Handle(c interface{}) error {
 	// c is always the type returned by `NewCommand`, so casting is always safe
 	cmd := c.(*BookRoom)
 
+	// some random price, in production you probably will calculate in wiser way
+	price := (rand.Int63n(40) + 1) * 10
+
 	log.Printf("Booked %s for %s from %s to %s", cmd.RoomId, cmd.GuestName, cmd.StartDate, cmd.EndDate)
 
 	// RoomBooked will be handled by OrderBeerOnRoomBooked event processor,
 	// in future RoomBooked may be handled by multiple event processor
 	if err := b.eventBus.Publish(&RoomBooked{
-		RoomId:    cmd.RoomId,
-		GuestName: cmd.GuestName,
-		StartDate: cmd.StartDate,
-		EndDate:   cmd.EndDate,
+		ReservationId: watermill.NewUUID(),
+		RoomId:        cmd.RoomId,
+		GuestName:     cmd.GuestName,
+		Price:         price,
+		StartDate:     cmd.StartDate,
+		EndDate:       cmd.EndDate,
 	}); err != nil {
 		return err
 	}
@@ -98,6 +104,45 @@ func (b OrderBeerHandler) Handle(c interface{}) error {
 	return nil
 }
 
+// BookingsFinancialReport is a read model, which calculates how much money we may earn from bookings.
+// Like OrderBeerOnRoomBooked, it listens for RoomBooked event.
+//
+// This implementation is just writing to the memory. In production, you will probably will use some persistent storage.
+type BookingsFinancialReport struct {
+	handledBookings map[string]struct{}
+	totalCharge     int64
+	lock            sync.Mutex
+}
+
+func NewBookingsFinancialReport() *BookingsFinancialReport {
+	return &BookingsFinancialReport{handledBookings: map[string]struct{}{}}
+}
+
+func (BookingsFinancialReport) NewEvent() interface{} {
+	return &RoomBooked{}
+}
+
+func (b *BookingsFinancialReport) Handle(e interface{}) error {
+	// Handle may be called concurrently, so it need to be thread safe.
+	b.lock.Lock()
+	defer b.lock.Unlock()
+
+	event := e.(*RoomBooked)
+
+	// When we are using Pub/Sub which doesn't provide exactly-once delivery semantics, we need to deduplicate messages.
+	// GoChannel Pub/Sub provides exactly-once delivery,
+	// but let's make this example ready for other Pub/Sub implementations.
+	if _, ok := b.handledBookings[event.ReservationId]; ok {
+		return nil
+	}
+	b.handledBookings[event.ReservationId] = struct{}{}
+
+	b.totalCharge += event.Price
+
+	fmt.Printf("Already booked rooms for $%d\n", b.totalCharge)
+	return nil
+}
+
 func main() {
 	logger := watermill.NewStdLogger(true, false)
 	marshaler := cqrs.ProtobufMarshaler{}
@@ -132,6 +177,7 @@ func main() {
 		EventHandlers: func(cb *cqrs.CommandBus, eb *cqrs.EventBus) []cqrs.EventHandler {
 			return []cqrs.EventHandler{
 				OrderBeerOnRoomBooked{cb},
+				NewBookingsFinancialReport(),
 			}
 		},
 		Router:                router,
