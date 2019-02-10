@@ -15,6 +15,16 @@ func NewEventBus(
 	topic string,
 	marshaler CommandEventMarshaler,
 ) *EventBus {
+	if publisher == nil {
+		panic("missing publisher")
+	}
+	if topic == "" {
+		panic("missing topic")
+	}
+	if marshaler == nil {
+		panic("missing marshaler")
+	}
+
 	return &EventBus{publisher, topic, marshaler}
 }
 

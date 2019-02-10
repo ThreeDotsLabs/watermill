@@ -30,6 +30,22 @@ func NewEventProcessor(
 	marshaler CommandEventMarshaler,
 	logger watermill.LoggerAdapter,
 ) *EventProcessor {
+	if len(handlers) == 0 {
+		panic("missing handlers")
+	}
+	if eventsTopic == "" {
+		panic("empty eventsTopic")
+	}
+	if subscriber == nil {
+		panic("missing subscriber")
+	}
+	if marshaler == nil {
+		panic("missing marshaler")
+	}
+	if logger == nil {
+		logger = watermill.NopLogger{}
+	}
+
 	return &EventProcessor{
 		handlers,
 		eventsTopic,
@@ -102,8 +118,9 @@ func (p EventProcessor) RouterHandlerFunc(handler EventHandler) (message.Handler
 }
 
 func (p EventProcessor) validateEvent(event interface{}) error {
+	// EventHandler's NewEvent must return a pointer, because it is used to unmarshal
 	if err := isPointer(event); err != nil {
-		return errors.Wrap(err, "event must be a not nil pointer")
+		return errors.Wrap(err, "command must be a non-nil pointer")
 	}
 
 	return nil

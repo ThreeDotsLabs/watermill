@@ -30,6 +30,22 @@ func NewCommandProcessor(
 	marshaler CommandEventMarshaler,
 	logger watermill.LoggerAdapter,
 ) *CommandProcessor {
+	if len(handlers) == 0 {
+		panic("missing handlers")
+	}
+	if commandsTopic == "" {
+		panic("empty commandsTopic name")
+	}
+	if subscriber == nil {
+		panic("missing subscriber")
+	}
+	if marshaler == nil {
+		panic("missing marshaler")
+	}
+	if logger == nil {
+		logger = watermill.NopLogger{}
+	}
+
 	return &CommandProcessor{
 		handlers,
 		commandsTopic,
@@ -108,8 +124,9 @@ func (p CommandProcessor) RouterHandlerFunc(handler CommandHandler) (message.Han
 }
 
 func (p CommandProcessor) validateCommand(cmd interface{}) error {
+	// CommandHandler's NewCommand must return a pointer, because it is used to unmarshal
 	if err := isPointer(cmd); err != nil {
-		return errors.Wrap(err, "command must be a not nil pointer")
+		return errors.Wrap(err, "command must be a non-nil pointer")
 	}
 
 	return nil

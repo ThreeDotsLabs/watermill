@@ -31,19 +31,13 @@ func (c FacadeConfig) Validate() error {
 		if c.CommandsTopic == "" {
 			err = multierror.Append(err, errors.New("CommandsTopic is empty"))
 		}
-		if c.CommandHandlers == nil {
-			err = multierror.Append(err, errors.New("CommandHandlers is nil"))
-		}
 		if c.CommandsPubSub == nil {
 			err = multierror.Append(err, errors.New("CommandsPubSub is nil"))
 		}
 	}
 	if c.EventsEnabled() {
-		if c.CommandsTopic == "" {
+		if c.EventsTopic == "" {
 			err = multierror.Append(err, errors.New("EventsTopic is empty"))
-		}
-		if c.EventHandlers == nil {
-			err = multierror.Append(err, errors.New("EventHandlers is nil"))
 		}
 		if c.EventsPubSub == nil {
 			err = multierror.Append(err, errors.New("EventsPubSub is nil"))
@@ -64,11 +58,11 @@ func (c FacadeConfig) Validate() error {
 }
 
 func (c FacadeConfig) EventsEnabled() bool {
-	return c.EventsTopic != "" || c.EventHandlers != nil || c.EventsPubSub != nil
+	return c.EventsTopic != "" || c.EventsPubSub != nil
 }
 
 func (c FacadeConfig) CommandsEnabled() bool {
-	return c.CommandsTopic != "" || c.CommandHandlers != nil || c.CommandsPubSub != nil
+	return c.CommandsTopic != "" || c.CommandsPubSub != nil
 }
 
 type Facade struct {
@@ -137,7 +131,7 @@ func NewFacade(config FacadeConfig) (*Facade, error) {
 			return nil, err
 		}
 	}
-	if config.CommandHandlers != nil {
+	if config.EventHandlers != nil {
 		eventProcessor := NewEventProcessor(
 			config.EventHandlers(c.commandBus, c.eventBus),
 			config.EventsTopic,

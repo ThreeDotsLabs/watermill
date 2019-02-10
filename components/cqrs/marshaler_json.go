@@ -7,11 +7,11 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
-type JsonMarshaler struct {
+type JSONMarshaler struct {
 	NewUUID func() string
 }
 
-func (m JsonMarshaler) Marshal(v interface{}) (*message.Message, error) {
+func (m JSONMarshaler) Marshal(v interface{}) (*message.Message, error) {
 	b, err := json.Marshal(v)
 	if err != nil {
 		return nil, err
@@ -26,7 +26,7 @@ func (m JsonMarshaler) Marshal(v interface{}) (*message.Message, error) {
 	return msg, nil
 }
 
-func (m JsonMarshaler) newUUID() string {
+func (m JSONMarshaler) newUUID() string {
 	if m.NewUUID != nil {
 		return m.NewUUID()
 	}
@@ -35,14 +35,14 @@ func (m JsonMarshaler) newUUID() string {
 	return watermill.NewUUID()
 }
 
-func (JsonMarshaler) Unmarshal(msg *message.Message, v interface{}) (err error) {
+func (JSONMarshaler) Unmarshal(msg *message.Message, v interface{}) (err error) {
 	return json.Unmarshal(msg.Payload, v)
 }
 
-func (m JsonMarshaler) Name(cmdOrEvent interface{}) string {
+func (m JSONMarshaler) Name(cmdOrEvent interface{}) string {
 	return ObjectName(cmdOrEvent)
 }
 
-func (m JsonMarshaler) NameFromMessage(msg *message.Message) string {
+func (m JSONMarshaler) NameFromMessage(msg *message.Message) string {
 	return msg.Metadata.Get("name")
 }

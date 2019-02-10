@@ -190,7 +190,7 @@ func main() {
 		panic(err)
 	}
 
-	// publishing BookRoom commands every second
+	// publish BookRoom commands every second to simulate incoming traffic
 	go publishCommands(cqrsFacade.CommandBus())
 
 	// processors are based on router, so they will work when router will start

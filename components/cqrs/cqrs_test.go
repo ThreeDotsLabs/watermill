@@ -12,7 +12,41 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func createCQRS(ts TestServices, t *testing.T, commandHandler *CaptureCommandHandler, eventHandler *CaptureEventHandler) (*message.Router, *cqrs.Facade) {
+// TestCQRS is functional test of CQRS command handler and event handler.
+func TestCQRS(t *testing.T) {
+	ts := NewTestServices()
+
+	captureCommandHandler := &CaptureCommandHandler{}
+	captureEventHandler := &CaptureEventHandler{}
+
+	router, cqrsFacade := createRouterAndFacade(ts, t, captureCommandHandler, captureEventHandler)
+
+	pointerCmd := &TestCommand{ID: watermill.NewULID()}
+	require.NoError(t, cqrsFacade.CommandBus().Send(pointerCmd))
+	assert.EqualValues(t, []interface{}{pointerCmd}, captureCommandHandler.HandledCommands())
+	captureCommandHandler.Reset()
+
+	nonPointerCmd := TestCommand{ID: watermill.NewULID()}
+	require.NoError(t, cqrsFacade.CommandBus().Send(nonPointerCmd))
+	// command is always unmarshaled to pointer value
+	assert.EqualValues(t, []interface{}{&nonPointerCmd}, captureCommandHandler.HandledCommands())
+	captureCommandHandler.Reset()
+
+	pointerEvent := &TestEvent{ID: watermill.NewULID()}
+	require.NoError(t, cqrsFacade.EventBus().Publish(pointerEvent))
+	assert.EqualValues(t, []interface{}{pointerEvent}, captureEventHandler.HandledEvents())
+	captureEventHandler.Reset()
+
+	nonPointerEvent := TestEvent{ID: watermill.NewULID()}
+	require.NoError(t, cqrsFacade.EventBus().Publish(nonPointerEvent))
+	// event is always unmarshaled to pointer value
+	assert.EqualValues(t, []interface{}{&nonPointerEvent}, captureEventHandler.HandledEvents())
+	captureEventHandler.Reset()
+
+	assert.NoError(t, router.Close())
+}
+
+func createRouterAndFacade(ts TestServices, t *testing.T, commandHandler *CaptureCommandHandler, eventHandler *CaptureEventHandler) (*message.Router, *cqrs.Facade) {
 	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
 	require.NoError(t, err)
 
@@ -48,40 +82,6 @@ func createCQRS(ts TestServices, t *testing.T, commandHandler *CaptureCommandHan
 	return router, c
 }
 
-// TestCQRS is functional test of CQRS command handler and event handler.
-func TestCQRS(t *testing.T) {
-	ts := NewTestServices()
-
-	captureCommandHandler := &CaptureCommandHandler{}
-	captureEventHandler := &CaptureEventHandler{}
-
-	router, cqrsFacade := createCQRS(ts, t, captureCommandHandler, captureEventHandler)
-
-	pointerCmd := &TestCommand{ID: watermill.NewULID()}
-	require.NoError(t, cqrsFacade.CommandBus().Send(pointerCmd))
-	assert.EqualValues(t, []interface{}{pointerCmd}, captureCommandHandler.HandledCommands())
-	captureCommandHandler.Reset()
-
-	nonPointerCmd := TestCommand{ID: watermill.NewULID()}
-	require.NoError(t, cqrsFacade.CommandBus().Send(nonPointerCmd))
-	// command is always unmarshaled to pointer value
-	assert.EqualValues(t, []interface{}{&nonPointerCmd}, captureCommandHandler.HandledCommands())
-	captureCommandHandler.Reset()
-
-	pointerEvent := &TestEvent{ID: watermill.NewULID()}
-	require.NoError(t, cqrsFacade.EventBus().Publish(pointerEvent))
-	assert.EqualValues(t, []interface{}{pointerEvent}, captureEventHandler.HandledEvents())
-	captureEventHandler.Reset()
-
-	nonPointerEvent := TestEvent{ID: watermill.NewULID()}
-	require.NoError(t, cqrsFacade.EventBus().Publish(nonPointerEvent))
-	// event is always unmarshaled to pointer value
-	assert.EqualValues(t, []interface{}{&nonPointerEvent}, captureEventHandler.HandledEvents())
-	captureEventHandler.Reset()
-
-	assert.NoError(t, router.Close())
-}
-
 type TestServices struct {
 	Logger         watermill.LoggerAdapter
 	CommandsPubSub message.PubSub
@@ -102,7 +102,7 @@ func NewTestServices() TestServices {
 			gochannel.Config{BlockPublishUntilSubscriberAck: true},
 			logger,
 		),
-		Marshaler: cqrs.JsonMarshaler{},
+		Marshaler: cqrs.JSONMarshaler{},
 	}
 }
 

@@ -12,7 +12,7 @@ import (
 )
 
 func TestJsonMarshaler(t *testing.T) {
-	marshaler := cqrs.JsonMarshaler{}
+	marshaler := cqrs.JSONMarshaler{}
 
 	eventToMarshal := TestEvent{
 		ID:   watermill.NewULID(),
