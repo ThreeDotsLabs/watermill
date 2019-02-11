@@ -33,6 +33,9 @@ func (m PublisherPrometheusMetricsDecorator) Publish(topic string, messages ...*
 	if labels[labelKeyPublisherName] == "" {
 		labels[labelKeyPublisherName] = m.publisherName
 	}
+	if labels[labelKeyHandlerName] == "" {
+		labels[labelKeyHandlerName] = "<no handler>"
+	}
 	start := time.Now()
 
 	defer func() {

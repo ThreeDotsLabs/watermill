@@ -5,4 +5,5 @@ require (
 	github.com/prometheus/client_golang v0.9.2
 )
 
-replace github.com/ThreeDotsLabs/watermill => ../../../watermill
+// uncomment to use local sources
+// replace github.com/ThreeDotsLabs/watermill => ../../../watermill

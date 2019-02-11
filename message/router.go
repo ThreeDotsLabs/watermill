@@ -414,7 +414,7 @@ func (r *Router) decorateHandlerSubscriber(h *handler) error {
 	// it goes before other decorators, so that they may take advantage of these values
 	messageTransform := func(msg *Message) {
 		if msg != nil {
-			h.addMsgContext(msg)
+			h.addMsgContext(true, msg)
 		}
 	}
 	sub, err = MessageTransformSubscriberDecorator(messageTransform)(sub)
@@ -432,7 +432,7 @@ func (r *Router) decorateHandlerSubscriber(h *handler) error {
 	return nil
 }
 
-func (h handler) addMsgContext(messages ...*Message) {
+func (h handler) addMsgContext(handlerName bool, messages ...*Message) {
 	for i, msg := range messages {
 		ctx := msg.ctx
 
@@ -484,8 +484,6 @@ func (h *handler) handleMessage(msg *Message, handler HandlerFunc) {
 		msg.Nack()
 		return
 	}
-
-	h.addMsgContext(producedMessages...)
 
 	if err := h.publishProducedMessages(producedMessages, msgFields); err != nil {
 		h.logger.Error("Publishing produced messages failed", err, nil)

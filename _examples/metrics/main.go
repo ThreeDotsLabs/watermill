@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"math"
 	"math/rand"
 	_ "net/http/pprof"
@@ -45,6 +46,9 @@ func handler(msg *message.Message) ([]*message.Message, error) {
 
 	for i := 0; i < numOutgoing; i++ {
 		outgoing[i] = msg
+	}
+	if len(outgoing) > 0 {
+		fmt.Printf("%+v", outgoing[0].Context())
 	}
 	return outgoing, nil
 }
@@ -98,11 +102,8 @@ func main() {
 	prometheusRegistry := prometheus.NewRegistry()
 	closeMetrics := metrics.ServeHTTP(*metricsAddr, prometheusRegistry)
 	defer closeMetrics()
-	bld := metrics.NewPrometheusMetricsBuilder(prometheusRegistry, "", "")
-	pub, err := bld.DecoratePublisher(pubSub)
-	if err != nil {
-		panic(err)
-	}
+	metricsBuilder := metrics.NewPrometheusMetricsBuilder(prometheusRegistry, "", "")
+	metricsBuilder.AddPrometheusRouterMetrics(r)
 
 	r.AddMiddleware(
 		middleware.Recoverer,
@@ -123,9 +124,21 @@ func main() {
 		panic(err)
 	}
 
+	// the handler's pubSub will be decorated by `AddPrometheusRouterMetrics`.
+	// but we will use the same pub/sub to generate messages incoming to the handler
+	// and consume the outgoing messages. They will have `handler_name=<no handler>` in Prometheus.
+	subWithMetrics, err := metricsBuilder.DecorateSubscriber(pubSub)
+	if err != nil {
+		panic(err)
+	}
+	pubWithMetrics, err := metricsBuilder.DecoratePublisher(pubSub)
+	if err != nil {
+		panic(err)
+	}
+
 	routerClosed := make(chan struct{})
-	go produceMessages(routerClosed, pub)
-	go consumeMessages(routerClosed, pubSub)
+	go produceMessages(routerClosed, pubWithMetrics)
+	go consumeMessages(routerClosed, subWithMetrics)
 
 	_ = r.Run()
 	close(routerClosed)
