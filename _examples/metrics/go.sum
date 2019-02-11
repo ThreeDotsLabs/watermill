@@ -20,6 +20,7 @@ github.com/ThreeDotsLabs/watermill v0.2.2-0.20190207112047-671f1a6d0e6e h1:igaFY
 github.com/ThreeDotsLabs/watermill v0.2.2-0.20190207112047-671f1a6d0e6e/go.mod h1:C3AQ1+71tzW4F3jFkKMfjwbYVoc3sBhl7nbZKAWfZCM=
 github.com/ThreeDotsLabs/watermill v0.2.2-0.20190207213039-0d3b59e2a81d h1:5W1OqK8ihia6BBzyCzLWMcFwYU2WhDcMecIbABZKDUQ=
 github.com/ThreeDotsLabs/watermill v0.2.2-0.20190207213039-0d3b59e2a81d/go.mod h1:C3AQ1+71tzW4F3jFkKMfjwbYVoc3sBhl7nbZKAWfZCM=
+github.com/ThreeDotsLabs/watermill v0.2.2-0.20190211093512-120551e326b8 h1:QUZtNqJdlakrPQ3KNGIbq6dbu80ikuNmq+IUcJVmW4k=
 github.com/ThreeDotsLabs/watermill v0.2.2-0.20190211093512-120551e326b8/go.mod h1:8+sP309OzQmiQRIe/mybBNKNvszj7igrIWym/1jnhaE=
 github.com/ThreeDotsLabs/watermill v0.2.2-0.20190211100630-d1e99fefcf9e h1:IbwyogaWJm1tjvU5aPl0Cj6PBOB7QsYP+1XtHrTn4Tg=
 github.com/ThreeDotsLabs/watermill v0.2.2-0.20190211100630-d1e99fefcf9e/go.mod h1:C3AQ1+71tzW4F3jFkKMfjwbYVoc3sBhl7nbZKAWfZCM=
@@ -57,6 +58,7 @@ github.com/golang/mock v1.1.1/go.mod h1:oTYuIxOrZwtPieC+H1uAHpcLFnEyAGVDL/k47Jfb
 github.com/golang/mock v1.2.0/go.mod h1:oTYuIxOrZwtPieC+H1uAHpcLFnEyAGVDL/k47Jfbm0A=
 github.com/golang/protobuf v1.2.0 h1:P3YflyNX/ehuJFLhxviNdFxQPkGK5cDcApsge1SqnvM=
 github.com/golang/protobuf v1.2.0/go.mod h1:6lQm79b+lXiMfvg/cZm0SGofjICqVBUtrP5yJMmIC1U=
+github.com/golang/protobuf v1.2.1-0.20190205222052-c823c79ea157 h1:SdQMHsZ18/XZCHuwt3IF+dvHgYTO2XMWZjv3XBKQqAI=
 github.com/golang/protobuf v1.2.1-0.20190205222052-c823c79ea157/go.mod h1:Qd/q+1AKNOZr9uGQzbzCmRO6sUih6GTPZv6a1/R87v0=
 github.com/golang/snappy v0.0.0-20180518054509-2e65f85255db h1:woRePGFeVFfLKN/pOkfl+p/TAqKOfFu+7KPlMVpok/w=
 github.com/golang/snappy v0.0.0-20180518054509-2e65f85255db/go.mod h1:/XxbfmMg8lxefKM7IXC3fBNl/7bRcc72aCRzEWrmP2Q=
@@ -111,6 +113,7 @@ github.com/pierrec/lz4 v2.0.5+incompatible h1:2xWsjqPFWcplujydGg4WmhC/6fZqK42wMM
 github.com/pierrec/lz4 v2.0.5+incompatible/go.mod h1:pdkljMzZIN41W+lC3N2tnIh5sFi+IEE17M5jbnwPHcY=
 github.com/pkg/errors v0.8.0 h1:WdK/asTD0HN+q6hsWO3/vpuAkAr+tw6aNJNDFFf0+qw=
 github.com/pkg/errors v0.8.0/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
+github.com/pkg/errors v0.8.1 h1:iURUrRGxPUNPdy5/HRSm+Yj6okJ6UtLINN0Q9M4+h3I=
 github.com/pkg/errors v0.8.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
@@ -124,6 +127,7 @@ github.com/prometheus/common v0.0.0-20180801064454-c7de2306084e h1:n/3MEhJQjQxrO
 github.com/prometheus/common v0.0.0-20180801064454-c7de2306084e/go.mod h1:daVV7qP5qjZbuso7PdcryaAu0sAZbrN9i7WWcTMWvro=
 github.com/prometheus/common v0.0.0-20181126121408-4724e9255275 h1:PnBWHBf+6L0jOqq0gIVUe6Yk0/QMZ640k6NvkxcBf+8=
 github.com/prometheus/common v0.0.0-20181126121408-4724e9255275/go.mod h1:daVV7qP5qjZbuso7PdcryaAu0sAZbrN9i7WWcTMWvro=
+github.com/prometheus/common v0.0.0-20181218105931-67670fe90761 h1:z6tvbDJ5OLJ48FFmnksv04a78maSTRBUIhkdHYV5Y98=
 github.com/prometheus/common v0.0.0-20181218105931-67670fe90761/go.mod h1:daVV7qP5qjZbuso7PdcryaAu0sAZbrN9i7WWcTMWvro=
 github.com/prometheus/procfs v0.0.0-20180725123919-05ee40e3a273 h1:agujYaXJSxSo18YNX3jzl+4G6Bstwt+kqv47GS12uL0=
 github.com/prometheus/procfs v0.0.0-20180725123919-05ee40e3a273/go.mod h1:c3At6R/oaqEKCNdg8wHV1ftS6bRYblBhIjjI8uT2IGk=

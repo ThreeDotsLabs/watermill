@@ -12,7 +12,7 @@ services:
     - ../../:/watermill
     - $GOPATH/pkg/mod:/go/pkg/mod
     working_dir: /watermill/_examples/metrics
-    command: go run main.go -metrics :8081 -delay 3
+    command: go run main.go -metrics :8081 -delay 0.1
 
   prometheus:
     image: prom/prometheus

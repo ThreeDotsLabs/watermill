@@ -45,32 +45,24 @@ func handler(msg *message.Message) ([]*message.Message, error) {
 	outgoing := make([]*message.Message, numOutgoing)
 
 	for i := 0; i < numOutgoing; i++ {
-		outgoing[i] = msg
-	}
-	if len(outgoing) > 0 {
-		fmt.Printf("%+v", outgoing[0].Context())
+		outgoing[i] = msg.Copy()
 	}
 	return outgoing, nil
 }
 
 // consumeMessages consumes the messages exiting the handler.
-func consumeMessages(routerClosed chan struct{}, subscriber message.Subscriber) {
+func consumeMessages(subscriber message.Subscriber) {
 	messages, err := subscriber.Subscribe(context.Background(), "pub_topic")
 	if err != nil {
 		panic(err)
 	}
 
-	for {
-		select {
-		case <-messages:
+	for msg := range messages {
 		// message consumed
-		case <-routerClosed:
-			return
-		}
 	}
 }
 
-// produceMessages produces the incoming messages in delays of 0-100 milliseconds.
+// produceMessages produces the incoming messages in delays of 500-1000 milliseconds.
 func produceMessages(routerClosed chan struct{}, publisher message.Publisher) {
 	for {
 		select {
@@ -80,7 +72,7 @@ func produceMessages(routerClosed chan struct{}, publisher message.Publisher) {
 			// go on
 		}
 
-		time.Sleep(time.Duration(random.Intn(100)) * time.Millisecond)
+		time.Sleep(500*time.Millisecond + time.Duration(random.Intn(500))*time.Millisecond)
 		msg := message.NewMessage(watermill.UUID(), []byte{})
 		_ = publisher.Publish("sub_topic", msg)
 	}
@@ -124,9 +116,10 @@ func main() {
 		panic(err)
 	}
 
-	// the handler's pubSub will be decorated by `AddPrometheusRouterMetrics`.
+	// The handler's publisher and subscriber will be decorated by `AddPrometheusRouterMetrics`.
 	// but we will use the same pub/sub to generate messages incoming to the handler
-	// and consume the outgoing messages. They will have `handler_name=<no handler>` in Prometheus.
+	// and consume the outgoing messages.
+	// They will have `handler_name=<no handler>` label in Prometheus.
 	subWithMetrics, err := metricsBuilder.DecorateSubscriber(pubSub)
 	if err != nil {
 		panic(err)
@@ -138,7 +131,7 @@ func main() {
 
 	routerClosed := make(chan struct{})
 	go produceMessages(routerClosed, pubWithMetrics)
-	go consumeMessages(routerClosed, subWithMetrics)
+	go consumeMessages(subWithMetrics)
 
 	_ = r.Run()
 	close(routerClosed)
