@@ -14,6 +14,8 @@ const (
 	labelKeySubscriberName = "subscriber_name"
 	labelSuccess           = "success"
 	labelAcked             = "acked"
+
+	labelValueNoHandler = "<no handler>"
 )
 
 var (

@@ -3,19 +3,18 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
 	"math"
 	"math/rand"
-	_ "net/http/pprof"
 	"time"
 
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure/gochannel"
+	"github.com/pkg/errors"
 
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/components/metrics"
 	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ThreeDotsLabs/watermill/message/infrastructure/gochannel"
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
 	"github.com/ThreeDotsLabs/watermill/message/router/plugin"
 )
@@ -57,8 +56,8 @@ func consumeMessages(subscriber message.Subscriber) {
 		panic(err)
 	}
 
-	for range messages {
-		// message consumed
+	for msg := range messages {
+		msg.Ack()
 	}
 }
 
@@ -116,6 +115,8 @@ func main() {
 		panic(err)
 	}
 
+	pubWithRandomFail := randomFailPublisherDecorator{pubSub, 0.1}
+
 	// The handler's publisher and subscriber will be decorated by `AddPrometheusRouterMetrics`.
 	// but we will use the same pub/sub to generate messages incoming to the handler
 	// and consume the outgoing messages.
@@ -124,7 +125,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	pubWithMetrics, err := metricsBuilder.DecoratePublisher(pubSub)
+	pubWithMetrics, err := metricsBuilder.DecoratePublisher(pubWithRandomFail)
 	if err != nil {
 		panic(err)
 	}
@@ -135,4 +136,16 @@ func main() {
 
 	_ = r.Run()
 	close(routerClosed)
+}
+
+type randomFailPublisherDecorator struct {
+	message.Publisher
+	failProbability float64
+}
+
+func (r randomFailPublisherDecorator) Publish(topic string, messages ...*message.Message) error {
+	if random.Float64() < r.failProbability {
+		return errors.New("random publishing failure")
+	}
+	return r.Publisher.Publish(topic, messages...)
 }

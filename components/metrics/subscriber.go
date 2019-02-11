@@ -30,7 +30,7 @@ func (s SubscriberPrometheusMetricsDecorator) recordMetrics(msg *message.Message
 		labels[labelKeySubscriberName] = s.subscriberName
 	}
 	if labels[labelKeyHandlerName] == "" {
-		labels[labelKeyHandlerName] = "<no-handler>"
+		labels[labelKeyHandlerName] = labelValueNoHandler
 	}
 
 	go func() {
