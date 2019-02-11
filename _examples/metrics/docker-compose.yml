@@ -9,9 +9,9 @@ services:
     depends_on:
       - prometheus
     volumes:
-    - .:/app
+    - ../../:/watermill
     - $GOPATH/pkg/mod:/go/pkg/mod
-    working_dir: /app
+    working_dir: /watermill/_examples/metrics
     command: go run main.go -metrics :8081 -delay 3
 
   prometheus:
