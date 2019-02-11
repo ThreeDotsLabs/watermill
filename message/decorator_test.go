@@ -98,7 +98,7 @@ func TestMessageTransformSubscriberDecorator_Close(t *testing.T) {
 
 func TestMessageTransformSubscriberDecorator_Subscribe(t *testing.T) {
 	numMessages := 1000
-	pubsub := gochannel.NewGoChannel(0, watermill.NewStdLogger(true, true))
+	pubsub := gochannel.NewGoChannel(gochannel.Config{}, watermill.NewStdLogger(true, true))
 
 	onMessage := func(msg *message.Message) {
 		msg.Metadata.Set("key", "value")

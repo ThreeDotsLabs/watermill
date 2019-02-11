@@ -154,6 +154,14 @@ func (r *Router) AddSubscriberDecorators(dec ...SubscriberDecorator) {
 	r.subscriberDecorators = append(r.subscriberDecorators, dec...)
 }
 
+type DuplicateHandlerNameError struct {
+	HandlerName string
+}
+
+func (d DuplicateHandlerNameError) Error() string {
+	return fmt.Sprintf("handler with name %s already exists", d.HandlerName)
+}
+
 // AddHandler adds a new handler.
 //
 // handlerName must be unique. For now, it is used only for debugging.
@@ -175,14 +183,14 @@ func (r *Router) AddHandler(
 	publishTopic string,
 	publisher Publisher,
 	handlerFunc HandlerFunc,
-) error {
+) {
 	r.logger.Info("Adding handler", watermill.LogFields{
 		"handler_name": handlerName,
 		"topic":        subscribeTopic,
 	})
 
 	if _, ok := r.handlers[handlerName]; ok {
-		return errors.Errorf("handler %s already exists", handlerName)
+		panic(DuplicateHandlerNameError{handlerName})
 	}
 
 	publisherName, subscriberName := r.pubName(publisher), r.subName(subscriber)
@@ -204,8 +212,6 @@ func (r *Router) AddHandler(
 		messagesCh:        nil,
 		closeCh:           r.closeCh,
 	}
-
-	return nil
 }
 
 // pubName resolves the name of publisher.
@@ -258,8 +264,8 @@ func (r *Router) AddNoPublisherHandler(
 	subscribeTopic string,
 	subscriber Subscriber,
 	handlerFunc HandlerFunc,
-) error {
-	return r.AddHandler(handlerName, subscribeTopic, subscriber, "", disabledPublisher{}, handlerFunc)
+) {
+	r.AddHandler(handlerName, subscribeTopic, subscriber, "", disabledPublisher{}, handlerFunc)
 }
 
 // Run runs all plugins and handlers and starts subscribing to provided topics.

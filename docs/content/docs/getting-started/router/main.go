@@ -94,8 +94,8 @@ func main() {
 
 func publishMessages(publisher message.Publisher) {
 	for {
-		msg := message.NewMessage(watermill.UUID(), []byte("Hello, world!"))
-		middleware.SetCorrelationID(watermill.UUID(), msg)
+		msg := message.NewMessage(watermill.NewUUID(), []byte("Hello, world!"))
+		middleware.SetCorrelationID(watermill.NewUUID(), msg)
 
 		log.Printf("sending message %s, correlation id: %s\n", msg.UUID, middleware.MessageCorrelationID(msg))
 
@@ -122,6 +122,6 @@ type structHandler struct {
 func (s structHandler) Handler(msg *message.Message) ([]*message.Message, error) {
 	log.Println("structHandler received message", msg.UUID)
 
-	msg = message.NewMessage(watermill.UUID(), []byte("message produced by structHandler"))
+	msg = message.NewMessage(watermill.NewUUID(), []byte("message produced by structHandler"))
 	return message.Messages{msg}, nil
 }

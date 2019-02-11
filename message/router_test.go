@@ -18,7 +18,7 @@ import (
 )
 
 func TestRouter_functional(t *testing.T) {
-	testID := watermill.UUID()
+	testID := watermill.NewUUID()
 	subscribeTopic := "test_topic_" + testID
 
 	pubSub, err := createPubSub()
@@ -61,7 +61,7 @@ func TestRouter_functional(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	err = r.AddHandler(
+	r.AddHandler(
 		"test_subscriber_1",
 		subscribeTopic,
 		pubSub,
@@ -70,15 +70,14 @@ func TestRouter_functional(t *testing.T) {
 		func(msg *message.Message) (producedMessages []*message.Message, err error) {
 			receivedMessagesCh1 <- msg
 
-			toPublish := message.NewMessage(watermill.UUID(), nil)
+			toPublish := message.NewMessage(watermill.NewUUID(), nil)
 			sentByHandlerCh <- toPublish
 
 			return []*message.Message{toPublish}, nil
 		},
 	)
-	require.NoError(t, err)
 
-	err = r.AddNoPublisherHandler(
+	r.AddNoPublisherHandler(
 		"test_subscriber_2",
 		subscribeTopic,
 		pubSub,
@@ -87,7 +86,6 @@ func TestRouter_functional(t *testing.T) {
 			return nil, nil
 		},
 	)
-	require.NoError(t, err)
 
 	go r.Run()
 	defer func() {
@@ -125,7 +123,7 @@ func TestRouter_functional_nack(t *testing.T) {
 	nackSend := false
 	messageReceived := make(chan *message.Message, 2)
 
-	err = r.AddNoPublisherHandler(
+	r.AddNoPublisherHandler(
 		"test_subscriber_1",
 		"subscribe_topic",
 		pubSub,
@@ -140,7 +138,6 @@ func TestRouter_functional_nack(t *testing.T) {
 			return nil, nil
 		},
 	)
-	require.NoError(t, err)
 
 	go r.Run()
 	defer r.Close()
@@ -197,7 +194,7 @@ func BenchmarkRouterHandler(b *testing.B) {
 
 	sub := createBenchSubscriber(b)
 
-	if err := router.AddHandler(
+	router.AddHandler(
 		"handler",
 		"benchmark_topic",
 		sub,
@@ -207,9 +204,7 @@ func BenchmarkRouterHandler(b *testing.B) {
 			allProcessedWg.Done()
 			return []*message.Message{msg}, nil
 		},
-	); err != nil {
-		b.Fatal(err)
-	}
+	)
 
 	go func() {
 		allProcessedWg.Wait()
@@ -238,7 +233,7 @@ func TestRouterNoPublisherHandler(t *testing.T) {
 	msgReceived := false
 	wait := make(chan struct{})
 
-	err = r.AddNoPublisherHandler(
+	r.AddNoPublisherHandler(
 		"test_no_publisher_handler",
 		"subscribe_topic",
 		pubSub,
@@ -252,7 +247,6 @@ func TestRouterNoPublisherHandler(t *testing.T) {
 			return message.Messages{msg}, nil
 		},
 	)
-	require.NoError(t, err)
 
 	go r.Run()
 	defer r.Close()
@@ -285,7 +279,7 @@ func BenchmarkRouterNoPublisherHandler(b *testing.B) {
 
 	sub := createBenchSubscriber(b)
 
-	if err := router.AddNoPublisherHandler(
+	router.AddNoPublisherHandler(
 		"handler",
 		"benchmark_topic",
 		sub,
@@ -293,9 +287,7 @@ func BenchmarkRouterNoPublisherHandler(b *testing.B) {
 			allProcessedWg.Done()
 			return nil, nil
 		},
-	); err != nil {
-		b.Fatal(err)
-	}
+	)
 
 	go func() {
 		allProcessedWg.Wait()
@@ -335,7 +327,7 @@ func TestRouterDecoratorsOrder(t *testing.T) {
 	router.AddPublisherDecorators(pubDecorator1, pubDecorator2)
 	router.AddSubscriberDecorators(subDecorator1, subDecorator2)
 
-	err = router.AddHandler(
+	router.AddHandler(
 		"handler",
 		"subTopic",
 		pubSub,
@@ -345,7 +337,6 @@ func TestRouterDecoratorsOrder(t *testing.T) {
 			return message.Messages{msg}, nil
 		},
 	)
-	require.NoError(t, err)
 
 	go func() {
 		if err := router.Run(); err != nil {
@@ -369,7 +360,7 @@ func TestRouterDecoratorsOrder(t *testing.T) {
 		close(messageObtained)
 	}()
 
-	require.NoError(t, pubSub.Publish("subTopic", message.NewMessage(watermill.UUID(), []byte{})))
+	require.NoError(t, pubSub.Publish("subTopic", message.NewMessage(watermill.NewUUID(), []byte{})))
 
 	select {
 	case <-time.After(5 * time.Second):
@@ -386,7 +377,7 @@ func createBenchSubscriber(b *testing.B) benchMockSubscriber {
 	for i := 0; i < b.N; i++ {
 		messagesToSend = append(
 			messagesToSend,
-			message.NewMessage(watermill.UUID(), []byte(fmt.Sprintf("%d", i))),
+			message.NewMessage(watermill.NewUUID(), []byte(fmt.Sprintf("%d", i))),
 		)
 	}
 
@@ -397,7 +388,7 @@ func publishMessagesForHandler(t *testing.T, messagesCount int, pubSub message.P
 	var messagesToPublish []*message.Message
 
 	for i := 0; i < messagesCount; i++ {
-		msg := message.NewMessage(watermill.UUID(), []byte(fmt.Sprintf("%d", i)))
+		msg := message.NewMessage(watermill.NewUUID(), []byte(fmt.Sprintf("%d", i)))
 
 		messagesToPublish = append(messagesToPublish, msg)
 	}
@@ -411,7 +402,10 @@ func publishMessagesForHandler(t *testing.T, messagesCount int, pubSub message.P
 }
 
 func createPubSub() (message.PubSub, error) {
-	return gochannel.NewPersistentGoChannel(0, watermill.NewStdLogger(true, true)), nil
+	return gochannel.NewGoChannel(
+		gochannel.Config{Persistent: true},
+		watermill.NewStdLogger(true, true),
+	), nil
 }
 
 func readMessages(messagesCh <-chan *message.Message, limit int, timeout time.Duration) (receivedMessages []*message.Message, all bool) {

@@ -28,7 +28,7 @@ func main() {
 
 func publishMessages(publisher message.Publisher) {
 	for {
-		msg := message.NewMessage(watermill.UUID(), []byte("Hello, world!"))
+		msg := message.NewMessage(watermill.NewUUID(), []byte("Hello, world!"))
 
 		if err := publisher.Publish("example.topic", msg); err != nil {
 			panic(err)

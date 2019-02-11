@@ -262,11 +262,19 @@ func (s *StreamingSubscriber) processMessage(
 	messageLogFields := logFields.Add(watermill.LogFields{"message_uuid": msg.UUID})
 	s.logger.Trace("Unmarshaled message", messageLogFields)
 
+	if s.closed {
+		s.logger.Trace("Closed, message discarded", messageLogFields)
+		return
+	}
+
 	select {
 	case output <- msg:
 		s.logger.Trace("Message sent to consumer", messageLogFields)
 	case <-s.closing:
 		s.logger.Trace("Closing, message discarded", messageLogFields)
+		return
+	case <-ctx.Done():
+		s.logger.Trace("Context cancelled, message discarded", messageLogFields)
 		return
 	}
 
@@ -284,6 +292,9 @@ func (s *StreamingSubscriber) processMessage(
 		return
 	case <-s.closing:
 		s.logger.Trace("Closing, message discarded before ack", messageLogFields)
+		return
+	case <-ctx.Done():
+		s.logger.Trace("Context cancelled, message discarded before ack", messageLogFields)
 		return
 	}
 }

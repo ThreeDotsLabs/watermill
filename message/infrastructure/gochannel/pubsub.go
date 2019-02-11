@@ -12,6 +12,22 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
+type Config struct {
+	// Output channel buffer size.
+	OutputChannelBuffer int64
+
+	// If persistent is set to true, when subscriber subscribes to the topic,
+	// it will receive all previously produced messages.
+	//
+	// All messages are persisted to the memory (simple slice),
+	// so be aware that with large amount of messages you can go out of the memory.
+	Persistent bool
+
+	// When true, Publish will block until subscriber Ack's the message.
+	// If there are no subscribers, Publish will not block (also when Persistent is true).
+	BlockPublishUntilSubscriberAck bool
+}
+
 // GoChannel is the simplest Pub/Sub implementation.
 // It is based on Golang's channels which are sent within the process.
 //
@@ -20,23 +36,16 @@ import (
 //
 // When GoChannel is persistent, messages order is not guaranteed.
 type GoChannel struct {
-	outputChannelBuffer int64
+	config Config
+	logger watermill.LoggerAdapter
 
 	subscribersWg          sync.WaitGroup
 	subscribers            map[string][]*subscriber
 	subscribersLock        sync.RWMutex
 	subscribersByTopicLock sync.Map // map of *sync.Mutex
 
-	logger watermill.LoggerAdapter
-
 	closed  bool
 	closing chan struct{}
-
-	// If persistent is set to true, when subscriber subscribes to the topic,
-	// it will receive all previously produced messages.
-	// All messages are persisted to the memory,
-	// so be aware that with large amount of messages you can go out of the memory.
-	persistent bool
 
 	persistedMessages map[string][]*message.Message
 }
@@ -53,9 +62,9 @@ func (g *GoChannel) Subscriber() message.Subscriber {
 //
 // This GoChannel is not persistent.
 // That means if you send a message to a topic to which no subscriber is subscribed, that message will be discarded.
-func NewGoChannel(outputChannelBuffer int64, logger watermill.LoggerAdapter) message.PubSub {
+func NewGoChannel(config Config, logger watermill.LoggerAdapter) message.PubSub {
 	return &GoChannel{
-		outputChannelBuffer: outputChannelBuffer,
+		config: config,
 
 		subscribers:            make(map[string][]*subscriber),
 		subscribersByTopicLock: sync.Map{},
@@ -64,28 +73,7 @@ func NewGoChannel(outputChannelBuffer int64, logger watermill.LoggerAdapter) mes
 		}),
 
 		closing: make(chan struct{}),
-	}
-}
 
-// NewPersistentGoChannel creates new persistent GoChannel Pub/Sub.
-//
-// This GoChannel is persistent.
-// That means that when subscriber subscribes to the topic, it will receive all previously produced messages.
-// All messages are persisted to the memory, so be aware that with large amount of messages you can go out of the memory.
-//
-// Messages are persisted per GoChannel, so you must use the same object to consume these persisted messages.
-func NewPersistentGoChannel(outputChannelBuffer int64, logger watermill.LoggerAdapter) message.PubSub {
-	return &GoChannel{
-		outputChannelBuffer: outputChannelBuffer,
-
-		subscribers: make(map[string][]*subscriber),
-		logger: logger.With(watermill.LogFields{
-			"pubsub_uuid": shortuuid.New(),
-		}),
-
-		closing: make(chan struct{}),
-
-		persistent:        true,
 		persistedMessages: map[string][]*message.Message{},
 	}
 }
@@ -106,7 +94,7 @@ func (g *GoChannel) Publish(topic string, messages ...*message.Message) error {
 	subLock.(*sync.Mutex).Lock()
 	defer subLock.(*sync.Mutex).Unlock()
 
-	if g.persistent {
+	if g.config.Persistent {
 		if _, ok := g.persistedMessages[topic]; !ok {
 			g.persistedMessages[topic] = make([]*message.Message, 0)
 		}
@@ -114,29 +102,51 @@ func (g *GoChannel) Publish(topic string, messages ...*message.Message) error {
 	}
 
 	for i := range messages {
-		if err := g.sendMessage(topic, messages[i]); err != nil {
+		msg := messages[i]
+
+		ackedBySubscribers, err := g.sendMessage(topic, msg)
+		if err != nil {
 			return err
+		}
+
+		if g.config.BlockPublishUntilSubscriberAck {
+			g.waitForAckFromSubscribers(msg, ackedBySubscribers)
 		}
 	}
 
 	return nil
 }
 
-func (g *GoChannel) sendMessage(topic string, message *message.Message) error {
+func (g *GoChannel) waitForAckFromSubscribers(msg *message.Message, ackedByConsumer <-chan struct{}) {
+	logFields := watermill.LogFields{"message_uuid": msg.UUID}
+	g.logger.Debug("Waiting for subscribers ack", logFields)
+
+	select {
+	case <-ackedByConsumer:
+		g.logger.Trace("Message acked by subscribers", logFields)
+	case <-g.closing:
+		g.logger.Trace("Closing Pub/Sub before ack from subscribers", logFields)
+	}
+}
+
+func (g *GoChannel) sendMessage(topic string, message *message.Message) (<-chan struct{}, error) {
 	subscribers := g.topicSubscribers(topic)
+	ackedBySubscribers := make(chan struct{})
+
 	if len(subscribers) == 0 {
-		return nil
+		close(ackedBySubscribers)
+		return ackedBySubscribers, nil
 	}
 
-	for i := range subscribers {
-		s := subscribers[i]
-
-		go func(subscriber *subscriber) {
+	go func(subscribers []*subscriber) {
+		for i := range subscribers {
+			subscriber := subscribers[i]
 			subscriber.sendMessageToSubscriber(message)
-		}(s)
-	}
+		}
+		close(ackedBySubscribers)
+	}(subscribers)
 
-	return nil
+	return ackedBySubscribers, nil
 }
 
 // Subscribe returns channel to which all published messages are sent.
@@ -155,14 +165,35 @@ func (g *GoChannel) Subscribe(ctx context.Context, topic string) (<-chan *messag
 
 	s := &subscriber{
 		ctx:           ctx,
-		uuid:          watermill.UUID(),
-		outputChannel: make(chan *message.Message, g.outputChannelBuffer),
+		uuid:          watermill.NewUUID(),
+		outputChannel: make(chan *message.Message, g.config.OutputChannelBuffer),
 		logger:        g.logger,
 		closing:       make(chan struct{}),
 	}
 	g.subscribersWg.Add(1)
 
-	if !g.persistent {
+	go func(s *subscriber, g *GoChannel) {
+		select {
+		case <-ctx.Done():
+			// unblock
+		case <-g.closing:
+			// unblock
+		}
+
+		s.Close()
+
+		g.subscribersLock.Lock()
+		defer g.subscribersLock.Unlock()
+
+		subLock, _ := g.subscribersByTopicLock.Load(topic)
+		subLock.(*sync.Mutex).Lock()
+		defer subLock.(*sync.Mutex).Unlock()
+
+		g.removeSubscriber(topic, s)
+		g.subscribersWg.Done()
+	}(s, g)
+
+	if !g.config.Persistent {
 		defer g.subscribersLock.Unlock()
 		defer subLock.(*sync.Mutex).Unlock()
 
@@ -184,22 +215,6 @@ func (g *GoChannel) Subscribe(ctx context.Context, topic string) (<-chan *messag
 		}
 
 		g.addSubscriber(topic, s)
-
-		go func(s *subscriber) {
-			select {
-			case <-ctx.Done():
-				// unblock
-			case <-g.closing:
-				// unblock
-			}
-
-			subLock, _ := g.subscribersByTopicLock.Load(topic)
-			subLock.(*sync.Mutex).Lock()
-			defer subLock.(*sync.Mutex).Unlock()
-
-			g.removeSubscriber(topic, s)
-			g.subscribersWg.Done()
-		}(s)
 	}(s)
 
 	return s.outputChannel, nil
@@ -224,8 +239,6 @@ func (g *GoChannel) removeSubscriber(topic string, toRemove *subscriber) {
 	if !removed {
 		panic("cannot remove subscriber, not found " + toRemove.uuid)
 	}
-
-	toRemove.Close()
 }
 
 func (g *GoChannel) topicSubscribers(topic string) []*subscriber {
@@ -271,12 +284,16 @@ func (s *subscriber) Close() {
 	if s.closed {
 		return
 	}
-	s.closed = true
 	close(s.closing)
+
+	s.logger.Debug("Closing subscriber, waiting for sending lock", nil)
 
 	// ensuring that we are not sending to closed channel
 	s.sending.Lock()
 	defer s.sending.Unlock()
+
+	s.logger.Debug("GoChannel Pub/Sub Subscriber closed", nil)
+	s.closed = true
 
 	close(s.outputChannel)
 }

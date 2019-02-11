@@ -75,7 +75,7 @@ func testNoGroupSubscriberConcurrentSubscribers(
 	defer closePubSub(t, pubSub)
 
 	for i := 0; i < 10; i++ {
-		id := watermill.UUID()
+		id := watermill.NewUUID()
 
 		msg := message.NewMessage(id, []byte(fmt.Sprintf("%d", i)))
 		messagesToPublish = append(messagesToPublish, msg)
@@ -139,7 +139,7 @@ func testNoGroupSubscriberJoiningSubscribers(
 		for {
 			time.Sleep(time.Millisecond * 500)
 
-			id := watermill.UUID()
+			id := watermill.NewUUID()
 			err := pubSub.Publish(topicName, message.NewMessage(id, []byte(fmt.Sprintf("%d", i))))
 			require.NoError(t, err)
 
@@ -184,7 +184,7 @@ func testNoGroupSubscriber_Close(
 	defer closePubSub(t, pubSub)
 
 	for i := 0; i < 10; i++ {
-		id := watermill.UUID()
+		id := watermill.NewUUID()
 
 		msg := message.NewMessage(id, []byte(fmt.Sprintf("%d", i)))
 		messagesToPublish = append(messagesToPublish, msg)
