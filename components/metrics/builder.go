@@ -1,6 +1,7 @@
 package metrics
 
 import (
+	"github.com/ThreeDotsLabs/watermill/internal"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
@@ -33,7 +34,8 @@ func (b PrometheusMetricsBuilder) AddPrometheusRouterMetrics(r *message.Router) 
 func (b PrometheusMetricsBuilder) DecoratePublisher(pub message.Publisher) (message.Publisher, error) {
 	var err error
 	d := PublisherPrometheusMetricsDecorator{
-		pub: pub,
+		pub:           pub,
+		publisherName: internal.StructName(pub),
 	}
 
 	d.publishTimeSeconds, err = b.registerHistogramVec(prometheus.NewHistogramVec(

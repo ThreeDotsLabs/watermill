@@ -29,7 +29,7 @@ func labelsFromCtx(ctx context.Context, labels ...string) prometheus.Labels {
 
 	for _, l := range labels {
 		k := l
-		ctxLabels[l] = "unknown"
+		ctxLabels[l] = ""
 
 		getter, ok := labelGetters[k]
 		if !ok {

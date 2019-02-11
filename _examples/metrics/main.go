@@ -98,7 +98,11 @@ func main() {
 	prometheusRegistry := prometheus.NewRegistry()
 	closeMetrics := metrics.ServeHTTP(*metricsAddr, prometheusRegistry)
 	defer closeMetrics()
-	metrics.AddPrometheusRouterMetrics(r, prometheusRegistry, "", "")
+	bld := metrics.NewPrometheusMetricsBuilder(prometheusRegistry, "", "")
+	pub, err := bld.DecoratePublisher(pubSub)
+	if err != nil {
+		panic(err)
+	}
 
 	r.AddMiddleware(
 		middleware.Recoverer,
@@ -120,7 +124,7 @@ func main() {
 	}
 
 	routerClosed := make(chan struct{})
-	go produceMessages(routerClosed, pubSub)
+	go produceMessages(routerClosed, pub)
 	go consumeMessages(routerClosed, pubSub)
 
 	_ = r.Run()
