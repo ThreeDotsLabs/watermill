@@ -44,7 +44,7 @@ func main() {
 					return nil, errors.Wrap(err, "cannot read body")
 				}
 
-				return message.NewMessage(watermill.UUID(), b), nil
+				return message.NewMessage(watermill.NewUUID(), b), nil
 			},
 		},
 		logger,
@@ -67,7 +67,7 @@ func main() {
 	)
 	r.AddPlugin(plugin.SignalsHandler)
 
-	err = r.AddHandler(
+	r.AddHandler(
 		"http_to_kafka",
 		"/gitlab-webhooks", // this is the URL of our API
 		httpSubscriber,
@@ -88,9 +88,6 @@ func main() {
 			return []*message.Message{msg}, nil
 		},
 	)
-	if err != nil {
-		panic(err)
-	}
 
 	go func() {
 		// HTTP server needs to be started after router is ready.

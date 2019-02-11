@@ -77,7 +77,7 @@ func produceMessages(routerClosed chan struct{}, publisher message.Publisher) {
 		}
 
 		time.Sleep(time.Duration(random.Intn(100)) * time.Millisecond)
-		msg := message.NewMessage(watermill.UUID(), []byte{})
+		msg := message.NewMessage(watermill.NewUUID(), []byte{})
 		_ = publisher.Publish("sub_topic", msg)
 	}
 }
@@ -98,7 +98,7 @@ func main() {
 	prometheusRegistry := prometheus.NewRegistry()
 	closeMetrics := metrics.ServeHTTP(*metricsAddr, prometheusRegistry)
 	defer closeMetrics()
-	metrics.AddPrometheusRouterMetrics(r, prometheusRegistry, "", "")
+	metrics.NewPrometheusMetricsBuilder(prometheusRegistry, "", "").AddPrometheusRouterMetrics(r)
 
 	r.AddMiddleware(
 		middleware.Recoverer,
@@ -107,7 +107,7 @@ func main() {
 	)
 	r.AddPlugin(plugin.SignalsHandler)
 
-	err = r.AddHandler(
+	r.AddHandler(
 		"metrics-example",
 		"sub_topic",
 		pubSub,
@@ -115,9 +115,6 @@ func main() {
 		pubSub,
 		handler,
 	)
-	if err != nil {
-		panic(err)
-	}
 
 	routerClosed := make(chan struct{})
 	go produceMessages(routerClosed, pubSub)

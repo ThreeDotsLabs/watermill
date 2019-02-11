@@ -62,7 +62,7 @@ func main() {
 					panic(err)
 				}
 
-				msg = message.NewMessage(watermill.UUID(), payload)
+				msg = message.NewMessage(watermill.NewUUID(), payload)
 
 				// using function from middleware to set correlation id, useful for debugging
 				middleware.SetCorrelationID(shortuuid.New(), msg)

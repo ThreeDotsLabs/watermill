@@ -2,6 +2,7 @@
 package main
 
 import (
+	"context"
 	"log"
 
 	"github.com/Shopify/sarama"
@@ -30,7 +31,7 @@ func main() {
 		panic(err)
 	}
 
-	messages, err := subscriber.Subscribe("example.topic")
+	messages, err := subscriber.Subscribe(context.Background(), "example.topic")
 	if err != nil {
 		panic(err)
 	}
@@ -52,7 +53,7 @@ func main() {
 
 func publishMessages(publisher message.Publisher) {
 	for {
-		msg := message.NewMessage(watermill.UUID(), []byte("Hello, world!"))
+		msg := message.NewMessage(watermill.NewUUID(), []byte("Hello, world!"))
 
 		if err := publisher.Publish("example.topic", msg); err != nil {
 			panic(err)
@@ -60,7 +61,7 @@ func publishMessages(publisher message.Publisher) {
 	}
 }
 
-func process(messages chan *message.Message) {
+func process(messages <-chan *message.Message) {
 	for msg := range messages {
 		log.Printf("received message: %s, payload: %s", msg.UUID, string(msg.Payload))
 

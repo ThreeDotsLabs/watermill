@@ -2,6 +2,7 @@
 package main
 
 import (
+	"context"
 	"log"
 
 	"github.com/ThreeDotsLabs/watermill/message"
@@ -12,11 +13,11 @@ import (
 
 func main() {
 	pubSub := gochannel.NewGoChannel(
-		0, // buffer (channel) size
+		gochannel.Config{},
 		watermill.NewStdLogger(false, false),
 	)
 
-	messages, err := pubSub.Subscribe("example.topic")
+	messages, err := pubSub.Subscribe(context.Background(), "example.topic")
 	if err != nil {
 		panic(err)
 	}
@@ -36,7 +37,7 @@ func publishMessages(publisher message.Publisher) {
 	}
 }
 
-func process(messages chan *message.Message) {
+func process(messages <-chan *message.Message) {
 	for msg := range messages {
 		log.Printf("received message: %s, payload: %s", msg.UUID, string(msg.Payload))
 

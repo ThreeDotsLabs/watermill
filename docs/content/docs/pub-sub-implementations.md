@@ -13,9 +13,9 @@ toc = false
 |  [Golang Channel]({{< ref "#golang-channel" >}}) | x | x | `prod-ready` |
 |  [Kafka]({{< ref "#kafka" >}}) | x | x | `prod-ready` |
 |  [HTTP]({{< ref "#http" >}})  | x | x | `prod-ready` |
-|  [Google Cloud Pub/Sub]({{< ref "#google-cloud-pub-sub" >}})  | x | x | [`beta`](https://github.com/ThreeDotsLabs/watermill/pull/10) |
-|  [NATS Streaming]({{< ref "#nats-streaming" >}})  | x | x | `beta` |
-|  [RabbitMQ (AMQP)]({{< ref "#rabbitmq-amqp" >}})  | x | x | `beta` |
+|  [Google Cloud Pub/Sub]({{< ref "#google-cloud-pub-sub" >}})  | x | x | `prod-ready` |
+|  [NATS Streaming]({{< ref "#nats-streaming" >}})  | x | x | `prod-ready` |
+|  [RabbitMQ (AMQP)]({{< ref "#rabbitmq-amqp" >}})  | x | x | `prod-ready` |
 |  MySQL Binlog  |  | x | [`idea`](https://github.com/ThreeDotsLabs/watermill/issues/5) |
 
 All built-in implementations can be found in [message/infrastructure](https://github.com/ThreeDotsLabs/watermill/tree/master/message/infrastructure).
