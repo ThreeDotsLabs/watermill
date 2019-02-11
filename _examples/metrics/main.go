@@ -57,7 +57,7 @@ func consumeMessages(subscriber message.Subscriber) {
 		panic(err)
 	}
 
-	for msg := range messages {
+	for range messages {
 		// message consumed
 	}
 }
