@@ -66,6 +66,7 @@ All Pub/Subs implementation can be found in the [documentation](https://watermil
 * [Your first app](_examples/your-first-app) - start here!
 * [Simple application with publisher and subscriber](_examples/simple-app)
 * [HTTP to Kafka](_examples/http-to-kafka)
+* [...and more!](_examples/)
 
 ## Contributing
 
