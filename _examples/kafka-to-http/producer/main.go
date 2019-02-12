@@ -33,7 +33,7 @@ func main() {
 
 	for {
 		eventType := eventTypes[rand.Intn(3)]
-		msg := message.NewMessage(watermill.UUID(), []byte("message"))
+		msg := message.NewMessage(watermill.NewUUID(), []byte("message"))
 		msg.Metadata.Set("event_type", string(eventType))
 
 		fmt.Printf("%s Publishing %s\n\n", time.Now().String(), eventType)

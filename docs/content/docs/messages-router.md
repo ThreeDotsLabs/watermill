@@ -34,12 +34,12 @@ At the beginning you need to implement `HandlerFunc`:
 Next, you have to add a new handler with `Router.AddHandler`:
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/router.go" first_line_contains="// AddHandler" last_line_contains=") error" padding_after="0" %}}
+{{% load-snippet-partial file="content/src-link/message/router.go" first_line_contains="// AddHandler" last_line_contains=") {" padding_after="0" %}}
 {{% /render-md %}}
 
 See an example usage from [Getting Started]({{< ref "/docs/getting-started#using-messages-router" >}}):
 {{% render-md %}}
-{{% load-snippet-partial file="content/docs/getting-started/router/main.go" first_line_contains="if err := router.AddHandler(" last_line_contains="panic(err)" padding_after="1" %}}
+{{% load-snippet-partial file="content/docs/getting-started/router/main.go" first_line_contains="router.AddHandler(" last_line_contains="structHandler{}.Handler," padding_after="1" %}}
 {{% /render-md %}}
 
 ### No publisher handler
@@ -48,7 +48,7 @@ Not every handler needs to publish messages.
 You can add this kind of handler by using `Router.AddNoPublisherHandler`:
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/router.go" first_line_contains="// AddNoPublisherHandler" last_line_contains=") error" padding_after="0" %}}
+{{% load-snippet-partial file="content/src-link/message/router.go" first_line_contains="// AddNoPublisherHandler" last_line_contains=") {" padding_after="0" %}}
 {{% /render-md %}}
 
 ### Ack

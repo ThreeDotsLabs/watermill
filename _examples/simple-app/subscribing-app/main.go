@@ -3,17 +3,10 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"log"
-	"net/http"
-	"os"
 	"sync/atomic"
 	"time"
 
-	prometheusmetrics "github.com/deathowl/go-metrics-prometheus"
 	"github.com/pkg/errors"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	metrics "github.com/rcrowley/go-metrics"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
@@ -55,9 +48,6 @@ func main() {
 		// limiting processed messages to 10 per second
 		middleware.NewThrottle(100, time.Second).Middleware,
 
-		// some, simple metrics
-		newMetricsMiddleware().Middleware,
-
 		// retry middleware retries message processing if error occurred in handler
 		poisonQueue.Middleware,
 
@@ -80,29 +70,25 @@ func main() {
 	r.AddPlugin(plugin.SignalsHandler)
 
 	// handler which just counts added posts
-	if err = r.AddHandler(
+	r.AddHandler(
 		"posts_counter",
 		"posts_published",
 		createSubscriber("posts_counter_v2", logger),
 		"posts_count",
 		pub,
 		PostsCounter{memoryCountStorage{new(int64)}}.Count,
-	); err != nil {
-		panic(err)
-	}
+	)
 
 	// handler which generates "feed" from events post
 	//
 	// this implementation just prints it to stdout,
 	// but production ready implementation would save posts to some persistent storage
-	if err = r.AddNoPublisherHandler(
+	r.AddNoPublisherHandler(
 		"feed_generator",
 		"posts_published",
 		createSubscriber("feed_generator_v2", logger),
 		FeedGenerator{printFeedStorage{}}.UpdateFeed,
-	); err != nil {
-		panic(err)
-	}
+	)
 
 	if err = r.Run(); err != nil {
 		panic(err)
@@ -166,7 +152,7 @@ func (p PostsCounter) Count(msg *message.Message) ([]*message.Message, error) {
 		return nil, err
 	}
 
-	return []*message.Message{message.NewMessage(watermill.UUID(), b)}, nil
+	return []*message.Message{message.NewMessage(watermill.NewUUID(), b)}, nil
 }
 
 // intentionally not importing type from app1, because we don't need all data and we want to avoid coupling
@@ -193,7 +179,9 @@ type FeedGenerator struct {
 
 func (f FeedGenerator) UpdateFeed(message *message.Message) ([]*message.Message, error) {
 	event := postAdded{}
-	json.Unmarshal(message.Payload, &event)
+	if err := json.Unmarshal(message.Payload, &event); err != nil {
+		return nil, err
+	}
 
 	err := f.feedStorage.AddToFeed(event.Title, event.Author, event.OccurredOn)
 	if err != nil {
@@ -201,31 +189,4 @@ func (f FeedGenerator) UpdateFeed(message *message.Message) ([]*message.Message,
 	}
 
 	return nil, nil
-}
-
-func newMetricsMiddleware() middleware.Metrics {
-	t := metrics.NewTimer()
-	metrics.Register("handler.time", t)
-
-	errs := metrics.NewCounter()
-	metrics.Register("handler.errors", errs)
-
-	success := metrics.NewCounter()
-	metrics.Register("handler.success", success)
-
-	pClient := prometheusmetrics.NewPrometheusProvider(
-		metrics.DefaultRegistry,
-		"test",
-		"subsys",
-		prometheus.DefaultRegisterer,
-		1*time.Second,
-	)
-	go pClient.UpdatePrometheusMetrics()
-	http.Handle("/metrics", promhttp.Handler())
-
-	go http.ListenAndServe(":9000", nil)
-	metricsMiddleware := middleware.NewMetrics(t, errs, success)
-	metricsMiddleware.ShowStats(time.Second*5, log.New(os.Stderr, "metrics: ", log.Lmicroseconds))
-
-	return metricsMiddleware
 }

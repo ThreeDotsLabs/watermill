@@ -49,41 +49,35 @@ func main() {
 
 	// for simplicity we are using gochannel Pub/Sub here,
 	// you can replace it with any Pub/Sub implementation, it will work the same
-	pubSub := gochannel.NewGoChannel(0, logger)
+	pubSub := gochannel.NewGoChannel(gochannel.Config{}, logger)
 
 	// producing some messages in background
 	go publishMessages(pubSub)
 
-	if err := router.AddHandler(
+	router.AddHandler(
 		"struct_handler",  // handler name, must be unique
 		"example.topic_1", // topic from which we will read events
 		pubSub,
 		"example.topic_2", // topic to which we will publish event
 		pubSub,
 		structHandler{}.Handler,
-	); err != nil {
-		panic(err)
-	}
+	)
 
 	// just for debug, we are printing all events sent to `example.topic_1`
-	if err := router.AddNoPublisherHandler(
+	router.AddNoPublisherHandler(
 		"print_events_topic_1",
 		"example.topic_1",
 		pubSub,
 		printMessages,
-	); err != nil {
-		panic(err)
-	}
+	)
 
 	// just for debug, we are printing all events sent to `example.topic_2`
-	if err := router.AddNoPublisherHandler(
+	router.AddNoPublisherHandler(
 		"print_events_topic_2",
 		"example.topic_2",
 		pubSub,
 		printMessages,
-	); err != nil {
-		panic(err)
-	}
+	)
 
 	// when everything is ready, let's run router,
 	// this function is blocking since router is running
