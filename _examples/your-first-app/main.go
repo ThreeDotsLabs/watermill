@@ -67,7 +67,7 @@ func publishEvents(publisher message.Publisher) {
 		}
 
 		err = publisher.Publish(consumeTopic, message.NewMessage(
-			watermill.UUID(), // uuid of the message, very useful for debugging
+			watermill.NewUUID(), // uuid of the message, very useful for debugging
 			payload,
 		))
 		if err != nil {
@@ -97,7 +97,7 @@ func main() {
 	subscriber := createSubscriber("handler_1")
 
 	// adding handler, multiple handlers can be added
-	err = router.AddHandler(
+	router.AddHandler(
 		"handler_1",  // handler name, must be unique
 		consumeTopic, // topic from which messages should be consumed
 		subscriber,
@@ -129,14 +129,13 @@ func main() {
 				return nil, err
 			}
 
-			producedMessage := message.NewMessage(watermill.UUID(), producedPayload)
+			producedMessage := message.NewMessage(watermill.NewUUID(), producedPayload)
 
 			return []*message.Message{producedMessage}, nil
 		},
 	)
-	if err != nil {
+
+	if err := router.Run(); err != nil {
 		panic(err)
 	}
-
-	router.Run()
 }

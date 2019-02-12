@@ -49,7 +49,7 @@ func newPubSub(t *testing.T, clientID string, queueName string) message.PubSub {
 }
 
 func createPubSub(t *testing.T) infrastructure.PubSub {
-	return newPubSub(t, watermill.UUID(), "test-queue").(infrastructure.PubSub)
+	return newPubSub(t, watermill.NewUUID(), "test-queue").(infrastructure.PubSub)
 }
 
 func createPubSubWithDurable(t *testing.T, consumerGroup string) infrastructure.PubSub {

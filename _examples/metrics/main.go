@@ -2,12 +2,11 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"math"
 	"math/rand"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"github.com/prometheus/client_golang/prometheus"
 
@@ -72,7 +71,7 @@ func produceMessages(routerClosed chan struct{}, publisher message.Publisher) {
 		}
 
 		time.Sleep(500*time.Millisecond + time.Duration(random.Intn(500))*time.Millisecond)
-		msg := message.NewMessage(watermill.UUID(), []byte{})
+		msg := message.NewMessage(watermill.NewUUID(), []byte{})
 		_ = publisher.Publish("sub_topic", msg)
 	}
 }
@@ -80,7 +79,7 @@ func produceMessages(routerClosed chan struct{}, publisher message.Publisher) {
 func main() {
 	flag.Parse()
 
-	pubSub := gochannel.NewGoChannel(0, logger)
+	pubSub := gochannel.NewGoChannel(gochannel.Config{}, logger)
 
 	r, err := message.NewRouter(
 		message.RouterConfig{},
@@ -103,7 +102,7 @@ func main() {
 	)
 	r.AddPlugin(plugin.SignalsHandler)
 
-	err = r.AddHandler(
+	r.AddHandler(
 		"metrics-example",
 		"sub_topic",
 		pubSub,
@@ -111,9 +110,6 @@ func main() {
 		pubSub,
 		handler,
 	)
-	if err != nil {
-		panic(err)
-	}
 
 	pubWithRandomFail := randomFailPublisherDecorator{pubSub, 0.1}
 

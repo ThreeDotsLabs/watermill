@@ -1,0 +1,9 @@
+syntax = "proto3";
+package cqrs_test;
+
+import "google/protobuf/timestamp.proto";
+
+message TestProtobufEvent {
+    string id = 1;
+    google.protobuf.Timestamp when = 3;
+}

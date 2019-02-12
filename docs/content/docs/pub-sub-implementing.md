@@ -13,9 +13,7 @@ toc = true
 To add support for a custom Pub/Sub, you have to implement the `message.PubSub` interface.
 
 {{% render-md %}}
-{{% load-snippet file="content/src-link/message/publisher.go" %}}
-{{% load-snippet file="content/src-link/message/subscriber.go" %}}
-{{% load-snippet-partial file="content/src-link/message/pubsub.go" first_line_contains="type PubSub interface {" last_line_contains="Close() error" padding_after="1" %}}
+{{% load-snippet-partial file="content/src-link/message/pubsub.go" first_line_contains="type publisher interface" last_line_contains="func NewPubSub" padding_after="0" %}}
 {{% /render-md %}}
 
 ### TODO list

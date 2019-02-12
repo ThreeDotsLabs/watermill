@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/internal/tests"
 	"github.com/ThreeDotsLabs/watermill/message"
@@ -18,8 +20,11 @@ import (
 )
 
 func createPersistentPubSub(t *testing.T) infrastructure.PubSub {
-	return gochannel.NewPersistentGoChannel(
-		10000,
+	return gochannel.NewGoChannel(
+		gochannel.Config{
+			OutputChannelBuffer: 10000,
+			Persistent:          true,
+		},
 		watermill.NewStdLogger(true, true),
 	).(infrastructure.PubSub)
 }
@@ -41,10 +46,10 @@ func TestPublishSubscribe_persistent(t *testing.T) {
 func TestPublishSubscribe_not_persistent(t *testing.T) {
 	messagesCount := 100
 	pubSub := gochannel.NewGoChannel(
-		int64(messagesCount),
+		gochannel.Config{OutputChannelBuffer: int64(messagesCount)},
 		watermill.NewStdLogger(true, true),
 	)
-	topicName := "test_topic_" + watermill.UUID()
+	topicName := "test_topic_" + watermill.NewUUID()
 
 	msgs, err := pubSub.Subscribe(context.Background(), topicName)
 	require.NoError(t, err)
@@ -53,6 +58,52 @@ func TestPublishSubscribe_not_persistent(t *testing.T) {
 	receivedMsgs, _ := subscriber.BulkRead(msgs, messagesCount, time.Second)
 
 	tests.AssertAllMessagesReceived(t, sendMessages, receivedMsgs)
+
+	assert.NoError(t, pubSub.Close())
+}
+
+func TestPublishSubscribe_block_until_ack(t *testing.T) {
+	pubSub := gochannel.NewGoChannel(
+		gochannel.Config{BlockPublishUntilSubscriberAck: true},
+		watermill.NewStdLogger(true, true),
+	)
+	topicName := "test_topic_" + watermill.NewUUID()
+
+	msgs, err := pubSub.Subscribe(context.Background(), topicName)
+	require.NoError(t, err)
+
+	published := make(chan struct{})
+	go func() {
+		err := pubSub.Publish(topicName, message.NewMessage("1", nil))
+		require.NoError(t, err)
+		close(published)
+	}()
+
+	msg1 := <-msgs
+	select {
+	case <-published:
+		t.Fatal("publish should be blocked until ack")
+	default:
+		// ok
+	}
+
+	msg1.Nack()
+	select {
+	case <-published:
+		t.Fatal("publish should be blocked after nack")
+	default:
+		// ok
+	}
+
+	msg2 := <-msgs
+	msg2.Ack()
+
+	select {
+	case <-published:
+		// ok
+	case <-time.After(time.Second):
+		t.Fatal("publish should be not blocked after ack")
+	}
 }
 
 func TestPublishSubscribe_race_condition_on_subscribe(t *testing.T) {
@@ -79,8 +130,11 @@ func testPublishSubscribeSubRace(t *testing.T) {
 		subscribersCount = 20
 	}
 
-	pubSub := gochannel.NewPersistentGoChannel(
-		int64(messagesCount),
+	pubSub := gochannel.NewGoChannel(
+		gochannel.Config{
+			OutputChannelBuffer: int64(messagesCount),
+			Persistent:          true,
+		},
 		watermill.NewStdLogger(true, false),
 	)
 
@@ -91,7 +145,7 @@ func testPublishSubscribeSubRace(t *testing.T) {
 	sentMessages := message.Messages{}
 	go func() {
 		for i := 0; i < messagesCount; i++ {
-			msg := message.NewMessage(watermill.UUID(), nil)
+			msg := message.NewMessage(watermill.NewUUID(), nil)
 			sentMessages = append(sentMessages, msg)
 
 			go func() {

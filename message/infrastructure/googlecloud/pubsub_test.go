@@ -131,7 +131,7 @@ func produceMessages(t *testing.T, ctx context.Context, topic string, howMany in
 
 	messages := make([]*message.Message, howMany)
 	for i := 0; i < howMany; i++ {
-		messages[i] = message.NewMessage(watermill.UUID(), []byte{})
+		messages[i] = message.NewMessage(watermill.NewUUID(), []byte{})
 	}
 
 	require.NoError(t, pub.Publish(topic, messages...))

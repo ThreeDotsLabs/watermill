@@ -24,14 +24,14 @@ When a message is processed, you should send an [`Ack()`]({{< ref "#ack" >}}) or
 #### Sending `Ack`
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/message.go" first_line_contains="// Ack" last_line_contains="func (m *Message) Ack() error {" padding_after="0" %}}
+{{% load-snippet-partial file="content/src-link/message/message.go" first_line_contains="// Ack" last_line_contains="func (m *Message) Ack() bool {" padding_after="0" %}}
 {{% /render-md %}}
 
 
 ### Nack
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/message.go" first_line_contains="// Nack" last_line_contains="func (m *Message) Nack() error {" padding_after="0" %}}
+{{% load-snippet-partial file="content/src-link/message/message.go" first_line_contains="// Nack" last_line_contains="func (m *Message) Nack() bool {" padding_after="0" %}}
 {{% /render-md %}}
 
 ### Receiving `Ack/Nack`
