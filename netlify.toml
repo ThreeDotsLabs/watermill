@@ -1,5 +1,5 @@
 [build]
-  command = "hugo version && ./build.sh"
+  command = "hugo version && ./build.sh --copy"
   base = "docs/"
   publish = "docs/public/"
 
