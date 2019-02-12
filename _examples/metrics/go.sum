@@ -17,6 +17,7 @@ github.com/Shopify/toxiproxy v2.1.3+incompatible h1:awiJqUYH4q4OmoBiRccJykjd7B+w
 github.com/Shopify/toxiproxy v2.1.3+incompatible/go.mod h1:OXgGpZ6Cli1/URJOF1DMxUHB2q5Ap20/P/eIdh4G0pI=
 github.com/ThreeDotsLabs/watermill v0.2.2-0.20190211093512-120551e326b8 h1:QUZtNqJdlakrPQ3KNGIbq6dbu80ikuNmq+IUcJVmW4k=
 github.com/ThreeDotsLabs/watermill v0.2.2-0.20190211093512-120551e326b8/go.mod h1:8+sP309OzQmiQRIe/mybBNKNvszj7igrIWym/1jnhaE=
+github.com/ThreeDotsLabs/watermill v0.2.2-0.20190212171817-e1f528a3bf3b h1:mQlF9k/4xMbuHLTvPiuOCYk62+a2yYmfq1VgjpiQLqg=
 github.com/ThreeDotsLabs/watermill v0.2.2-0.20190212171817-e1f528a3bf3b/go.mod h1:8+sP309OzQmiQRIe/mybBNKNvszj7igrIWym/1jnhaE=
 github.com/anmitsu/go-shlex v0.0.0-20161002113705-648efa622239/go.mod h1:2FmKhYUyUczH0OGQWaF5ceTx0UBShxjsH6f8oGKYe2c=
 github.com/armon/go-metrics v0.0.0-20180917152333-f0300d1749da/go.mod h1:Q73ZrmVTwzkszR9V5SSuryQ31EELlFMUz1kKyl939pY=
