@@ -22,6 +22,8 @@ toc = true
 
 #### Command
 
+The command is a simple data structure, which is the request for executing some operation.
+
 #### Command Bus
 
 {{% render-md %}}
@@ -41,6 +43,8 @@ toc = true
 {{% /render-md %}}
 
 #### Event
+
+The event represents something that already took place. They are immutable.
 
 #### Event Bus
 
@@ -122,7 +126,7 @@ As mentioned, we want to order beer every time when the room is booked (*"Whenev
 {{% load-snippet-partial file="content/src-link/_examples/cqrs-protobuf/main.go" first_line_contains="// OrderBeerOnRoomBooked is a event handler" last_line_contains="// OrderBeerHandler is a command handler" padding_after="0" %}}
 {{% /render-md %}}
 
-Handler for `OrderBeerHandler` is very similar to `BookRoomHandler`. The only difference is, that it sometimes returns an error when there is not enough beer, which cause redelivery of the command).
+Handler for `OrderBeerHandler` is very similar to `BookRoomHandler`. The only difference is, that it sometimes returns an error when there is not enough beer, which causes redelivery of the command).
 Will skip in the documentation, the entire implementation you can check [entire example source code](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/cqrs-protobuf/?utm_source=cqrs_doc).
 
 ### Building read model with the event handler
