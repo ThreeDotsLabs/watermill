@@ -31,6 +31,8 @@ declare -a files_to_link=(
     "message/message.go"
     "message/pubsub.go"
     "message/router.go"
+    "components/metrics/builder.go"
+    "_examples/metrics/main.go"
 )
 
 pushd ../

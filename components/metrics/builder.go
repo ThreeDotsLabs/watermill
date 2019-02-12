@@ -24,6 +24,8 @@ type PrometheusMetricsBuilder struct {
 	Subsystem string
 }
 
+// AddPrometheusRouterMetrics is a convenience function that acts on the message router to add the metrics middleware
+// to all its handlers. The handlers' publishers and subscribers are also decorated.
 func (b PrometheusMetricsBuilder) AddPrometheusRouterMetrics(r *message.Router) {
 	r.AddPublisherDecorators(b.DecoratePublisher)
 	r.AddSubscriberDecorators(b.DecorateSubscriber)

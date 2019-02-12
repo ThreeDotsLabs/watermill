@@ -90,10 +90,11 @@ func main() {
 	}
 
 	prometheusRegistry := prometheus.NewRegistry()
-	closeMetrics := metrics.ServeHTTP(*metricsAddr, prometheusRegistry)
-	defer closeMetrics()
 	metricsBuilder := metrics.NewPrometheusMetricsBuilder(prometheusRegistry, "", "")
 	metricsBuilder.AddPrometheusRouterMetrics(r)
+
+	closeMetrics := metrics.ServeHTTP(*metricsAddr, prometheusRegistry)
+	defer closeMetrics()
 
 	r.AddMiddleware(
 		middleware.Recoverer,
@@ -114,7 +115,7 @@ func main() {
 	pubWithRandomFail := randomFailPublisherDecorator{pubSub, 0.1}
 
 	// The handler's publisher and subscriber will be decorated by `AddPrometheusRouterMetrics`.
-	// but we will use the same pub/sub to generate messages incoming to the handler
+	// We are using the same pub/sub to generate messages incoming to the handler
 	// and consume the outgoing messages.
 	// They will have `handler_name=<no handler>` label in Prometheus.
 	subWithMetrics, err := metricsBuilder.DecorateSubscriber(pubSub)
