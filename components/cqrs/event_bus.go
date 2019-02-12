@@ -4,6 +4,7 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
+// EventBus transports events to event handlers.
 type EventBus struct {
 	publisher message.Publisher
 	topic     string
@@ -28,6 +29,7 @@ func NewEventBus(
 	return &EventBus{publisher, topic, marshaler}
 }
 
+// Send sends command to the event bus.
 func (c EventBus) Publish(event interface{}) error {
 	msg, err := c.marshaler.Marshal(event)
 	if err != nil {

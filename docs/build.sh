@@ -31,6 +31,14 @@ declare -a files_to_link=(
     "message/message.go"
     "message/pubsub.go"
     "message/router.go"
+    "_examples/cqrs-protobuf/main.go"
+    "components/cqrs/command_bus.go"
+    "components/cqrs/command_processor.go"
+    "components/cqrs/event_bus.go"
+    "components/cqrs/event_processor.go"
+    "components/cqrs/marshaler.go"
+    "components/cqrs/cqrs.go"
+    "components/cqrs/marshaler.go"
 )
 
 pushd ../

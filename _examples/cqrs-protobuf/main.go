@@ -17,7 +17,7 @@ import (
 	"github.com/golang/protobuf/ptypes"
 )
 
-// BookRoomHandler is a command processor, which handles BookRoom command and emits RoomBooked.
+// BookRoomHandler is a command handler, which handles BookRoom command and emits RoomBooked.
 //
 // In CQRS, one command must be handled by only one handler.
 // When another handler with this command is added to command processor, error will be retuerned.
@@ -39,8 +39,8 @@ func (b BookRoomHandler) Handle(c interface{}) error {
 
 	log.Printf("Booked %s for %s from %s to %s", cmd.RoomId, cmd.GuestName, cmd.StartDate, cmd.EndDate)
 
-	// RoomBooked will be handled by OrderBeerOnRoomBooked event processor,
-	// in future RoomBooked may be handled by multiple event processor
+	// RoomBooked will be handled by OrderBeerOnRoomBooked event handler,
+	// in future RoomBooked may be handled by multiple event handler
 	if err := b.eventBus.Publish(&RoomBooked{
 		ReservationId: watermill.NewUUID(),
 		RoomId:        cmd.RoomId,
@@ -55,7 +55,7 @@ func (b BookRoomHandler) Handle(c interface{}) error {
 	return nil
 }
 
-// OrderBeerOnRoomBooked is a event processor, which handles RoomBooked event and emits OrderBeer command.
+// OrderBeerOnRoomBooked is a event handler, which handles RoomBooked event and emits OrderBeer command.
 type OrderBeerOnRoomBooked struct {
 	commandBus *cqrs.CommandBus
 }
@@ -76,7 +76,7 @@ func (o OrderBeerOnRoomBooked) Handle(e interface{}) error {
 }
 
 // OrderBeerHandler is a command handler, which handles OrderBeer command and emits BeerOrdered.
-// BeerOrdered is not handled by any event processor, but we may use persistent Pub/Sub to handle it in the future.
+// BeerOrdered is not handled by any event handler, but we may use persistent Pub/Sub to handle it in the future.
 type OrderBeerHandler struct {
 	eventBus *cqrs.EventBus
 }
