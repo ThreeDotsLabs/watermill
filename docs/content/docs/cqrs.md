@@ -18,7 +18,7 @@ toc = true
 
 ### Glossary
 
-![CQRS Schema](https://threedots.tech/watermill-io/cqrs-big-picture.png)
+![CQRS Schema](https://threedots.tech/watermill-io/cqrs-big-picture.svg)
 
 #### Command
 
