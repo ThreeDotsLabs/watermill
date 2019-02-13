@@ -5,6 +5,7 @@ import (
 )
 
 // CommandEventMarshaler marshals Commands and Events to Watermill's messages and vice versa.
+// Payload of the command needs to be marshaled to []bytes.
 type CommandEventMarshaler interface {
 	// Marshal marshals Command or Event to Watermill's message.
 	Marshal(v interface{}) (*message.Message, error)

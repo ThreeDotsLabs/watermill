@@ -4,6 +4,7 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
+// CommandBus transports commands to command handlers.
 type CommandBus struct {
 	publisher message.Publisher
 	topic     string
@@ -28,6 +29,7 @@ func NewCommandBus(
 	return &CommandBus{publisher, topic, marshaler}
 }
 
+// Send sends command to the command bus.
 func (c CommandBus) Send(cmd interface{}) error {
 	msg, err := c.marshaler.Marshal(cmd)
 	if err != nil {

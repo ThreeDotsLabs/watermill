@@ -9,11 +9,17 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
+// EventHandler receive event defined by NewEvent and handle it with Handle method.
+// If using DDD, CommandHandler may modify and persist the aggregate.
+// It can also invoke process manager, saga or just build a read model.
+//
+// In contrast to CommandHandler, every Event can have multiple EventHandlers.
 type EventHandler interface {
 	NewEvent() interface{}
 	Handle(event interface{}) error
 }
 
+// EventProcessor determines which EventHandler should handle event received from event bus.
 type EventProcessor struct {
 	handlers    []EventHandler
 	eventsTopic string
