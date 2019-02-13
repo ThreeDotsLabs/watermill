@@ -70,4 +70,4 @@ Then select the Prometheus data source created in the previous step. Click on `I
 
 ### Find out more 
 
-To find out more about metrics be sure to check out the [Watermill docs](https://watermill.io/docs/metrics).
+To find out more, about metrics be sure to check out the [Watermill docs](https://watermill.io/docs/metrics).

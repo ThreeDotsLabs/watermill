@@ -33,6 +33,8 @@ Example use of `AddPrometheusRouterMetrics`:
 {{% load-snippet-partial file="content/src-link/_examples/metrics/main.go" first_line_contains="// we leave the namespace" last_line_contains="metricsBuilder.AddPrometheusRouterMetrics" %}}
 {{% /render-md %}}
 
+In the snippet above, we have left the `namespace` and `subsystem` arguments empty. The Prometheus client library [uses these](https://godoc.org/github.com/prometheus/client_golang/prometheus#BuildFQName) to prefix the metric names. You may want to use namespace or subsystem, but be aware that this will impact the metric names and you will have to adjust the Grafana dashboard accordingly.
+
 Standalone publishers and subscribers may also be decorated through the use of dedicated methods of `PrometheusMetricBuilder`:
 
 {{% render-md %}}
@@ -130,6 +132,8 @@ For more information on Prometheus metric types, please refer to [Prometheus doc
 </table>
 
 Additionally, every metric has the `node` label, provided by Prometheus, with value corresponding to the instance that the metric comes from, and `job`, which is the job name specified in the [Prometheus configuration file](https://github.com/ThreeDotsLabs/watermill/blob/master/_examples/metrics/prometheus.yml).
+
+**NOTE**: As described [above](#wrapping-publishers-subscribers-and-handlers), using non-empty `namespace` or `subsystem` will result in prefixed metric names. You might need to adjust for it, for example in the definitions of panels in the Grafana dashboard.
 
 ### Customization
 
