@@ -19,6 +19,8 @@ github.com/ThreeDotsLabs/watermill v0.2.2-0.20190211093512-120551e326b8 h1:QUZtN
 github.com/ThreeDotsLabs/watermill v0.2.2-0.20190211093512-120551e326b8/go.mod h1:8+sP309OzQmiQRIe/mybBNKNvszj7igrIWym/1jnhaE=
 github.com/ThreeDotsLabs/watermill v0.2.2-0.20190212171817-e1f528a3bf3b h1:mQlF9k/4xMbuHLTvPiuOCYk62+a2yYmfq1VgjpiQLqg=
 github.com/ThreeDotsLabs/watermill v0.2.2-0.20190212171817-e1f528a3bf3b/go.mod h1:8+sP309OzQmiQRIe/mybBNKNvszj7igrIWym/1jnhaE=
+github.com/ThreeDotsLabs/watermill v0.3.0 h1:/Dbf8kU+c5UtTJEaauLXrOnzu5Be/BvQ1MXO3838ino=
+github.com/ThreeDotsLabs/watermill v0.3.0/go.mod h1:8+sP309OzQmiQRIe/mybBNKNvszj7igrIWym/1jnhaE=
 github.com/anmitsu/go-shlex v0.0.0-20161002113705-648efa622239/go.mod h1:2FmKhYUyUczH0OGQWaF5ceTx0UBShxjsH6f8oGKYe2c=
 github.com/armon/go-metrics v0.0.0-20180917152333-f0300d1749da/go.mod h1:Q73ZrmVTwzkszR9V5SSuryQ31EELlFMUz1kKyl939pY=
 github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973 h1:xJ4a3vCFaGF/jqvzLMYoU8P317H5OQ+Via4RmuPwCS0=
