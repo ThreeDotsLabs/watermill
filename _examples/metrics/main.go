@@ -110,17 +110,19 @@ func main() {
 		handler,
 	)
 
-	pubWithRandomFail := randomFailPublisherDecorator{pubSub, 0.1}
+	// separate the publisher from pubSub to decorate it separately
+	sub := pubSub.(message.Subscriber)
+	pub := randomFailPublisherDecorator{pubSub, 0.1}
 
 	// The handler's publisher and subscriber will be decorated by `AddPrometheusRouterMetrics`.
 	// We are using the same pub/sub to generate messages incoming to the handler
 	// and consume the outgoing messages.
 	// They will have `handler_name=<no handler>` label in Prometheus.
-	subWithMetrics, err := metricsBuilder.DecorateSubscriber(pubSub)
+	subWithMetrics, err := metricsBuilder.DecorateSubscriber(sub)
 	if err != nil {
 		panic(err)
 	}
-	pubWithMetrics, err := metricsBuilder.DecoratePublisher(pubWithRandomFail)
+	pubWithMetrics, err := metricsBuilder.DecoratePublisher(pub)
 	if err != nil {
 		panic(err)
 	}
