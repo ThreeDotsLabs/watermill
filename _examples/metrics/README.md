@@ -39,7 +39,7 @@ However, what is the most useful way to monitor is through the use of Grafana, w
 
 The fresh Grafana image should greet you with a login screen:
 
-![Grafana login screen](https://gitlab.com/threedotslabs/threedots.tech/raw/master/static/watermill-io/grafana_login.png)
+![Grafana login screen](https://threedots.tech/watermill-io/grafana_login.png)
 
 Just use the default `admin:admin` credentials. You can skip changing the password, if you wish.
 
@@ -52,12 +52,22 @@ In the following screen:
 1. Enter the `http://localhost:9090` value in the HTTP/URL section.
 1. You can leave the remaining settings at default and click `Save & Test`.
 
-![Prometheus data source configuration](https://gitlab.com/threedotslabs/threedots.tech/raw/master/static/watermill-io/prometheus_data_source_config.png)
+![Prometheus data source configuration](https://threedots.tech/watermill-io/prometheus_data_source_config.png)
 
 The Prometheus data source is now ready to use in Grafana.
 
-#### What's next
+#### Importing the Grafana dashboard
 
-Follow these instructions to [import the Grafana dashboard](https://watermill.io/docs/metrics#importing-the-dashboard) that we have prepared for you.
+We have prepared a Grafana dashboard that visualizes the metrics exported by this example.
 
-To find out more about metrics, check out [Watermill docs](https://watermill.io/docs/metrics).
+To import the Grafana dashboard, select Dashboard/Manage from the left menu, and then click on `+Import` (or go to http://localhost:3000/dashboard/import).
+
+Enter the dashboard URL https://grafana.com/dashboards/9777 (or just the ID, 9777), and click on Load.
+
+![Importing the dashboard](https://threedots.tech/watermill-io/grafana_import_dashboard.png)
+
+Then select the Prometheus data source created in the previous step. Click on `Import`, and you're done!
+
+### Find out more 
+
+To find out more about metrics be sure to check out the [Watermill docs](https://watermill.io/docs/metrics).

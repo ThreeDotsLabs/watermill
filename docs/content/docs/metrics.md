@@ -55,32 +55,31 @@ Here is an example of its use in practice:
 {{% load-snippet-partial file="content/src-link/_examples/metrics/main.go" first_line_contains="prometheusRegistry, closeMetricsServer :=" last_line_contains="metricsBuilder.AddPrometheusRouterMetrics" %}}
 {{% /render-md %}}
 
-### Grafana dashboard
-
-We have prepared a [Grafana dashboard](https://grafana.com/dashboards/9777) to use with the metrics implementation described above. It provides basic information about the throughput, failure rates and publish/handler durations.
-
-For a detailed instruction on how to run the example and use the dashboard on your machine, check [the next section](#example-application).
-
-To find out which metrics are exported to Prometheus, see [Exported metrics](#exported-metrics).
-
-<a target="_blank" href="https://gitlab.com/threedotslabs/threedots.tech/raw/master/static/watermill-io/grafana_dashboard.png"><img src="https://gitlab.com/threedotslabs/threedots.tech/raw/master/static/watermill-io/grafana_dashboard_small.png" /></a>
-
 ### Example application
 
 To see how the metrics dashboard works in practice, you can check out the [metrics example](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/metrics). 
 
 Follow the instructions in the example's [README](https://github.com/ThreeDotsLabs/watermill/blob/master/_examples/metrics/README.md) to make it run and add the Prometheus data source to Grafana.
 
+### Grafana dashboard
+
+We have prepared a [Grafana dashboard](https://grafana.com/dashboards/9777) to use with the metrics implementation described above. It provides basic information about the throughput, failure rates and publish/handler durations.
+
+If you want to check out the dashboard on your machine, you can use the [Example application](#example-application).
+
+To find out more about the metrics that are exported to Prometheus, see [Exported metrics](#exported-metrics).
+
+<a target="_blank" href="https://threedots.tech/watermill-io/grafana_dashboard.png"><img src="https://threedots.tech/watermill-io/grafana_dashboard_small.png" /></a>
 
 #### Importing the dashboard
 
-To import the Grafana dashboard, select Dashboard/Manage from the left menu, and then click on `+Import` (or go to http://localhost:3000/dashboard/import).
+To import the Grafana dashboard, select Dashboard/Manage from the left menu, and then click on `+Import`.
 
 Enter the dashboard URL https://grafana.com/dashboards/9777 (or just the ID, 9777), and click on Load.
 
-![Importing the dashboard](https://gitlab.com/threedotslabs/threedots.tech/raw/master/static/watermill-io/grafana_import_dashboard.png)
+![Importing the dashboard](https://threedots.tech/watermill-io/grafana_import_dashboard.png)
 
-Then select the Prometheus data source created in the previous step. Click on `Import`, and you're done!
+Then select your the Prometheus data source that scrapes the `/metrics` endpoint. Click on `Import`, and you're done!
 
 ### Exported metrics
 
