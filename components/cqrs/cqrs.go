@@ -7,9 +7,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-// todo - link to docs
-// todo - glossary and schema
-
 type FacadeConfig struct {
 	CommandsTopic   string
 	CommandHandlers func(commandBus *CommandBus, eventBus *EventBus) []CommandHandler
@@ -65,6 +62,9 @@ func (c FacadeConfig) CommandsEnabled() bool {
 	return c.CommandsTopic != "" || c.CommandsPubSub != nil
 }
 
+// Facade is a facade for creating the Command and Event buses and processors.
+// It was created to avoid boilerplate, when using CQRS in the standard way.
+// You can use facade or create buses and processors manually (you can inspire with NewFacade).
 type Facade struct {
 	commandsTopic string
 	commandBus    *CommandBus
