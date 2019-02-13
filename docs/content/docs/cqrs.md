@@ -22,7 +22,7 @@ toc = true
 
 #### Command
 
-The command is a simple data structure, which is the request for executing some operation.
+The command is a simple data structure, representing the request for executing some operation.
 
 #### Command Bus
 
@@ -44,7 +44,7 @@ The command is a simple data structure, which is the request for executing some 
 
 #### Event
 
-The event represents something that already took place. They are immutable.
+The event represents something that already took place. Events are immutable.
 
 #### Event Bus
 
@@ -80,7 +80,7 @@ The event represents something that already took place. They are immutable.
 
 ### Example domain
 
-As the example, we would use a simple domain which is responsible for handing room bookings in the hotel.
+As an example, we will use a simple domain, that is responsible for handing room booking in a hotel.
 
 We will use **Event Storming** notation to show the model of this domain.
 
@@ -89,22 +89,22 @@ Legend:
 - **blue** post-its are commands
 - **orange** post-its are events
 - **green** post-its are read models, asynchronously generated from events
-- **violet** post-its are policies, which are triggered by events and produces commands
-- **pink** post its are hot-spots, we mark places when problems often occur
+- **violet** post-its are policies, which are triggered by events and produce commands
+- **pink** post its are hot-spots; we mark places where problems often occur
 
 ![CQRS Event Storming](https://threedots.tech/watermill-io/cqrs-example-storming.png)
 
 The domain is simple:
 
-- Guest is able to **book the room**.
-- **Whenever a room is booked, we order beer** for the guest (because we love our guests).
-    - We know, that sometimes there is **not enough of beer**.
-- We generate **financial report** based on the bookings.
+- A Guest is able to **book a room**.
+- **Whenever a room is booked, we order a beer** for the guest (because we love our guests).
+    - We know that sometimes there are **not enough beers**.
+- We generate a **financial report** based on the bookings.
 
 
 ### Sending a command
 
-In the beginning, we need to simulate the guest action.
+For the beginning, we need to simulate the guest's action.
 
 {{% render-md %}}
 {{% load-snippet-partial file="content/src-link/_examples/cqrs-protobuf/main.go" first_line_contains="bookRoomCmd := &BookRoom{" last_line_contains="panic(err)" padding_after="1" %}}
@@ -120,37 +120,39 @@ In the beginning, we need to simulate the guest action.
 
 ### Event handler
 
-As mentioned, we want to order beer every time when the room is booked (*"Whenever Room is booked"* post-it). We do it by using `OrderBeer` command.
+As mentioned before, we want to order a beer every time when a room is booked (*"Whenever a Room is booked"* post-it). We do it by using the `OrderBeer` command.
 
 {{% render-md %}}
 {{% load-snippet-partial file="content/src-link/_examples/cqrs-protobuf/main.go" first_line_contains="// OrderBeerOnRoomBooked is a event handler" last_line_contains="// OrderBeerHandler is a command handler" padding_after="0" %}}
 {{% /render-md %}}
 
-Handler for `OrderBeerHandler` is very similar to `BookRoomHandler`. The only difference is, that it sometimes returns an error when there is not enough beer, which causes redelivery of the command).
-Will skip in the documentation, the entire implementation you can check [entire example source code](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/cqrs-protobuf/?utm_source=cqrs_doc).
+`OrderBeerHandler` is very similar to `BookRoomHandler`. The only difference is, that it sometimes returns an error when there are not enough beers, which causes redelivery of the command.
+You can find the entire implementation in the [example source code](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/cqrs-protobuf/?utm_source=cqrs_doc).
 
-### Building read model with the event handler
+### Building a read model with the event handler
 
 {{% render-md %}}
 {{% load-snippet-partial file="content/src-link/_examples/cqrs-protobuf/main.go" first_line_contains="// BookingsFinancialReport is a read model" last_line_contains="func main() {" padding_after="0" %}}
 {{% /render-md %}}
 
-### Wiring up - CQRS facade
+### Wiring it up - the CQRS facade
 
 We have all the blocks to build our CQRS application. We now need to use some kind of glue to wire it up.
 
 We will use the simplest in-memory messaging infrastructure: [GoChannel]({{< ref "pub-sub-implementations#golang-channel" >}}).
 
-Under the hood Watermill, CQRS is using Watermill's message router. If you not familiar with it and want to know how it works you should check [Getting Started guide]({{< ref "getting-started" >}}). It may also learn how to use some standard messaging tools like metrics, poison queue, throttling, correlation and other tools used by every message-driven application which are built-in Watermill.
+Under the hood, CQRS is using Watermill's message router. If you are not familiar with it and want to learn how it works, you should check [Getting Started guide]({{< ref "getting-started" >}}).
+It will also show you how to use some standard messaging patterns, like metrics, poison queue, throttling, correlation and other tools used by every message-driven application. Those come built-in with Watermill.
 
-But let's go back to the CQRS. As you already know CQRS is build form many components like Command or Event buses, handlers processors etc. To simplify creating all these building blocks, we created `cqrs.Facade. which will create all of them.
+Let's go back to the CQRS. As you already know, CQRS is built from multiple components, like Command or Event buses, handlers, processors, etc.
+To simplify creating all these building blocks, we created `cqrs.Facade`, which creates all of them.
 
 {{% render-md %}}
 {{% load-snippet-partial file="content/src-link/_examples/cqrs-protobuf/main.go" first_line_contains="main() {" last_line_contains="err := router.Run()" padding_after="3" %}}
 {{% /render-md %}}
 
-And that's all. We have working CQRS application.
+And that's all. We have a working CQRS application.
 
 ### What's next?
 
-As mentioned before, if you are not familiar with Watermill it's highly recommended to read [Getting Started guide]({{< ref "getting-started" >}}).
+As mentioned before, if you are not familiar with Watermill, we highly recommend reading [Getting Started guide]({{< ref "getting-started" >}}).

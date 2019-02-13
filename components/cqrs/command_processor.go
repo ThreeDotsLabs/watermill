@@ -9,7 +9,7 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
-// CommandHandler receive command defined by NewCommand and handle it with Handle method.
+// CommandHandler receives a command defined by NewCommand and handles it with the Handle method.
 // If using DDD, CommandHandler may modify and persist the aggregate.
 //
 // In contrast to EvenHandler, every Command must have only one CommandHandler.
@@ -18,7 +18,7 @@ type CommandHandler interface {
 	Handle(cmd interface{}) error
 }
 
-// CommandProcessor determines which CommandHandler should handle command received from command bus.
+// CommandProcessor determines which CommandHandler should handle the command received from the command bus.
 type CommandProcessor struct {
 	handlers      []CommandHandler
 	commandsTopic string
