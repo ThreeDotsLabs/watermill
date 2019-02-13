@@ -3,9 +3,10 @@ package message
 import (
 	"context"
 	"fmt"
-	"strings"
 	"sync"
 	"time"
+
+	"github.com/ThreeDotsLabs/watermill/internal"
 
 	"github.com/ThreeDotsLabs/watermill"
 	sync_internal "github.com/ThreeDotsLabs/watermill/internal/sync"
@@ -193,7 +194,7 @@ func (r *Router) AddHandler(
 		panic(DuplicateHandlerNameError{handlerName})
 	}
 
-	publisherName, subscriberName := r.pubName(publisher), r.subName(subscriber)
+	publisherName, subscriberName := internal.StructName(publisher), internal.StructName(subscriber)
 
 	r.handlers[handlerName] = &handler{
 		name:   handlerName,
@@ -212,42 +213,6 @@ func (r *Router) AddHandler(
 		messagesCh:        nil,
 		closeCh:           r.closeCh,
 	}
-}
-
-// pubName resolves the name of publisher.
-// It is then stored in the context of the message.
-func (r *Router) pubName(pub Publisher) string {
-	var publisherName string
-
-	if pubStringer, ok := pub.(fmt.Stringer); ok {
-		publisherName = pubStringer.String()
-	} else {
-		// trim the pointer indicator, if any
-		publisherName = strings.TrimLeft(
-			fmt.Sprintf("%T", pub),
-			"*",
-		)
-	}
-
-	return publisherName
-}
-
-// subName resolves the name of subscriber.
-// It is then stored in the context of the message.
-func (r *Router) subName(sub Subscriber) string {
-	var subscriberName string
-
-	if pubStringer, ok := sub.(fmt.Stringer); ok {
-		subscriberName = pubStringer.String()
-	} else {
-		// trim the pointer indicator, if any
-		subscriberName = strings.TrimLeft(
-			fmt.Sprintf("%T", sub),
-			"*",
-		)
-	}
-
-	return subscriberName
 }
 
 // AddNoPublisherHandler adds a new handler.
@@ -455,7 +420,7 @@ func (r *Router) decorateHandlerSubscriber(h *handler) error {
 	// it goes before other decorators, so that they may take advantage of these values
 	messageTransform := func(msg *Message) {
 		if msg != nil {
-			h.addMsgContext(msg)
+			h.addHandlerContext(msg)
 		}
 	}
 	sub, err = MessageTransformSubscriberDecorator(messageTransform)(sub)
@@ -473,9 +438,10 @@ func (r *Router) decorateHandlerSubscriber(h *handler) error {
 	return nil
 }
 
-func (h handler) addMsgContext(messages ...*Message) {
+// addHandlerContext enriches the contex with values that are relevant within this handler's context.
+func (h handler) addHandlerContext(messages ...*Message) {
 	for i, msg := range messages {
-		ctx := msg.ctx
+		ctx := msg.Context()
 
 		if h.name != "" {
 			ctx = context.WithValue(ctx, handlerNameKey, h.name)
@@ -526,7 +492,7 @@ func (h *handler) handleMessage(msg *Message, handler HandlerFunc) {
 		return
 	}
 
-	h.addMsgContext(producedMessages...)
+	h.addHandlerContext(producedMessages...)
 
 	if err := h.publishProducedMessages(producedMessages, msgFields); err != nil {
 		h.logger.Error("Publishing produced messages failed", err, nil)

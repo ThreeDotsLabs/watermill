@@ -1,6 +1,7 @@
 package metrics
 
 import (
+	"github.com/ThreeDotsLabs/watermill/internal"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
@@ -23,6 +24,8 @@ type PrometheusMetricsBuilder struct {
 	Subsystem string
 }
 
+// AddPrometheusRouterMetrics is a convenience function that acts on the message router to add the metrics middleware
+// to all its handlers. The handlers' publishers and subscribers are also decorated.
 func (b PrometheusMetricsBuilder) AddPrometheusRouterMetrics(r *message.Router) {
 	r.AddPublisherDecorators(b.DecoratePublisher)
 	r.AddSubscriberDecorators(b.DecorateSubscriber)
@@ -33,7 +36,8 @@ func (b PrometheusMetricsBuilder) AddPrometheusRouterMetrics(r *message.Router) 
 func (b PrometheusMetricsBuilder) DecoratePublisher(pub message.Publisher) (message.Publisher, error) {
 	var err error
 	d := PublisherPrometheusMetricsDecorator{
-		pub: pub,
+		pub:           pub,
+		publisherName: internal.StructName(pub),
 	}
 
 	d.publishTimeSeconds, err = b.registerHistogramVec(prometheus.NewHistogramVec(
@@ -55,7 +59,8 @@ func (b PrometheusMetricsBuilder) DecoratePublisher(pub message.Publisher) (mess
 func (b PrometheusMetricsBuilder) DecorateSubscriber(sub message.Subscriber) (message.Subscriber, error) {
 	var err error
 	d := &SubscriberPrometheusMetricsDecorator{
-		closing: make(chan struct{}),
+		closing:        make(chan struct{}),
+		subscriberName: internal.StructName(sub),
 	}
 
 	d.subscriberMessagesReceivedTotal, err = b.registerCounterVec(prometheus.NewCounterVec(

@@ -87,6 +87,10 @@ func (g *GoChannel) Publish(topic string, messages ...*message.Message) error {
 		return errors.New("Pub/Sub closed")
 	}
 
+	for i, msg := range messages {
+		messages[i] = msg.Copy()
+	}
+
 	g.subscribersLock.RLock()
 	defer g.subscribersLock.RUnlock()
 

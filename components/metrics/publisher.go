@@ -17,6 +17,7 @@ var (
 
 type PublisherPrometheusMetricsDecorator struct {
 	pub                message.Publisher
+	publisherName      string
 	publishTimeSeconds *prometheus.HistogramVec
 }
 
@@ -29,6 +30,12 @@ func (m PublisherPrometheusMetricsDecorator) Publish(topic string, messages ...*
 	// TODO: take ctx not only from first msg. Might require changing the signature of Publish, which is planned anyway.
 	ctx := messages[0].Context()
 	labels := labelsFromCtx(ctx, publisherLabelKeys...)
+	if labels[labelKeyPublisherName] == "" {
+		labels[labelKeyPublisherName] = m.publisherName
+	}
+	if labels[labelKeyHandlerName] == "" {
+		labels[labelKeyHandlerName] = labelValueNoHandler
+	}
 	start := time.Now()
 
 	defer func() {

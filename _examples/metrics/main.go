@@ -2,19 +2,16 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"math"
 	"math/rand"
-	_ "net/http/pprof"
 	"time"
-
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure/gochannel"
-
-	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/components/metrics"
 	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ThreeDotsLabs/watermill/message/infrastructure/gochannel"
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
 	"github.com/ThreeDotsLabs/watermill/message/router/plugin"
 )
@@ -44,29 +41,24 @@ func handler(msg *message.Message) ([]*message.Message, error) {
 	outgoing := make([]*message.Message, numOutgoing)
 
 	for i := 0; i < numOutgoing; i++ {
-		outgoing[i] = msg
+		outgoing[i] = msg.Copy()
 	}
 	return outgoing, nil
 }
 
 // consumeMessages consumes the messages exiting the handler.
-func consumeMessages(routerClosed chan struct{}, subscriber message.Subscriber) {
+func consumeMessages(subscriber message.Subscriber) {
 	messages, err := subscriber.Subscribe(context.Background(), "pub_topic")
 	if err != nil {
 		panic(err)
 	}
 
-	for {
-		select {
-		case <-messages:
-		// message consumed
-		case <-routerClosed:
-			return
-		}
+	for msg := range messages {
+		msg.Ack()
 	}
 }
 
-// produceMessages produces the incoming messages in delays of 0-100 milliseconds.
+// produceMessages produces the incoming messages in delays of 50-100 milliseconds.
 func produceMessages(routerClosed chan struct{}, publisher message.Publisher) {
 	for {
 		select {
@@ -76,7 +68,7 @@ func produceMessages(routerClosed chan struct{}, publisher message.Publisher) {
 			// go on
 		}
 
-		time.Sleep(time.Duration(random.Intn(100)) * time.Millisecond)
+		time.Sleep(50*time.Millisecond + time.Duration(random.Intn(50))*time.Millisecond)
 		msg := message.NewMessage(watermill.NewUUID(), []byte{})
 		_ = publisher.Publish("sub_topic", msg)
 	}
@@ -85,9 +77,9 @@ func produceMessages(routerClosed chan struct{}, publisher message.Publisher) {
 func main() {
 	flag.Parse()
 
-	pubSub := gochannel.NewGoChannel(0, logger)
+	pubSub := gochannel.NewGoChannel(gochannel.Config{}, logger)
 
-	r, err := message.NewRouter(
+	router, err := message.NewRouter(
 		message.RouterConfig{},
 		logger,
 	)
@@ -95,19 +87,21 @@ func main() {
 		panic(err)
 	}
 
-	prometheusRegistry := prometheus.NewRegistry()
-	closeMetrics := metrics.ServeHTTP(*metricsAddr, prometheusRegistry)
-	defer closeMetrics()
-	metrics.NewPrometheusMetricsBuilder(prometheusRegistry, "", "").AddPrometheusRouterMetrics(r)
+	prometheusRegistry, closeMetricsServer := metrics.CreateRegistryAndServeHTTP(*metricsAddr)
+	defer closeMetricsServer()
 
-	r.AddMiddleware(
+	// we leave the namespace and subsystem empty
+	metricsBuilder := metrics.NewPrometheusMetricsBuilder(prometheusRegistry, "", "")
+	metricsBuilder.AddPrometheusRouterMetrics(router)
+
+	router.AddMiddleware(
 		middleware.Recoverer,
 		middleware.RandomFail(0.1),
 		middleware.RandomPanic(0.1),
 	)
-	r.AddPlugin(plugin.SignalsHandler)
+	router.AddPlugin(plugin.SignalsHandler)
 
-	r.AddHandler(
+	router.AddHandler(
 		"metrics-example",
 		"sub_topic",
 		pubSub,
@@ -116,10 +110,39 @@ func main() {
 		handler,
 	)
 
-	routerClosed := make(chan struct{})
-	go produceMessages(routerClosed, pubSub)
-	go consumeMessages(routerClosed, pubSub)
+	// separate the publisher from pubSub to decorate it separately
+	sub := pubSub.(message.Subscriber)
+	pub := randomFailPublisherDecorator{pubSub, 0.1}
 
-	_ = r.Run()
+	// The handler's publisher and subscriber will be decorated by `AddPrometheusRouterMetrics`.
+	// We are using the same pub/sub to generate messages incoming to the handler
+	// and consume the outgoing messages.
+	// They will have `handler_name=<no handler>` label in Prometheus.
+	subWithMetrics, err := metricsBuilder.DecorateSubscriber(sub)
+	if err != nil {
+		panic(err)
+	}
+	pubWithMetrics, err := metricsBuilder.DecoratePublisher(pub)
+	if err != nil {
+		panic(err)
+	}
+
+	routerClosed := make(chan struct{})
+	go produceMessages(routerClosed, pubWithMetrics)
+	go consumeMessages(subWithMetrics)
+
+	_ = router.Run()
 	close(routerClosed)
+}
+
+type randomFailPublisherDecorator struct {
+	message.Publisher
+	failProbability float64
+}
+
+func (r randomFailPublisherDecorator) Publish(topic string, messages ...*message.Message) error {
+	if random.Float64() < r.failProbability {
+		return errors.New("random publishing failure")
+	}
+	return r.Publisher.Publish(topic, messages...)
 }

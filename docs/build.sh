@@ -39,6 +39,7 @@ else
         "message/message.go"
         "message/pubsub.go"
         "message/router.go"
+        
         "_examples/cqrs-protobuf/main.go"
         "components/cqrs/command_bus.go"
         "components/cqrs/command_processor.go"
@@ -47,6 +48,10 @@ else
         "components/cqrs/marshaler.go"
         "components/cqrs/cqrs.go"
         "components/cqrs/marshaler.go"
+
+        "components/metrics/builder.go"
+        "components/metrics/http.go"
+        "_examples/metrics/main.go"
     )
 
     pushd ../

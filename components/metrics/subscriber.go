@@ -14,6 +14,7 @@ var (
 
 type SubscriberPrometheusMetricsDecorator struct {
 	message.Subscriber
+	subscriberName                  string
 	subscriberMessagesReceivedTotal *prometheus.CounterVec
 	closing                         chan struct{}
 }
@@ -25,6 +26,12 @@ func (s SubscriberPrometheusMetricsDecorator) recordMetrics(msg *message.Message
 
 	ctx := msg.Context()
 	labels := labelsFromCtx(ctx, subscriberLabelKeys...)
+	if labels[labelKeySubscriberName] == "" {
+		labels[labelKeySubscriberName] = s.subscriberName
+	}
+	if labels[labelKeyHandlerName] == "" {
+		labels[labelKeyHandlerName] = labelValueNoHandler
+	}
 
 	go func() {
 		if subscribeAlreadyObserved(ctx) {

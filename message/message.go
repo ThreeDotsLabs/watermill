@@ -172,6 +172,7 @@ func (m *Message) SetContext(ctx context.Context) {
 }
 
 // Copy copies all message without Acks/Nacks.
+// The context is not propagated to the copy.
 func (m Message) Copy() *Message {
 	msg := NewMessage(m.UUID, m.Payload)
 	msg.Metadata = m.Metadata

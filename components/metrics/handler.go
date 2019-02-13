@@ -40,7 +40,9 @@ func (m HandlerPrometheusMetricsMiddleware) Middleware(h message.HandlerFunc) me
 	return func(msg *message.Message) (msgs []*message.Message, err error) {
 		now := time.Now()
 		ctx := msg.Context()
-		labels := labelsFromCtx(ctx, handlerLabelKeys...)
+		labels := prometheus.Labels{
+			labelKeyHandlerName: message.HandlerNameFromCtx(ctx),
+		}
 
 		defer func() {
 			if err != nil {
