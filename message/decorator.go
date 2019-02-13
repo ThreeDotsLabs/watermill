@@ -5,6 +5,34 @@ import (
 	"sync"
 )
 
+// MessageTransformSubscriberDecorator creates a subscriber decorator that calls transform
+// on each message that passes through the subscriber.
+func MessageTransformSubscriberDecorator(transform func(*Message)) SubscriberDecorator {
+	if transform == nil {
+		panic("transform function is nil")
+	}
+	return func(sub Subscriber) (Subscriber, error) {
+		return &messageTransformSubscriberDecorator{
+			sub:       sub,
+			transform: transform,
+		}, nil
+	}
+}
+
+// MessageTransformPublisherDecorator creates a publisher decorator that calls transform
+// on each message that passes through the publisher.
+func MessageTransformPublisherDecorator(transform func(*Message)) PublisherDecorator {
+	if transform == nil {
+		panic("transform function is nil")
+	}
+	return func(pub Publisher) (Publisher, error) {
+		return &messageTransformPublisherDecorator{
+			Publisher: pub,
+			transform: transform,
+		}, nil
+	}
+}
+
 type messageTransformSubscriberDecorator struct {
 	sub Subscriber
 
@@ -39,20 +67,6 @@ func (t *messageTransformSubscriberDecorator) Close() error {
 	return err
 }
 
-// MessageTransformSubscriberDecorator creates a subscriber decorator that calls transform
-// on each message that passes through the subscriber.
-func MessageTransformSubscriberDecorator(transform func(*Message)) SubscriberDecorator {
-	if transform == nil {
-		panic("transform function is nil")
-	}
-	return func(sub Subscriber) (Subscriber, error) {
-		return &messageTransformSubscriberDecorator{
-			sub:       sub,
-			transform: transform,
-		}, nil
-	}
-}
-
 type messageTransformPublisherDecorator struct {
 	Publisher
 	transform func(*Message)
@@ -64,18 +78,4 @@ func (d messageTransformPublisherDecorator) Publish(topic string, messages ...*M
 		d.transform(messages[i])
 	}
 	return d.Publisher.Publish(topic, messages...)
-}
-
-// MessageTransformPublisherDecorator creates a publisher decorator that calls transform
-// on each message that passes through the publisher.
-func MessageTransformPublisherDecorator(transform func(*Message)) PublisherDecorator {
-	if transform == nil {
-		panic("transform function is nil")
-	}
-	return func(pub Publisher) (Publisher, error) {
-		return &messageTransformPublisherDecorator{
-			Publisher: pub,
-			transform: transform,
-		}, nil
-	}
 }

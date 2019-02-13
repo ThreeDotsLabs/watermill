@@ -93,8 +93,8 @@ func main() {
 	metricsBuilder := metrics.NewPrometheusMetricsBuilder(prometheusRegistry, "", "")
 	metricsBuilder.AddPrometheusRouterMetrics(r)
 
-	closeMetrics := metrics.ServeHTTP(*metricsAddr, prometheusRegistry)
-	defer closeMetrics()
+	closeMetricsServer := metrics.ServeHTTP(*metricsAddr, prometheusRegistry)
+	defer closeMetricsServer()
 
 	r.AddMiddleware(
 		middleware.Recoverer,
