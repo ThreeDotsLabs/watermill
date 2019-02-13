@@ -137,7 +137,7 @@ Additionally, every metric has the `node` label, provided by Prometheus, with va
 
 ### Customization
 
-If you feel like some metric is missing, you can easily expand this basic implementation. The best way to do so is to use the prometheus registry that is used with [the ServeHTTP method](#exposing-the-metrics-endpoint) and register a metric according to [the documentation](https://godoc.org/github.com/prometheus/client_golang/prometheus) of the Prometheus client.
+If you feel like some metric is missing, you can easily expand this basic implementation. The best way to do so is to use the prometheus registry that is used with the [ServeHTTP method](#exposing-the-metrics-endpoint) and register a metric according to [the documentation](https://godoc.org/github.com/prometheus/client_golang/prometheus) of the Prometheus client.
 
 An elegant way to update these metrics would be through the use of decorators:
 
