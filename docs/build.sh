@@ -28,10 +28,13 @@ declare -a files_to_link=(
     "message/infrastructure/amqp/config.go"
     "message/infrastructure/amqp/marshaler.go"
     "message/infrastructure/http/publisher.go"
+    "message/decorator.go"
     "message/message.go"
     "message/pubsub.go"
     "message/router.go"
+
     "components/metrics/builder.go"
+    "components/metrics/http.go"
     "_examples/metrics/main.go"
 )
 
