@@ -64,7 +64,7 @@ func (c FacadeConfig) CommandsEnabled() bool {
 
 // Facade is a facade for creating the Command and Event buses and processors.
 // It was created to avoid boilerplate, when using CQRS in the standard way.
-// You can use facade or create buses and processors manually (you can inspire with NewFacade).
+// You can also create buses and processors manually, drawing inspiration from how it's done in NewFacade.
 type Facade struct {
 	commandsTopic string
 	commandBus    *CommandBus
