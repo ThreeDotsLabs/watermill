@@ -8,8 +8,6 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
-
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/components/metrics"
 	"github.com/ThreeDotsLabs/watermill/message"
@@ -60,7 +58,7 @@ func consumeMessages(subscriber message.Subscriber) {
 	}
 }
 
-// produceMessages produces the incoming messages in delays of 500-1000 milliseconds.
+// produceMessages produces the incoming messages in delays of 50-100 milliseconds.
 func produceMessages(routerClosed chan struct{}, publisher message.Publisher) {
 	for {
 		select {
@@ -70,7 +68,7 @@ func produceMessages(routerClosed chan struct{}, publisher message.Publisher) {
 			// go on
 		}
 
-		time.Sleep(500*time.Millisecond + time.Duration(random.Intn(500))*time.Millisecond)
+		time.Sleep(50*time.Millisecond + time.Duration(random.Intn(50))*time.Millisecond)
 		msg := message.NewMessage(watermill.NewUUID(), []byte{})
 		_ = publisher.Publish("sub_topic", msg)
 	}
@@ -81,7 +79,7 @@ func main() {
 
 	pubSub := gochannel.NewGoChannel(gochannel.Config{}, logger)
 
-	r, err := message.NewRouter(
+	router, err := message.NewRouter(
 		message.RouterConfig{},
 		logger,
 	)
@@ -89,21 +87,21 @@ func main() {
 		panic(err)
 	}
 
-	prometheusRegistry := prometheus.NewRegistry()
-	metricsBuilder := metrics.NewPrometheusMetricsBuilder(prometheusRegistry, "", "")
-	metricsBuilder.AddPrometheusRouterMetrics(r)
-
-	closeMetricsServer := metrics.ServeHTTP(*metricsAddr, prometheusRegistry)
+	prometheusRegistry, closeMetricsServer := metrics.CreateRegistryAndServeHTTP(*metricsAddr)
 	defer closeMetricsServer()
 
-	r.AddMiddleware(
+	// we leave the namespace and subsystem empty
+	metricsBuilder := metrics.NewPrometheusMetricsBuilder(prometheusRegistry, "", "")
+	metricsBuilder.AddPrometheusRouterMetrics(router)
+
+	router.AddMiddleware(
 		middleware.Recoverer,
 		middleware.RandomFail(0.1),
 		middleware.RandomPanic(0.1),
 	)
-	r.AddPlugin(plugin.SignalsHandler)
+	router.AddPlugin(plugin.SignalsHandler)
 
-	r.AddHandler(
+	router.AddHandler(
 		"metrics-example",
 		"sub_topic",
 		pubSub,
@@ -131,7 +129,7 @@ func main() {
 	go produceMessages(routerClosed, pubWithMetrics)
 	go consumeMessages(subWithMetrics)
 
-	_ = r.Run()
+	_ = router.Run()
 	close(routerClosed)
 }
 
