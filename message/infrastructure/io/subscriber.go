@@ -129,7 +129,7 @@ func (s Subscriber) read(ctx context.Context, topic string, output chan *message
 			case <-msg.Acked():
 				break ResendLoop
 			case <-msg.Nacked():
-				// todo: delay for resend?
+				msg = msg.Copy()
 				continue ResendLoop
 			case <-ctx.Done():
 				return

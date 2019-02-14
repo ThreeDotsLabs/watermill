@@ -28,7 +28,8 @@ func main() {
 	for msg := range messages {
 		fmt.Printf("[%s] %s: %s", time.Now().Format(time.RFC3339), msg.UUID, msg.Payload)
 		// todo: this ain't workin
-		if rand.Float32() < 0.1 {
+		r := random.Float32()
+		if r < 0.1 {
 			msg.Nack()
 			continue
 		}
