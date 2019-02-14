@@ -2,6 +2,9 @@ package io
 
 import (
 	"io"
+	"sync"
+
+	multierror "github.com/hashicorp/go-multierror"
 
 	"github.com/pkg/errors"
 
@@ -9,12 +12,12 @@ import (
 )
 
 type PublisherConfig struct {
-	UnmarshalFunc UnmarshalMessageFunc
+	MarshalFunc MarshalMessageFunc
 }
 
 func (p PublisherConfig) validate() error {
-	if p.UnmarshalFunc == nil {
-		return errors.New("UnmarshalFunc is empty")
+	if p.MarshalFunc == nil {
+		return errors.New("marshal func is empty")
 	}
 
 	return nil
@@ -23,8 +26,9 @@ func (p PublisherConfig) validate() error {
 // Publisher writes the messages to the underlying io.Writer.
 // Its behaviour is highly customizable through the choice of the unmarshaler function in config.
 type Publisher struct {
-	wc     io.WriteCloser
-	config PublisherConfig
+	wc        io.WriteCloser
+	config    PublisherConfig
+	publishWg sync.WaitGroup
 
 	closed bool
 }
@@ -42,24 +46,43 @@ func (p *Publisher) Publish(topic string, messages ...*message.Message) error {
 		return errors.New("publisher is closed")
 	}
 
-	for _, msg := range messages {
-		b, err := p.config.UnmarshalFunc(topic, msg)
-		if err != nil {
-			return errors.Wrapf(err, "could not unmarshal message %s", msg.UUID)
-		}
+	p.publishWg.Add(len(messages))
 
-		if _, err = p.wc.Write(b); err != nil {
-			return errors.Wrap(err, "could not write message to output")
+	var err error
+	for _, msg := range messages {
+		if writeErr := p.write(topic, msg); writeErr != nil {
+			err = multierror.Append(err, writeErr)
 		}
 	}
 
-	return nil
+	return err
 }
 
 // Close closes the underlying Writer.
 // Trying to publish messages with a closed publisher will throw an error.
 // Close is idempotent.
 func (p *Publisher) Close() error {
+	if p.closed {
+		return nil
+	}
+
 	p.closed = true
+
+	p.publishWg.Wait()
+
 	return p.wc.Close()
+}
+
+func (p Publisher) write(topic string, msg *message.Message) error {
+	defer p.publishWg.Done()
+	b, err := p.config.MarshalFunc(topic, msg)
+	if err != nil {
+		return errors.Wrapf(err, "could not marshal message %s", msg.UUID)
+	}
+
+	if _, err = p.wc.Write(b); err != nil {
+		return errors.Wrap(err, "could not write message to output")
+	}
+
+	return nil
 }

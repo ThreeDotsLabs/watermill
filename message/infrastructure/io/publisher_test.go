@@ -40,7 +40,7 @@ func TestPublisher_Publish(t *testing.T) {
 	pub, err := io.NewPublisher(
 		mw,
 		io.PublisherConfig{
-			UnmarshalFunc: io.PayloadUnmarshalFunc,
+			MarshalFunc: io.PayloadMarshalFunc,
 		},
 	)
 	require.NoError(t, err)
