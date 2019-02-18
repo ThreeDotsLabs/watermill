@@ -47,6 +47,8 @@ test_short:
     TEST_FLAGS: "-short"
   only:
     - branches
+  except:
+    - master
 
 test_full:
   extends: .test
