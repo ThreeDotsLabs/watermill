@@ -3,8 +3,13 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/ThreeDotsLabs/watermill/message"
+
 	"github.com/spf13/cobra"
 )
+
+// consumer is initialized by parent command to the pub/sub provider of choice.
+var consumer message.Subscriber
 
 // consumeCmd represents the consume command
 var consumeCmd = &cobra.Command{

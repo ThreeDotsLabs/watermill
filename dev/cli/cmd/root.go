@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/ThreeDotsLabs/watermill"
+
 	"github.com/spf13/pflag"
 
 	homedir "github.com/mitchellh/go-homedir"
@@ -12,10 +14,11 @@ import (
 )
 
 var cfgFile string
+var logger watermill.LoggerAdapter
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "watermill-cli",
+	Use:   "watermill",
 	Short: "A CLI for Watermill.",
 	Long: `A CLI for Watermill.
 
@@ -23,6 +26,16 @@ Use console-based producer or consumer for various pub/sub providers.`,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	//	Run: func(cmd *cobra.Command, args []string) { },
+
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		if viper.GetBool("log") {
+			logger = watermill.NewStdLogger(viper.GetBool("debug"), viper.GetBool("trace"))
+		} else {
+			logger = watermill.NopLogger{}
+		}
+
+		return nil
+	},
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -46,9 +59,16 @@ func init() {
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
 	outputFlags := pflag.NewFlagSet("output", pflag.ExitOnError)
+
 	outputFlags.BoolP("log", "l", false, "If true, the logger output is sent to stderr. No logger output otherwise.")
+	ensure(viper.BindPFlag("log", outputFlags.Lookup("log")))
+
 	outputFlags.Bool("debug", false, "If true, debug output is enabled from the logger")
+	ensure(viper.BindPFlag("debug", outputFlags.Lookup("debug")))
+
 	outputFlags.Bool("trace", false, "If true, trace output is enabled from the logger")
+	ensure(viper.BindPFlag("trace", outputFlags.Lookup("trace")))
+
 	rootCmd.PersistentFlags().AddFlagSet(outputFlags)
 }
 
@@ -65,7 +85,6 @@ func initConfig() {
 			os.Exit(1)
 		}
 
-		// Search config in home directory with name ".cli" (without extension).
 		viper.AddConfigPath(home)
 		viper.SetConfigName(".watermill-cli")
 	}
@@ -75,5 +94,11 @@ func initConfig() {
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {
 		fmt.Println("Using config file:", viper.ConfigFileUsed())
+	}
+}
+
+func ensure(err error) {
+	if err != nil {
+		panic(err)
 	}
 }
