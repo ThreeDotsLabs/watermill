@@ -67,7 +67,6 @@ func (p *Publisher) Close() error {
 	}
 
 	p.closed = true
-
 	p.publishWg.Wait()
 
 	return p.wc.Close()
@@ -75,6 +74,7 @@ func (p *Publisher) Close() error {
 
 func (p Publisher) write(topic string, msg *message.Message) error {
 	defer p.publishWg.Done()
+
 	b, err := p.config.MarshalFunc(topic, msg)
 	if err != nil {
 		return errors.Wrapf(err, "could not marshal message %s", msg.UUID)

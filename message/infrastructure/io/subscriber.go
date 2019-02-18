@@ -5,9 +5,11 @@ import (
 	"context"
 	"io"
 	"sync"
+	"time"
 
 	"github.com/pkg/errors"
 
+	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
@@ -15,7 +17,12 @@ type SubscriberConfig struct {
 	BufferSize       int
 	MessageDelimiter byte
 
+	// PollInterval is the time between polling for new messages if the last read was empty. Defaults to time.Second.
+	PollInterval time.Duration
+
 	UnmarshalFunc UnmarshalMessageFunc
+
+	Logger watermill.LoggerAdapter
 }
 
 func (c SubscriberConfig) validate() error {
@@ -37,6 +44,14 @@ func (c SubscriberConfig) validate() error {
 func (c *SubscriberConfig) setDefaults() {
 	if c.BufferSize == 0 && c.MessageDelimiter == 0 {
 		c.MessageDelimiter = '\n'
+	}
+
+	if c.PollInterval == 0 {
+		c.PollInterval = time.Second
+	}
+
+	if c.Logger == nil {
+		c.Logger = watermill.NopLogger{}
 	}
 }
 
@@ -97,43 +112,66 @@ func (s Subscriber) read(ctx context.Context, topic string, output chan *message
 		reader = bufio.NewReader(s.rc)
 	}
 
+	var chunk []byte
+	if s.config.BufferSize > 0 {
+		chunk = make([]byte, s.config.BufferSize)
+	}
+
 	for {
-		var chunk []byte
+		var bytesRead int
 		var err error
 		if s.config.BufferSize > 0 {
-			_, err = reader.Read(chunk)
-			if err != nil {
-				// log error
-			}
+			bytesRead, err = reader.Read(chunk)
 		} else {
 			chunk, err = reader.ReadSlice(s.config.MessageDelimiter)
+			bytesRead = len(chunk)
+		}
+
+		if err != nil && errors.Cause(err) != io.EOF {
+			s.config.Logger.Error("could not read from buffer", err, watermill.LogFields{})
+		}
+
+		if bytesRead == 0 {
+			time.Sleep(s.config.PollInterval)
+			continue
 		}
 
 		msg, err := s.config.UnmarshalFunc(topic, chunk)
 		if err != nil {
-			// handle err
+			s.config.Logger.Error("could not unmarshal message", err, watermill.LogFields{})
+		}
+
+		logFields := watermill.LogFields{
+			"uuid":  msg.UUID,
+			"topic": topic,
 		}
 
 	ResendLoop:
 		for {
 			select {
 			case output <- msg:
-			// message consumed
+				s.config.Logger.Trace("message consumed", logFields)
 			case <-ctx.Done():
+				s.config.Logger.Info("context closed, discarding message", logFields)
 				return
 			case <-s.closing:
+				s.config.Logger.Info("subscriber closed, discarding message", logFields)
 				return
 			}
 
 			select {
 			case <-msg.Acked():
+				s.config.Logger.Trace("message acked", logFields)
 				break ResendLoop
 			case <-msg.Nacked():
+				s.config.Logger.Trace("message nacked, resending", logFields)
 				msg = msg.Copy()
 				continue ResendLoop
 			case <-ctx.Done():
+				s.config.Logger.Info("context closed without ack", logFields)
 				return
 			case <-s.closing:
+				s.config.Logger.Info("subscriber closed without ack", logFields)
 				return
 			}
 		}
