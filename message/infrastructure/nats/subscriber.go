@@ -262,11 +262,6 @@ func (s *StreamingSubscriber) processMessage(
 	messageLogFields := logFields.Add(watermill.LogFields{"message_uuid": msg.UUID})
 	s.logger.Trace("Unmarshaled message", messageLogFields)
 
-	if s.closed {
-		s.logger.Trace("Closed, message discarded", messageLogFields)
-		return
-	}
-
 	select {
 	case output <- msg:
 		s.logger.Trace("Message sent to consumer", messageLogFields)

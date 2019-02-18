@@ -132,10 +132,10 @@ func (p *Publisher) topic(ctx context.Context, topic string) (t *pubsub.Topic, e
 
 	p.topicsLock.Lock()
 	defer func() {
-		p.topicsLock.Unlock()
 		if err == nil {
 			p.topics[topic] = t
 		}
+		p.topicsLock.Unlock()
 	}()
 
 	t = p.client.Topic(topic)
