@@ -20,7 +20,7 @@ build:
   only:
     - branches
 
-test:
+.test:
   stage: test
   image: docker:stable
   services:
@@ -38,8 +38,24 @@ test:
     - docker-compose pull -q
     - docker-compose up -d
     - docker-compose run watermill ./.ci/wait-for-services.sh
-    - "[[ $CI_COMMIT_REF_NAME != master ]] && export FLAGS=-short"
-    - "echo Running tests with flags: $FLAGS"
-    - docker-compose run watermill go test ./... $FLAGS
+    - "echo Running tests with flags: $TEST_FLAGS"
+    - docker-compose run watermill go test ./... $TEST_FLAGS
+
+test_short:
+  extends: .test
+  variables:
+    TEST_FLAGS: "-short"
   only:
     - branches
+
+test_full:
+  extends: .test
+  only:
+    - master
+
+test_race:
+  extends: .test
+  variables:
+    TEST_FLAGS: "-short -race"
+  only:
+    - master
