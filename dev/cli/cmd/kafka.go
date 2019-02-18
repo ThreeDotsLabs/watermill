@@ -1,25 +1,26 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 )
 
-// produceCmd represents the produce command
-var produceCmd = &cobra.Command{
-	Use:   "produce",
-	Short: "Produce messages to a pub/sub from the stdin",
-	Long: `Produce messages to the pub/sub of your choice from the standard input.
+// kafkaCmd is a mid-level command for working with the kafka pub/sub provider.
+var kafkaCmd = &cobra.Command{
+	Use:   "kafka",
+	Short: "Consume or produce messages from the kafka pub/sub provider",
+	Long: `Consume or produce messages from the kafka pub/sub provider.
 
-For the configuration of particular pub/sub providers, see the help for the provider commands.`,
+For the configuration of consuming/producing of the message, check the help of the relevant command.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("produce called")
 	},
 }
 
 func init() {
 	// Here you will define your flags and configuration settings.
+
+	rootCmd.AddCommand(kafkaCmd)
+	kafkaCmd.AddCommand(consumeCmd)
+	kafkaCmd.AddCommand(produceCmd)
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:

@@ -19,8 +19,6 @@ For the configuration of particular pub/sub providers, see the help for the prov
 }
 
 func init() {
-	rootCmd.AddCommand(consumeCmd)
-
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command
