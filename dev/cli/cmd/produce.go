@@ -1,11 +1,14 @@
 package cmd
 
 import (
-	"bufio"
 	"os"
+	"time"
 
-	"github.com/ThreeDotsLabs/watermill"
+	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
+	"github.com/ThreeDotsLabs/watermill/message/router/plugin"
 
+	"github.com/ThreeDotsLabs/watermill/message/infrastructure/io"
+	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 
 	"github.com/ThreeDotsLabs/watermill/message"
@@ -26,28 +29,52 @@ For the configuration of particular pub/sub providers, see the help for the prov
 		return nil
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
-		topic := viper.GetString("topic")
-		in := bufio.NewScanner(os.Stdin)
-		for in.Scan() {
-			payload := in.Text()
-			if payload == "" {
-				logger.Trace("empty message, skipping", watermill.LogFields{})
-				continue
-			}
+		topic := viper.GetString("produce.topic")
 
-			message := message.NewMessage(
-				watermill.NewUUID(),
-				[]byte(in.Text()),
-			)
-			if err := producer.Publish(topic, message); err != nil {
-				logger.Error("could not publish message", err, watermill.LogFields{})
-			}
-		}
-		if in.Err() != nil {
-			return in.Err()
+		router, err := message.NewRouter(
+			message.RouterConfig{
+				CloseTimeout: 10 * time.Second,
+			},
+			logger,
+		)
+		if err != nil {
+			return errors.Wrap(err, "could not create router")
 		}
 
-		return nil
+		router.AddMiddleware(middleware.InstantAck)
+		router.AddPlugin(plugin.SignalsHandler)
+
+		//in, err := io.NewSubscriber(os.Stdin, io.SubscriberConfig{
+		f, err := os.Open("/tmp/stdin")
+		if err != nil {
+			panic(err)
+		}
+		in, err := io.NewSubscriber(f, io.SubscriberConfig{
+			PollInterval:  time.Second,
+			UnmarshalFunc: io.PayloadUnmarshalFunc,
+			Logger:        logger,
+		})
+		if err != nil {
+			return errors.Wrap(err, "could not create console subscriber")
+		}
+
+		router.AddHandler(
+			"produce_from_stdin",
+			"",
+			in,
+			topic,
+			producer,
+			func(msg *message.Message) ([]*message.Message, error) {
+				if string(msg.Payload) == "\n" {
+					logger.Trace("Message is empty, don't publish", nil)
+					return nil, nil
+				}
+				// just pass the message along
+				return message.Messages{msg}, nil
+			},
+		)
+
+		return router.Run()
 	},
 }
 
@@ -61,7 +88,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	if err := viper.BindPFlag("topic", produceCmd.Flags().Lookup("topic")); err != nil {
+	if err = viper.BindPFlag("produce.topic", produceCmd.Flags().Lookup("topic")); err != nil {
 		panic(err)
 	}
 

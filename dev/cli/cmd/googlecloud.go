@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/Shopify/sarama"
 	"github.com/spf13/viper"
 
@@ -13,10 +11,10 @@ import (
 // kafkaCmd is a mid-level command for working with the kafka pub/sub provider.
 var kafkaCmd = &cobra.Command{
 	Use:   "kafka",
-	Short: "Commands for the kafka pub/sub provider",
+	Short: "Consume or produce messages from the kafka pub/sub provider",
 	Long: `Consume or produce messages from the kafka pub/sub provider.
 
-For the configuration of consuming/producing of the messages, check the help of the relevant command.`,
+For the configuration of consuming/producing of the message, check the help of the relevant command.`,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		err := rootCmd.PersistentPreRunE(cmd, args)
 		if err != nil {
@@ -58,7 +56,6 @@ For the configuration of consuming/producing of the messages, check the help of 
 func init() {
 	// Here you will define your flags and configuration settings.
 	rootCmd.AddCommand(kafkaCmd)
-	fmt.Println("KAFKA INIT")
 	kafkaCmd.AddCommand(consumeCmd)
 	kafkaCmd.AddCommand(produceCmd)
 

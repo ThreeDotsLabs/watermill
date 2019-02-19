@@ -3,6 +3,7 @@ package io
 import (
 	"bufio"
 	"context"
+	"fmt"
 	"io"
 	"sync"
 	"time"
@@ -84,7 +85,7 @@ func (s *Subscriber) Subscribe(ctx context.Context, topic string) (<-chan *messa
 
 	out := make(chan *message.Message)
 	s.subscribeWg.Add(1)
-	go s.read(ctx, topic, out)
+	go s.consume(ctx, topic, out)
 
 	return out, nil
 }
@@ -97,12 +98,13 @@ func (s *Subscriber) Close() error {
 	s.closed = true
 	close(s.closing)
 
-	s.subscribeWg.Wait()
+	err := s.rc.Close()
 
-	return s.rc.Close()
+	s.subscribeWg.Wait()
+	return err
 }
 
-func (s Subscriber) read(ctx context.Context, topic string, output chan *message.Message) {
+func (s *Subscriber) consume(ctx context.Context, topic string, output chan *message.Message) {
 	defer s.subscribeWg.Done()
 
 	var reader *bufio.Reader
@@ -112,68 +114,92 @@ func (s Subscriber) read(ctx context.Context, topic string, output chan *message
 		reader = bufio.NewReader(s.rc)
 	}
 
-	var chunk []byte
-	if s.config.BufferSize > 0 {
-		chunk = make([]byte, s.config.BufferSize)
-	}
-
-	for {
-		var bytesRead int
-		var err error
-		if s.config.BufferSize > 0 {
-			bytesRead, err = reader.Read(chunk)
-		} else {
-			chunk, err = reader.ReadSlice(s.config.MessageDelimiter)
-			bytesRead = len(chunk)
-		}
-
-		if err != nil && errors.Cause(err) != io.EOF {
-			s.config.Logger.Error("could not read from buffer", err, watermill.LogFields{})
-		}
-
-		if bytesRead == 0 {
-			time.Sleep(s.config.PollInterval)
-			continue
-		}
-
+	for chunk := range s.read(reader) {
 		msg, err := s.config.UnmarshalFunc(topic, chunk)
 		if err != nil {
-			s.config.Logger.Error("could not unmarshal message", err, watermill.LogFields{})
+			s.config.Logger.Error("Could not unmarshal message", err, watermill.LogFields{})
 		}
-
-		logFields := watermill.LogFields{
+		logger := s.config.Logger.With(watermill.LogFields{
 			"uuid":  msg.UUID,
 			"topic": topic,
-		}
+		})
 
 	ResendLoop:
 		for {
 			select {
 			case output <- msg:
-				s.config.Logger.Trace("message consumed", logFields)
+				logger.Trace("Message consumed", nil)
 			case <-ctx.Done():
-				s.config.Logger.Info("context closed, discarding message", logFields)
+				logger.Info("Context closed, discarding message", nil)
 				return
 			case <-s.closing:
-				s.config.Logger.Info("subscriber closed, discarding message", logFields)
+				logger.Info("Subscriber closed, discarding message", nil)
 				return
 			}
 
 			select {
 			case <-msg.Acked():
-				s.config.Logger.Trace("message acked", logFields)
+				logger.Trace("Message acked", nil)
 				break ResendLoop
 			case <-msg.Nacked():
-				s.config.Logger.Trace("message nacked, resending", logFields)
+				logger.Trace("Message nacked, resending", nil)
 				msg = msg.Copy()
 				continue ResendLoop
 			case <-ctx.Done():
-				s.config.Logger.Info("context closed without ack", logFields)
+				logger.Info("Context closed without ack", nil)
 				return
 			case <-s.closing:
-				s.config.Logger.Info("subscriber closed without ack", logFields)
+				logger.Info("Subscriber closed without ack", nil)
 				return
 			}
 		}
 	}
+
+	s.config.Logger.Trace("Reader channel closed", nil)
+}
+
+func (s Subscriber) read(reader *bufio.Reader) chan []byte {
+	chunkCh := make(chan []byte)
+
+	go func() {
+		// todo: no way to stop this goroutine if it blocks on Read/ReadSlice
+		for {
+			var bytesRead int
+			var err error
+
+			var chunk []byte
+			if s.config.BufferSize > 0 {
+				chunk = make([]byte, s.config.BufferSize)
+			}
+
+			fmt.Print("BEFORE READ\n")
+
+			if s.config.BufferSize > 0 {
+				bytesRead, err = reader.Read(chunk)
+			} else {
+				chunk, err = reader.ReadSlice(s.config.MessageDelimiter)
+				bytesRead = len(chunk)
+			}
+
+			fmt.Printf("READ RESULT\nBR: %d\nCHUNK: %+v\nERR: %+v\n\n", bytesRead, chunk, err)
+
+			if err != nil && errors.Cause(err) != io.EOF {
+				s.config.Logger.Error("Could not read from buffer, closing read()", err, watermill.LogFields{})
+				close(chunkCh)
+				return
+			}
+
+			if bytesRead == 0 && !s.closed {
+				time.Sleep(s.config.PollInterval)
+				continue
+			}
+
+			chunkCh <- chunk
+			if s.closed {
+				return
+			}
+		}
+	}()
+
+	return chunkCh
 }
