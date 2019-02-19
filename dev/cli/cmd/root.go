@@ -2,7 +2,9 @@ package cmd
 
 import (
 	"fmt"
+	"math/rand"
 	"os"
+	"time"
 
 	"github.com/ThreeDotsLabs/watermill"
 
@@ -12,6 +14,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
+
+var random = rand.New(rand.NewSource(time.Now().Unix()))
 
 var cfgFile string
 var logger watermill.LoggerAdapter

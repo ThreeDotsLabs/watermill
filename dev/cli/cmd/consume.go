@@ -18,7 +18,7 @@ import (
 // consumer is initialized by parent command to the pub/sub provider of choice.
 var consumer message.Subscriber
 
-func addConsumeCmd(parent *cobra.Command) {
+func addConsumeCmd(parent *cobra.Command) *cobra.Command {
 	parentName := parent.Use
 	cmd := &cobra.Command{
 		Use:   "consume",
@@ -74,4 +74,5 @@ For the configuration of particular pub/sub providers, see the help for the prov
 	}
 
 	parent.AddCommand(cmd)
+	return cmd
 }
