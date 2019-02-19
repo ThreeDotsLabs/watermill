@@ -1,48 +1,49 @@
 package cmd
 
 import (
-	"github.com/Shopify/sarama"
+	"context"
+	"fmt"
+
 	"github.com/spf13/viper"
 
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure/kafka"
+	"github.com/ThreeDotsLabs/watermill/message/infrastructure/googlecloud"
 	"github.com/spf13/cobra"
 )
 
-// kafkaCmd is a mid-level command for working with the kafka pub/sub provider.
-var kafkaCmd = &cobra.Command{
-	Use:   "kafka",
-	Short: "Consume or produce messages from the kafka pub/sub provider",
-	Long: `Consume or produce messages from the kafka pub/sub provider.
+// googleCloudCmd is a mid-level command for working with the Google Cloud Pub/Sub provider.
+var googleCloudCmd = &cobra.Command{
+	Use:   "googlecloud",
+	Short: "Commands for the Google Cloud Pub/Sub provider",
+	Long: `Consume or produce messages from the Google Cloud Pub/Sub provider. Manage subscriptions.
 
-For the configuration of consuming/producing of the message, check the help of the relevant command.`,
+For the configuration of consuming/producing of the messages, check the help of the relevant command.`,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		err := rootCmd.PersistentPreRunE(cmd, args)
 		if err != nil {
 			return err
 		}
-		logger.Debug("Using kafka pub/sub", nil)
+		logger.Debug("Using Google Cloud Pub/Sub", nil)
 
-		brokers := viper.GetStringSlice("kafka.brokers")
+		projectID := viper.GetString("googlecloud.projectID")
 
-		producer, err = kafka.NewPublisher(brokers, kafka.DefaultMarshaler{}, nil, logger)
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		producer, err = googlecloud.NewPublisher(
+			ctx,
+			googlecloud.PublisherConfig{
+				ProjectID: projectID,
+			},
+		)
+
 		if err != nil {
 			return err
 		}
 
-		saramaSubscriberConfig := kafka.DefaultSaramaSubscriberConfig()
-		// equivalent of auto.offset.reset: earliest
-		if viper.GetBool("kafka.fromBeginning") {
-			logger.Trace("Configured sarama to consume messages from beginning", nil)
-			saramaSubscriberConfig.Consumer.Offsets.Initial = sarama.OffsetOldest
-		}
-
-		consumer, err = kafka.NewSubscriber(
-			kafka.SubscriberConfig{
-				Brokers:       brokers,
-				ConsumerGroup: viper.GetString("kafka.consumerGroup"),
+		consumer, err = googlecloud.NewSubscriber(
+			ctx,
+			googlecloud.SubscriberConfig{
+				ProjectID: projectID,
 			},
-			saramaSubscriberConfig,
-			kafka.DefaultMarshaler{},
 			logger,
 		)
 		if err != nil {
@@ -55,27 +56,18 @@ For the configuration of consuming/producing of the message, check the help of t
 
 func init() {
 	// Here you will define your flags and configuration settings.
-	rootCmd.AddCommand(kafkaCmd)
-	kafkaCmd.AddCommand(consumeCmd)
-	kafkaCmd.AddCommand(produceCmd)
+	rootCmd.AddCommand(googleCloudCmd)
+	fmt.Println("GC INIT")
+	googleCloudCmd.AddCommand(consumeCmd)
+	googleCloudCmd.AddCommand(produceCmd)
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
-	kafkaCmd.PersistentFlags().StringSlice("kafka.brokers", nil, "A list of kafka brokers")
-	if err := kafkaCmd.MarkPersistentFlagRequired("kafka.brokers"); err != nil {
+	googleCloudCmd.PersistentFlags().String("googlecloud.projectID", "", "The projectID for Google Cloud Pub/Sub")
+	if err := googleCloudCmd.MarkPersistentFlagRequired("googlecloud.projectID"); err != nil {
 		panic(err)
 	}
-	if err := viper.BindPFlag("kafka.brokers", kafkaCmd.PersistentFlags().Lookup("kafka.brokers")); err != nil {
-		panic(err)
-	}
-
-	kafkaCmd.PersistentFlags().Bool("kafka.fromBeginning", false, "Equivalent to auto.offset.reset: earliest")
-	if err := viper.BindPFlag("kafka.fromBeginning", kafkaCmd.PersistentFlags().Lookup("kafka.fromBeginning")); err != nil {
-		panic(err)
-	}
-
-	kafkaCmd.PersistentFlags().String("kafka.consumerGroup", "", "The kafka consumer group. Defaults to empty.")
-	if err := viper.BindPFlag("kafka.consumerGroup", kafkaCmd.PersistentFlags().Lookup("kafka.consumerGroup")); err != nil {
+	if err := viper.BindPFlag("googlecloud.projectID", googleCloudCmd.PersistentFlags().Lookup("googlecloud.projectID")); err != nil {
 		panic(err)
 	}
 
