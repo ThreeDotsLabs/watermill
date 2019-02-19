@@ -44,12 +44,7 @@ For the configuration of particular pub/sub providers, see the help for the prov
 		router.AddMiddleware(middleware.InstantAck)
 		router.AddPlugin(plugin.SignalsHandler)
 
-		//in, err := io.NewSubscriber(os.Stdin, io.SubscriberConfig{
-		f, err := os.Open("/tmp/stdin")
-		if err != nil {
-			panic(err)
-		}
-		in, err := io.NewSubscriber(f, io.SubscriberConfig{
+		in, err := io.NewSubscriber(os.Stdin, io.SubscriberConfig{
 			PollInterval:  time.Second,
 			UnmarshalFunc: io.PayloadUnmarshalFunc,
 			Logger:        logger,
