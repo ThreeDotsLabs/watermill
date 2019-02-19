@@ -3,7 +3,6 @@ package io
 import (
 	"bufio"
 	"context"
-	"fmt"
 	"io"
 	"sync"
 	"time"
@@ -172,8 +171,6 @@ func (s Subscriber) read(reader *bufio.Reader) chan []byte {
 				chunk = make([]byte, s.config.BufferSize)
 			}
 
-			fmt.Print("BEFORE READ\n")
-
 			if s.config.BufferSize > 0 {
 				bytesRead, err = reader.Read(chunk)
 			} else {
@@ -181,23 +178,22 @@ func (s Subscriber) read(reader *bufio.Reader) chan []byte {
 				bytesRead = len(chunk)
 			}
 
-			fmt.Printf("READ RESULT\nBR: %d\nCHUNK: %+v\nERR: %+v\n\n", bytesRead, chunk, err)
-
 			if err != nil && errors.Cause(err) != io.EOF {
 				s.config.Logger.Error("Could not read from buffer, closing read()", err, watermill.LogFields{})
 				close(chunkCh)
 				return
 			}
 
-			if bytesRead == 0 && !s.closed {
+			if s.closed {
+				return
+			}
+
+			if bytesRead == 0 {
 				time.Sleep(s.config.PollInterval)
 				continue
 			}
 
 			chunkCh <- chunk
-			if s.closed {
-				return
-			}
 		}
 	}()
 

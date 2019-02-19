@@ -514,6 +514,7 @@ func (h *handler) publishProducedMessages(producedMessages Messages, msgFields w
 
 	h.logger.Trace("Sending produced messages", msgFields.Add(watermill.LogFields{
 		"produced_messages_count": len(producedMessages),
+		"publish_topic":           h.publishTopic,
 	}))
 
 	for _, msg := range producedMessages {

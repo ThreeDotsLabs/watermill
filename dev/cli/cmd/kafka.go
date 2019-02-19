@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/Shopify/sarama"
 	"github.com/spf13/viper"
 
@@ -58,9 +56,8 @@ For the configuration of consuming/producing of the messages, check the help of 
 func init() {
 	// Here you will define your flags and configuration settings.
 	rootCmd.AddCommand(kafkaCmd)
-	fmt.Println("KAFKA INIT")
-	kafkaCmd.AddCommand(consumeCmd)
-	kafkaCmd.AddCommand(produceCmd)
+	addConsumeCmd(kafkaCmd)
+	addProduceCmd(kafkaCmd)
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
