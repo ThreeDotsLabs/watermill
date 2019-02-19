@@ -1,6 +1,13 @@
 package cmd
 
 import (
+	"bufio"
+	"os"
+
+	"github.com/ThreeDotsLabs/watermill"
+
+	"github.com/spf13/viper"
+
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/spf13/cobra"
 )
@@ -18,7 +25,29 @@ For the configuration of particular pub/sub providers, see the help for the prov
 	PreRunE: func(cmd *cobra.Command, args []string) error {
 		return nil
 	},
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
+		topic := viper.GetString("topic")
+		in := bufio.NewScanner(os.Stdin)
+		for in.Scan() {
+			payload := in.Text()
+			if payload == "" {
+				logger.Trace("empty message, skipping", watermill.LogFields{})
+				continue
+			}
+
+			message := message.NewMessage(
+				watermill.NewUUID(),
+				[]byte(in.Text()),
+			)
+			if err := producer.Publish(topic, message); err != nil {
+				logger.Error("could not publish message", err, watermill.LogFields{})
+			}
+		}
+		if in.Err() != nil {
+			return in.Err()
+		}
+
+		return nil
 	},
 }
 
@@ -30,6 +59,9 @@ func init() {
 	produceCmd.Flags().StringP("topic", "t", "", "The topic to produce messages to (required)")
 	err := produceCmd.MarkFlagRequired("topic")
 	if err != nil {
+		panic(err)
+	}
+	if err := viper.BindPFlag("topic", produceCmd.Flags().Lookup("topic")); err != nil {
 		panic(err)
 	}
 
