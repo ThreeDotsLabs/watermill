@@ -44,8 +44,9 @@ type GoChannel struct {
 	subscribersLock        sync.RWMutex
 	subscribersByTopicLock sync.Map // map of *sync.Mutex
 
-	closed  bool
-	closing chan struct{}
+	closed     bool
+	closedLock sync.Mutex
+	closing    chan struct{}
 
 	persistedMessages     map[string][]*message.Message
 	persistedMessagesLock sync.RWMutex
@@ -262,6 +263,9 @@ func (g *GoChannel) topicSubscribers(topic string) []*subscriber {
 }
 
 func (g *GoChannel) Close() error {
+	g.closedLock.Lock()
+	defer g.closedLock.Unlock()
+
 	if g.closed {
 		return nil
 	}

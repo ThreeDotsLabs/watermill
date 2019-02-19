@@ -36,7 +36,7 @@ services:
 
   googlecloud:
     image: google/cloud-sdk:228.0.0
-    entrypoint: gcloud --quiet beta emulators pubsub start --host-port=localhost:8085 --verbosity=debug --log-http
+    entrypoint: gcloud --quiet beta emulators pubsub start --host-port=0.0.0.0:8085 --verbosity=debug --log-http
     ports:
       - 8085:8085
     restart: on-failure
