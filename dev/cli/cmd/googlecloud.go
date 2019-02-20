@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"os"
 	"time"
 
 	"github.com/ThreeDotsLabs/watermill"
@@ -31,7 +32,6 @@ For the configuration of consuming/producing of the messages, check the help of 
 		}
 
 		logger.Debug("Using Google Cloud Pub/Sub", nil)
-		projectID := viper.GetString("googlecloud.projectID")
 
 		if cmd.Use == "consume" {
 			subName := viper.GetString("googlecloud.subscriptionName")
@@ -48,7 +48,7 @@ For the configuration of consuming/producing of the messages, check the help of 
 					GenerateSubscriptionName: func(topic string) string {
 						return subName
 					},
-					ProjectID: projectID,
+					ProjectID: projectID(),
 				},
 				logger,
 			)
@@ -61,7 +61,7 @@ For the configuration of consuming/producing of the messages, check the help of 
 			producer, err = googlecloud.NewPublisher(
 				context.Background(),
 				googlecloud.PublisherConfig{
-					ProjectID: projectID,
+					ProjectID: projectID(),
 				},
 			)
 
@@ -93,9 +93,8 @@ func generateTempSubscription() (id string, err error) {
 			googleCloudTempSubscriptionID = id
 		}
 	}()
-	projectID := viper.GetString("googlecloud.projectID")
 
-	client, err := pubsub.NewClient(ctx, projectID)
+	client, err := pubsub.NewClient(ctx, projectID())
 	if err != nil {
 		return "", errors.Wrap(err, "could not create pubsub client")
 	}
@@ -135,9 +134,8 @@ func removeTempSubscription() (err error) {
 	}()
 
 	ctx := context.Background()
-	projectID := viper.GetString("googlecloud.projectID")
 
-	client, err := pubsub.NewClient(ctx, projectID)
+	client, err := pubsub.NewClient(ctx, projectID())
 	if err != nil {
 		return errors.Wrap(err, "could not create pubsub client")
 	}
@@ -155,6 +153,15 @@ func removeTempSubscription() (err error) {
 	return sub.Delete(ctx)
 }
 
+func projectID() string {
+	projectID := viper.GetString("googlecloud.projectID")
+	if projectID == "" {
+		projectID = os.Getenv("GOOGLE_CLOUD_PROJECT")
+	}
+
+	return projectID
+}
+
 func init() {
 	// Here you will define your flags and configuration settings.
 	rootCmd.AddCommand(googleCloudCmd)
@@ -163,17 +170,18 @@ func init() {
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
-	googleCloudCmd.PersistentFlags().String("googlecloud.projectID", "", "The projectID for Google Cloud Pub/Sub")
-	if err := viper.BindPFlag("googlecloud.projectID", googleCloudCmd.PersistentFlags().Lookup("googlecloud.projectID")); err != nil {
+	googleCloudCmd.PersistentFlags().String("project", "", "The projectID for Google Cloud Pub/Sub. Defaults to the GOOGLE_CLOUD_PROJECT environment variable.")
+	if err := viper.BindPFlag("googlecloud.projectID", googleCloudCmd.PersistentFlags().Lookup("project")); err != nil {
 		panic(err)
 	}
 
-	consumeCmd.PersistentFlags().String(
-		"googlecloud.subscriptionName",
+	consumeCmd.PersistentFlags().StringP(
+		"subscription",
+		"s",
 		"",
 		"The subscription for Google Cloud Pub/Sub. If left empty, a temporary subscription is created and removed when the consumer is closed",
 	)
-	if err := viper.BindPFlag("googlecloud.subscriptionName", consumeCmd.PersistentFlags().Lookup("googlecloud.subscriptionName")); err != nil {
+	if err := viper.BindPFlag("googlecloud.subscriptionName", consumeCmd.PersistentFlags().Lookup("subscription")); err != nil {
 		panic(err)
 	}
 

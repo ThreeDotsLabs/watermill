@@ -61,21 +61,21 @@ func init() {
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
-	kafkaCmd.PersistentFlags().StringSliceP("kafka.brokers", "b", nil, "A list of kafka brokers")
-	if err := kafkaCmd.MarkPersistentFlagRequired("kafka.brokers"); err != nil {
+	kafkaCmd.PersistentFlags().StringSliceP("brokers", "b", nil, "A list of kafka brokers")
+	if err := kafkaCmd.MarkPersistentFlagRequired("brokers"); err != nil {
 		panic(err)
 	}
-	if err := viper.BindPFlag("kafka.brokers", kafkaCmd.PersistentFlags().Lookup("kafka.brokers")); err != nil {
-		panic(err)
-	}
-
-	kafkaCmd.PersistentFlags().Bool("kafka.fromBeginning", false, "Equivalent to auto.offset.reset: earliest")
-	if err := viper.BindPFlag("kafka.fromBeginning", kafkaCmd.PersistentFlags().Lookup("kafka.fromBeginning")); err != nil {
+	if err := viper.BindPFlag("kafka.brokers", kafkaCmd.PersistentFlags().Lookup("brokers")); err != nil {
 		panic(err)
 	}
 
-	kafkaCmd.PersistentFlags().String("kafka.consumerGroup", "", "The kafka consumer group. Defaults to empty.")
-	if err := viper.BindPFlag("kafka.consumerGroup", kafkaCmd.PersistentFlags().Lookup("kafka.consumerGroup")); err != nil {
+	kafkaCmd.PersistentFlags().Bool("fromBeginning", false, "Equivalent to auto.offset.reset: earliest")
+	if err := viper.BindPFlag("kafka.fromBeginning", kafkaCmd.PersistentFlags().Lookup("fromBeginning")); err != nil {
+		panic(err)
+	}
+
+	kafkaCmd.PersistentFlags().StringP("consumerGroup", "c", "", "The kafka consumer group. Defaults to empty.")
+	if err := viper.BindPFlag("kafka.consumerGroup", kafkaCmd.PersistentFlags().Lookup("consumerGroup")); err != nil {
 		panic(err)
 	}
 
