@@ -439,7 +439,7 @@ func (r *Router) decorateHandlerSubscriber(h *handler) error {
 }
 
 // addHandlerContext enriches the contex with values that are relevant within this handler's context.
-func (h handler) addHandlerContext(messages ...*Message) {
+func (h *handler) addHandlerContext(messages ...*Message) {
 	for i, msg := range messages {
 		ctx := msg.Context()
 

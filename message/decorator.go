@@ -50,12 +50,8 @@ func (t *messageTransformSubscriberDecorator) Subscribe(ctx context.Context, top
 	t.subscribeWg.Add(1)
 	go func() {
 		for msg := range in {
-			// func will be called when out is ready to receive the message, not earlier
-			// it is necessary to avoid race conditions
-			out <- func(msg *Message) *Message {
-				t.transform(msg)
-				return msg
-			}(msg)
+			t.transform(msg)
+			out <- msg
 		}
 		close(out)
 		t.subscribeWg.Done()
