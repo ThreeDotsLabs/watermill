@@ -508,7 +508,7 @@ func (h *handler) publishProducedMessages(producedMessages Messages, msgFields w
 		return nil
 	}
 
-	if h.publishTopic == "" {
+	if h.publisher == nil {
 		return ErrOutputInNoPublisherHandler
 	}
 

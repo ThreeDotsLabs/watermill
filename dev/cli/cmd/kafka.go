@@ -56,12 +56,12 @@ For the configuration of consuming/producing of the messages, check the help of 
 func init() {
 	// Here you will define your flags and configuration settings.
 	rootCmd.AddCommand(kafkaCmd)
-	addConsumeCmd(kafkaCmd)
-	addProduceCmd(kafkaCmd)
+	addConsumeCmd(kafkaCmd, true)
+	addProduceCmd(kafkaCmd, true)
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
-	kafkaCmd.PersistentFlags().StringSlice("kafka.brokers", nil, "A list of kafka brokers")
+	kafkaCmd.PersistentFlags().StringSliceP("kafka.brokers", "b", nil, "A list of kafka brokers")
 	if err := kafkaCmd.MarkPersistentFlagRequired("kafka.brokers"); err != nil {
 		panic(err)
 	}

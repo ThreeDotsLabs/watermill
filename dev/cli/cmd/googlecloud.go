@@ -158,8 +158,8 @@ func removeTempSubscription() (err error) {
 func init() {
 	// Here you will define your flags and configuration settings.
 	rootCmd.AddCommand(googleCloudCmd)
-	consumeCmd := addConsumeCmd(googleCloudCmd)
-	addProduceCmd(googleCloudCmd)
+	consumeCmd := addConsumeCmd(googleCloudCmd, true)
+	addProduceCmd(googleCloudCmd, true)
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:

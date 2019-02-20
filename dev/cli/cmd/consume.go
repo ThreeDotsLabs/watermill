@@ -18,7 +18,7 @@ import (
 // consumer is initialized by parent command to the pub/sub provider of choice.
 var consumer message.Subscriber
 
-func addConsumeCmd(parent *cobra.Command) *cobra.Command {
+func addConsumeCmd(parent *cobra.Command, addTopicFlag bool) *cobra.Command {
 	parentName := parent.Use
 	cmd := &cobra.Command{
 		Use:   "consume",
@@ -27,7 +27,9 @@ func addConsumeCmd(parent *cobra.Command) *cobra.Command {
 
 For the configuration of particular pub/sub providers, see the help for the provider commands.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			topic := viper.GetString(parentName + ".consume.topic")
+			if topic == "" {
+				topic = viper.GetString(parentName + ".consume.topic")
+			}
 			router, err := message.NewRouter(
 				message.RouterConfig{
 					CloseTimeout: 5 * time.Second,
@@ -52,7 +54,7 @@ For the configuration of particular pub/sub providers, see the help for the prov
 				"dump_to_stdout",
 				topic,
 				consumer,
-				"tty",
+				"",
 				out,
 				func(msg *message.Message) ([]*message.Message, error) {
 					// just forward the message to stdout
@@ -64,13 +66,15 @@ For the configuration of particular pub/sub providers, see the help for the prov
 		},
 	}
 
-	cmd.Flags().StringP("topic", "t", "", "The topic to consume messages from (required)")
-	err := cmd.MarkFlagRequired("topic")
-	if err != nil {
-		panic(err)
-	}
-	if err = viper.BindPFlag(parentName+".consume.topic", cmd.Flags().Lookup("topic")); err != nil {
-		panic(err)
+	if addTopicFlag {
+		cmd.Flags().StringP("topic", "t", "", "The topic to consume messages from (required)")
+		err := cmd.MarkFlagRequired("topic")
+		if err != nil {
+			panic(err)
+		}
+		if err = viper.BindPFlag(parentName+".consume.topic", cmd.Flags().Lookup("topic")); err != nil {
+			panic(err)
+		}
 	}
 
 	parent.AddCommand(cmd)

@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"math/rand"
 	"os"
@@ -20,6 +21,10 @@ var random = rand.New(rand.NewSource(time.Now().Unix()))
 var cfgFile string
 var logger watermill.LoggerAdapter
 
+// if this variable is set by another command, it overrides the viper variables
+// '*.produce.topic' or '*.consume.topic' used by produce/consume commands, respectively.
+var topic string
+
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "watermill",
@@ -36,6 +41,10 @@ Use console-based producer or consumer for various pub/sub providers.`,
 			logger = watermill.NewStdLogger(viper.GetBool("debug"), viper.GetBool("trace"))
 		} else {
 			logger = watermill.NopLogger{}
+		}
+
+		if err := checkRequiredFlags(cmd.Flags()); err != nil {
+			return err
 		}
 
 		return nil
@@ -105,4 +114,29 @@ func ensure(err error) {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func checkRequiredFlags(flags *pflag.FlagSet) error {
+	requiredError := false
+	flagName := ""
+
+	flags.VisitAll(func(flag *pflag.Flag) {
+		requiredAnnotation := flag.Annotations[cobra.BashCompOneRequiredFlag]
+		if len(requiredAnnotation) == 0 {
+			return
+		}
+
+		flagRequired := requiredAnnotation[0] == "true"
+
+		if flagRequired && !flag.Changed {
+			requiredError = true
+			flagName = flag.Name
+		}
+	})
+
+	if requiredError {
+		return errors.New("Required flag `" + flagName + "` has not been set")
+	}
+
+	return nil
 }
