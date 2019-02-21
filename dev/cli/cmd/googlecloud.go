@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/ThreeDotsLabs/watermill"
@@ -97,18 +98,45 @@ var googleCloudSubscriptionAddCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
 		subID := args[0]
 
+		topic := viper.GetString("googlecloud.subscription.add.topic")
+		ackDeadline := viper.GetDuration("googlecloud.subscription.add.ackDeadline")
+		retainAcked := viper.GetBool("googlecloud.subscription.add.retainAcked")
+		retentionDuration := viper.GetDuration("googlecloud.subscription.add.retentionDuration")
+
+		// StringToString doesn't work with viper, so let's parse this manually
+		labels := strings.Split(viper.GetString("googlecloud.subscription.add.labels"), ",")
+		labelsMap := make(map[string]string, len(labels))
+		for _, l := range labels {
+			fields := strings.Split(l, "=")
+			if len(fields) < 2 {
+				continue
+			}
+			labelsMap[fields[0]] = fields[1]
+		}
+
 		logger := logger.With(watermill.LogFields{
-			"subscription_id": subID,
+			"subscription_id":   subID,
+			"topic":             topic,
+			"ackDeadline":       ackDeadline,
+			"retainAcked":       retainAcked,
+			"retentionDuration": retentionDuration,
+			"labels":            labelsMap,
 		})
 		logger.Info("Creating new subscription", nil)
 
+		defer func() {
+			if err == nil {
+				logger.Info("Subscription created", nil)
+			}
+		}()
+
 		return addSubscription(
 			subID,
-			viper.GetString("googlecloud.subscription.add.topic"),
-			viper.GetDuration("googlecloud.subscription.add.ackDeadline"),
-			viper.GetBool("googlecloud.subscription.add.retainAcked"),
-			viper.GetDuration("googlecloud.subscription.add.retentionDuration"),
-			viper.GetStringMapString("googlecloud.subscription.add.labels"),
+			topic,
+			ackDeadline,
+			retainAcked,
+			retentionDuration,
+			labelsMap,
 		)
 	},
 }
@@ -303,10 +331,11 @@ func init() {
 		panic(err)
 	}
 
-	googleCloudSubscriptionAddCmd.Flags().StringToString(
+	// StringToString doesn't work correctly with viper
+	googleCloudSubscriptionAddCmd.Flags().String(
 		"labels",
-		nil,
-		"The set of labels for the subscription. Format: 'key1=value1,key=:value2,...'",
+		"",
+		"The set of labels for the subscription. Format: '--labels key1=value1,key2=value2,...'",
 	)
 	if err = viper.BindPFlag("googlecloud.subscription.add.labels", googleCloudSubscriptionAddCmd.Flags().Lookup("labels")); err != nil {
 		panic(err)
