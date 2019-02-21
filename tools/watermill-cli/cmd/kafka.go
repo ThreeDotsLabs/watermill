@@ -10,8 +10,8 @@ import (
 
 var kafkaCmd = &cobra.Command{
 	Use:   "kafka",
-	Short: "Commands for the kafka pub/sub provider",
-	Long: `Consume or produce messages from the kafka pub/sub provider.
+	Short: "Commands for the kafka Pub/Sub provider",
+	Long: `Consume or produce messages from the kafka Pub/Sub provider.
 
 For the configuration of consuming/producing of the messages, check the help of the relevant command.`,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {

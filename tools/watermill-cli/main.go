@@ -1,6 +1,6 @@
 package main
 
-import "github.com/ThreeDotsLabs/watermill/dev/cli/cmd"
+import "github.com/ThreeDotsLabs/watermill/tools/watermill-cli/cmd"
 
 func main() {
 	cmd.Execute()
