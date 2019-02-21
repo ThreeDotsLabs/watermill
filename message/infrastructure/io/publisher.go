@@ -67,12 +67,13 @@ func (p *Publisher) Close() error {
 	}
 
 	p.closed = true
+	err := p.wc.Close()
 	p.publishWg.Wait()
 
-	return p.wc.Close()
+	return err
 }
 
-func (p Publisher) write(topic string, msg *message.Message) error {
+func (p *Publisher) write(topic string, msg *message.Message) error {
 	defer p.publishWg.Done()
 
 	b, err := p.config.MarshalFunc(topic, msg)
