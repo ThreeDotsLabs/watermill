@@ -51,7 +51,7 @@ which flags are available/required for the specific context and act accordingly.
 
 #### Adding/Removing subscriptions
 
-The CLI tools allows for creating/removing subscriptions for Google Cloud Pub/Sub.
+The CLI tool allows to create/remove subscriptions for Google Cloud Pub/Sub.
 
 ```bash
 watermill-cli googlecloud subscription add -t <topic> <subscription_id>
@@ -59,4 +59,4 @@ watermill-cli googlecloud subscription add -t <topic> <subscription_id>
 watermill-cli googlecloud subscription rm <subscription_id>
 ```
 
-Additional flags are available for addSubscription to regulate the subscription's settings.
+Additional flags are available for `subscription add` to regulate the newly created subscription's settings.

@@ -51,6 +51,7 @@ require (
 	google.golang.org/genproto v0.0.0-20190201180003-4b09977fb922 // indirect
 	google.golang.org/grpc v1.18.0
 	gopkg.in/vmihailenco/msgpack.v2 v2.9.1 // indirect
+	gopkg.in/yaml.v2 v2.2.2
 	labix.org/v2/mgo v0.0.0-20140701140051-000000000287 // indirect
 	launchpad.net/gocheck v0.0.0-20140225173054-000000000087 // indirect
 )

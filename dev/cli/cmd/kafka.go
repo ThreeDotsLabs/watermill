@@ -24,29 +24,34 @@ For the configuration of consuming/producing of the messages, check the help of 
 
 		brokers := viper.GetStringSlice("kafka.brokers")
 
-		producer, err = kafka.NewPublisher(brokers, kafka.DefaultMarshaler{}, nil, logger)
-		if err != nil {
-			return err
+		if cmd.Use == "consume" {
+			saramaSubscriberConfig := kafka.DefaultSaramaSubscriberConfig()
+
+			if viper.GetBool("kafka.consume.fromBeginning") {
+				logger.Trace("Configured sarama to consume messages from beginning", nil)
+				// equivalent of auto.offset.reset: earliest
+				saramaSubscriberConfig.Consumer.Offsets.Initial = sarama.OffsetOldest
+			}
+
+			consumer, err = kafka.NewSubscriber(
+				kafka.SubscriberConfig{
+					Brokers:       brokers,
+					ConsumerGroup: viper.GetString("kafka.consume.consumerGroup"),
+				},
+				saramaSubscriberConfig,
+				kafka.DefaultMarshaler{},
+				logger,
+			)
+			if err != nil {
+				return err
+			}
 		}
 
-		saramaSubscriberConfig := kafka.DefaultSaramaSubscriberConfig()
-		// equivalent of auto.offset.reset: earliest
-		if viper.GetBool("kafka.fromBeginning") {
-			logger.Trace("Configured sarama to consume messages from beginning", nil)
-			saramaSubscriberConfig.Consumer.Offsets.Initial = sarama.OffsetOldest
-		}
-
-		consumer, err = kafka.NewSubscriber(
-			kafka.SubscriberConfig{
-				Brokers:       brokers,
-				ConsumerGroup: viper.GetString("kafka.consumerGroup"),
-			},
-			saramaSubscriberConfig,
-			kafka.DefaultMarshaler{},
-			logger,
-		)
-		if err != nil {
-			return err
+		if cmd.Use == "produce" {
+			producer, err = kafka.NewPublisher(brokers, kafka.DefaultMarshaler{}, nil, logger)
+			if err != nil {
+				return err
+			}
 		}
 
 		return nil
@@ -56,30 +61,28 @@ For the configuration of consuming/producing of the messages, check the help of 
 func init() {
 	// Here you will define your flags and configuration settings.
 	rootCmd.AddCommand(kafkaCmd)
-	addConsumeCmd(kafkaCmd, true)
-	addProduceCmd(kafkaCmd, true)
+
+	kafkaCmd.PersistentFlags().StringP(
+		"topic",
+		"t",
+		"",
+		"The topic to produce messages to (produce) or consume message from (consume)",
+	)
+	ensure(kafkaCmd.MarkPersistentFlagRequired("topic"))
+	ensure(viper.BindPFlag("kafka.topic", kafkaCmd.PersistentFlags().Lookup("topic")))
+
+	consumeCmd := addConsumeCmd(kafkaCmd, "kafka.topic")
+	_ = addProduceCmd(kafkaCmd, "kafka.topic")
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
 	kafkaCmd.PersistentFlags().StringSliceP("brokers", "b", nil, "A list of kafka brokers")
-	if err := kafkaCmd.MarkPersistentFlagRequired("brokers"); err != nil {
-		panic(err)
-	}
-	if err := viper.BindPFlag("kafka.brokers", kafkaCmd.PersistentFlags().Lookup("brokers")); err != nil {
-		panic(err)
-	}
+	ensure(kafkaCmd.MarkPersistentFlagRequired("brokers"))
+	ensure(viper.BindPFlag("kafka.brokers", kafkaCmd.PersistentFlags().Lookup("brokers")))
 
-	kafkaCmd.PersistentFlags().Bool("fromBeginning", false, "Equivalent to auto.offset.reset: earliest")
-	if err := viper.BindPFlag("kafka.fromBeginning", kafkaCmd.PersistentFlags().Lookup("fromBeginning")); err != nil {
-		panic(err)
-	}
+	consumeCmd.PersistentFlags().Bool("fromBeginning", false, "Equivalent to auto.offset.reset: earliest")
+	ensure(viper.BindPFlag("kafka.consume.fromBeginning", consumeCmd.PersistentFlags().Lookup("fromBeginning")))
 
-	kafkaCmd.PersistentFlags().StringP("consumerGroup", "c", "", "The kafka consumer group. Defaults to empty.")
-	if err := viper.BindPFlag("kafka.consumerGroup", kafkaCmd.PersistentFlags().Lookup("consumerGroup")); err != nil {
-		panic(err)
-	}
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// produceCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	consumeCmd.PersistentFlags().StringP("consumerGroup", "c", "", "The kafka consumer group. Defaults to empty.")
+	ensure(viper.BindPFlag("kafka.consume.consumerGroup", consumeCmd.PersistentFlags().Lookup("consumerGroup")))
 }

@@ -1,14 +1,13 @@
 package cmd
 
 import (
-	"errors"
 	"fmt"
-	"math/rand"
 	"os"
-	"time"
+
+	"github.com/pkg/errors"
+	yaml "gopkg.in/yaml.v2"
 
 	"github.com/ThreeDotsLabs/watermill"
-
 	"github.com/spf13/pflag"
 
 	homedir "github.com/mitchellh/go-homedir"
@@ -16,14 +15,8 @@ import (
 	"github.com/spf13/viper"
 )
 
-var random = rand.New(rand.NewSource(time.Now().Unix()))
-
 var cfgFile string
 var logger watermill.LoggerAdapter
-
-// if this variable is set by another command, it overrides the viper variables
-// '*.produce.topic' or '*.consume.topic' used by produce/consume commands, respectively.
-var topic string
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -45,6 +38,25 @@ Use console-based producer or consumer for various pub/sub providers.`,
 
 		if err := checkRequiredFlags(cmd.Flags()); err != nil {
 			return err
+		}
+
+		writeConfig := viper.GetString("writeConfig")
+		if writeConfig != "" {
+			settings := viper.AllSettings()
+			delete(settings, "writeconfig")
+			b, err := yaml.Marshal(settings)
+			if err != nil {
+				return errors.Wrap(err, "could not marshal config to yaml")
+			}
+
+			f, err := os.Create(writeConfig)
+			if err != nil {
+				return errors.Wrap(err, "could not create file for write")
+			}
+			_, err = fmt.Fprintf(f, "%s", b)
+			if err != nil {
+				return errors.Wrap(err, "could not write to file")
+			}
 		}
 
 		return nil
@@ -81,6 +93,9 @@ func init() {
 
 	outputFlags.Bool("trace", false, "If true, trace output is enabled from the logger")
 	ensure(viper.BindPFlag("trace", outputFlags.Lookup("trace")))
+
+	outputFlags.String("writeConfig", "", "Write the config of the current command as yaml to the specified path")
+	ensure(viper.BindPFlag("writeConfig", outputFlags.Lookup("writeConfig")))
 
 	rootCmd.PersistentFlags().AddFlagSet(outputFlags)
 }

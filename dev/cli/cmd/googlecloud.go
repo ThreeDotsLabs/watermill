@@ -35,7 +35,7 @@ For the configuration of consuming/producing of the messages, check the help of 
 		logger.Debug("Using Google Cloud Pub/Sub", nil)
 
 		if cmd.Use == "consume" {
-			subName := viper.GetString("googlecloud.subscriptionName")
+			subName := viper.GetString("googlecloud.consume.subscription")
 			if subName == "" {
 				subName, err = generateTempSubscription()
 				if err != nil {
@@ -98,7 +98,7 @@ var googleCloudSubscriptionAddCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
 		subID := args[0]
 
-		topic := viper.GetString("googlecloud.subscription.add.topic")
+		topic := viper.GetString("googlecloud..topic")
 		ackDeadline := viper.GetDuration("googlecloud.subscription.add.ackDeadline")
 		retainAcked := viper.GetBool("googlecloud.subscription.add.retainAcked")
 		retentionDuration := viper.GetDuration("googlecloud.subscription.add.retentionDuration")
@@ -177,10 +177,10 @@ func generateTempSubscription() (id string, err error) {
 	randomID := "watermill_console_consumer_" + watermill.NewShortUUID()
 	return randomID, addSubscription(
 		randomID,
-		viper.GetString("googlecloud.consume.topic"),
+		viper.GetString("googlecloud.topic"),
 		10*time.Second,
 		false,
-		time.Minute,
+		10*time.Minute,
 		nil,
 	)
 }
@@ -270,15 +270,23 @@ func projectID() string {
 func init() {
 	// Here you will define your flags and configuration settings.
 	rootCmd.AddCommand(googleCloudCmd)
-	consumeCmd := addConsumeCmd(googleCloudCmd, true)
-	addProduceCmd(googleCloudCmd, true)
+
+	googleCloudCmd.PersistentFlags().StringP(
+		"topic",
+		"t",
+		"",
+		"The topic to produce messages to (produce), consume message from (consume) or the topic for the newly created subscription (subscription.add)",
+	)
+	ensure(googleCloudCmd.MarkPersistentFlagRequired("topic"))
+	ensure(viper.BindPFlag("googlecloud.topic", googleCloudCmd.PersistentFlags().Lookup("topic")))
+
+	consumeCmd := addConsumeCmd(googleCloudCmd, "googlecloud.topic")
+	addProduceCmd(googleCloudCmd, "googlecloud.topic")
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
 	googleCloudCmd.PersistentFlags().String("project", "", "The projectID for Google Cloud Pub/Sub. Defaults to the GOOGLE_CLOUD_PROJECT environment variable.")
-	if err := viper.BindPFlag("googlecloud.projectID", googleCloudCmd.PersistentFlags().Lookup("project")); err != nil {
-		panic(err)
-	}
+	ensure(viper.BindPFlag("googlecloud.projectID", googleCloudCmd.PersistentFlags().Lookup("project")))
 
 	consumeCmd.PersistentFlags().StringP(
 		"subscription",
@@ -286,22 +294,15 @@ func init() {
 		"",
 		"The subscription for Google Cloud Pub/Sub. If left empty, a temporary subscription is created and removed when the consumer is closed",
 	)
-	if err := viper.BindPFlag("googlecloud.subscriptionName", consumeCmd.PersistentFlags().Lookup("subscription")); err != nil {
-		panic(err)
-	}
+	ensure(viper.BindPFlag("googlecloud.consume.subscription", consumeCmd.PersistentFlags().Lookup("subscription")))
 
 	googleCloudCmd.AddCommand(googleCloudSubscriptionCmd)
 	googleCloudSubscriptionCmd.AddCommand(googleCloudSubscriptionAddCmd)
 	googleCloudSubscriptionCmd.AddCommand(googleCloudSubscriptionRmCmd)
 
 	googleCloudSubscriptionAddCmd.Flags().StringP("topic", "t", "", "The topic for the new subscription (required)")
-	err := googleCloudSubscriptionAddCmd.MarkFlagRequired("topic")
-	if err != nil {
-		panic(err)
-	}
-	if err = viper.BindPFlag("googlecloud.subscription.add.topic", googleCloudSubscriptionAddCmd.Flags().Lookup("topic")); err != nil {
-		panic(err)
-	}
+	ensure(googleCloudSubscriptionAddCmd.MarkFlagRequired("topic"))
+	ensure(viper.BindPFlag("googlecloud.subscription.add.topic", googleCloudSubscriptionAddCmd.Flags().Lookup("topic")))
 
 	googleCloudSubscriptionAddCmd.Flags().DurationP(
 		"ackDeadline",
@@ -309,27 +310,21 @@ func init() {
 		10*time.Second,
 		"How long Pub/Sub waits for the subscriber to acknowledge receipt before resending the message. Deadline time is from 10 seconds to 600 seconds",
 	)
-	if err = viper.BindPFlag("googlecloud.subscription.add.ackDeadline", googleCloudSubscriptionAddCmd.Flags().Lookup("ackDeadline")); err != nil {
-		panic(err)
-	}
+	ensure(viper.BindPFlag("googlecloud.subscription.add.ackDeadline", googleCloudSubscriptionAddCmd.Flags().Lookup("ackDeadline")))
 
 	googleCloudSubscriptionAddCmd.Flags().Bool(
 		"retainAcked",
 		false,
 		"Acknowledged messages will be kept 7 days from publication unless set otherwise in \"message retention duration\".",
 	)
-	if err = viper.BindPFlag("googlecloud.subscription.add.retainAcked", googleCloudSubscriptionAddCmd.Flags().Lookup("retainAcked")); err != nil {
-		panic(err)
-	}
+	ensure(viper.BindPFlag("googlecloud.subscription.add.retainAcked", googleCloudSubscriptionAddCmd.Flags().Lookup("retainAcked")))
 
 	googleCloudSubscriptionAddCmd.Flags().Duration(
 		"retentionDuration",
 		7*24*time.Hour,
 		"How long the retained messages will be kept. The allowed duration is from 10 minutes to 7 days, which is the default.",
 	)
-	if err = viper.BindPFlag("googlecloud.subscription.add.retentionDuration", googleCloudSubscriptionAddCmd.Flags().Lookup("retentionDuration")); err != nil {
-		panic(err)
-	}
+	ensure(viper.BindPFlag("googlecloud.subscription.add.retentionDuration", googleCloudSubscriptionAddCmd.Flags().Lookup("retentionDuration")))
 
 	// StringToString doesn't work correctly with viper
 	googleCloudSubscriptionAddCmd.Flags().String(
@@ -337,11 +332,5 @@ func init() {
 		"",
 		"The set of labels for the subscription. Format: '--labels key1=value1,key2=value2,...'",
 	)
-	if err = viper.BindPFlag("googlecloud.subscription.add.labels", googleCloudSubscriptionAddCmd.Flags().Lookup("labels")); err != nil {
-		panic(err)
-	}
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// produceCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	ensure(viper.BindPFlag("googlecloud.subscription.add.labels", googleCloudSubscriptionAddCmd.Flags().Lookup("labels")))
 }

@@ -22,8 +22,6 @@ For the configuration of consuming/producing of the messages, check the help of 
 		logger.Debug("Using AMQP Pub/Sub", nil)
 
 		if cmd.Use == "consume" {
-			// amqp is special
-			topic = viper.GetString("amqp.consume.queue")
 			consumer, err = amqp.NewSubscriber(amqpConsumerConfig(), logger)
 			if err != nil {
 				return err
@@ -31,8 +29,6 @@ For the configuration of consuming/producing of the messages, check the help of 
 		}
 
 		if cmd.Use == "produce" {
-			// amqp is special
-			topic = viper.GetString("amqp.produce.exchange")
 			producer, err = amqp.NewPublisher(amqpProducerConfig(), logger)
 			if err != nil {
 				return err
@@ -108,9 +104,9 @@ func init() {
 	// Here you will define your flags and configuration settings.
 	rootCmd.AddCommand(amqpCmd)
 	configureAmqpCmd()
-	consumeCmd := addConsumeCmd(amqpCmd, false)
+	consumeCmd := addConsumeCmd(amqpCmd, "amqp.consume.queue")
 	configureConsumeCmd(consumeCmd)
-	produceCmd := addProduceCmd(amqpCmd, false)
+	produceCmd := addProduceCmd(amqpCmd, "amqp.produce.exchange")
 	configureProduceCmd(produceCmd)
 }
 
@@ -121,21 +117,15 @@ func configureAmqpCmd() {
 		"",
 		"The URI to the AMQP instance (required)",
 	)
-	if err := amqpCmd.MarkPersistentFlagRequired("uri"); err != nil {
-		panic(err)
-	}
-	if err := viper.BindPFlag("amqp.uri", amqpCmd.PersistentFlags().Lookup("uri")); err != nil {
-		panic(err)
-	}
+	ensure(amqpCmd.MarkPersistentFlagRequired("uri"))
+	ensure(viper.BindPFlag("amqp.uri", amqpCmd.PersistentFlags().Lookup("uri")))
 
 	amqpCmd.PersistentFlags().Bool(
 		"durable",
 		true,
 		"If true, the queues and exchanges created automatically (if any) will be durable",
 	)
-	if err := viper.BindPFlag("amqp.durable", amqpCmd.PersistentFlags().Lookup("durable")); err != nil {
-		panic(err)
-	}
+	ensure(viper.BindPFlag("amqp.durable", amqpCmd.PersistentFlags().Lookup("durable")))
 }
 
 func configureConsumeCmd(consumeCmd *cobra.Command) {
@@ -145,12 +135,8 @@ func configureConsumeCmd(consumeCmd *cobra.Command) {
 		"",
 		"The name of the AMQP queue to consume messages from (required)",
 	)
-	if err := consumeCmd.MarkPersistentFlagRequired("queue"); err != nil {
-		panic(err)
-	}
-	if err := viper.BindPFlag("amqp.consume.queue", consumeCmd.PersistentFlags().Lookup("queue")); err != nil {
-		panic(err)
-	}
+	ensure(consumeCmd.MarkPersistentFlagRequired("queue"))
+	ensure(viper.BindPFlag("amqp.consume.queue", consumeCmd.PersistentFlags().Lookup("queue")))
 
 	consumeCmd.PersistentFlags().StringP(
 		"exchange",
@@ -158,22 +144,15 @@ func configureConsumeCmd(consumeCmd *cobra.Command) {
 		"",
 		"If non-empty, an exchange with this name is created if it didn't exist. Then, the queue is bound to this exchange.",
 	)
-	if err := viper.BindPFlag("amqp.consume.exchange", consumeCmd.PersistentFlags().Lookup("exchange")); err != nil {
-		panic(err)
-	}
+	ensure(viper.BindPFlag("amqp.consume.exchange", consumeCmd.PersistentFlags().Lookup("exchange")))
 
 	consumeCmd.PersistentFlags().String(
 		"exchangeType",
 		"fanout",
 		"If exchange needs to be created, it will be created with this type. The common types are 'direct', 'fanout', 'topic' and 'headers'.",
 	)
-	if err := consumeCmd.MarkPersistentFlagRequired("exchange"); err != nil {
-		panic(err)
-	}
-
-	if err := viper.BindPFlag("amqp.produce.exchangeType", consumeCmd.PersistentFlags().Lookup("exchangeType")); err != nil {
-		panic(err)
-	}
+	ensure(consumeCmd.MarkPersistentFlagRequired("exchange"))
+	ensure(viper.BindPFlag("amqp.produce.exchangeType", consumeCmd.PersistentFlags().Lookup("exchangeType")))
 }
 
 func configureProduceCmd(produceCmd *cobra.Command) {
@@ -183,25 +162,16 @@ func configureProduceCmd(produceCmd *cobra.Command) {
 		"",
 		"The name of the AMQP exchange to produce messages to (required)",
 	)
-	if err := produceCmd.MarkPersistentFlagRequired("exchange"); err != nil {
-		panic(err)
-	}
-	if err := viper.BindPFlag("amqp.produce.exchange", produceCmd.PersistentFlags().Lookup("exchange")); err != nil {
-		panic(err)
-	}
+	ensure(produceCmd.MarkPersistentFlagRequired("exchange"))
+	ensure(viper.BindPFlag("amqp.produce.exchange", produceCmd.PersistentFlags().Lookup("exchange")))
 
 	produceCmd.PersistentFlags().String(
 		"exchangeType",
 		"fanout",
 		"If the exchange did not exist, it will be created with this type. The common types are 'direct', 'fanout', 'topic' and 'headers'.",
 	)
-	if err := produceCmd.MarkPersistentFlagRequired("exchange"); err != nil {
-		panic(err)
-	}
-
-	if err := viper.BindPFlag("amqp.produce.exchangeType", produceCmd.PersistentFlags().Lookup("exchangeType")); err != nil {
-		panic(err)
-	}
+	ensure(produceCmd.MarkPersistentFlagRequired("exchange"))
+	ensure(viper.BindPFlag("amqp.produce.exchangeType", produceCmd.PersistentFlags().Lookup("exchangeType")))
 
 	produceCmd.PersistentFlags().StringP(
 		"routingKey",
@@ -209,10 +179,6 @@ func configureProduceCmd(produceCmd *cobra.Command) {
 		"",
 		"The routing key to use when publishing the message.",
 	)
-	if err := produceCmd.MarkPersistentFlagRequired("routingKey"); err != nil {
-		panic(err)
-	}
-	if err := viper.BindPFlag("amqp.produce.routingKey", produceCmd.PersistentFlags().Lookup("routingKey")); err != nil {
-		panic(err)
-	}
+	ensure(produceCmd.MarkPersistentFlagRequired("routingKey"))
+	ensure(viper.BindPFlag("amqp.produce.routingKey", produceCmd.PersistentFlags().Lookup("routingKey")))
 }

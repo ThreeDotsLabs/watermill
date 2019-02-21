@@ -18,8 +18,7 @@ import (
 // producer is initialized by parent command to the pub/sub provider of choice.
 var producer message.Publisher
 
-func addProduceCmd(parent *cobra.Command, addTopicFlag bool) *cobra.Command {
-	parentName := parent.Use
+func addProduceCmd(parent *cobra.Command, topicKey string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "produce",
 		Short: "Produce messages to a pub/sub from the stdin",
@@ -30,10 +29,7 @@ For the configuration of particular pub/sub providers, see the help for the prov
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if topic == "" {
-				topic = viper.GetString(parentName + ".produce.topic")
-			}
-
+			topic := viper.GetString(topicKey)
 			router, err := message.NewRouter(
 				message.RouterConfig{
 					CloseTimeout: 10 * time.Second,
@@ -74,17 +70,6 @@ For the configuration of particular pub/sub providers, see the help for the prov
 
 			return router.Run()
 		},
-	}
-
-	if addTopicFlag {
-		cmd.Flags().StringP("topic", "t", "", "The topic to produce messages to (required)")
-		err := cmd.MarkFlagRequired("topic")
-		if err != nil {
-			panic(err)
-		}
-		if err = viper.BindPFlag(parentName+".produce.topic", cmd.Flags().Lookup("topic")); err != nil {
-			panic(err)
-		}
 	}
 
 	parent.AddCommand(cmd)
