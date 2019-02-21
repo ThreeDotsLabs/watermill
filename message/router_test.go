@@ -88,6 +88,8 @@ func TestRouter_functional(t *testing.T) {
 	)
 
 	go r.Run()
+	<-r.Running()
+
 	defer func() {
 		assert.NoError(t, r.Close())
 	}()

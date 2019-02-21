@@ -159,7 +159,7 @@ func (m *Message) Nacked() <-chan struct{} {
 //
 // The returned context is always non-nil; it defaults to the
 // background context.
-func (m Message) Context() context.Context {
+func (m *Message) Context() context.Context {
 	if m.ctx != nil {
 		return m.ctx
 	}

@@ -59,5 +59,3 @@ test_race:
   extends: .test
   variables:
     TEST_FLAGS: "-short -race"
-  only:
-    - master

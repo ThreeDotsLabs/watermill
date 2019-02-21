@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"sort"
 	"strings"
+	"sync"
 )
 
 type LogFields map[string]interface{}
@@ -160,6 +161,7 @@ type CapturedMessage struct {
 type CaptureLoggerAdapter struct {
 	captured map[LogLevel][]CapturedMessage
 	fields   LogFields
+	lock     sync.Mutex
 }
 
 func NewCaptureLogger() *CaptureLoggerAdapter {
@@ -169,18 +171,27 @@ func NewCaptureLogger() *CaptureLoggerAdapter {
 }
 
 func (c *CaptureLoggerAdapter) With(fields LogFields) LoggerAdapter {
-	return &CaptureLoggerAdapter{c.captured, c.fields.Add(fields)}
+	return &CaptureLoggerAdapter{captured: c.captured, fields: c.fields.Add(fields)}
 }
 
 func (c *CaptureLoggerAdapter) capture(msg CapturedMessage) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
 	c.captured[msg.Level] = append(c.captured[msg.Level], msg)
 }
 
-func (c CaptureLoggerAdapter) Captured() map[LogLevel][]CapturedMessage {
+func (c *CaptureLoggerAdapter) Captured() map[LogLevel][]CapturedMessage {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
 	return c.captured
 }
 
-func (c CaptureLoggerAdapter) Has(msg CapturedMessage) bool {
+func (c *CaptureLoggerAdapter) Has(msg CapturedMessage) bool {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
 	for _, capturedMsg := range c.captured[msg.Level] {
 		if reflect.DeepEqual(msg, capturedMsg) {
 			return true
@@ -189,7 +200,10 @@ func (c CaptureLoggerAdapter) Has(msg CapturedMessage) bool {
 	return false
 }
 
-func (c CaptureLoggerAdapter) HasError(err error) bool {
+func (c *CaptureLoggerAdapter) HasError(err error) bool {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
 	for _, capturedMsg := range c.captured[ErrorLogLevel] {
 		if capturedMsg.Err == err {
 			return true

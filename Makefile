@@ -13,6 +13,9 @@ test_v:
 test_short:
 	go test ./... -short
 
+test_race:
+	go test ./... -short -race
+
 test_stress:
 	go test -tags=stress ./...
 

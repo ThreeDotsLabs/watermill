@@ -8,7 +8,7 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure"
 )
 
-// Run `docker-compose up` and set PUBSUB_EMULATOR_HOST=googlecloud:8085 for this to work
+// Run `docker-compose up` and set PUBSUB_EMULATOR_HOST=localhost:8085 for this to work
 
 func TestPublishSubscribe_stress(t *testing.T) {
 	infrastructure.TestPubSubStressTest(

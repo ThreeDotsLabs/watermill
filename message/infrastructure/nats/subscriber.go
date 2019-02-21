@@ -171,7 +171,9 @@ func (s *StreamingSubscriber) Subscribe(ctx context.Context, topic string) (<-ch
 
 		s.logger.Debug("Starting subscriber", subscriberLogFields)
 
-		sub, err := s.subscribe(ctx, output, topic, subscriberLogFields)
+		processMessagesWg := &sync.WaitGroup{}
+
+		sub, err := s.subscribe(ctx, output, topic, subscriberLogFields, processMessagesWg)
 		if err != nil {
 			return nil, errors.Wrap(err, "cannot subscribe")
 		}
@@ -187,6 +189,7 @@ func (s *StreamingSubscriber) Subscribe(ctx context.Context, topic string) (<-ch
 				s.logger.Error("Cannot close subscriber", err, subscriberLogFields)
 			}
 
+			processMessagesWg.Wait()
 			close(output)
 			s.outputsWg.Done()
 		}(sub, subscriberLogFields)
@@ -200,7 +203,13 @@ func (s *StreamingSubscriber) Subscribe(ctx context.Context, topic string) (<-ch
 }
 
 func (s *StreamingSubscriber) SubscribeInitialize(topic string) (err error) {
-	sub, err := s.subscribe(context.Background(), make(chan *message.Message), topic, nil)
+	sub, err := s.subscribe(
+		context.Background(),
+		make(chan *message.Message),
+		topic,
+		nil,
+		&sync.WaitGroup{},
+	)
 	if err != nil {
 		return errors.Wrap(err, "cannot initialize subscribe")
 	}
@@ -213,12 +222,16 @@ func (s *StreamingSubscriber) subscribe(
 	output chan *message.Message,
 	topic string,
 	subscriberLogFields watermill.LogFields,
+	processMessagesWg *sync.WaitGroup,
 ) (stan.Subscription, error) {
 	if s.config.QueueGroup != "" {
 		return s.conn.QueueSubscribe(
 			topic,
 			s.config.QueueGroup,
 			func(m *stan.Msg) {
+				processMessagesWg.Add(1)
+				defer processMessagesWg.Done()
+
 				s.processMessage(ctx, m, output, subscriberLogFields)
 			},
 			s.config.StanSubscriptionOptions...,
@@ -228,6 +241,9 @@ func (s *StreamingSubscriber) subscribe(
 	return s.conn.Subscribe(
 		topic,
 		func(m *stan.Msg) {
+			processMessagesWg.Add(1)
+			defer processMessagesWg.Done()
+
 			s.processMessage(ctx, m, output, subscriberLogFields)
 		},
 		s.config.StanSubscriptionOptions...,
@@ -261,11 +277,6 @@ func (s *StreamingSubscriber) processMessage(
 
 	messageLogFields := logFields.Add(watermill.LogFields{"message_uuid": msg.UUID})
 	s.logger.Trace("Unmarshaled message", messageLogFields)
-
-	if s.closed {
-		s.logger.Trace("Closed, message discarded", messageLogFields)
-		return
-	}
 
 	select {
 	case output <- msg:

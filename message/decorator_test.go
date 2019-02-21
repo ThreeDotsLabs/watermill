@@ -116,9 +116,10 @@ func TestMessageTransformSubscriberDecorator_Subscribe(t *testing.T) {
 	go func() {
 		for i := 0; i < numMessages; i++ {
 			msg := message.NewMessage(strconv.Itoa(i), []byte{})
+			sent = append(sent, msg)
+
 			err = pubsub.Publish("topic", msg)
 			require.NoError(t, err)
-			sent = append(sent, msg)
 		}
 	}()
 
