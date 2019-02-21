@@ -18,17 +18,12 @@ import (
 var cfgFile string
 var logger watermill.LoggerAdapter
 
-// rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "watermill",
 	Short: "A CLI for Watermill.",
 	Long: `A CLI for Watermill.
 
 Use console-based producer or consumer for various pub/sub providers.`,
-	// Uncomment the following line if your bare application
-	// has an action associated with it:
-	//	Run: func(cmd *cobra.Command, args []string) { },
-
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		if viper.GetBool("log") {
 			logger = watermill.NewStdLogger(viper.GetBool("debug"), viper.GetBool("trace"))
@@ -76,15 +71,9 @@ func init() {
 	cobra.OnInitialize(initConfig)
 	rootCmd.PersistentFlags().SortFlags = false
 
-	// Here you will define your flags and configuration settings.
-	// Cobra supports persistent flags, which, if defined here,
-	// will be global for your application.
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.watermill-cli.yaml)")
 
-	// Cobra also supports local flags, which will only run
-	// when this action is called directly.
 	outputFlags := pflag.NewFlagSet("output", pflag.ExitOnError)
-
 	outputFlags.BoolP("log", "l", false, "If true, the logger output is sent to stderr. No logger output otherwise.")
 	ensure(viper.BindPFlag("log", outputFlags.Lookup("log")))
 
@@ -117,7 +106,8 @@ func initConfig() {
 		viper.SetConfigName(".watermill-cli")
 	}
 
-	viper.AutomaticEnv() // read in environment variables that match
+	// read in environment variables that match
+	viper.AutomaticEnv()
 
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {

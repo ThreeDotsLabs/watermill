@@ -8,7 +8,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// kafkaCmd is a mid-level command for working with the kafka pub/sub provider.
 var kafkaCmd = &cobra.Command{
 	Use:   "kafka",
 	Short: "Commands for the kafka pub/sub provider",
@@ -59,7 +58,6 @@ For the configuration of consuming/producing of the messages, check the help of 
 }
 
 func init() {
-	// Here you will define your flags and configuration settings.
 	rootCmd.AddCommand(kafkaCmd)
 
 	kafkaCmd.PersistentFlags().StringP(

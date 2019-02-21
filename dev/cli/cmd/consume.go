@@ -15,7 +15,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// consumer is initialized by parent command to the pub/sub provider of choice.
+// consumer is initialized by the parent command to the pub/sub provider of choice.
 var consumer message.Subscriber
 
 func addConsumeCmd(parent *cobra.Command, topicKey string) *cobra.Command {

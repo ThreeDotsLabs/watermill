@@ -19,7 +19,6 @@ import (
 
 var googleCloudTempSubscriptionID string
 
-// googleCloudCmd is a mid-level command for working with the Google Cloud Pub/Sub provider.
 var googleCloudCmd = &cobra.Command{
 	Use:   "googlecloud",
 	Short: "Commands for the Google Cloud Pub/Sub provider",
@@ -268,7 +267,6 @@ func projectID() string {
 }
 
 func init() {
-	// Here you will define your flags and configuration settings.
 	rootCmd.AddCommand(googleCloudCmd)
 
 	googleCloudCmd.PersistentFlags().StringP(

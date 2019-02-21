@@ -6,7 +6,6 @@ import (
 	"github.com/spf13/viper"
 )
 
-// amqpCmd is a mid-level command for working with the AMQP Pub/Sub provider.
 var amqpCmd = &cobra.Command{
 	Use:   "amqp",
 	Short: "Commands for the AMQP Pub/Sub provider",
@@ -101,7 +100,6 @@ func amqpProducerConfig() amqp.Config {
 }
 
 func init() {
-	// Here you will define your flags and configuration settings.
 	rootCmd.AddCommand(amqpCmd)
 	configureAmqpCmd()
 	consumeCmd := addConsumeCmd(amqpCmd, "amqp.consume.queue")
