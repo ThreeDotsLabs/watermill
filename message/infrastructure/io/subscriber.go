@@ -157,7 +157,7 @@ func (s *Subscriber) consume(ctx context.Context, topic string, output chan *mes
 	s.config.Logger.Trace("Reader channel closed", nil)
 }
 
-func (s Subscriber) read(reader *bufio.Reader) chan []byte {
+func (s *Subscriber) read(reader *bufio.Reader) chan []byte {
 	chunkCh := make(chan []byte)
 
 	go func() {
