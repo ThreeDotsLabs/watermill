@@ -83,8 +83,47 @@ For the configuration of consuming/producing of the messages, check the help of 
 	},
 }
 
+var googleCloudSubscriptionCmd = &cobra.Command{
+	Use:   "subscription",
+	Short: "Manage Google Cloud Pub/Sub subscriptions",
+	Long:  `Add or remove subscriptions for the Google Cloud Pub/Sub provider.`,
+}
+
+var googleCloudSubscriptionAddCmd = &cobra.Command{
+	Use:       "add <subscription_id>",
+	Short:     "Add a new subscription in Google Cloud Pub/Sub",
+	Args:      cobra.ExactArgs(1),
+	ValidArgs: []string{"subscriptionID"},
+	RunE: func(cmd *cobra.Command, args []string) error {
+		subID := args[0]
+
+		logger := logger.With(watermill.LogFields{
+			"subscription_id": subID,
+		})
+		logger.Info("Creating new subscription", nil)
+
+		return nil
+	},
+}
+
+var googleCloudSubscriptionRmCmd = &cobra.Command{
+	Use:       "rm <subscription_id>",
+	Short:     "Remove a subscription in Google Cloud Pub/Sub",
+	Args:      cobra.ExactArgs(1),
+	ValidArgs: []string{"subscriptionID"},
+	RunE: func(cmd *cobra.Command, args []string) error {
+		subID := args[0]
+
+		logger := logger.With(watermill.LogFields{
+			"subscription_id": subID,
+		})
+		logger.Info("Removing a subscription", nil)
+
+		return removeSubscription(subID)
+	},
+}
+
 func generateTempSubscription() (id string, err error) {
-	ctx := context.Background()
 	defer func() {
 		if err == nil {
 			logger.Debug("Temp subscription created", watermill.LogFields{
@@ -94,34 +133,56 @@ func generateTempSubscription() (id string, err error) {
 		}
 	}()
 
+	randomID := "watermill_console_consumer_" + watermill.NewShortUUID()
+	return randomID, generateSubscription(
+		randomID,
+		viper.GetString("googlecloud.consume.topic"),
+		10*time.Second,
+		false,
+		time.Minute,
+		nil,
+	)
+}
+
+func generateSubscription(
+	id string,
+	topic string,
+	ackDeadline time.Duration,
+	retainAckedMessages bool,
+	retentionDuration time.Duration,
+	labels map[string]string,
+) error {
+	ctx := context.Background()
+
 	client, err := pubsub.NewClient(ctx, projectID())
 	if err != nil {
-		return "", errors.Wrap(err, "could not create pubsub client")
+		return errors.Wrap(err, "could not create pubsub client")
 	}
 
-	topic := client.Topic(viper.GetString("googlecloud.consume.topic"))
-	exists, err := topic.Exists(ctx)
+	t := client.Topic(topic)
+	exists, err := t.Exists(ctx)
 	if err != nil {
-		return "", errors.Wrap(err, "could not check if topic exists")
+		return errors.Wrap(err, "could not check if topic exists")
 	}
 	if !exists {
-		topic, err = client.CreateTopic(ctx, topic.ID())
+		t, err = client.CreateTopic(ctx, t.ID())
 		if err != nil {
-			return "", errors.Wrap(err, "could not create topic")
+			return errors.Wrap(err, "could not create topic")
 		}
 	}
 
-	randomID := "watermill_console_consumer_" + watermill.NewShortUUID()
-	sub, err := client.CreateSubscription(ctx, randomID, pubsub.SubscriptionConfig{
-		Topic:               topic,
-		AckDeadline:         10 * time.Second,
-		RetainAckedMessages: false,
+	_, err = client.CreateSubscription(ctx, id, pubsub.SubscriptionConfig{
+		Topic:               t,
+		AckDeadline:         ackDeadline,
+		RetainAckedMessages: retainAckedMessages,
+		RetentionDuration:   retentionDuration,
+		Labels:              labels,
 	})
 	if err != nil {
-		return "", errors.Wrap(err, "could not create temp subscription")
+		return errors.Wrap(err, "could not create subscription")
 	}
 
-	return sub.ID(), nil
+	return nil
 }
 
 func removeTempSubscription() (err error) {
@@ -132,7 +193,10 @@ func removeTempSubscription() (err error) {
 			})
 		}
 	}()
+	return removeSubscription(googleCloudTempSubscriptionID)
+}
 
+func removeSubscription(id string) error {
 	ctx := context.Background()
 
 	client, err := pubsub.NewClient(ctx, projectID())
@@ -140,7 +204,7 @@ func removeTempSubscription() (err error) {
 		return errors.Wrap(err, "could not create pubsub client")
 	}
 
-	sub := client.Subscription(googleCloudTempSubscriptionID)
+	sub := client.Subscription(id)
 	exists, err := sub.Exists(ctx)
 	if err != nil {
 		return errors.Wrap(err, "could not check if sub exists")
@@ -184,6 +248,10 @@ func init() {
 	if err := viper.BindPFlag("googlecloud.subscriptionName", consumeCmd.PersistentFlags().Lookup("subscription")); err != nil {
 		panic(err)
 	}
+
+	googleCloudCmd.AddCommand(googleCloudSubscriptionCmd)
+	googleCloudSubscriptionCmd.AddCommand(googleCloudSubscriptionAddCmd)
+	googleCloudSubscriptionCmd.AddCommand(googleCloudSubscriptionRmCmd)
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
