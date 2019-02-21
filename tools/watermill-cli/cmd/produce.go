@@ -4,7 +4,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
 	"github.com/ThreeDotsLabs/watermill/message/router/plugin"
 
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/io"
@@ -40,7 +39,6 @@ For the configuration of particular pub/sub providers, see the help for the prov
 				return errors.Wrap(err, "could not create router")
 			}
 
-			router.AddMiddleware(middleware.InstantAck)
 			router.AddPlugin(plugin.SignalsHandler)
 
 			in, err := io.NewSubscriber(os.Stdin, io.SubscriberConfig{

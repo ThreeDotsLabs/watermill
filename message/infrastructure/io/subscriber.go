@@ -105,6 +105,7 @@ func (s *Subscriber) Close() error {
 
 func (s *Subscriber) consume(ctx context.Context, topic string, output chan *message.Message) {
 	defer s.subscribeWg.Done()
+	defer close(output)
 
 	var reader *bufio.Reader
 	if s.config.BufferSize > 0 {
@@ -113,10 +114,23 @@ func (s *Subscriber) consume(ctx context.Context, topic string, output chan *mes
 		reader = bufio.NewReader(s.rc)
 	}
 
-	for chunk := range s.read(reader) {
+	var chunk []byte
+	var alive bool
+	readCh := s.read(reader)
+	for {
+		select {
+		case chunk, alive = <-readCh:
+			if !alive {
+				s.config.Logger.Debug("Read channel closed, breaking read loop", nil)
+				return
+			}
+		case <-s.closing:
+			s.config.Logger.Debug("Subscriber closing, breaking read loop", nil)
+			return
+		}
 		msg, err := s.config.UnmarshalFunc(topic, chunk)
 		if err != nil {
-			s.config.Logger.Error("Could not unmarshal message", err, watermill.LogFields{})
+			s.config.Logger.Error("Could not unmarshal message", err, nil)
 		}
 		logger := s.config.Logger.With(watermill.LogFields{
 			"uuid":  msg.UUID,
@@ -153,8 +167,6 @@ func (s *Subscriber) consume(ctx context.Context, topic string, output chan *mes
 			}
 		}
 	}
-
-	s.config.Logger.Trace("Reader channel closed", nil)
 }
 
 func (s *Subscriber) read(reader *bufio.Reader) chan []byte {
@@ -162,6 +174,9 @@ func (s *Subscriber) read(reader *bufio.Reader) chan []byte {
 
 	go func() {
 		// todo: no way to stop this goroutine if it blocks on Read/ReadSlice
+		defer func() {
+			close(chunkCh)
+		}()
 		for {
 			var bytesRead int
 			var err error
@@ -179,8 +194,7 @@ func (s *Subscriber) read(reader *bufio.Reader) chan []byte {
 			}
 
 			if err != nil && errors.Cause(err) != io.EOF {
-				s.config.Logger.Error("Could not read from buffer, closing read()", err, watermill.LogFields{})
-				close(chunkCh)
+				s.config.Logger.Error("Could not read from buffer, closing read()", err, nil)
 				return
 			}
 
