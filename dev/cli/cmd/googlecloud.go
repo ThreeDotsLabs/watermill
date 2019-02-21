@@ -94,7 +94,7 @@ var googleCloudSubscriptionAddCmd = &cobra.Command{
 	Short:     "Add a new subscription in Google Cloud Pub/Sub",
 	Args:      cobra.ExactArgs(1),
 	ValidArgs: []string{"subscriptionID"},
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, args []string) (err error) {
 		subID := args[0]
 
 		logger := logger.With(watermill.LogFields{
@@ -102,7 +102,14 @@ var googleCloudSubscriptionAddCmd = &cobra.Command{
 		})
 		logger.Info("Creating new subscription", nil)
 
-		return nil
+		return addSubscription(
+			subID,
+			viper.GetString("googlecloud.subscription.add.topic"),
+			viper.GetDuration("googlecloud.subscription.add.ackDeadline"),
+			viper.GetBool("googlecloud.subscription.add.retainAcked"),
+			viper.GetDuration("googlecloud.subscription.add.retentionDuration"),
+			viper.GetStringMapString("googlecloud.subscription.add.labels"),
+		)
 	},
 }
 
@@ -111,13 +118,19 @@ var googleCloudSubscriptionRmCmd = &cobra.Command{
 	Short:     "Remove a subscription in Google Cloud Pub/Sub",
 	Args:      cobra.ExactArgs(1),
 	ValidArgs: []string{"subscriptionID"},
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(cmd *cobra.Command, args []string) (err error) {
 		subID := args[0]
 
 		logger := logger.With(watermill.LogFields{
 			"subscription_id": subID,
 		})
 		logger.Info("Removing a subscription", nil)
+
+		defer func() {
+			if err == nil {
+				logger.Info("Subscription removed", nil)
+			}
+		}()
 
 		return removeSubscription(subID)
 	},
@@ -134,7 +147,7 @@ func generateTempSubscription() (id string, err error) {
 	}()
 
 	randomID := "watermill_console_consumer_" + watermill.NewShortUUID()
-	return randomID, generateSubscription(
+	return randomID, addSubscription(
 		randomID,
 		viper.GetString("googlecloud.consume.topic"),
 		10*time.Second,
@@ -144,7 +157,7 @@ func generateTempSubscription() (id string, err error) {
 	)
 }
 
-func generateSubscription(
+func addSubscription(
 	id string,
 	topic string,
 	ackDeadline time.Duration,
@@ -252,6 +265,52 @@ func init() {
 	googleCloudCmd.AddCommand(googleCloudSubscriptionCmd)
 	googleCloudSubscriptionCmd.AddCommand(googleCloudSubscriptionAddCmd)
 	googleCloudSubscriptionCmd.AddCommand(googleCloudSubscriptionRmCmd)
+
+	googleCloudSubscriptionAddCmd.Flags().StringP("topic", "t", "", "The topic for the new subscription (required)")
+	err := googleCloudSubscriptionAddCmd.MarkFlagRequired("topic")
+	if err != nil {
+		panic(err)
+	}
+	if err = viper.BindPFlag("googlecloud.subscription.add.topic", googleCloudSubscriptionAddCmd.Flags().Lookup("topic")); err != nil {
+		panic(err)
+	}
+
+	googleCloudSubscriptionAddCmd.Flags().DurationP(
+		"ackDeadline",
+		"a",
+		10*time.Second,
+		"How long Pub/Sub waits for the subscriber to acknowledge receipt before resending the message. Deadline time is from 10 seconds to 600 seconds",
+	)
+	if err = viper.BindPFlag("googlecloud.subscription.add.ackDeadline", googleCloudSubscriptionAddCmd.Flags().Lookup("ackDeadline")); err != nil {
+		panic(err)
+	}
+
+	googleCloudSubscriptionAddCmd.Flags().Bool(
+		"retainAcked",
+		false,
+		"Acknowledged messages will be kept 7 days from publication unless set otherwise in \"message retention duration\".",
+	)
+	if err = viper.BindPFlag("googlecloud.subscription.add.retainAcked", googleCloudSubscriptionAddCmd.Flags().Lookup("retainAcked")); err != nil {
+		panic(err)
+	}
+
+	googleCloudSubscriptionAddCmd.Flags().Duration(
+		"retentionDuration",
+		7*24*time.Hour,
+		"How long the retained messages will be kept. The allowed duration is from 10 minutes to 7 days, which is the default.",
+	)
+	if err = viper.BindPFlag("googlecloud.subscription.add.retentionDuration", googleCloudSubscriptionAddCmd.Flags().Lookup("retentionDuration")); err != nil {
+		panic(err)
+	}
+
+	googleCloudSubscriptionAddCmd.Flags().StringToString(
+		"labels",
+		nil,
+		"The set of labels for the subscription. Format: 'key1=value1,key=:value2,...'",
+	)
+	if err = viper.BindPFlag("googlecloud.subscription.add.labels", googleCloudSubscriptionAddCmd.Flags().Lookup("labels")); err != nil {
+		panic(err)
+	}
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
