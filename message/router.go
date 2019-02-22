@@ -234,7 +234,9 @@ func (r *Router) AddNoPublisherHandler(
 }
 
 // Run runs all plugins and handlers and starts subscribing to provided topics.
-// This call is blocking until router is running.
+// This call is blocking while the router is running.
+//
+// When all handlers have stopped (for example, because subscriptions were closed), the router will also stop.
 //
 // To stop Run() you should call Close() on the router.
 func (r *Router) Run() (err error) {
@@ -299,6 +301,8 @@ func (r *Router) Run() (err error) {
 
 	close(r.running)
 
+	go r.closeWhenAllHandlersStopped()
+
 	<-r.closeCh
 
 	r.logger.Info("Waiting for messages", watermill.LogFields{
@@ -310,6 +314,22 @@ func (r *Router) Run() (err error) {
 	r.logger.Info("All messages processed", nil)
 
 	return nil
+}
+
+// closeWhenAllHandlersStopped closed router, when all handlers has stopped,
+// because for example all subscriptions are closed.
+func (r *Router) closeWhenAllHandlersStopped() {
+	r.handlersWg.Wait()
+	if r.closed {
+		// already closed
+		return
+	}
+
+	r.logger.Error("All handlers stopped, closing router", errors.New("all router handlers stopped"), nil)
+
+	if err := r.Close(); err != nil {
+		r.logger.Error("Cannot close router", err, nil)
+	}
 }
 
 // Running is closed when router is running.
