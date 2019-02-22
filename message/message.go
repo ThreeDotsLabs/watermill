@@ -60,7 +60,7 @@ const (
 )
 
 // Equals compare, that two messages are equal. Acks/Nacks are not compared.
-func (m Message) Equals(toCompare *Message) bool {
+func (m *Message) Equals(toCompare *Message) bool {
 	if m.UUID != toCompare.UUID {
 		return false
 	}
@@ -173,7 +173,7 @@ func (m *Message) SetContext(ctx context.Context) {
 
 // Copy copies all message without Acks/Nacks.
 // The context is not propagated to the copy.
-func (m Message) Copy() *Message {
+func (m *Message) Copy() *Message {
 	msg := NewMessage(m.UUID, m.Payload)
 	msg.Metadata = m.Metadata
 	return msg

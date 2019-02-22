@@ -11,6 +11,11 @@ func testuUniqness(t *testing.T, genFunc func() string) {
 	producers := 100
 	uuidsPerProducer := 10000
 
+	if testing.Short() {
+		producers = 10
+		uuidsPerProducer = 1000
+	}
+
 	uuidsCount := producers * uuidsPerProducer
 
 	uuids := make(chan string, uuidsCount)
