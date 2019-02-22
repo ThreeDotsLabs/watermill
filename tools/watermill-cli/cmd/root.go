@@ -25,8 +25,11 @@ var rootCmd = &cobra.Command{
 
 Use console-based producer or consumer for various pub/sub providers.`,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		if viper.GetBool("log") {
-			logger = watermill.NewStdLogger(viper.GetBool("debug"), viper.GetBool("trace"))
+		log := viper.GetBool("log")
+		debug := viper.GetBool("debug")
+		trace := viper.GetBool("trace")
+		if log || debug || trace {
+			logger = watermill.NewStdLogger(debug, trace)
 		} else {
 			logger = watermill.NopLogger{}
 		}
