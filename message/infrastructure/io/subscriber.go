@@ -128,9 +128,16 @@ func (s *Subscriber) consume(ctx context.Context, topic string, output chan *mes
 			s.config.Logger.Debug("Subscriber closing, breaking read loop", nil)
 			return
 		}
+
+		if s.config.BufferSize == 0 && chunk[len(chunk)-1] == s.config.MessageDelimiter {
+			// trim the delimiter byte
+			chunk = chunk[:len(chunk)-1]
+		}
+
 		msg, err := s.config.UnmarshalFunc(topic, chunk)
 		if err != nil {
 			s.config.Logger.Error("Could not unmarshal message", err, nil)
+			continue
 		}
 		logger := s.config.Logger.With(watermill.LogFields{
 			"uuid":  msg.UUID,
