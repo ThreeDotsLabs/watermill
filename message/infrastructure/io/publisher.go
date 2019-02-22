@@ -12,6 +12,8 @@ import (
 )
 
 type PublisherConfig struct {
+	// MarshalFunc transforms the Watermill messages into raw bytes for transport.
+	// Its behavior may be dependent on the topic.
 	MarshalFunc MarshalMessageFunc
 }
 
@@ -24,7 +26,7 @@ func (p PublisherConfig) validate() error {
 }
 
 // Publisher writes the messages to the underlying io.Writer.
-// Its behaviour is highly customizable through the choice of the unmarshaler function in config.
+// Its behaviour is highly customizable through the choice of the marshal function in config.
 type Publisher struct {
 	wc        io.WriteCloser
 	config    PublisherConfig
@@ -41,6 +43,7 @@ func NewPublisher(wc io.WriteCloser, config PublisherConfig) (*Publisher, error)
 }
 
 // Publish writes the messages to the underlying io.Writer.
+//
 func (p *Publisher) Publish(topic string, messages ...*message.Message) error {
 	if p.closed == true {
 		return errors.New("publisher is closed")

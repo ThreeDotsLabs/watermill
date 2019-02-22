@@ -303,26 +303,26 @@ func init() {
 	ensure(viper.BindPFlag("googlecloud.subscription.add.topic", googleCloudSubscriptionAddCmd.Flags().Lookup("topic")))
 
 	googleCloudSubscriptionAddCmd.Flags().DurationP(
-		"ackDeadline",
+		"ack-deadline",
 		"a",
 		10*time.Second,
 		"How long Pub/Sub waits for the subscriber to acknowledge receipt before resending the message. Deadline time is from 10 seconds to 600 seconds",
 	)
-	ensure(viper.BindPFlag("googlecloud.subscription.add.ackDeadline", googleCloudSubscriptionAddCmd.Flags().Lookup("ackDeadline")))
+	ensure(viper.BindPFlag("googlecloud.subscription.add.ackDeadline", googleCloudSubscriptionAddCmd.Flags().Lookup("ack-deadline")))
 
 	googleCloudSubscriptionAddCmd.Flags().Bool(
-		"retainAcked",
+		"retain-acked",
 		false,
 		"Acknowledged messages will be kept 7 days from publication unless set otherwise in \"message retention duration\".",
 	)
-	ensure(viper.BindPFlag("googlecloud.subscription.add.retainAcked", googleCloudSubscriptionAddCmd.Flags().Lookup("retainAcked")))
+	ensure(viper.BindPFlag("googlecloud.subscription.add.retainAcked", googleCloudSubscriptionAddCmd.Flags().Lookup("retain-acked")))
 
 	googleCloudSubscriptionAddCmd.Flags().Duration(
-		"retentionDuration",
+		"retention-duration",
 		7*24*time.Hour,
 		"How long the retained messages will be kept. The allowed duration is from 10 minutes to 7 days, which is the default.",
 	)
-	ensure(viper.BindPFlag("googlecloud.subscription.add.retentionDuration", googleCloudSubscriptionAddCmd.Flags().Lookup("retentionDuration")))
+	ensure(viper.BindPFlag("googlecloud.subscription.add.retentionDuration", googleCloudSubscriptionAddCmd.Flags().Lookup("retention-duration")))
 
 	// StringToString doesn't work correctly with viper
 	googleCloudSubscriptionAddCmd.Flags().String(

@@ -124,6 +124,13 @@ func configureAmqpCmd() {
 		"If true, the queues and exchanges created automatically (if any) will be durable",
 	)
 	ensure(viper.BindPFlag("amqp.durable", amqpCmd.PersistentFlags().Lookup("durable")))
+
+	amqpCmd.PersistentFlags().String(
+		"exchange-type",
+		"fanout",
+		"If exchange needs to be created, it will be created with this type. The common types are 'direct', 'fanout', 'topic' and 'headers'.",
+	)
+	ensure(viper.BindPFlag("amqp.produce.exchangeType", amqpCmd.PersistentFlags().Lookup("exchange-type")))
 }
 
 func configureConsumeCmd(consumeCmd *cobra.Command) {
@@ -143,14 +150,6 @@ func configureConsumeCmd(consumeCmd *cobra.Command) {
 		"If non-empty, an exchange with this name is created if it didn't exist. Then, the queue is bound to this exchange.",
 	)
 	ensure(viper.BindPFlag("amqp.consume.exchange", consumeCmd.PersistentFlags().Lookup("exchange")))
-
-	consumeCmd.PersistentFlags().String(
-		"exchangeType",
-		"fanout",
-		"If exchange needs to be created, it will be created with this type. The common types are 'direct', 'fanout', 'topic' and 'headers'.",
-	)
-	ensure(consumeCmd.MarkPersistentFlagRequired("exchange"))
-	ensure(viper.BindPFlag("amqp.produce.exchangeType", consumeCmd.PersistentFlags().Lookup("exchangeType")))
 }
 
 func configureProduceCmd(produceCmd *cobra.Command) {
@@ -163,20 +162,12 @@ func configureProduceCmd(produceCmd *cobra.Command) {
 	ensure(produceCmd.MarkPersistentFlagRequired("exchange"))
 	ensure(viper.BindPFlag("amqp.produce.exchange", produceCmd.PersistentFlags().Lookup("exchange")))
 
-	produceCmd.PersistentFlags().String(
-		"exchangeType",
-		"fanout",
-		"If the exchange did not exist, it will be created with this type. The common types are 'direct', 'fanout', 'topic' and 'headers'.",
-	)
-	ensure(produceCmd.MarkPersistentFlagRequired("exchange"))
-	ensure(viper.BindPFlag("amqp.produce.exchangeType", produceCmd.PersistentFlags().Lookup("exchangeType")))
-
 	produceCmd.PersistentFlags().StringP(
-		"routingKey",
+		"routing-key",
 		"r",
 		"",
 		"The routing key to use when publishing the message.",
 	)
-	ensure(produceCmd.MarkPersistentFlagRequired("routingKey"))
-	ensure(viper.BindPFlag("amqp.produce.routingKey", produceCmd.PersistentFlags().Lookup("routingKey")))
+	ensure(produceCmd.MarkPersistentFlagRequired("routing-key"))
+	ensure(viper.BindPFlag("amqp.produce.routingKey", produceCmd.PersistentFlags().Lookup("routing-key")))
 }

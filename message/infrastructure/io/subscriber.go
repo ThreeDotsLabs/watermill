@@ -14,12 +14,17 @@ import (
 )
 
 type SubscriberConfig struct {
-	BufferSize       int
+	// BufferSize configures how many bytes will be read at a time from the Subscriber's Reader.
+	// Each message will be treated as having at most BufferSize bytes.
+	// If 0, Subscriber works in delimiter mode - it scans for messages delimited by the MessageDelimiter byte.
+	BufferSize int
+	// MessageDelimiter is the byte that is expected to separate messages if BufferSize is equal to 0.
 	MessageDelimiter byte
 
 	// PollInterval is the time between polling for new messages if the last read was empty. Defaults to time.Second.
 	PollInterval time.Duration
 
+	// UnmarshalFunc transforms the raw bytes into a Watermill message. Its behavior may be dependent on the topic.
 	UnmarshalFunc UnmarshalMessageFunc
 
 	Logger watermill.LoggerAdapter
@@ -55,6 +60,10 @@ func (c *SubscriberConfig) setDefaults() {
 	}
 }
 
+// Subscriber reads bytes from its underlying io.Reader and interprets them as Watermill messages.
+// It posts the messages on the output stream from Subscribe().
+// There are several ways in which Subscriber may interpret messages from the Reader, configurable by the
+// unmarshal function in the config.
 type Subscriber struct {
 	rc          io.ReadCloser
 	subscribeWg sync.WaitGroup

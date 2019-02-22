@@ -80,14 +80,14 @@ func init() {
 	outputFlags.BoolP("log", "l", false, "If true, the logger output is sent to stderr. No logger output otherwise.")
 	ensure(viper.BindPFlag("log", outputFlags.Lookup("log")))
 
-	outputFlags.Bool("debug", false, "If true, debug output is enabled from the logger")
+	outputFlags.BoolP("debug", "d", false, "If true, debug output is enabled from the logger")
 	ensure(viper.BindPFlag("debug", outputFlags.Lookup("debug")))
 
 	outputFlags.Bool("trace", false, "If true, trace output is enabled from the logger")
 	ensure(viper.BindPFlag("trace", outputFlags.Lookup("trace")))
 
-	outputFlags.String("writeConfig", "", "Write the config of the current command as yaml to the specified path")
-	ensure(viper.BindPFlag("writeConfig", outputFlags.Lookup("writeConfig")))
+	outputFlags.String("write-config", "", "Write the config of the current command as yaml to the specified path")
+	ensure(viper.BindPFlag("writeConfig", outputFlags.Lookup("write-config")))
 
 	rootCmd.PersistentFlags().AddFlagSet(outputFlags)
 }

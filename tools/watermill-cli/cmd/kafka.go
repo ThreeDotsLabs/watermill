@@ -78,9 +78,9 @@ func init() {
 	ensure(kafkaCmd.MarkPersistentFlagRequired("brokers"))
 	ensure(viper.BindPFlag("kafka.brokers", kafkaCmd.PersistentFlags().Lookup("brokers")))
 
-	consumeCmd.PersistentFlags().Bool("fromBeginning", false, "Equivalent to auto.offset.reset: earliest")
-	ensure(viper.BindPFlag("kafka.consume.fromBeginning", consumeCmd.PersistentFlags().Lookup("fromBeginning")))
+	consumeCmd.PersistentFlags().Bool("from-beginning", false, "Equivalent to auto.offset.reset: earliest")
+	ensure(viper.BindPFlag("kafka.consume.fromBeginning", consumeCmd.PersistentFlags().Lookup("from-beginning")))
 
-	consumeCmd.PersistentFlags().StringP("consumerGroup", "c", "", "The kafka consumer group. Defaults to empty.")
-	ensure(viper.BindPFlag("kafka.consume.consumerGroup", consumeCmd.PersistentFlags().Lookup("consumerGroup")))
+	consumeCmd.PersistentFlags().StringP("consumer-group", "c", "", "The kafka consumer group. Defaults to empty.")
+	ensure(viper.BindPFlag("kafka.consume.consumerGroup", consumeCmd.PersistentFlags().Lookup("consumer-group")))
 }

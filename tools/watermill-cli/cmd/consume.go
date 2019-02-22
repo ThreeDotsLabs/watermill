@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/io"
-	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
 	"github.com/ThreeDotsLabs/watermill/message/router/plugin"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
@@ -37,11 +36,10 @@ For the configuration of particular pub/sub providers, see the help for the prov
 				return errors.Wrap(err, "could not create router")
 			}
 
-			router.AddMiddleware(middleware.InstantAck)
 			router.AddPlugin(plugin.SignalsHandler)
 
 			out, err := io.NewPublisher(os.Stdout, io.PublisherConfig{
-				MarshalFunc: io.PrettyPayloadMarshalFunc,
+				MarshalFunc: io.PayloadMarshalFunc,
 			})
 			if err != nil {
 				return errors.Wrap(err, "could not create console producer")

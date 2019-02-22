@@ -26,13 +26,13 @@ func PayloadMarshalFunc(topic string, msg *message.Message) ([]byte, error) {
 	return append(msg.Payload, '\n'), nil
 }
 
-// PrettyPayloadMarshalFunc dumps the message's payload.
+// TimestampTopicPayloadMarshalFunc dumps the message's payload.
 // Each message is prepended by the current timestamp and the topic.
 // The output is always terminated with EOL byte.
 //
 // This basic unmarshaler function may be used e.g. to write just the message payloads to stdout or to a file,
 // without cluttering the output with metadata and UUIDs.
-func PrettyPayloadMarshalFunc(topic string, msg *message.Message) ([]byte, error) {
+func TimestampTopicPayloadMarshalFunc(topic string, msg *message.Message) ([]byte, error) {
 	buf := &bytes.Buffer{}
 
 	_, err := fmt.Fprintf(

@@ -1,22 +1,32 @@
 # CLI Wrapper for Watermill
 
-This is a CLI wrapper for Watermill. It has two basic functionalities: producing and consuming messages on the following
+This is a simple CLI tool for consuming and producing messages with the [Watermill](https://watermill.io) library.
+
+It has two basic functionalities, namely producing and consuming messages on the following
 Pub/Subs:
 
 1. Kafka
 2. Google Cloud Pub/Sub
 3. RabbitMQ
 
+See Watermill's [Pub/Sub implementations](https://watermill.io/docs/pub-sub-implementations) for more details on how this works.
+
+## Installation
+
+To install this tool, just execute:
+
+```bash
+go install github.com/ThreeDotsLabs/watermill/tools/watermill-cli
+```
+
+This will install a `watermill-cli` binary in your system.
+
 ## Consume mode
 
-In consume mode, the tool subscribes to a topic/queue/subscription (delete as appropriate) and prints the messages
-in a simplified format to the standard output:
+In consume mode, the tool subscribes to a topic/queue/subscription (nomenclature depending on the particular Pub/Sub provider)
+and prints the messages' payload to the standard output.
 
-```
-[yyyy-mm-dd hh:mm:ss.ssssssss] topic: message payload
-```
-
-Other outputs, for example ones that preserve UUIDs or metadata, are easily attainable by modification
+Other outputs, for example ones that add a timestamp or preserve UUIDs or metadata, are easily attainable by modification
 of the marshaling function of the `io.Publisher` of the `consumeCmd`.
 
 ## Produce mode
@@ -44,6 +54,24 @@ that are specific for them.
 
 The flags are context-specific, so the best way to find out about them is to use the `-h` flag and study 
 which flags are available/required for the specific context and act accordingly.
+
+### Advanced usage
+
+A neat feature of producers and consumers is that you can use the power of stdin/stdout piping for stuff like:
+
+```bash
+myservice | tee myservice.log | watermill-cli kafka produce -t myservice-logs --brokers kafka-host:8082 
+```
+
+And on another host:
+
+```bash
+watermill-cli kafka consume -t myservice-logs --brokers kafka-host:8082 >> myservice.log
+```
+
+In the above example, the host on which `myservice` runs has its own copy of `myservice.log` and any host that consumes
+from the kafka topic will replicate the log entries in their local copy.
+
 
 ## Additional functionalities
 
