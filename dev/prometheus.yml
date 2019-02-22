@@ -1,0 +1,14 @@
+# for Watermill development purposes.
+# there is one sample scrape target; add your own if needed.
+global:
+  scrape_interval:     15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+    - targets: ['localhost:9090']
+
+  - job_name: 'some_metrics_endpoint'
+    static_configs:
+    - targets: ['localhost:8080']

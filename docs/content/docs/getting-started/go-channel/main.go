@@ -2,10 +2,8 @@
 package main
 
 import (
+	"context"
 	"log"
-	"time"
-
-	"github.com/satori/go.uuid"
 
 	"github.com/ThreeDotsLabs/watermill/message"
 
@@ -15,12 +13,11 @@ import (
 
 func main() {
 	pubSub := gochannel.NewGoChannel(
-		0, // buffer (channel) size
+		gochannel.Config{},
 		watermill.NewStdLogger(false, false),
-		time.Second, // send timeout
 	)
 
-	messages, err := pubSub.Subscribe("example.topic")
+	messages, err := pubSub.Subscribe(context.Background(), "example.topic")
 	if err != nil {
 		panic(err)
 	}
@@ -32,7 +29,7 @@ func main() {
 
 func publishMessages(publisher message.Publisher) {
 	for {
-		msg := message.NewMessage(uuid.NewV4().String(), []byte("Hello, world!"))
+		msg := message.NewMessage(watermill.NewUUID(), []byte("Hello, world!"))
 
 		if err := publisher.Publish("example.topic", msg); err != nil {
 			panic(err)
@@ -40,7 +37,7 @@ func publishMessages(publisher message.Publisher) {
 	}
 }
 
-func process(messages chan *message.Message) {
+func process(messages <-chan *message.Message) {
 	for msg := range messages {
 		log.Printf("received message: %s, payload: %s", msg.UUID, string(msg.Payload))
 

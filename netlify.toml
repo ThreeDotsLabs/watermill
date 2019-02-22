@@ -1,17 +1,17 @@
 [build]
-  command = "hugo version && ./build.sh"
+  command = "hugo version && ./build.sh --copy"
   base = "docs/"
   publish = "docs/public/"
 
 [context.production.environment]
-  HUGO_VERSION = "0.52"
+  HUGO_VERSION = "0.53"
   HUGO_ENV = "production"
   HUGO_ENABLEGITINFO = "true"
 
 [context.deploy-preview.environment]
-  HUGO_VERSION = "0.52"
+  HUGO_VERSION = "0.53"
   HUGO_ENABLEGITINFO = "true"
 
 [context.branch-deploy.environment]
-  HUGO_VERSION = "0.52"
+  HUGO_VERSION = "0.53"
   HUGO_ENABLEGITINFO = "true"

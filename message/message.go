@@ -2,9 +2,8 @@ package message
 
 import (
 	"bytes"
+	"context"
 	"sync"
-
-	"github.com/pkg/errors"
 )
 
 var closedchan = make(chan struct{})
@@ -12,11 +11,6 @@ var closedchan = make(chan struct{})
 func init() {
 	close(closedchan)
 }
-
-var (
-	ErrAlreadyAcked  = errors.New("message already acked")
-	ErrAlreadyNacked = errors.New("message already nacked")
-)
 
 type Payload []byte
 
@@ -43,6 +37,8 @@ type Message struct {
 
 	ackMutex    sync.Mutex
 	ackSentType ackType
+
+	ctx context.Context
 }
 
 func NewMessage(uuid string, payload Payload) *Message {
@@ -64,7 +60,7 @@ const (
 )
 
 // Equals compare, that two messages are equal. Acks/Nacks are not compared.
-func (m Message) Equals(toCompare *Message) bool {
+func (m *Message) Equals(toCompare *Message) bool {
 	if m.UUID != toCompare.UUID {
 		return false
 	}
@@ -83,16 +79,16 @@ func (m Message) Equals(toCompare *Message) bool {
 //
 // Ack is not blocking.
 // Ack is idempotent.
-// Error is returned, if Nack is already sent.
-func (m *Message) Ack() error {
+// False is returned, if Nack is already sent.
+func (m *Message) Ack() bool {
 	m.ackMutex.Lock()
 	defer m.ackMutex.Unlock()
 
 	if m.ackSentType == nack {
-		return ErrAlreadyNacked
+		return false
 	}
 	if m.ackSentType != noAckSent {
-		return nil
+		return true
 	}
 
 	m.ackSentType = ack
@@ -102,23 +98,23 @@ func (m *Message) Ack() error {
 		close(m.ack)
 	}
 
-	return nil
+	return true
 }
 
 // Nack sends message's negative acknowledgement.
 //
 // Nack is not blocking.
 // Nack is idempotent.
-// Error is returned, if Ack is already sent.
-func (m *Message) Nack() error {
+// False is returned, if Ack is already sent.
+func (m *Message) Nack() bool {
 	m.ackMutex.Lock()
 	defer m.ackMutex.Unlock()
 
 	if m.ackSentType == ack {
-		return ErrAlreadyAcked
+		return false
 	}
 	if m.ackSentType != noAckSent {
-		return nil
+		return true
 	}
 
 	m.ackSentType = nack
@@ -129,7 +125,7 @@ func (m *Message) Nack() error {
 		close(m.noAck)
 	}
 
-	return nil
+	return true
 }
 
 // Acked returns channel which is closed when acknowledgement is sent.
@@ -158,8 +154,26 @@ func (m *Message) Nacked() <-chan struct{} {
 	return m.noAck
 }
 
+// Context returns the message's context. To change the context, use
+// SetContext.
+//
+// The returned context is always non-nil; it defaults to the
+// background context.
+func (m *Message) Context() context.Context {
+	if m.ctx != nil {
+		return m.ctx
+	}
+	return context.Background()
+}
+
+// SetContext sets provided context to the message.
+func (m *Message) SetContext(ctx context.Context) {
+	m.ctx = ctx
+}
+
 // Copy copies all message without Acks/Nacks.
-func (m Message) Copy() *Message {
+// The context is not propagated to the copy.
+func (m *Message) Copy() *Message {
 	msg := NewMessage(m.UUID, m.Payload)
 	msg.Metadata = m.Metadata
 	return msg

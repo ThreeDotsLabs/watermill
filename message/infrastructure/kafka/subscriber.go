@@ -5,6 +5,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hashicorp/go-multierror"
+
 	"github.com/renstrom/shortuuid"
 
 	"github.com/Shopify/sarama"
@@ -45,6 +47,10 @@ func NewSubscriber(
 		overwriteSaramaConfig = DefaultSaramaSubscriberConfig()
 	}
 
+	logger = logger.With(watermill.LogFields{
+		"subscriber_uuid": shortuuid.New(),
+	})
+
 	return &Subscriber{
 		config:       config,
 		saramaConfig: overwriteSaramaConfig,
@@ -69,6 +75,8 @@ type SubscriberConfig struct {
 
 	// How long about unsuccessful reconnecting next reconnect will occur.
 	ReconnectRetrySleep time.Duration
+
+	InitializeTopicDetails *sarama.TopicDetail
 }
 
 // NoSleep can be set to SubscriberConfig.NackResendSleep and SubscriberConfig.ReconnectRetrySleep.
@@ -94,7 +102,7 @@ func (c SubscriberConfig) Validate() error {
 // Subscribe subscribers for messages in Kafka.
 //
 // There are multiple subscribers spawned
-func (s *Subscriber) Subscribe(topic string) (chan *message.Message, error) {
+func (s *Subscriber) Subscribe(ctx context.Context, topic string) (<-chan *message.Message, error) {
 	if s.closed {
 		return nil, errors.New("subscriber closed")
 	}
@@ -102,31 +110,34 @@ func (s *Subscriber) Subscribe(topic string) (chan *message.Message, error) {
 	s.subscribersWg.Add(1)
 
 	logFields := watermill.LogFields{
-		"provider":       "kafka",
-		"topic":          topic,
-		"consumer_group": s.config.ConsumerGroup,
-		"subscribe_uuid": shortuuid.New(),
+		"provider":            "kafka",
+		"topic":               topic,
+		"consumer_group":      s.config.ConsumerGroup,
+		"kafka_consumer_uuid": shortuuid.New(),
 	}
 	s.logger.Info("Subscribing to Kafka topic", logFields)
 
 	// we don't want to have buffered channel to not consume message from Kafka when consumer is not consuming
 	output := make(chan *message.Message, 0)
 
-	consumeClosed, err := s.consumeMessages(topic, output, logFields)
+	consumeClosed, err := s.consumeMessages(ctx, topic, output, logFields)
 	if err != nil {
 		s.subscribersWg.Done()
 		return nil, err
 	}
 
 	go func() {
-		defer s.subscribersWg.Done()
-		s.handleReconnects(topic, output, consumeClosed, logFields)
+		// blocking, until s.closing is closed
+		s.handleReconnects(ctx, topic, output, consumeClosed, logFields)
+		close(output)
+		s.subscribersWg.Done()
 	}()
 
 	return output, nil
 }
 
 func (s *Subscriber) handleReconnects(
+	ctx context.Context,
 	topic string,
 	output chan *message.Message,
 	consumeClosed chan struct{},
@@ -146,6 +157,9 @@ func (s *Subscriber) handleReconnects(
 		case <-s.closing:
 			s.logger.Debug("Closing subscriber, no reconnect needed", logFields)
 			return
+		case <-ctx.Done():
+			s.logger.Debug("Ctx cancelled, no reconnect needed", logFields)
+			return
 		default:
 			// not closing
 		}
@@ -153,7 +167,7 @@ func (s *Subscriber) handleReconnects(
 		s.logger.Info("Reconnecting consumer", logFields)
 
 		var err error
-		consumeClosed, err = s.consumeMessages(topic, output, logFields)
+		consumeClosed, err = s.consumeMessages(ctx, topic, output, logFields)
 		if err != nil {
 			s.logger.Error("Cannot reconnect messages consumer", err, logFields)
 
@@ -166,6 +180,7 @@ func (s *Subscriber) handleReconnects(
 }
 
 func (s *Subscriber) consumeMessages(
+	ctx context.Context,
 	topic string,
 	output chan *message.Message,
 	logFields watermill.LogFields,
@@ -179,9 +194,9 @@ func (s *Subscriber) consumeMessages(
 	}
 
 	if s.config.ConsumerGroup == "" {
-		consumeMessagesClosed, err = s.consumeWithoutConsumerGroups(client, topic, output, logFields)
+		consumeMessagesClosed, err = s.consumeWithoutConsumerGroups(ctx, client, topic, output, logFields)
 	} else {
-		consumeMessagesClosed, err = s.consumeGroupMessages(client, topic, output, logFields)
+		consumeMessagesClosed, err = s.consumeGroupMessages(ctx, client, topic, output, logFields)
 	}
 
 	go func() {
@@ -195,12 +210,13 @@ func (s *Subscriber) consumeMessages(
 }
 
 func (s *Subscriber) consumeGroupMessages(
+	ctx context.Context,
 	client sarama.Client,
 	topic string,
 	output chan *message.Message,
 	logFields watermill.LogFields,
 ) (chan struct{}, error) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(ctx)
 	go func() {
 		<-s.closing
 		cancel()
@@ -218,7 +234,9 @@ func (s *Subscriber) consumeGroupMessages(
 	}()
 
 	handler := consumerGroupHandler{
+		ctx:              ctx,
 		messageHandler:   s.createMessagesHandler(output),
+		logger:           s.logger,
 		closing:          s.closing,
 		messageLogFields: logFields,
 	}
@@ -241,6 +259,7 @@ func (s *Subscriber) consumeGroupMessages(
 }
 
 func (s *Subscriber) consumeWithoutConsumerGroups(
+	ctx context.Context,
 	client sarama.Client,
 	topic string,
 	output chan *message.Message,
@@ -271,7 +290,7 @@ func (s *Subscriber) consumeWithoutConsumerGroups(
 
 		messageHandler := s.createMessagesHandler(output)
 
-		go s.consumePartition(partitionConsumer, messageHandler, partitionConsumersWg, logFields)
+		go s.consumePartition(ctx, partitionConsumer, messageHandler, partitionConsumersWg, logFields)
 	}
 
 	closed := make(chan struct{})
@@ -284,6 +303,7 @@ func (s *Subscriber) consumeWithoutConsumerGroups(
 }
 
 func (s *Subscriber) consumePartition(
+	ctx context.Context,
 	partitionConsumer sarama.PartitionConsumer,
 	messageHandler messageHandler,
 	partitionConsumersWg *sync.WaitGroup,
@@ -302,12 +322,14 @@ func (s *Subscriber) consumePartition(
 		select {
 		case <-s.closing:
 			return
+		case <-ctx.Done():
+			return
 		case kafkaMsg := <-kafkaMessages:
 			if kafkaMsg == nil {
 				// kafkaMessages is closed
 				return
 			}
-			if err := messageHandler.processMessage(kafkaMsg, nil, logFields); err != nil {
+			if err := messageHandler.processMessage(ctx, kafkaMsg, nil, logFields); err != nil {
 				return
 			}
 		}
@@ -339,15 +361,26 @@ func (s *Subscriber) Close() error {
 }
 
 type consumerGroupHandler struct {
+	ctx              context.Context
 	messageHandler   messageHandler
+	logger           watermill.LoggerAdapter
 	closing          chan struct{}
 	messageLogFields watermill.LogFields
 }
 
-func (consumerGroupHandler) Setup(_ sarama.ConsumerGroupSession) error   { return nil }
+func (consumerGroupHandler) Setup(_ sarama.ConsumerGroupSession) error { return nil }
+
 func (consumerGroupHandler) Cleanup(_ sarama.ConsumerGroupSession) error { return nil }
+
 func (h consumerGroupHandler) ConsumeClaim(sess sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
 	kafkaMessages := claim.Messages()
+
+	logFields := h.messageLogFields.Copy().Add(watermill.LogFields{
+		"kafka_partition":      claim.Partition(),
+		"kafka_initial_offset": claim.InitialOffset(),
+	})
+
+	h.logger.Debug("Consume claimed", logFields)
 
 	for {
 		select {
@@ -356,12 +389,15 @@ func (h consumerGroupHandler) ConsumeClaim(sess sarama.ConsumerGroupSession, cla
 				// kafkaMessages is closed
 				return nil
 			}
-			if err := h.messageHandler.processMessage(kafkaMsg, sess, h.messageLogFields); err != nil {
+			if err := h.messageHandler.processMessage(h.ctx, kafkaMsg, sess, logFields); err != nil {
 				// error will stop consumerGroupHandler
 				return err
 			}
 
 		case <-h.closing:
+			return nil
+
+		case <-h.ctx.Done():
 			return nil
 		}
 	}
@@ -378,13 +414,14 @@ type messageHandler struct {
 }
 
 func (h messageHandler) processMessage(
+	ctx context.Context,
 	kafkaMsg *sarama.ConsumerMessage,
 	sess sarama.ConsumerGroupSession,
 	messageLogFields watermill.LogFields,
 ) error {
 	receivedMsgLogFields := messageLogFields.Add(watermill.LogFields{
-		"kafka_partition":        kafkaMsg.Partition,
 		"kafka_partition_offset": kafkaMsg.Offset,
+		"kafka_partition":        kafkaMsg.Partition,
 	})
 
 	h.logger.Trace("Received message from Kafka", receivedMsgLogFields)
@@ -394,6 +431,10 @@ func (h messageHandler) processMessage(
 		// resend will make no sense, stopping consumerGroupHandler
 		return errors.Wrap(err, "message unmarshal failed")
 	}
+
+	ctx, cancelCtx := context.WithCancel(ctx)
+	msg.SetContext(ctx)
+	defer cancelCtx()
 
 	receivedMsgLogFields = receivedMsgLogFields.Add(watermill.LogFields{
 		"message_uuid": msg.UUID,
@@ -431,6 +472,26 @@ ResendLoop:
 			return nil
 		}
 	}
+
+	return nil
+}
+
+func (s *Subscriber) SubscribeInitialize(topic string) (err error) {
+	clusterAdmin, err := sarama.NewClusterAdmin(s.config.Brokers, s.saramaConfig)
+	if err != nil {
+		return errors.Wrap(err, "cannot create cluster admin")
+	}
+	defer func() {
+		if closeErr := clusterAdmin.Close(); closeErr != nil {
+			err = multierror.Append(err, closeErr)
+		}
+	}()
+
+	if err := clusterAdmin.CreateTopic(topic, s.config.InitializeTopicDetails, false); err != nil {
+		return errors.Wrap(err, "cannot create topic")
+	}
+
+	s.logger.Info("Created Kafka topic", watermill.LogFields{"topic": topic})
 
 	return nil
 }

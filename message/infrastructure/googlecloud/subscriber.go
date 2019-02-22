@@ -30,7 +30,6 @@ var (
 //
 // For more info on how Google Cloud Pub/Sub Subscribers work, check https://cloud.google.com/pubsub/docs/subscriber.
 type Subscriber struct {
-	ctx     context.Context
 	closing chan struct{}
 	closed  bool
 
@@ -45,14 +44,22 @@ type Subscriber struct {
 }
 
 type SubscriberConfig struct {
-	// SubscriptionName generates subscription name for a given topic.
-	SubscriptionName SubscriptionNameFn
+	// GenerateSubscriptionName generates subscription name for a given topic.
+	// The subscription connects the topic to a subscriber application that receives and processes
+	// messages published to the topic.
+	//
+	// By default, subscriptions expire after 31 days of inactivity.
+	//
+	// A topic can have multiple subscriptions, but a given subscription belongs to a single topic.
+	GenerateSubscriptionName SubscriptionNameFn
+
 	// ProjectID is the Google Cloud Engine project ID.
 	ProjectID string
 
 	// If false (default), `Subscriber` tries to create a subscription if there is none with the requested name.
 	// Otherwise, trying to use non-existent subscription results in `ErrSubscriptionDoesNotExist`.
 	DoNotCreateSubscriptionIfMissing bool
+
 	// If false (default), `Subscriber` tries to create a topic if there is none with the requested name
 	// and it is trying to create a new subscription with this topic name.
 	// Otherwise, trying to create a subscription on non-existent topic results in `ErrTopicDoesNotExist`.
@@ -70,21 +77,21 @@ type SubscriberConfig struct {
 
 type SubscriptionNameFn func(topic string) string
 
-// DefaultSubscriptionName uses the topic name as the subscription name.
-func DefaultSubscriptionName(topic string) string {
+// TopicSubscriptionName uses the topic name as the subscription name.
+func TopicSubscriptionName(topic string) string {
 	return topic
 }
 
-// DefaultSubscriptionNameWithSuffix uses the topic name with a chosen suffix as the subscription name.
-func DefaultSubscriptionNameWithSuffix(suffix string) SubscriptionNameFn {
+// TopicSubscriptionNameWithSuffix uses the topic name with a chosen suffix as the subscription name.
+func TopicSubscriptionNameWithSuffix(suffix string) SubscriptionNameFn {
 	return func(topic string) string {
 		return topic + suffix
 	}
 }
 
 func (c *SubscriberConfig) setDefaults() {
-	if c.SubscriptionName == nil {
-		c.SubscriptionName = DefaultSubscriptionName
+	if c.GenerateSubscriptionName == nil {
+		c.GenerateSubscriptionName = TopicSubscriptionName
 	}
 	if c.Unmarshaler == nil {
 		c.Unmarshaler = DefaultMarshalerUnmarshaler{}
@@ -104,7 +111,6 @@ func NewSubscriber(
 	}
 
 	return &Subscriber{
-		ctx:     ctx,
 		closing: make(chan struct{}, 1),
 		closed:  false,
 
@@ -124,19 +130,19 @@ func NewSubscriber(
 // In Google Cloud Pub/Sub, it is impossible to subscribe directly to a topic. Instead, a *subscription* is used.
 // Each subscription has one topic, but there may be multiple subscriptions to one topic (with different names).
 //
-// The `topic` argument is transformed into subscription name with the configured `SubscriptionName` function.
+// The `topic` argument is transformed into subscription name with the configured `GenerateSubscriptionName` function.
 // By default, if the subscription or topic don't exist, the are created. This behavior may be changed in the config.
 //
 // Be aware that in Google Cloud Pub/Sub, only messages sent after the subscription was created can be consumed.
 //
 // See https://cloud.google.com/pubsub/docs/subscriber to find out more about how Google Cloud Pub/Sub Subscriptions work.
-func (s *Subscriber) Subscribe(topic string) (chan *message.Message, error) {
+func (s *Subscriber) Subscribe(ctx context.Context, topic string) (<-chan *message.Message, error) {
 	if s.closed {
 		return nil, ErrSubscriberClosed
 	}
 
-	ctx, cancel := context.WithCancel(s.ctx)
-	subscriptionName := s.config.SubscriptionName(topic)
+	ctx, cancel := context.WithCancel(ctx)
+	subscriptionName := s.config.GenerateSubscriptionName(topic)
 
 	logFields := watermill.LogFields{
 		"provider":          ProviderName,
@@ -149,7 +155,6 @@ func (s *Subscriber) Subscribe(topic string) (chan *message.Message, error) {
 
 	sub, err := s.subscription(ctx, subscriptionName, topic)
 	if err != nil {
-		s.logger.Error("Could not obtain subscription", err, logFields)
 		return nil, err
 	}
 
@@ -167,13 +172,34 @@ func (s *Subscriber) Subscribe(topic string) (chan *message.Message, error) {
 		<-s.closing
 		s.logger.Debug("Closing message consumer", logFields)
 		cancel()
+	}()
 
+	go func() {
 		<-receiveFinished
 		close(output)
 		s.allSubscriptionsWaitGroup.Done()
 	}()
 
 	return output, nil
+}
+
+func (s *Subscriber) SubscribeInitialize(topic string) (err error) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	subscriptionName := s.config.GenerateSubscriptionName(topic)
+	logFields := watermill.LogFields{
+		"provider":          ProviderName,
+		"topic":             topic,
+		"subscription_name": subscriptionName,
+	}
+	s.logger.Info("Initializing subscription to Google Cloud PubSub topic", logFields)
+
+	if _, err := s.subscription(ctx, subscriptionName, topic); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Close notifies the Subscriber to stop processing messages on all subscriptions, close all the output channels
@@ -210,10 +236,21 @@ func (s *Subscriber) receive(
 			return
 		}
 
+		ctx, cancelCtx := context.WithCancel(ctx)
+		msg.SetContext(ctx)
+		defer cancelCtx()
+
 		select {
 		case <-s.closing:
 			s.logger.Info(
 				"Message not consumed, subscriber is closing",
+				logFields,
+			)
+			pubsubMsg.Nack()
+			return
+		case <-ctx.Done():
+			s.logger.Info(
+				"Message not consumed, ctx canceled",
 				logFields,
 			)
 			pubsubMsg.Nack()
@@ -225,10 +262,28 @@ func (s *Subscriber) receive(
 		select {
 		case <-s.closing:
 			pubsubMsg.Nack()
+			s.logger.Trace(
+				"Closing, nacking message",
+				logFields,
+			)
+		case <-ctx.Done():
+			pubsubMsg.Nack()
+			s.logger.Trace(
+				"Ctx done, nacking message",
+				logFields,
+			)
 		case <-msg.Acked():
+			s.logger.Trace(
+				"Msg acked",
+				logFields,
+			)
 			pubsubMsg.Ack()
 		case <-msg.Nacked():
 			pubsubMsg.Nack()
+			s.logger.Trace(
+				"Msg nacked",
+				logFields,
+			)
 		}
 	})
 

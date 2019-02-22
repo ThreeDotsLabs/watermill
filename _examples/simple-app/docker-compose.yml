@@ -7,6 +7,7 @@ services:
     - kafka
     volumes:
     - .:/app
+    - $GOPATH/pkg/mod:/go/pkg/mod
     working_dir: /app/publishing-app/
     command: go run main.go
 
@@ -16,7 +17,8 @@ services:
     depends_on:
       - kafka
     volumes:
-      - .:/app
+    - .:/app
+    - $GOPATH/pkg/mod:/go/pkg/mod
     working_dir: /app/subscribing-app/
     command: go run main.go
 

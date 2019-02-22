@@ -1,7 +1,7 @@
 # Watermill
-[![Build Status](https://travis-ci.org/ThreeDotsLabs/watermill.svg?branch=master)](https://travis-ci.org/ThreeDotsLabs/watermill)
+[![Build Status](https://gitlab.com/threedotslabs/watermill/badges/master/build.svg)](https://gitlab.com/threedotslabs/watermill/pipelines)
 [![Go Report Card](https://goreportcard.com/badge/github.com/ThreeDotsLabs/watermill)](https://goreportcard.com/report/github.com/ThreeDotsLabs/watermill)
-[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2FThreeDotsLabs%2Fwatermill.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2FThreeDotsLabs%2Fwatermill?ref=badge_shield)
+[![codecov](https://codecov.io/gh/ThreeDotsLabs/watermill/branch/master/graph/badge.svg)](https://codecov.io/gh/ThreeDotsLabs/watermill)
 
 
 Watermill is a Go library for working efficiently with message streams. It is intended
@@ -9,7 +9,7 @@ for building event driven applications, enabling event sourcing, RPC over messag
 sagas and basically whatever else comes to your mind. You can use conventional pub/sub
 implementations like Kafka or RabbitMQ, but also HTTP or MySQL binlog if that fits your use case.
 
-**Note:** Watermill is still under heavy development. The public API can change before the 1.0.0 release.
+**Note:** Watermill should run reliably in a production environment, but it is still under heavy development and the public API may change before the 1.0.0 release.
 
 Documentation: https://watermill.io/
 
@@ -66,6 +66,7 @@ All Pub/Subs implementation can be found in the [documentation](https://watermil
 * [Your first app](_examples/your-first-app) - start here!
 * [Simple application with publisher and subscriber](_examples/simple-app)
 * [HTTP to Kafka](_examples/http-to-kafka)
+* [...and more!](_examples/)
 
 ## Contributing
 
@@ -86,6 +87,3 @@ It processes streams!
 ## License
 
 [MIT License](./LICENSE)
-
-
-[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2FThreeDotsLabs%2Fwatermill.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2FThreeDotsLabs%2Fwatermill?ref=badge_large)

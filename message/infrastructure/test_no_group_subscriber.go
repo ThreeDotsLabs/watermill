@@ -1,16 +1,17 @@
 package infrastructure
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/internal/tests"
 	"github.com/ThreeDotsLabs/watermill/message"
 	subscriber2 "github.com/ThreeDotsLabs/watermill/message/subscriber"
-	"github.com/satori/go.uuid"
 	"github.com/stretchr/testify/require"
 )
 
@@ -55,7 +56,7 @@ func testNoGroupSubscriberConcurrentSubscribers(
 
 		go func() {
 			subscriber := noGroupSubscriberConstructor(t)
-			ch, err := subscriber.Subscribe(topicName)
+			ch, err := subscriber.Subscribe(context.Background(), topicName)
 			require.NoError(t, err)
 
 			consumersStarted.Done()
@@ -74,7 +75,7 @@ func testNoGroupSubscriberConcurrentSubscribers(
 	defer closePubSub(t, pubSub)
 
 	for i := 0; i < 10; i++ {
-		id := uuid.NewV4().String()
+		id := watermill.NewUUID()
 
 		msg := message.NewMessage(id, []byte(fmt.Sprintf("%d", i)))
 		messagesToPublish = append(messagesToPublish, msg)
@@ -116,7 +117,7 @@ func testNoGroupSubscriberJoiningSubscribers(
 
 				subscriberCreated <- struct{}{}
 
-				ch, err := subscriber.Subscribe(topicName)
+				ch, err := subscriber.Subscribe(context.Background(), topicName)
 				require.NoError(t, err)
 
 				for msg := range ch {
@@ -138,7 +139,7 @@ func testNoGroupSubscriberJoiningSubscribers(
 		for {
 			time.Sleep(time.Millisecond * 500)
 
-			id := uuid.NewV4().String()
+			id := watermill.NewUUID()
 			err := pubSub.Publish(topicName, message.NewMessage(id, []byte(fmt.Sprintf("%d", i))))
 			require.NoError(t, err)
 
@@ -183,7 +184,7 @@ func testNoGroupSubscriber_Close(
 	defer closePubSub(t, pubSub)
 
 	for i := 0; i < 10; i++ {
-		id := uuid.NewV4().String()
+		id := watermill.NewUUID()
 
 		msg := message.NewMessage(id, []byte(fmt.Sprintf("%d", i)))
 		messagesToPublish = append(messagesToPublish, msg)
@@ -193,7 +194,7 @@ func testNoGroupSubscriber_Close(
 	}
 
 	subscriber := noGroupSubscriberConstructor(t)
-	ch, err := subscriber.Subscribe(topicName)
+	ch, err := subscriber.Subscribe(context.Background(), topicName)
 	require.NoError(t, err)
 
 	_, all := subscriber2.BulkRead(ch, 10, defaultTimeout)

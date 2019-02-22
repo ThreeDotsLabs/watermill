@@ -1,26 +1,33 @@
 package nats_test
 
 import (
+	"os"
 	"testing"
 	"time"
 
-	"github.com/satori/go.uuid"
-
 	"github.com/ThreeDotsLabs/watermill"
-	"github.com/stretchr/testify/require"
-
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure"
-
 	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ThreeDotsLabs/watermill/message/infrastructure"
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/nats"
+	stan "github.com/nats-io/go-nats-streaming"
+	"github.com/stretchr/testify/require"
 )
 
 func newPubSub(t *testing.T, clientID string, queueName string) message.PubSub {
 	logger := watermill.NewStdLogger(true, true)
+
+	natsURL := os.Getenv("WATERMILL_TEST_NATS_URL")
+	if natsURL == "" {
+		natsURL = "nats://localhost:4222"
+	}
+
 	pub, err := nats.NewStreamingPublisher(nats.StreamingPublisherConfig{
 		ClusterID: "test-cluster",
 		ClientID:  clientID + "_pub",
 		Marshaler: nats.GobMarshaler{},
+		StanOptions: []stan.Option{
+			stan.NatsURL(natsURL),
+		},
 	}, logger)
 	require.NoError(t, err)
 
@@ -32,18 +39,21 @@ func newPubSub(t *testing.T, clientID string, queueName string) message.PubSub {
 		SubscribersCount: 1,
 		AckWaitTimeout:   time.Second, // AckTiemout < 5 required for continueAfterErrors
 		Unmarshaler:      nats.GobMarshaler{},
+		StanOptions: []stan.Option{
+			stan.NatsURL(natsURL),
+		},
 	}, logger)
 	require.NoError(t, err)
 
 	return message.NewPubSub(pub, sub)
 }
 
-func createPubSub(t *testing.T) message.PubSub {
-	return newPubSub(t, uuid.NewV4().String(), "test-queue")
+func createPubSub(t *testing.T) infrastructure.PubSub {
+	return newPubSub(t, watermill.NewUUID(), "test-queue").(infrastructure.PubSub)
 }
 
-func createPubSubWithDurable(t *testing.T, consumerGroup string) message.PubSub {
-	return newPubSub(t, consumerGroup, consumerGroup)
+func createPubSubWithDurable(t *testing.T, consumerGroup string) infrastructure.PubSub {
+	return newPubSub(t, consumerGroup, consumerGroup).(infrastructure.PubSub)
 }
 
 func TestPublishSubscribe(t *testing.T) {

@@ -3,18 +3,10 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"log"
-	"net/http"
-	"os"
 	"sync/atomic"
 	"time"
 
-	"github.com/deathowl/go-metrics-prometheus"
 	"github.com/pkg/errors"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/rcrowley/go-metrics"
-	"github.com/satori/go.uuid"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
@@ -26,17 +18,16 @@ import (
 var (
 	marshaler = kafka.DefaultMarshaler{}
 	brokers   = []string{"kafka:9092"}
-
-	logger = watermill.NewStdLogger(false, false)
 )
 
 func main() {
-	pub, err := kafka.NewPublisher(brokers, marshaler, nil)
+	logger := watermill.NewStdLogger(true, true)
+	pub, err := kafka.NewPublisher(brokers, marshaler, nil, logger)
 	if err != nil {
 		panic(err)
 	}
 
-	h, err := message.NewRouter(
+	r, err := message.NewRouter(
 		message.RouterConfig{},
 		logger,
 	)
@@ -53,12 +44,9 @@ func main() {
 		panic(err)
 	}
 
-	h.AddMiddleware(
+	r.AddMiddleware(
 		// limiting processed messages to 10 per second
 		middleware.NewThrottle(100, time.Second).Middleware,
-
-		// some, simple metrics
-		newMetricsMiddleware().Middleware,
 
 		// retry middleware retries message processing if error occurred in handler
 		poisonQueue.Middleware,
@@ -79,14 +67,15 @@ func main() {
 	)
 
 	// close router when SIGTERM is sent
-	h.AddPlugin(plugin.SignalsHandler)
+	r.AddPlugin(plugin.SignalsHandler)
 
 	// handler which just counts added posts
-	h.AddHandler(
+	r.AddHandler(
 		"posts_counter",
 		"posts_published",
+		createSubscriber("posts_counter_v2", logger),
 		"posts_count",
-		message.NewPubSub(pub, createSubscriber("posts_counter_v2", logger)),
+		pub,
 		PostsCounter{memoryCountStorage{new(int64)}}.Count,
 	)
 
@@ -94,24 +83,26 @@ func main() {
 	//
 	// this implementation just prints it to stdout,
 	// but production ready implementation would save posts to some persistent storage
-	h.AddNoPublisherHandler(
+	r.AddNoPublisherHandler(
 		"feed_generator",
 		"posts_published",
 		createSubscriber("feed_generator_v2", logger),
 		FeedGenerator{printFeedStorage{}}.UpdateFeed,
 	)
 
-	h.Run()
+	if err = r.Run(); err != nil {
+		panic(err)
+	}
+
 }
 
 func createSubscriber(consumerGroup string, logger watermill.LoggerAdapter) message.Subscriber {
-	sub, err := kafka.NewConfluentSubscriber(
+	sub, err := kafka.NewSubscriber(
 		kafka.SubscriberConfig{
-			Brokers:         brokers,
-			ConsumerGroup:   consumerGroup,
-			ConsumersCount:  8,
-			AutoOffsetReset: "earliest",
+			Brokers:       brokers,
+			ConsumerGroup: consumerGroup,
 		},
+		nil,
 		marshaler,
 		logger,
 	)
@@ -161,7 +152,7 @@ func (p PostsCounter) Count(msg *message.Message) ([]*message.Message, error) {
 		return nil, err
 	}
 
-	return []*message.Message{message.NewMessage(uuid.NewV4().String(), b)}, nil
+	return []*message.Message{message.NewMessage(watermill.NewUUID(), b)}, nil
 }
 
 // intentionally not importing type from app1, because we don't need all data and we want to avoid coupling
@@ -188,7 +179,9 @@ type FeedGenerator struct {
 
 func (f FeedGenerator) UpdateFeed(message *message.Message) ([]*message.Message, error) {
 	event := postAdded{}
-	json.Unmarshal(message.Payload, &event)
+	if err := json.Unmarshal(message.Payload, &event); err != nil {
+		return nil, err
+	}
 
 	err := f.feedStorage.AddToFeed(event.Title, event.Author, event.OccurredOn)
 	if err != nil {
@@ -196,31 +189,4 @@ func (f FeedGenerator) UpdateFeed(message *message.Message) ([]*message.Message,
 	}
 
 	return nil, nil
-}
-
-func newMetricsMiddleware() middleware.Metrics {
-	t := metrics.NewTimer()
-	metrics.Register("handler.time", t)
-
-	errs := metrics.NewCounter()
-	metrics.Register("handler.errors", errs)
-
-	success := metrics.NewCounter()
-	metrics.Register("handler.success", success)
-
-	pClient := prometheusmetrics.NewPrometheusProvider(
-		metrics.DefaultRegistry,
-		"test",
-		"subsys",
-		prometheus.DefaultRegisterer,
-		1*time.Second,
-	)
-	go pClient.UpdatePrometheusMetrics()
-	http.Handle("/metrics", promhttp.Handler())
-
-	go http.ListenAndServe(":9000", nil)
-	metricsMiddleware := middleware.NewMetrics(t, errs, success)
-	metricsMiddleware.ShowStats(time.Second*5, log.New(os.Stderr, "metrics: ", log.Lmicroseconds))
-
-	return metricsMiddleware
 }

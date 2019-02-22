@@ -6,8 +6,6 @@ import (
 	"log"
 	"time"
 
-	"github.com/satori/go.uuid"
-
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/gochannel"
@@ -51,40 +49,35 @@ func main() {
 
 	// for simplicity we are using gochannel Pub/Sub here,
 	// you can replace it with any Pub/Sub implementation, it will work the same
-	pubSub := gochannel.NewGoChannel(0, logger, time.Second)
+	pubSub := gochannel.NewGoChannel(gochannel.Config{}, logger)
 
 	// producing some messages in background
 	go publishMessages(pubSub)
 
-	if err := router.AddHandler(
+	router.AddHandler(
 		"struct_handler",  // handler name, must be unique
 		"example.topic_1", // topic from which we will read events
+		pubSub,
 		"example.topic_2", // topic to which we will publish event
 		pubSub,
 		structHandler{}.Handler,
-	); err != nil {
-		panic(err)
-	}
+	)
 
 	// just for debug, we are printing all events sent to `example.topic_1`
-	if err := router.AddNoPublisherHandler(
+	router.AddNoPublisherHandler(
 		"print_events_topic_1",
 		"example.topic_1",
 		pubSub,
 		printMessages,
-	); err != nil {
-		panic(err)
-	}
+	)
 
 	// just for debug, we are printing all events sent to `example.topic_2`
-	if err := router.AddNoPublisherHandler(
+	router.AddNoPublisherHandler(
 		"print_events_topic_2",
 		"example.topic_2",
 		pubSub,
 		printMessages,
-	); err != nil {
-		panic(err)
-	}
+	)
 
 	// when everything is ready, let's run router,
 	// this function is blocking since router is running
@@ -95,8 +88,8 @@ func main() {
 
 func publishMessages(publisher message.Publisher) {
 	for {
-		msg := message.NewMessage(uuid.NewV4().String(), []byte("Hello, world!"))
-		middleware.SetCorrelationID(uuid.NewV4().String(), msg)
+		msg := message.NewMessage(watermill.NewUUID(), []byte("Hello, world!"))
+		middleware.SetCorrelationID(watermill.NewUUID(), msg)
 
 		log.Printf("sending message %s, correlation id: %s\n", msg.UUID, middleware.MessageCorrelationID(msg))
 
@@ -123,6 +116,6 @@ type structHandler struct {
 func (s structHandler) Handler(msg *message.Message) ([]*message.Message, error) {
 	log.Println("structHandler received message", msg.UUID)
 
-	msg = message.NewMessage(uuid.NewV4().String(), []byte("message produced by structHandler"))
+	msg = message.NewMessage(watermill.NewUUID(), []byte("message produced by structHandler"))
 	return message.Messages{msg}, nil
 }

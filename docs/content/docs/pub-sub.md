@@ -11,70 +11,72 @@ toc = true
 ### Publisher
 
 {{% render-md %}}
-{{% load-snippet file="content/src-link/message/publisher.go" %}}
+{{% load-snippet-partial file="content/src-link/message/pubsub.go" first_line_contains="publisher interface {" last_line_contains="Close() error" padding_after="1" %}}
 {{% /render-md %}}
 
 #### Publishing multiple messages
 
 Most publishers implementations don't support atomic publishing of messages.
-That means, that when publishing one of the messages failed the next messages will be not published.
+This means that if publishing one of the messages fails, the next messages won't be published.
 
 #### Async publish
 
-Publish can be synchronous or asynchronous - it depends on implementation.
+Publish can be synchronous or asynchronous - it depends on the implementation.
 
 #### `Close()`
 
-Close should flush unsent messages if the publisher is async.
-**It's important to not forget to close subscriber**, in the other hand you may lose some of the messages.
+`Close` should flush unsent messages if the publisher is asynchronous.
+**It is important to not forget to close the subscriber**. Otherwise you may lose some of the messages.
 
 ### Subscriber
 
 {{% render-md %}}
-{{% load-snippet file="content/src-link/message/subscriber.go" %}}
+{{% load-snippet-partial file="content/src-link/message/pubsub.go" first_line_contains="subscriber interface {" last_line_contains="Close() error" padding_after="1" %}}
 {{% /render-md %}}
 
 #### Ack/Nack mechanism
 
-It is *Subscriber's* responsibility to handle `Ack` and `Nack` from a message.
-A proper implementation should wait for `Ack` or `Nack` before consuming the next message.
+It is the *Subscriber's* responsibility to handle an `Ack` and a `Nack` from a message.
+A proper implementation should wait for an `Ack` or a `Nack` before consuming the next message.
 
 **Important Subscriber's implementation notice**:
 Ack/offset to message's storage/broker **must** be sent after Ack from Watermill's message.
-If it wouldn't, it is a possibility to lose messages when the process will die before messages were processed.
+Otherwise there is a chance to lose messages if the process dies before the messages have been processed.
 
 #### `Close()`
 
-Close closes all subscriptions with their output channels and flush offsets etc. when needed.
+`Close` closes all subscriptions with their output channels and flushes offsets, etc. when needed.
 
 ### At-least-once delivery
 
-Watermill is build with [at-least-once delivery](http://www.cloudcomputingpatterns.org/at_least_once_delivery/) semantics.
-That means, that when some error with occur when processing message and Ack cannot be sent the message will be redelivered.
+Watermill is built with [at-least-once delivery](http://www.cloudcomputingpatterns.org/at_least_once_delivery/) semantics.
+That means when some error occurs when processing a message and an Ack cannot be sent, the message will be redelivered.
 
-You need to keep it in mind and build your application to be [idempotent](http://www.cloudcomputingpatterns.org/idempotent_processor/) or implement deduplication mechanism.
+You need to keep it in mind and build your application to be [idempotent](http://www.cloudcomputingpatterns.org/idempotent_processor/) or implement a deduplication mechanism.
 
-Unfortunately, it's not possible to create universal [*middleware*]({{< ref "/docs/messages-router#middleware" >}}) for deduplication but we encourage you to make your own.
+Unfortunately, it's not possible to create an universal [*middleware*]({{< ref "/docs/messages-router#middleware" >}}) for deduplication, so we encourage you to build your own.
 
 ### Universal tests
 
-Every Pub/Sub is similar.
-To don't implement separated tests for every Pub/Sub we create test suite which should be passed by any Pub/Sub implementation.
+Every Pub/Sub is similar in most aspects.
+To avoid implementing separate tests for every Pub/Sub, we've created a test suite which should be passed by any Pub/Sub
+implementation.
 
 These tests can be found in `message/infrastructure/test_pubsub.go`.
 
 ### Built-in implementations
 
-To check available Pub/Subs implementation please check [Pub/Sub's implementations]({{< ref "/docs/pub-sub-implementations" >}})
+To check available Pub/Sub implementations, see [Pub/Sub's implementations]({{< ref "/docs/pub-sub-implementations" >}}).
 
 ### Implementing custom Pub/Sub
 
-When any implementation of Pub/Sub. [Implementing custom Pub/Sub]({{< ref "/docs/pub-sub-implementing" >}}).
+See [Implementing custom Pub/Sub]({{< ref "/docs/pub-sub-implementing" >}}) for instructions on how to introduce support for
+a new Pub/Sub.
 
-We will be also thankful for submitting [merge requests](https://github.com/ThreeDotsLabs/watermill/pulls) with new Pub/Subs implementation.
+We will also be thankful for submitting [pull requests](https://github.com/ThreeDotsLabs/watermill/pulls) with the new Pub/Sub implementations.
 
-You can also request new Pub/Sub implementation by submitting a [new issue](https://github.com/ThreeDotsLabs/watermill/issues).
+You can also request a new Pub/Sub implementation by submitting a [new issue](https://github.com/ThreeDotsLabs/watermill/issues).
 
 ### Keep going!
 
-When you already know, how Pub/Sub is working we recommend to check [*Message Router component*]({{< ref "/docs/messages-router" >}}).
+Now that you already know how a Pub/Sub is working, we recommend learning about the [*Message Router component*]({{< ref "/docs/messages-router" >}}).

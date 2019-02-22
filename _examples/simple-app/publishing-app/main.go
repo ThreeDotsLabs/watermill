@@ -6,8 +6,7 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/satori/go.uuid"
-
+	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/kafka"
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
@@ -20,8 +19,9 @@ var (
 
 func main() {
 	log.Println("Starting publishing app")
+	logger := watermill.NewStdLogger(true, true)
 
-	publisher, err := kafka.NewPublisher(brokers, kafka.DefaultMarshaler{}, nil)
+	publisher, err := kafka.NewPublisher(brokers, kafka.DefaultMarshaler{}, nil, logger)
 	if err != nil {
 		panic(err)
 	}
@@ -62,7 +62,7 @@ func main() {
 					panic(err)
 				}
 
-				msg = message.NewMessage(uuid.NewV4().String(), payload)
+				msg = message.NewMessage(watermill.NewUUID(), payload)
 
 				// using function from middleware to set correlation id, useful for debugging
 				middleware.SetCorrelationID(shortuuid.New(), msg)

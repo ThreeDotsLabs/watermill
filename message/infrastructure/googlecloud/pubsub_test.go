@@ -9,7 +9,6 @@ import (
 
 	"cloud.google.com/go/pubsub"
 	"github.com/pkg/errors"
-	uuid "github.com/satori/go.uuid"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ThreeDotsLabs/watermill"
@@ -35,7 +34,7 @@ func newPubSub(t *testing.T, marshaler googlecloud.MarshalerUnmarshaler, subscri
 	subscriber, err := googlecloud.NewSubscriber(
 		ctx,
 		googlecloud.SubscriberConfig{
-			SubscriptionName: subscriptionName,
+			GenerateSubscriptionName: subscriptionName,
 			SubscriptionConfig: pubsub.SubscriptionConfig{
 				RetainAckedMessages: false,
 			},
@@ -48,14 +47,14 @@ func newPubSub(t *testing.T, marshaler googlecloud.MarshalerUnmarshaler, subscri
 	return message.NewPubSub(publisher, subscriber)
 }
 
-func createPubSubWithSubscriptionName(t *testing.T, subscriptionName string) message.PubSub {
+func createPubSubWithSubscriptionName(t *testing.T, subscriptionName string) infrastructure.PubSub {
 	return newPubSub(t, googlecloud.DefaultMarshalerUnmarshaler{},
-		googlecloud.DefaultSubscriptionNameWithSuffix(subscriptionName),
-	)
+		googlecloud.TopicSubscriptionNameWithSuffix(subscriptionName),
+	).(infrastructure.PubSub)
 }
 
-func createPubSub(t *testing.T) message.PubSub {
-	return newPubSub(t, googlecloud.DefaultMarshalerUnmarshaler{}, googlecloud.DefaultSubscriptionName)
+func createPubSub(t *testing.T) infrastructure.PubSub {
+	return newPubSub(t, googlecloud.DefaultMarshalerUnmarshaler{}, googlecloud.TopicSubscriptionName).(infrastructure.PubSub)
 }
 
 func TestPublishSubscribe(t *testing.T) {
@@ -83,21 +82,21 @@ func TestSubscriberUnexpectedTopicForSubscription(t *testing.T) {
 	}
 
 	sub1, err := googlecloud.NewSubscriber(ctx, googlecloud.SubscriberConfig{
-		SubscriptionName: subNameFn,
+		GenerateSubscriptionName: subNameFn,
 	}, logger)
 	require.NoError(t, err)
 
 	topic1 := fmt.Sprintf("topic1_%d", testNumber)
 
 	sub2, err := googlecloud.NewSubscriber(ctx, googlecloud.SubscriberConfig{
-		SubscriptionName: subNameFn,
+		GenerateSubscriptionName: subNameFn,
 	}, logger)
 	require.NoError(t, err)
 	topic2 := fmt.Sprintf("topic2_%d", testNumber)
 
 	howManyMessages := 100
 
-	messagesTopic1, err := sub1.Subscribe(topic1)
+	messagesTopic1, err := sub1.Subscribe(context.Background(), topic1)
 	require.NoError(t, err)
 
 	allMessagesReceived := make(chan struct{})
@@ -121,7 +120,7 @@ func TestSubscriberUnexpectedTopicForSubscription(t *testing.T) {
 		t.Fatal("Test timed out")
 	}
 
-	_, err = sub2.Subscribe(topic2)
+	_, err = sub2.Subscribe(context.Background(), topic2)
 	require.Equal(t, googlecloud.ErrUnexpectedTopic, errors.Cause(err))
 }
 
@@ -132,7 +131,7 @@ func produceMessages(t *testing.T, ctx context.Context, topic string, howMany in
 
 	messages := make([]*message.Message, howMany)
 	for i := 0; i < howMany; i++ {
-		messages[i] = message.NewMessage(uuid.NewV4().String(), []byte{})
+		messages[i] = message.NewMessage(watermill.NewUUID(), []byte{})
 	}
 
 	require.NoError(t, pub.Publish(topic, messages...))

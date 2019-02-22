@@ -1,0 +1,27 @@
+version: '3'
+services:
+  golang:
+    image: golang:1.11
+    restart: on-failure
+    ports:
+    - 8080:8080
+    - 8081:8081
+    depends_on:
+      - prometheus
+    volumes:
+    - ../../:/watermill
+    - $GOPATH/pkg/mod:/go/pkg/mod
+    working_dir: /watermill/_examples/metrics
+    command: go run main.go -metrics :8081 -delay 0.1
+
+  prometheus:
+    image: prom/prometheus
+    restart: on-failure
+    network_mode: host
+    volumes:
+     - ./prometheus.yml:/etc/prometheus/prometheus.yml
+
+  grafana:
+    image: grafana/grafana:5.2.4
+    network_mode: host
+

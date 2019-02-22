@@ -5,8 +5,6 @@ import (
 	"log"
 	"time"
 
-	"github.com/satori/go.uuid"
-
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/kafka"
@@ -33,6 +31,7 @@ func createPublisher() message.Publisher {
 		brokers,
 		marshaler,
 		nil,
+		logger,
 	)
 	if err != nil {
 		panic(err)
@@ -43,11 +42,10 @@ func createPublisher() message.Publisher {
 
 // createSubscriber is helper function as previous, but in this case creates Subscriber.
 func createSubscriber(consumerGroup string) message.Subscriber {
-	kafkaSubscriber, err := kafka.NewConfluentSubscriber(kafka.SubscriberConfig{
-		Brokers:         brokers,
-		ConsumerGroup:   consumerGroup, // every handler will have separated consumer group
-		AutoOffsetReset: "earliest",    // when no offsets (for example: new consumer) we want receive all messages
-	}, marshaler, logger)
+	kafkaSubscriber, err := kafka.NewSubscriber(kafka.SubscriberConfig{
+		Brokers:       brokers,
+		ConsumerGroup: consumerGroup, // every handler will have separated consumer group
+	}, nil, marshaler, logger)
 	if err != nil {
 		panic(err)
 	}
@@ -69,7 +67,7 @@ func publishEvents(publisher message.Publisher) {
 		}
 
 		err = publisher.Publish(consumeTopic, message.NewMessage(
-			uuid.NewV4().String(), // uuid of the message, very useful for debugging
+			watermill.NewUUID(), // uuid of the message, very useful for debugging
 			payload,
 		))
 		if err != nil {
@@ -95,17 +93,16 @@ func main() {
 	router.AddPlugin(plugin.SignalsHandler)
 	router.AddMiddleware(middleware.Recoverer)
 
-	// Creating PubSub from publisher and subscriber
 	// Consumer is created with consumer group handler_1
-	// message.NewPubSub is just a facade which joins these two types
-	pubSub := message.NewPubSub(publisher, createSubscriber("handler_1"))
+	subscriber := createSubscriber("handler_1")
 
 	// adding handler, multiple handlers can be added
-	err = router.AddHandler(
+	router.AddHandler(
 		"handler_1",  // handler name, must be unique
 		consumeTopic, // topic from which messages should be consumed
+		subscriber,
 		publishTopic, // topic to which produced messages should be published
-		pubSub,
+		publisher,
 		func(msg *message.Message) ([]*message.Message, error) {
 			consumedPayload := event{}
 			err := json.Unmarshal(msg.Payload, &consumedPayload)
@@ -132,14 +129,13 @@ func main() {
 				return nil, err
 			}
 
-			producedMessage := message.NewMessage(uuid.NewV4().String(), producedPayload)
+			producedMessage := message.NewMessage(watermill.NewUUID(), producedPayload)
 
 			return []*message.Message{producedMessage}, nil
 		},
 	)
-	if err != nil {
+
+	if err := router.Run(); err != nil {
 		panic(err)
 	}
-
-	router.Run()
 }

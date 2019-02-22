@@ -7,6 +7,7 @@ services:
       - nats-streaming
     volumes:
       - .:/app
+      - $GOPATH/pkg/mod:/go/pkg/mod
     working_dir: /app
     command: go run main.go
 
