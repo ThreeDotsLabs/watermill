@@ -299,6 +299,8 @@ func (r *Router) Run() (err error) {
 
 	close(r.running)
 
+	go r.closeWhenAllHandlersStopped()
+
 	<-r.closeCh
 
 	r.logger.Info("Waiting for messages", watermill.LogFields{
@@ -310,6 +312,22 @@ func (r *Router) Run() (err error) {
 	r.logger.Info("All messages processed", nil)
 
 	return nil
+}
+
+// closeWhenAllHandlersStopped closed router, when all handlers has stopped,
+// because for example all subscriptions are closed.
+func (r *Router) closeWhenAllHandlersStopped() {
+	r.handlersWg.Wait()
+	if r.closed {
+		// already closed
+		return
+	}
+
+	r.logger.Error("All handlers stopped, closing router", errors.New("all router handlers stopped"), nil)
+
+	if err := r.Close(); err != nil {
+		r.logger.Error("Cannot close router", err, nil)
+	}
 }
 
 // Running is closed when router is running.
