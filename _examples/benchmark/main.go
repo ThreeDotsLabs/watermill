@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"os"
 	"sync"
 	"time"
 
@@ -21,20 +22,17 @@ import (
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/gochannel"
 
-	"github.com/satori/go.uuid"
-
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
-	"github.com/renstrom/shortuuid"
 )
 
 var pubsubFlag = flag.String("pubsub", "", "")
 
 var logger = watermill.NopLogger{}
 
-const defaultMessagesCount = 10000000
+const defaultMessagesCount = 1000000
 
-var topic = "benchmark_" + shortuuid.New()
+var topic = "benchmark_" + watermill.NewShortUUID()
 
 type pubSub struct {
 	Constructor              func() message.PubSub
@@ -45,7 +43,7 @@ type pubSub struct {
 var pubSubs = map[string]pubSub{
 	"gochannel": {
 		Constructor: func() message.PubSub {
-			return gochannel.NewGoChannel(defaultMessagesCount, logger, time.Second)
+			return gochannel.NewGoChannel(gochannel.Config{}, logger)
 		},
 		RequireConcurrentProduce: true,
 	},
@@ -115,6 +113,7 @@ var pubSubs = map[string]pubSub{
 			publisher, err := googlecloud.NewPublisher(
 				ctx,
 				googlecloud.PublisherConfig{
+					ProjectID: os.Getenv("GOOGLE_CLOUD_PROJECT"),
 					Marshaler: googlecloud.DefaultMarshalerUnmarshaler{},
 				},
 			)
@@ -125,6 +124,7 @@ var pubSubs = map[string]pubSub{
 			subscriber, err := googlecloud.NewSubscriber(
 				ctx,
 				googlecloud.SubscriberConfig{
+					ProjectID: os.Getenv("GOOGLE_CLOUD_PROJECT"),
 					ReceiveSettings: pubsub.ReceiveSettings{
 						//MaxExtension:           0,
 						//MaxOutstandingMessages: 0,
@@ -133,12 +133,9 @@ var pubSubs = map[string]pubSub{
 						MaxOutstandingMessages: 10000,
 						Synchronous:            true,
 					},
-					// todo - doc it better
-					SubscriptionName: func(topic string) string {
+					SubscriptionConfig: pubsub.SubscriptionConfig{},
+					GenerateSubscriptionName: func(topic string) string {
 						return topic
-					},
-					SubscriptionConfig: pubsub.SubscriptionConfig{
-						RetainAckedMessages: false, // todo - force true?
 					},
 					Unmarshaler: googlecloud.DefaultMarshalerUnmarshaler{},
 				},
@@ -150,7 +147,7 @@ var pubSubs = map[string]pubSub{
 
 			return message.NewPubSub(publisher, subscriber)
 		},
-		MessagesCount: 10000,
+		MessagesCount: 100000,
 	},
 }
 
@@ -176,7 +173,7 @@ func main() {
 	// it is required to create sub before for some pubsubs
 	ps := pubsub.Constructor()
 
-	if _, err := ps.Subscribe(topic); err != nil {
+	if _, err := ps.Subscribe(context.Background(), topic); err != nil {
 		panic(err)
 	}
 	if err := ps.Close(); err != nil {
@@ -199,7 +196,7 @@ func main() {
 	wg.Add(pubsub.MessagesCount)
 
 	go func() {
-		if err := router.AddNoPublisherHandler(
+		router.AddNoPublisherHandler(
 			"benchmark_read",
 			topic,
 			pubsub.Constructor(),
@@ -210,12 +207,9 @@ func main() {
 				msg.Ack()
 				return nil, nil
 			},
-		); err != nil {
-			panic(err)
-		}
+		)
 
-		err := router.Run()
-		if err != nil {
+		if err := router.Run(); err != nil {
 			panic(err)
 		}
 	}()
@@ -250,10 +244,10 @@ func publishMessages(ps pubSub) {
 			var msg *message.Message
 
 			for range addMsg {
-				msg = message.NewMessage(uuid.NewV4().String(), msgPayload)
+				msg = message.NewMessage(watermill.NewULID(), msgPayload)
 
 				// using function from middleware to set correlation id, useful for debugging
-				middleware.SetCorrelationID(shortuuid.New(), msg)
+				middleware.SetCorrelationID(watermill.NewShortUUID(), msg)
 
 				if err := publisher.Publish(topic, msg); err != nil {
 					panic(err)
