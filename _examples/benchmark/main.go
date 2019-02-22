@@ -8,9 +8,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ThreeDotsLabs/watermill/message/subscriber"
+
 	"github.com/Shopify/sarama"
 
-	"cloud.google.com/go/pubsub"
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/googlecloud"
 
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/nats"
@@ -121,33 +122,30 @@ var pubSubs = map[string]pubSub{
 				panic(err)
 			}
 
-			subscriber, err := googlecloud.NewSubscriber(
-				ctx,
-				googlecloud.SubscriberConfig{
-					ProjectID: os.Getenv("GOOGLE_CLOUD_PROJECT"),
-					ReceiveSettings: pubsub.ReceiveSettings{
-						//MaxExtension:           0,
-						//MaxOutstandingMessages: 0,
-						//MaxOutstandingBytes:    0,
-						NumGoroutines:          8,
-						MaxOutstandingMessages: 10000,
-						Synchronous:            true,
-					},
-					SubscriptionConfig: pubsub.SubscriptionConfig{},
-					GenerateSubscriptionName: func(topic string) string {
-						return topic
-					},
-					Unmarshaler: googlecloud.DefaultMarshalerUnmarshaler{},
+			sub := &subscriber.Multiplier{
+				Constructor: func() message.Subscriber {
+					subscriber, err := googlecloud.NewSubscriber(
+						ctx,
+						googlecloud.SubscriberConfig{
+							ProjectID: os.Getenv("GOOGLE_CLOUD_PROJECT"),
+							GenerateSubscriptionName: func(topic string) string {
+								return topic
+							},
+							Unmarshaler: googlecloud.DefaultMarshalerUnmarshaler{},
+						},
+						logger,
+					)
+					if err != nil {
+						panic(err)
+					}
+
+					return subscriber
 				},
-				logger,
-			)
-			if err != nil {
-				panic(err)
+				Count: 100,
 			}
 
-			return message.NewPubSub(publisher, subscriber)
+			return message.NewPubSub(publisher, sub)
 		},
-		MessagesCount: 100000,
 	},
 }
 
