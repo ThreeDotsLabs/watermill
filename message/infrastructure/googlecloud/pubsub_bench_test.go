@@ -10,7 +10,7 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/googlecloud"
 )
 
-// Run `docker-compose up` and set PUBSUB_EMULATOR_HOST=googlecloud:8085 for this to work
+// Run `docker-compose up` and set PUBSUB_EMULATOR_HOST=localhost:8085 for this to work
 
 func BenchmarkSubscriber(b *testing.B) {
 	infrastructure.BenchSubscriber(b, func(n int) message.PubSub {

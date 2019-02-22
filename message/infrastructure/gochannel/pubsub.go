@@ -44,10 +44,12 @@ type GoChannel struct {
 	subscribersLock        sync.RWMutex
 	subscribersByTopicLock sync.Map // map of *sync.Mutex
 
-	closed  bool
-	closing chan struct{}
+	closed     bool
+	closedLock sync.Mutex
+	closing    chan struct{}
 
-	persistedMessages map[string][]*message.Message
+	persistedMessages     map[string][]*message.Message
+	persistedMessagesLock sync.RWMutex
 }
 
 func (g *GoChannel) Publisher() message.Publisher {
@@ -99,10 +101,12 @@ func (g *GoChannel) Publish(topic string, messages ...*message.Message) error {
 	defer subLock.(*sync.Mutex).Unlock()
 
 	if g.config.Persistent {
+		g.persistedMessagesLock.Lock()
 		if _, ok := g.persistedMessages[topic]; !ok {
 			g.persistedMessages[topic] = make([]*message.Message, 0)
 		}
 		g.persistedMessages[topic] = append(g.persistedMessages[topic], messages...)
+		g.persistedMessagesLock.Unlock()
 	}
 
 	for i := range messages {
@@ -210,7 +214,11 @@ func (g *GoChannel) Subscribe(ctx context.Context, topic string) (<-chan *messag
 		defer g.subscribersLock.Unlock()
 		defer subLock.(*sync.Mutex).Unlock()
 
-		if messages, ok := g.persistedMessages[topic]; ok {
+		g.persistedMessagesLock.RLock()
+		messages, ok := g.persistedMessages[topic]
+		g.persistedMessagesLock.RUnlock()
+
+		if ok {
 			for i := range messages {
 				msg := g.persistedMessages[topic][i]
 
@@ -255,6 +263,9 @@ func (g *GoChannel) topicSubscribers(topic string) []*subscriber {
 }
 
 func (g *GoChannel) Close() error {
+	g.closedLock.Lock()
+	defer g.closedLock.Unlock()
+
 	if g.closed {
 		return nil
 	}

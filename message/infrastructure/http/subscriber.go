@@ -59,9 +59,12 @@ func (s *SubscriberConfig) setDefaults() {
 type Subscriber struct {
 	config SubscriberConfig
 
-	server  *http.Server
-	address net.Addr
-	logger  watermill.LoggerAdapter
+	server *http.Server
+
+	address  net.Addr
+	addrLock sync.RWMutex
+
+	logger watermill.LoggerAdapter
 
 	outputChannels     []chan *message.Message
 	outputChannelsLock sync.Locker
@@ -154,12 +157,18 @@ func (s *Subscriber) StartHTTPServer() error {
 	if err != nil {
 		return err
 	}
+	s.addrLock.Lock()
 	s.address = listener.Addr()
+	s.addrLock.Unlock()
+
 	return s.server.Serve(listener)
 }
 
 // Addr returns the server address or nil if the server isn't running.
-func (s Subscriber) Addr() net.Addr {
+func (s *Subscriber) Addr() net.Addr {
+	s.addrLock.RLock()
+	defer s.addrLock.RUnlock()
+
 	return s.address
 }
 

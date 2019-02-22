@@ -60,7 +60,7 @@ const (
 )
 
 // Equals compare, that two messages are equal. Acks/Nacks are not compared.
-func (m Message) Equals(toCompare *Message) bool {
+func (m *Message) Equals(toCompare *Message) bool {
 	if m.UUID != toCompare.UUID {
 		return false
 	}
@@ -159,7 +159,7 @@ func (m *Message) Nacked() <-chan struct{} {
 //
 // The returned context is always non-nil; it defaults to the
 // background context.
-func (m Message) Context() context.Context {
+func (m *Message) Context() context.Context {
 	if m.ctx != nil {
 		return m.ctx
 	}
@@ -173,7 +173,7 @@ func (m *Message) SetContext(ctx context.Context) {
 
 // Copy copies all message without Acks/Nacks.
 // The context is not propagated to the copy.
-func (m Message) Copy() *Message {
+func (m *Message) Copy() *Message {
 	msg := NewMessage(m.UUID, m.Payload)
 	for k, v := range m.Metadata {
 		msg.Metadata.Set(k, v)
