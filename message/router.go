@@ -234,9 +234,9 @@ func (r *Router) AddNoPublisherHandler(
 }
 
 // Run runs all plugins and handlers and starts subscribing to provided topics.
-// This call is blocking until router is running.
+// This call is blocking while the router is running.
 //
-// When all handlers has stopped (for example, because subscriptions was closed) router will also stop.
+// When all handlers have stopped (for example, because subscriptions were closed), the router will also stop.
 //
 // To stop Run() you should call Close() on the router.
 func (r *Router) Run() (err error) {
