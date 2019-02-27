@@ -1,6 +1,6 @@
-# CLI Wrapper for Watermill
+# mill - a simple CLI tool for Watermill
 
-This is a simple CLI tool for consuming and producing messages with the [Watermill](https://watermill.io) library.
+`mill` is a CLI tool for consuming and producing messages with the [Watermill](https://watermill.io) library.
 
 It has two basic functionalities, namely producing and consuming messages on the following
 Pub/Subs:
@@ -16,10 +16,10 @@ See Watermill's [Pub/Sub implementations](https://watermill.io/docs/pub-sub-impl
 To install this tool, just execute:
 
 ```bash
-go install github.com/ThreeDotsLabs/watermill/tools/watermill-cli
+go install github.com/ThreeDotsLabs/watermill/tools/mill
 ```
 
-This will install a `watermill-cli` binary in your system.
+This will install a `mill` binary in your system.
 
 ## Consume mode
 
@@ -44,7 +44,7 @@ of the unmarshaling function of the `io.Subscriber` of the `produceCmd`.
 The basic syntax of the tool is:
 
 ```bash
-watermill-cli <provider> <command>
+mill <provider> <command>
 ```
 
 with the appropriate flags regulating the specific behaviour of each command.
@@ -60,13 +60,13 @@ which flags are available/required for the specific context and act accordingly.
 A neat feature of producers and consumers is that you can use the power of stdin/stdout piping for stuff like:
 
 ```bash
-myservice | tee myservice.log | watermill-cli kafka produce -t myservice-logs --brokers kafka-host:8082 
+myservice | tee myservice.log | mill kafka produce -t myservice-logs --brokers kafka-host:8082 
 ```
 
 And on another host:
 
 ```bash
-watermill-cli kafka consume -t myservice-logs --brokers kafka-host:8082 >> myservice.log
+mill kafka consume -t myservice-logs --brokers kafka-host:8082 >> myservice.log
 ```
 
 In the above example, the host on which `myservice` runs has its own copy of `myservice.log` and any host that consumes
@@ -82,9 +82,9 @@ from the kafka topic will replicate the log entries in their local copy.
 The CLI tool allows to create/remove subscriptions for Google Cloud Pub/Sub.
 
 ```bash
-watermill-cli googlecloud subscription add -t <topic> <subscription_id>
+mill googlecloud subscription add -t <topic> <subscription_id>
 
-watermill-cli googlecloud subscription rm <subscription_id>
+mill googlecloud subscription rm <subscription_id>
 ```
 
 Additional flags are available for `subscription add` to regulate the newly created subscription's settings.

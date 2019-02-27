@@ -74,7 +74,7 @@ func init() {
 	cobra.OnInitialize(initConfig)
 	rootCmd.PersistentFlags().SortFlags = false
 
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.watermill-cli.yaml)")
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.mill.yaml)")
 
 	outputFlags := pflag.NewFlagSet("output", pflag.ExitOnError)
 	outputFlags.BoolP("log", "l", false, "If true, the logger output is sent to stderr. No logger output otherwise.")
@@ -106,7 +106,7 @@ func initConfig() {
 		}
 
 		viper.AddConfigPath(home)
-		viper.SetConfigName(".watermill-cli")
+		viper.SetConfigName(".mill")
 	}
 
 	// read in environment variables that match
