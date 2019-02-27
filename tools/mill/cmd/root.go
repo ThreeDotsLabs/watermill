@@ -19,7 +19,7 @@ var cfgFile string
 var logger watermill.LoggerAdapter
 
 var rootCmd = &cobra.Command{
-	Use:   "watermill",
+	Use:   "mill",
 	Short: "A CLI for Watermill.",
 	Long: `A CLI for Watermill.
 
