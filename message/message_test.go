@@ -113,6 +113,16 @@ func TestMessage_Copy(t *testing.T) {
 	assert.True(t, msg.Equals(msgCopy))
 }
 
+func TestMessage_CopyMetadata(t *testing.T) {
+	msg := message.NewMessage("1", []byte("foo"))
+	msg.Metadata.Set("foo", "bar")
+	msgCopy := msg.Copy()
+
+	msg.Metadata.Set("foo", "baz")
+
+	assert.Equal(t, msgCopy.Metadata.Get("foo"), "bar", "did not expect changing source message's metadata to alter copy's metadata")
+}
+
 func assertAcked(t *testing.T, msg *message.Message) {
 	select {
 	case <-msg.Acked():
