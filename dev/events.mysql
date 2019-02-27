@@ -1,0 +1,9 @@
+CREATE TABLE IF NOT EXISTS events (
+  idx BIGINT AUTO_INCREMENT,
+  uuid BINARY(16) NOT NULL,
+  created_at TIMESTAMP NOT NULL,
+  payload JSON NOT NULL,
+  PRIMARY KEY (idx),
+  UNIQUE(uuid)
+);
+

@@ -47,3 +47,12 @@ services:
     ports:
       - 5672:5672
 
+  mysql:
+    image: mysql:8.0
+    restart: on-failure
+    ports:
+      - 3306:3306
+    environment:
+      MYSQL_DATABASE: watermill
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+
