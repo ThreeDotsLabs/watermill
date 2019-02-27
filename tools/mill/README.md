@@ -1,6 +1,6 @@
 # mill - a simple CLI tool for Watermill
 
-`mill` is a CLI tool for consuming and producing messages with the [Watermill](https://watermill.io) library.
+`mill` is a CLI tool for the [Watermill](https://watermill.io) library.
 
 It has two basic functionalities, namely producing and consuming messages on the following
 Pub/Subs:
