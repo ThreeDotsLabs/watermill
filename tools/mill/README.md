@@ -79,7 +79,7 @@ from the kafka topic will replicate the log entries in their local copy.
 
 #### Adding/Removing subscriptions
 
-The CLI tool allows to create/remove subscriptions for Google Cloud Pub/Sub.
+You can use `mill` to create/remove subscriptions for Google Cloud Pub/Sub:
 
 ```bash
 mill googlecloud subscription add -t <topic> <subscription_id>
