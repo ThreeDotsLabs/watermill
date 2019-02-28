@@ -6,8 +6,6 @@ import (
 
 	multierror "github.com/hashicorp/go-multierror"
 
-	_ "github.com/siddontang/go-mysql/driver"
-
 	"database/sql"
 
 	"github.com/ThreeDotsLabs/watermill/message"
@@ -19,23 +17,13 @@ var (
 )
 
 type PublisherConfig struct {
-	Addr     string
-	Database string
-	Table    string
-
-	User     string
-	Password string
-
+	ConnectionConfig
 	Marshaler Marshaler
 }
 
 func (c PublisherConfig) validate() error {
-	if c.Database == "" {
-		return errors.New("database not set")
-	}
-
-	if c.Table == "" {
-		return errors.New("table not set")
+	if err := c.ConnectionConfig.validate(); err != nil {
+		return err
 	}
 
 	if c.Marshaler == nil {
@@ -60,21 +48,14 @@ func NewPublisher(conf PublisherConfig) (*Publisher, error) {
 		return nil, errors.Wrap(err, "invalid config")
 	}
 
-	dsn := fmt.Sprintf("%s:%s@%s?%s", conf.User, conf.Password, conf.Addr, conf.Database)
-	db, err := sql.Open("mysql", dsn)
+	db, err := conf.connect()
 	if err != nil {
-		return nil, errors.Wrap(err, "could not open mysql connection")
-	}
-
-	if err = db.Ping(); err != nil {
-		return nil, errors.Wrap(err, "could not check mysql connection")
+		return nil, errors.Wrap(err, "could not connect to mysql")
 	}
 
 	return &Publisher{
-		config: conf,
-
-		db: db,
-
+		config:    conf,
+		db:        db,
 		publishWg: &sync.WaitGroup{},
 		closeCh:   make(chan struct{}),
 	}, nil
@@ -110,6 +91,11 @@ func (p *Publisher) Publish(topic string, messages ...*message.Message) (err err
 	if err != nil {
 		return errors.Wrap(err, "could not prepare statement")
 	}
+	defer func() {
+		if closeErr := stmt.Close(); closeErr != nil {
+			err = multierror.Append(err, closeErr)
+		}
+	}()
 
 	for _, msg := range messages {
 		publishErr := p.publish(stmt, topic, msg)
@@ -148,5 +134,5 @@ func (p *Publisher) Close() error {
 	close(p.closeCh)
 	p.publishWg.Wait()
 
-	return nil
+	return p.db.Close()
 }

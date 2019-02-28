@@ -191,6 +191,8 @@ github.com/siddontang/go-log v0.0.0-20180807004314-8d05993dda07 h1:oI+RNwuC9jF2g
 github.com/siddontang/go-log v0.0.0-20180807004314-8d05993dda07/go.mod h1:yFdBgwXP24JziuRl2NMUahT7nGLNOKi1SIiFxMttVD4=
 github.com/siddontang/go-mysql v0.0.0-20190224120211-58596aa17f1e h1:zwsSL92865l/H4rwAo7s/y5XcTyQsExe+bYmdw9J4U8=
 github.com/siddontang/go-mysql v0.0.0-20190224120211-58596aa17f1e/go.mod h1:/b8ZcWjAShCcHp2dWpjb1vTlNyiG03UeHEQr2jteOpI=
+github.com/siddontang/go-mysql v0.0.0-20190228090055-3242b1d89f16 h1:lxLRuANPDRYMGvoeWMh8hNyR2mWzYDeff8mA9YxBHkI=
+github.com/siddontang/go-mysql v0.0.0-20190228090055-3242b1d89f16/go.mod h1:/b8ZcWjAShCcHp2dWpjb1vTlNyiG03UeHEQr2jteOpI=
 github.com/sourcegraph/annotate v0.0.0-20160123013949-f4cad6c6324d/go.mod h1:UdhH50NIW0fCiwBSr0co2m7BnFLdv4fQTgdqdJTHFeE=
 github.com/sourcegraph/syntaxhighlight v0.0.0-20170531221838-bd320f5d308e/go.mod h1:HuIsMU8RRBOtsCgI77wP899iHVBQpCmg4ErYMZB+2IA=
 github.com/streadway/amqp v0.0.0-20181205114330-a314942b2fd9 h1:37QTz/gdHBLQcsmgMTnQDSWCtKzJ7YnfI2M2yTdr4BQ=

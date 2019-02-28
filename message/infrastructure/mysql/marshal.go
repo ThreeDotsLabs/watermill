@@ -1,14 +1,17 @@
 package mysql
 
 import (
+	"database/sql"
 	"encoding/json"
+
+	"github.com/ThreeDotsLabs/watermill"
 
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/oklog/ulid"
 	"github.com/pkg/errors"
 )
 
-// InsertArgs is used as arguments for the SQL INSERT statements used in the Publisher.
+// InsertArgs are used as arguments for the SQL INSERT statements used in the Publisher.
 type InsertArgs struct {
 	UUID     []byte
 	Payload  []byte
@@ -68,4 +71,43 @@ func (DefaultMarshaler) ForInsert(topic string, msg *message.Message) (InsertArg
 		metadata,
 		topic,
 	}, nil
+}
+
+// SelectArgs are used as arguments for the SQL SELECT statements used in the Subscriber.
+type SelectArgs struct {
+	Idx   int64
+	Topic string
+}
+
+type Unmarshaler interface {
+	// ForSelect provides the parameters for an SQL SELECT statement looking for messages from given topic and offset.
+	// The data types in SelectArgs are intentionally broad, but in the SQL schema they might be more specific.
+	// It is the responsibility of the Unmarshaler to throw an error if the parameters may not be transformed
+	// into the targeted schema, for example due to size limits of a column.
+	ForSelect(index int64, topic string) (SelectArgs, error)
+	// Unmarshal takes an sql Rows result and returns the messages that it contains.
+	Unmarshal(rows *sql.Rows) (message.Messages, error)
+}
+
+// DefaultUnmarshaler is compatible with the following schema:
+// uuid BINARY(16),
+// topic VARCHAR(255)
+type DefaultUnmarshaler struct{}
+
+// ForSelect of DefaultUnmarshaler makes the following assumptions:
+// - uuid may be parsed to ULID.
+// - topic is at most 255 characters long.
+//
+// Error will be thrown if these assumtions are not met.
+func (DefaultUnmarshaler) ForSelect(index int64, topic string) (SelectArgs, error) {
+	if len(topic) > 255 {
+		return SelectArgs{}, errors.New("topic does not fit into VARCHAR(255)")
+	}
+
+	return SelectArgs{index, topic}, nil
+}
+
+func (DefaultUnmarshaler) Unmarshal(rows *sql.Rows) (message.Messages, error) {
+	msg := message.NewMessage(watermill.NewULID(), []byte("haha didn't really unmarshal this"))
+	return message.Messages{msg}, nil
 }

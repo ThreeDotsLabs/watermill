@@ -11,12 +11,13 @@ import (
 
 func TestPublisher_Publish(t *testing.T) {
 	pub, err := NewPublisher(PublisherConfig{
-		Addr:     "localhost:3306",
-		Database: "watermill",
-		Table:    "events",
-		User:     "root",
-		Password: "",
-
+		ConnectionConfig: ConnectionConfig{
+			Addr:     "localhost:3306",
+			Database: "watermill",
+			Table:    "events",
+			User:     "root",
+			Password: "",
+		},
 		Marshaler: DefaultMarshaler{},
 	})
 

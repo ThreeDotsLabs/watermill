@@ -36,7 +36,7 @@ require (
 	github.com/prometheus/client_golang v0.9.2
 	github.com/rcrowley/go-metrics v0.0.0-20181016184325-3113b8401b8a // indirect
 	github.com/renstrom/shortuuid v3.0.0+incompatible
-	github.com/siddontang/go-mysql v0.0.0-20190224120211-58596aa17f1e
+	github.com/siddontang/go-mysql v0.0.0-20190228090055-3242b1d89f16
 	github.com/streadway/amqp v0.0.0-20181205114330-a314942b2fd9
 	github.com/stretchr/testify v1.3.0
 	go.opencensus.io v0.19.0 // indirect
