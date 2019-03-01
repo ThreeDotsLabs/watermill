@@ -1,7 +1,9 @@
-package mysql
+package mysql_test
 
 import (
 	"testing"
+
+	"github.com/ThreeDotsLabs/watermill/message/infrastructure/mysql"
 
 	"github.com/ThreeDotsLabs/watermill"
 
@@ -10,17 +12,13 @@ import (
 )
 
 func TestPublisher_Publish(t *testing.T) {
-	pub, err := NewPublisher(PublisherConfig{
-		ConnectionConfig: ConnectionConfig{
-			Addr:     "localhost:3306",
-			Database: "watermill",
-			Table:    "events",
-			User:     "root",
-			Password: "",
+	pub, err := mysql.NewPublisher(
+		getDB(t),
+		mysql.PublisherConfig{
+			Table:     "events",
+			Marshaler: mysql.DefaultMarshaler{},
 		},
-		Marshaler: DefaultMarshaler{},
-	})
-
+	)
 	require.NoError(t, err)
 
 	msg := message.NewMessage(

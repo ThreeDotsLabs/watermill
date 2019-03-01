@@ -1,4 +1,4 @@
-package mysql
+package mysql_test
 
 import (
 	"context"
@@ -6,27 +6,26 @@ import (
 	"time"
 
 	"github.com/ThreeDotsLabs/watermill"
+	"github.com/ThreeDotsLabs/watermill/message/infrastructure/mysql"
 
 	"github.com/stretchr/testify/require"
 )
 
 func TestSubscriber_Subscribe(t *testing.T) {
-	sub, err := NewSubscriber(SubscriberConfig{
-		ConnectionConfig: ConnectionConfig{
-			Addr:     "localhost:3306",
-			Database: "watermill",
-			Table:    "events",
-			User:     "root",
-			Password: "",
+
+	sub, err := mysql.NewSubscriber(
+		getDB(t),
+		mysql.SubscriberConfig{
+			Table:        "events",
+			Offset:       0,
+			Unmarshaler:  mysql.DefaultUnmarshaler{},
+			Logger:       watermill.NewStdLogger(true, true),
+			PollInterval: time.Second,
 		},
-		Offset:       0,
-		Unmarshaler:  DefaultUnmarshaler{},
-		Logger:       watermill.NewStdLogger(true, true),
-		PollInterval: time.Second,
-	})
+	)
 	require.NoError(t, err)
 
-	ctx, _ := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 
 	messages, err := sub.Subscribe(ctx, "sometopic")
 	require.NoError(t, err)

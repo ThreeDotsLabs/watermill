@@ -17,15 +17,14 @@ var (
 )
 
 type PublisherConfig struct {
-	ConnectionConfig
+	Table     string
 	Marshaler Marshaler
 }
 
 func (c PublisherConfig) validate() error {
-	if err := c.ConnectionConfig.validate(); err != nil {
-		return err
+	if c.Table == "" {
+		return errors.New("table not set")
 	}
-
 	if c.Marshaler == nil {
 		return errors.New("marshaler not set")
 	}
@@ -43,14 +42,9 @@ type Publisher struct {
 	closed    bool
 }
 
-func NewPublisher(conf PublisherConfig) (*Publisher, error) {
+func NewPublisher(db *sql.DB, conf PublisherConfig) (*Publisher, error) {
 	if err := conf.validate(); err != nil {
 		return nil, errors.Wrap(err, "invalid config")
-	}
-
-	db, err := conf.connect()
-	if err != nil {
-		return nil, errors.Wrap(err, "could not connect to mysql")
 	}
 
 	return &Publisher{

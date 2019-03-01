@@ -7,8 +7,6 @@ import (
 	"sync"
 	"time"
 
-	_ "github.com/siddontang/go-mysql/driver"
-
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/pkg/errors"
@@ -19,10 +17,12 @@ var (
 )
 
 type SubscriberConfig struct {
-	ConnectionConfig
-	Offset      int64
+	Table  string
+	Offset int64
+
 	Unmarshaler Unmarshaler
 	Logger      watermill.LoggerAdapter
+
 	// PollInterval is the interval between subsequent SELECT queries. Defaults to 5s.
 	PollInterval time.Duration
 }
@@ -37,8 +37,8 @@ func (c *SubscriberConfig) setDefaults() {
 }
 
 func (c SubscriberConfig) validate() error {
-	if err := c.ConnectionConfig.validate(); err != nil {
-		return err
+	if c.Table == "" {
+		return errors.New("table not set")
 	}
 
 	if c.Offset < 0 {
@@ -66,14 +66,9 @@ type Subscriber struct {
 	closed      bool
 }
 
-func NewSubscriber(conf SubscriberConfig) (*Subscriber, error) {
+func NewSubscriber(db *sql.DB, conf SubscriberConfig) (*Subscriber, error) {
 	if err := conf.validate(); err != nil {
 		return nil, errors.Wrap(err, "invalid config")
-	}
-
-	db, err := conf.connect()
-	if err != nil {
-		return nil, errors.Wrap(err, "could not connect to mysql")
 	}
 
 	return &Subscriber{

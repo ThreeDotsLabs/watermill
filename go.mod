@@ -12,7 +12,7 @@ require (
 	github.com/eapache/go-xerial-snappy v0.0.0-20180814174437-776d5712da21 // indirect
 	github.com/eapache/queue v1.1.0 // indirect
 	github.com/go-chi/chi v3.3.3+incompatible
-	github.com/go-sql-driver/mysql v1.4.1 // indirect
+	github.com/go-sql-driver/mysql v1.4.1
 	github.com/gogo/protobuf v1.2.0
 	github.com/golang/protobuf v1.2.1-0.20190205222052-c823c79ea157
 	github.com/golang/snappy v0.0.0-20180518054509-2e65f85255db // indirect
