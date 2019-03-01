@@ -7,6 +7,9 @@ import (
 	"sync"
 	"time"
 
+	multierror "github.com/hashicorp/go-multierror"
+	"github.com/kisielk/sqlstruct"
+
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/pkg/errors"
@@ -169,13 +172,23 @@ ConsumeLoop:
 			continue
 		}
 
-		messages, err := s.config.Unmarshaler.Unmarshal(rows)
+		scanned, err := s.scan(rows)
 		if err != nil {
-			logger.Error("Could not unmarshal rows into messages", err, nil)
+			logger.Error("Could not scan rows from query", err, nil)
+			continue
 		}
 
-		// todo: don't process the same message twice
-		go s.sendMessages(ctx, messages, out, offsetCh, sendWg, logger)
+		for _, msg := range scanned {
+			// todo: don't process the same message twice
+			offsetCh <- msg.Idx
+			watermillMsg, err := s.config.Unmarshaler.Unmarshal(msg)
+			if err != nil {
+				logger.Error("Could not scan rows from query", err, nil)
+				continue
+			}
+			go s.sendMessage(ctx, watermillMsg, out, sendWg, logger)
+
+		}
 	}
 
 	sendWg.Wait()
@@ -184,60 +197,67 @@ ConsumeLoop:
 
 // sendMessages sends messages on the output channel.
 // whenever a message is successfully sent and acked, the message's index is sent of the offsetCh.
-func (s *Subscriber) sendMessages(
+func (s *Subscriber) sendMessage(
 	ctx context.Context,
-	messages message.Messages,
+	msg *message.Message,
 	out chan *message.Message,
-	offsetCh chan int64,
 	sendWg *sync.WaitGroup,
 	logger watermill.LoggerAdapter,
 ) {
 	sendWg.Add(1)
 	defer sendWg.Done()
 
-	toSend := make(map[string]struct{}, len(messages))
-	for _, msg := range messages {
-		toSend[msg.UUID] = struct{}{}
-	}
-
+ResendLoop:
 	for {
-		if len(toSend) == 0 {
-			// no more messages for resend
-			break
+		logger = logger.With(watermill.LogFields{
+			"msg_uuid": msg.UUID,
+		})
+
+		select {
+		case out <- msg:
+		// message sent, go on
+		case <-ctx.Done():
+			logger.Info("Discarding queued message, subscriber closing", nil)
+			return
 		}
 
-	MessageLoop:
-		for _, msg := range messages {
-			if _, ok := toSend[msg.UUID]; !ok {
-				continue MessageLoop
-			}
-
-			logger = logger.With(watermill.LogFields{
-				"msg_uuid": msg.UUID,
-			})
-
-			select {
-			case out <- msg:
-			// message sent, go on
-			case <-ctx.Done():
-				logger.Info("Discarding queued messages, subscriber closing", nil)
-				return
-			}
-
-			select {
-			case <-msg.Acked():
-				// message acked, move to the next message
-				delete(toSend, msg.UUID)
-				continue MessageLoop
-			case <-msg.Nacked():
-				//message nacked, try resending
-				continue MessageLoop
-			case <-ctx.Done():
-				logger.Info("Discarding queued messages, subscriber closing", nil)
-				return
-			}
+		select {
+		case <-msg.Acked():
+			// message acked, move to the next message
+			return
+		case <-msg.Nacked():
+			//message nacked, try resending
+			continue ResendLoop
+		case <-ctx.Done():
+			logger.Info("Discarding queued message, subscriber closing", nil)
+			return
 		}
 	}
+}
+
+func (s *Subscriber) scan(rows *sql.Rows) ([]dbTransport, error) {
+	var messages []dbTransport
+	var msg *dbTransport
+	var err error
+
+	defer func() {
+		closeErr := rows.Close()
+		if closeErr != nil {
+			err = multierror.Append(err, closeErr)
+		}
+	}()
+
+	for rows.Next() {
+		msg = new(dbTransport)
+		scanErr := sqlstruct.Scan(msg, rows)
+		if scanErr != nil {
+			err = multierror.Append(err, scanErr)
+		} else {
+			messages = append(messages, *msg)
+		}
+	}
+
+	return messages, err
 }
 
 // SetOffset sets the offset to begin with for each new Subscribe call

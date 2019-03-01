@@ -1,10 +1,8 @@
 package mysql
 
 import (
-	"database/sql"
 	"encoding/json"
-
-	"github.com/ThreeDotsLabs/watermill"
+	"time"
 
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/oklog/ulid"
@@ -86,7 +84,7 @@ type Unmarshaler interface {
 	// into the targeted schema, for example due to size limits of a column.
 	ForSelect(index int64, topic string) (SelectArgs, error)
 	// Unmarshal takes an sql Rows result and returns the messages that it contains.
-	Unmarshal(rows *sql.Rows) (message.Messages, error)
+	Unmarshal(transport dbTransport) (*message.Message, error)
 }
 
 // DefaultUnmarshaler is compatible with the following schema:
@@ -107,7 +105,33 @@ func (DefaultUnmarshaler) ForSelect(index int64, topic string) (SelectArgs, erro
 	return SelectArgs{index, topic}, nil
 }
 
-func (DefaultUnmarshaler) Unmarshal(rows *sql.Rows) (message.Messages, error) {
-	msg := message.NewMessage(watermill.NewULID(), []byte("haha didn't really unmarshal this"))
-	return message.Messages{msg}, nil
+type dbTransport struct {
+	Idx       int64
+	UUID      []byte
+	CreatedAt time.Time
+	Payload   []byte
+	Topic     string
+	Metadata  []byte
+}
+
+func (DefaultUnmarshaler) Unmarshal(transport dbTransport) (*message.Message, error) {
+	if len(transport.UUID) != 16 {
+		return nil, errors.New("uuid length not suitable for unmarshaling to ULID")
+	}
+
+	uuid := ulid.ULID{}
+	for i := 0; i < 16; i++ {
+		uuid[i] = transport.UUID[i]
+	}
+
+	metadata := message.Metadata{}
+	err := json.Unmarshal(transport.Metadata, &metadata)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not unmarshal metadata as JSON")
+	}
+
+	msg := message.NewMessage(uuid.String(), transport.Payload)
+	msg.Metadata = metadata
+
+	return msg, nil
 }

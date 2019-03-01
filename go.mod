@@ -21,7 +21,8 @@ require (
 	github.com/hashicorp/go-msgpack v0.0.0-20150518234257-fa3f63826f7c // indirect
 	github.com/hashicorp/go-multierror v1.0.0
 	github.com/hashicorp/raft v1.0.0 // indirect
-	github.com/jmoiron/sqlx v1.2.0 // indirect
+	github.com/kisielk/sqlstruct v0.0.0-20150923205031-648daed35d49
+	github.com/lib/pq v1.0.0 // indirect
 	github.com/nats-io/gnatsd v1.3.0 // indirect
 	github.com/nats-io/go-nats v1.7.0 // indirect
 	github.com/nats-io/go-nats-streaming v0.4.0
@@ -31,12 +32,10 @@ require (
 	github.com/oklog/ulid v1.3.1
 	github.com/pascaldekloe/goe v0.0.0-20180627143212-57f6aae5913c // indirect
 	github.com/pierrec/lz4 v2.0.5+incompatible // indirect
-	github.com/pingcap/check v0.0.0-20190102082844-67f458068fc8 // indirect
 	github.com/pkg/errors v0.8.1
 	github.com/prometheus/client_golang v0.9.2
 	github.com/rcrowley/go-metrics v0.0.0-20181016184325-3113b8401b8a // indirect
 	github.com/renstrom/shortuuid v3.0.0+incompatible
-	github.com/siddontang/go-mysql v0.0.0-20190228090055-3242b1d89f16
 	github.com/streadway/amqp v0.0.0-20181205114330-a314942b2fd9
 	github.com/stretchr/testify v1.3.0
 	go.opencensus.io v0.19.0 // indirect

@@ -2,6 +2,7 @@ package mysql_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -25,15 +26,13 @@ func TestSubscriber_Subscribe(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, _ := context.WithTimeout(context.Background(), 60*time.Second)
 
 	messages, err := sub.Subscribe(ctx, "sometopic")
 	require.NoError(t, err)
 
 	for msg := range messages {
-		t.Log(msg.UUID)
+		fmt.Printf("%s:%s\n", msg.UUID, string(msg.Payload))
 		msg.Ack()
 	}
-
-	t.Log("THE END")
 }
