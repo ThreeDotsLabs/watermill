@@ -9,3 +9,8 @@ CREATE TABLE IF NOT EXISTS events (
   UNIQUE(uuid)
 );
 
+CREATE TABLE IF NOT EXISTS subscriber_offsets (
+  topic VARCHAR(255) NOT NULL,
+  offset BIGINT NOT NULL,
+  PRIMARY KEY (topic)
+);

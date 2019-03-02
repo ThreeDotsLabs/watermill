@@ -13,12 +13,11 @@ import (
 )
 
 func TestSubscriber_Subscribe(t *testing.T) {
-
 	sub, err := mysql.NewSubscriber(
 		getDB(t),
 		mysql.SubscriberConfig{
 			Table:        "events",
-			Offset:       0,
+			Offset:       15,
 			Unmarshaler:  mysql.DefaultUnmarshaler{},
 			Logger:       watermill.NewStdLogger(true, true),
 			PollInterval: time.Second,

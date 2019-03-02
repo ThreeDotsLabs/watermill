@@ -17,11 +17,25 @@ import (
 
 var (
 	ErrSubscriberClosed = errors.New("subscriber is closed")
+	// OffsetLastSaved makes the subscriber resume from the last saved offset. If no offset was saved, start from 0.
+	OffsetLastSaved Offset = -1
 )
 
+type Offset int64
+
+func (o Offset) Valid() error {
+	if o < 0 && o != OffsetLastSaved {
+		return errors.New("offset must be non-negative or OffsetLastSaved")
+	}
+
+	return nil
+}
+
 type SubscriberConfig struct {
-	Table  string
-	Offset int64
+	Table string
+	// OffsetsTable is the name of the sql table that stores offsets. Defaults to `subscriber_offsets`.
+	OffsetsTable string
+	Offset       Offset
 
 	Unmarshaler Unmarshaler
 	Logger      watermill.LoggerAdapter
@@ -31,6 +45,9 @@ type SubscriberConfig struct {
 }
 
 func (c *SubscriberConfig) setDefaults() {
+	if c.OffsetsTable == "" {
+		c.OffsetsTable = "subscriber_offsets"
+	}
 	if c.Logger == nil {
 		c.Logger = watermill.NopLogger{}
 	}
@@ -44,21 +61,24 @@ func (c SubscriberConfig) validate() error {
 		return errors.New("table not set")
 	}
 
-	if c.Offset < 0 {
-		return errors.New("offset must be non-negative")
+	if err := c.Offset.Valid(); err != nil {
+		return err
 	}
 
 	if c.Unmarshaler == nil {
 		return errors.New("unmarshaler not set")
 	}
 
-	if c.PollInterval < 100*time.Millisecond {
-		return errors.New("poll interval must be >100ms")
+	// TODO: any restraint to prevent really quick polling? I think not, caveat programmator
+	if c.PollInterval <= 0 {
+		return errors.New("poll interval must be a positive duration")
 	}
 
 	return nil
 }
 
+// Subscriber makes SELECT queries on the chosen table with the interval defined in the config.
+// The rows are unmarshaled into Watermill messages.
 type Subscriber struct {
 	config SubscriberConfig
 
@@ -70,6 +90,7 @@ type Subscriber struct {
 }
 
 func NewSubscriber(db *sql.DB, conf SubscriberConfig) (*Subscriber, error) {
+	conf.setDefaults()
 	if err := conf.validate(); err != nil {
 		return nil, errors.Wrap(err, "invalid config")
 	}
@@ -121,15 +142,24 @@ func (s *Subscriber) Subscribe(ctx context.Context, topic string) (o <-chan *mes
 
 func (s *Subscriber) consume(ctx context.Context, stmt *sql.Stmt, topic string, out chan *message.Message) {
 	defer s.subscribeWg.Done()
-
-	offset := s.config.Offset
 	logger := s.config.Logger.With(watermill.LogFields{
 		"topic": topic,
 	})
 
+	offset := s.config.Offset
+	var err error
+	if offset == OffsetLastSaved {
+		offset, err = s.restoreOffset(ctx, topic)
+		if err != nil {
+			logger.Error("could not restore last offset for topic", err, nil)
+			// todo: continue with offset 0?
+			return
+		}
+	}
+
 	lock := sync.RWMutex{}
 
-	offsetCh := make(chan int64)
+	offsetCh := make(chan Offset)
 	go func() {
 		for offsetRead := range offsetCh {
 			lock.RLock()
@@ -137,13 +167,17 @@ func (s *Subscriber) consume(ctx context.Context, stmt *sql.Stmt, topic string, 
 				lock.RUnlock()
 				lock.Lock()
 				offset = offsetRead
+
 				lock.Unlock()
+				// todo: should offsets be per topic or per consumer?
+				if persistErr := s.persistOffset(ctx, topic, offset); persistErr != nil {
+					logger.Error("Could not persist current offset", persistErr, nil)
+				}
 				continue
 			}
+
 			lock.RUnlock()
 		}
-
-		// todo: persist offset somewhere?
 	}()
 
 	sendWg := &sync.WaitGroup{}
@@ -158,7 +192,7 @@ ConsumeLoop:
 			// go on querying
 		}
 
-		selectArgs, err := s.config.Unmarshaler.ForSelect(offset, topic)
+		selectArgs, err := s.config.Unmarshaler.ForSelect(int64(offset), topic)
 		if err != nil {
 			logger.Error("Obtained incorrect parameters for SELECT query", err, nil)
 			continue
@@ -180,7 +214,7 @@ ConsumeLoop:
 
 		for _, msg := range scanned {
 			// todo: don't process the same message twice
-			offsetCh <- msg.Idx
+			offsetCh <- Offset(msg.Idx)
 			watermillMsg, err := s.config.Unmarshaler.Unmarshal(msg)
 			if err != nil {
 				logger.Error("Could not scan rows from query", err, nil)
@@ -260,10 +294,76 @@ func (s *Subscriber) scan(rows *sql.Rows) ([]dbTransport, error) {
 	return messages, err
 }
 
-// SetOffset sets the offset to begin with for each new Subscribe call
-func (s *Subscriber) SetOffset(offset int64) error {
-	if offset < 0 {
-		return errors.New("offset must be non-negative")
+// persistOffset saves the lastest offset for the topic.
+// If Subscribe is called with OffsetLastSaved, it resumes from the last saved offset.
+func (s *Subscriber) persistOffset(ctx context.Context, topic string, offset Offset) (err error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return errors.Wrap(err, "could not begin tx")
+	}
+
+	defer func() {
+		if err != nil {
+			if rollbackErr := tx.Rollback(); rollbackErr != nil {
+				err = multierror.Append(err, rollbackErr)
+			}
+		} else {
+			if commitErr := tx.Commit(); commitErr != nil {
+				err = multierror.Append(err, commitErr)
+			}
+		}
+	}()
+
+	_, err = s.db.ExecContext(
+		ctx,
+		fmt.Sprintf(
+			"INSERT INTO %s (topic, offset) VALUES(?,?) ON DUPLICATE KEY UPDATE offset=VALUES(offset)",
+			s.config.OffsetsTable,
+		),
+		topic,
+		int64(offset),
+	)
+
+	return err
+}
+
+func (s *Subscriber) restoreOffset(ctx context.Context, topic string) (Offset, error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, errors.Wrap(err, "could not begin tx")
+	}
+
+	defer func() {
+		if err != nil {
+			if rollbackErr := tx.Rollback(); rollbackErr != nil {
+				err = multierror.Append(err, rollbackErr)
+			}
+		} else {
+			if commitErr := tx.Commit(); commitErr != nil {
+				err = multierror.Append(err, commitErr)
+			}
+		}
+	}()
+
+	row := s.db.QueryRowContext(
+		ctx,
+		fmt.Sprintf(
+			`SELECT offset FROM %s WHERE topic=?`,
+			s.config.OffsetsTable,
+		),
+		topic,
+	)
+
+	var offset int64
+	err = row.Scan(&offset)
+
+	return Offset(offset), err
+}
+
+// SetOffset sets the offset to begin with for each new Subscribe call.
+func (s *Subscriber) SetOffset(offset Offset) error {
+	if err := offset.Valid(); err != nil {
+		return err
 	}
 
 	s.config.Offset = offset
