@@ -18,6 +18,7 @@ func TestSubscriber_Subscribe(t *testing.T) {
 		mysql.SubscriberConfig{
 			Table:        "events",
 			Offset:       15,
+			OnlyOnce:     true,
 			Unmarshaler:  mysql.DefaultUnmarshaler{},
 			Logger:       watermill.NewStdLogger(true, true),
 			PollInterval: time.Second,
@@ -25,7 +26,7 @@ func TestSubscriber_Subscribe(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	ctx, _ := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, _ := context.WithTimeout(context.Background(), 15*time.Second)
 
 	messages, err := sub.Subscribe(ctx, "sometopic")
 	require.NoError(t, err)
@@ -34,4 +35,6 @@ func TestSubscriber_Subscribe(t *testing.T) {
 		fmt.Printf("%s:%s\n", msg.UUID, string(msg.Payload))
 		msg.Ack()
 	}
+
+	require.NoError(t, sub.Close())
 }

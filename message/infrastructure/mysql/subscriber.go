@@ -31,11 +31,21 @@ func (o Offset) Valid() error {
 	return nil
 }
 
+// TODO: consumer groups!
+
 type SubscriberConfig struct {
 	Table string
 	// OffsetsTable is the name of the sql table that stores offsets. Defaults to `subscriber_offsets`.
 	OffsetsTable string
 	Offset       Offset
+
+	// OnlyOnce, if true, makes Subscriber process each message exactly once.
+	// At startup, the processed UUIDs are restored from DB.
+	// In runtime, it is stored in memory, and persited to DB on Close.
+	OnlyOnce bool
+	// ProcessedMessagesTable is the name of the table that stores the processed messages uuids.
+	// Defaults to `processed_messages`.
+	ProcessedMessagesTable string
 
 	Unmarshaler Unmarshaler
 	Logger      watermill.LoggerAdapter
@@ -47,6 +57,9 @@ type SubscriberConfig struct {
 func (c *SubscriberConfig) setDefaults() {
 	if c.OffsetsTable == "" {
 		c.OffsetsTable = "subscriber_offsets"
+	}
+	if c.ProcessedMessagesTable == "" {
+		c.ProcessedMessagesTable = "processed_messages"
 	}
 	if c.Logger == nil {
 		c.Logger = watermill.NopLogger{}
@@ -82,7 +95,8 @@ func (c SubscriberConfig) validate() error {
 type Subscriber struct {
 	config SubscriberConfig
 
-	db *sql.DB
+	db                *sql.DB
+	processedMessages *sync.Map
 
 	subscribeWg *sync.WaitGroup
 	closing     chan struct{}
@@ -91,17 +105,31 @@ type Subscriber struct {
 
 func NewSubscriber(db *sql.DB, conf SubscriberConfig) (*Subscriber, error) {
 	conf.setDefaults()
-	if err := conf.validate(); err != nil {
+	err := conf.validate()
+	if err != nil {
 		return nil, errors.Wrap(err, "invalid config")
 	}
 
-	return &Subscriber{
+	sub := &Subscriber{
 		config: conf,
-		db:     db,
+
+		db:                db,
+		processedMessages: &sync.Map{},
 
 		subscribeWg: &sync.WaitGroup{},
 		closing:     make(chan struct{}),
-	}, nil
+	}
+
+	if conf.OnlyOnce {
+		// todo: configurable timeout?
+		ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+		err = sub.restoreProcessedMessages(ctx)
+		if err != nil {
+			return nil, errors.Wrap(err, "could not restore processed messages from db")
+		}
+	}
+
+	return sub, nil
 }
 
 func (s *Subscriber) Subscribe(ctx context.Context, topic string) (o <-chan *message.Message, err error) {
@@ -213,7 +241,12 @@ ConsumeLoop:
 		}
 
 		for _, msg := range scanned {
-			// todo: don't process the same message twice
+			if s.messageAlreadyProcessed(msg) {
+				logger.Debug("message already processed, skipping", nil)
+				continue
+			}
+			s.markMessageProcessed(msg)
+
 			offsetCh <- Offset(msg.Idx)
 			watermillMsg, err := s.config.Unmarshaler.Unmarshal(msg)
 			if err != nil {
@@ -333,6 +366,7 @@ func (s *Subscriber) restoreOffset(ctx context.Context, topic string) (Offset, e
 		return 0, errors.Wrap(err, "could not begin tx")
 	}
 
+	// todo: is the transaction necessary? it is read-only
 	defer func() {
 		if err != nil {
 			if rollbackErr := tx.Rollback(); rollbackErr != nil {
@@ -380,5 +414,113 @@ func (s *Subscriber) Close() error {
 	close(s.closing)
 	s.subscribeWg.Wait()
 
-	return s.db.Close()
+	var err error
+	// todo: configurable timeout?
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	if s.config.OnlyOnce {
+		// todo: store periodically and not only on Close? could lose some messages
+		if storeErr := s.storeProcessedMessages(ctx); storeErr != nil {
+			err = multierror.Append(err, storeErr)
+		}
+	}
+
+	if closeErr := s.db.Close(); closeErr != nil {
+		err = multierror.Append(err, closeErr)
+	}
+
+	return err
+}
+
+func (s *Subscriber) restoreProcessedMessages(ctx context.Context) error {
+	// todo: consumer group? transaction?
+	rows, err := s.db.QueryContext(
+		ctx,
+		fmt.Sprintf(`SELECT uuid FROM %s`, s.config.ProcessedMessagesTable),
+	)
+
+	if err != nil {
+		return errors.Wrap(err, "could not query db for processed messages")
+	}
+
+	var uuid []byte
+	for rows.Next() {
+		scanErr := rows.Scan(&uuid)
+		if scanErr != nil {
+			err = multierror.Append(err, scanErr)
+			continue
+		}
+
+		s.processedMessages.Store(string(uuid), struct{}{})
+	}
+
+	return err
+}
+
+func (s *Subscriber) storeProcessedMessages(ctx context.Context) (err error) {
+	var tx *sql.Tx
+	tx, err = s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return errors.Wrap(err, "could not begin tx")
+	}
+
+	// todo: could this be made into a function that changes the returned err? it occurs several times
+	defer func() {
+		if err != nil {
+			if rollbackErr := tx.Rollback(); rollbackErr != nil {
+				err = multierror.Append(err, rollbackErr)
+			}
+		} else {
+			if commitErr := tx.Commit(); commitErr != nil {
+				err = multierror.Append(err, commitErr)
+			}
+		}
+	}()
+
+	stmt, err := tx.PrepareContext(
+		ctx,
+		fmt.Sprintf(
+			`INSERT INTO %s (uuid) VALUES(?) ON DUPLICATE KEY UPDATE uuid=VALUES(uuid)`,
+			s.config.ProcessedMessagesTable,
+		),
+	)
+	if err != nil {
+		return errors.Wrap(err, "could not prepare statement to insert processed messages")
+	}
+
+	s.processedMessages.Range(func(key, value interface{}) bool {
+		k, ok := key.(string)
+		if !ok {
+			s.config.Logger.Info("processed messages key not a string", watermill.LogFields{
+				"key": fmt.Sprintf("%+v", k),
+			})
+			return true
+		}
+
+		_, err = stmt.ExecContext(ctx, []byte(k))
+		if err != nil {
+			s.config.Logger.Error("could not insert processed message UUID", err, nil)
+			return true
+		}
+
+		return true
+	})
+
+	return nil
+}
+
+func (s *Subscriber) messageAlreadyProcessed(transport dbTransport) bool {
+	if !s.config.OnlyOnce {
+		return false
+	}
+
+	_, ok := s.processedMessages.Load(string(transport.UUID))
+	return ok
+}
+
+func (s *Subscriber) markMessageProcessed(transport dbTransport) {
+	if !s.config.OnlyOnce {
+		return
+	}
+
+	s.processedMessages.Store(string(transport.UUID), struct{}{})
 }

@@ -14,3 +14,8 @@ CREATE TABLE IF NOT EXISTS subscriber_offsets (
   offset BIGINT NOT NULL,
   PRIMARY KEY (topic)
 );
+
+CREATE TABLE IF NOT EXISTS processed_messages (
+  uuid BINARY(16) NOT NULL,
+  PRIMARY KEY (uuid)
+);
