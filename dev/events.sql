@@ -1,23 +1,19 @@
-CREATE TABLE IF NOT EXISTS events (
-  idx BIGINT AUTO_INCREMENT,
+CREATE TABLE IF NOT EXISTS messages (
+  offset BIGINT AUTO_INCREMENT,
   uuid BINARY(16) NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   payload JSON NOT NULL,
   metadata JSON NOT NULL,
   topic VARCHAR(255) NOT NULL,
-  PRIMARY KEY (idx),
-  UNIQUE(uuid)
+  PRIMARY KEY (uuid),
+  UNIQUE(offset)
 );
 
-CREATE TABLE IF NOT EXISTS subscriber_offsets (
-  topic VARCHAR(255) NOT NULL,
+CREATE INDEX CLUSTERED ON messages(offset);
+
+CREATE TABLE IF NOT EXISTS offsets_acked (
   offset BIGINT NOT NULL,
   consumer_group VARCHAR(255) NOT NULL,
-  PRIMARY KEY(topic, consumer_group)
-);
-
-CREATE TABLE IF NOT EXISTS processed_messages (
-  uuid BINARY(16) NOT NULL,
-  consumer_group VARCHAR(255) NOT NULL,
-  PRIMARY KEY(uuid, consumer_group)
+  PRIMARY KEY(consumer_group),
+  FOREIGN KEY (offset) REFERENCES messages(offset)
 );

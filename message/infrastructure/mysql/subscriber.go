@@ -4,52 +4,30 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
-	multierror "github.com/hashicorp/go-multierror"
-	"github.com/kisielk/sqlstruct"
-
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
+	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 )
 
 var (
 	ErrSubscriberClosed = errors.New("subscriber is closed")
-	// OffsetLastSaved makes the subscriber resume from the last saved offset. If no offset was saved, start from 0.
-	OffsetLastSaved Offset = -1
 )
 
-type Offset int64
-
-func (o Offset) Valid() error {
-	if o < 0 && o != OffsetLastSaved {
-		return errors.New("offset must be non-negative or OffsetLastSaved")
-	}
-
-	return nil
-}
-
 type SubscriberConfig struct {
-	// Table is the name of the table to read messages from. Defaults to `events`.
-	Table string
-	// OffsetsTable is the name of the sql table that stores offsets. Defaults to `subscriber_offsets`.
-	// After reading, offset of the last read message is persisted for each consumer group.
-	OffsetsTable string
-	// Offset is the initial offset to read from. Must be non-negative or OffsetLastSaved.
-	Offset Offset
+	// MessagesTable is the name of the table to read messages from. Defaults to `messages`.
+	MessagesTable string
+	// OffsetsAckedTable stores the information about which consumer group has acked which message. Defaults to `messages_acked`.
+	OffsetsAckedTable string
 
-	// Subscribe calls within the same consumer groups share
+	// ConsumerGroup marks a group of consumers that will receive each message exactly once.
+	// For now, the Subscriber implementation is experimental, so using multiple consumers with the same consumer group
+	// at once may be risky.
 	ConsumerGroup string
-
-	// OnlyOnce, if true, makes Subscriber process each message exactly once for each consumer group.
-	// TODO: implement it properly
-	//OnlyOnce bool
-
-	// ProcessedMessagesTable is the name of the table that stores the processed messages uuids.
-	// Defaults to `processed_messages`.
-	ProcessedMessagesTable string
 
 	Unmarshaler Unmarshaler
 	Logger      watermill.LoggerAdapter
@@ -59,14 +37,11 @@ type SubscriberConfig struct {
 }
 
 func (c *SubscriberConfig) setDefaults() {
-	if c.Table == "" {
-		c.Table = "events"
+	if c.MessagesTable == "" {
+		c.MessagesTable = "messages"
 	}
-	if c.OffsetsTable == "" {
-		c.OffsetsTable = "subscriber_offsets"
-	}
-	if c.ProcessedMessagesTable == "" {
-		c.ProcessedMessagesTable = "processed_messages"
+	if c.OffsetsAckedTable == "" {
+		c.OffsetsAckedTable = "offsets_acked"
 	}
 	if c.Logger == nil {
 		c.Logger = watermill.NopLogger{}
@@ -77,10 +52,6 @@ func (c *SubscriberConfig) setDefaults() {
 }
 
 func (c SubscriberConfig) validate() error {
-	if err := c.Offset.Valid(); err != nil {
-		return err
-	}
-
 	if c.Unmarshaler == nil {
 		return errors.New("unmarshaler not set")
 	}
@@ -138,9 +109,28 @@ func (s *Subscriber) Subscribe(ctx context.Context, topic string) (o <-chan *mes
 
 	out := make(chan *message.Message)
 	var stmt *sql.Stmt
+
+	// todo: this is hardly readable, maybe use text.template? complicated tho
+	q := fmt.Sprintf(
+		`SELECT %s FROM %s WHERE `+
+			`TOPIC=? `+
+			`AND %s.offset > (SELECT COALESCE(MAX(%s.offset), 0) FROM %s WHERE consumer_group=?) `+
+			`ORDER BY %s.offset ASC LIMIT 1`,
+		strings.Join(s.config.Unmarshaler.SelectColumns(), ","),
+		s.config.MessagesTable,
+		s.config.MessagesTable,
+		s.config.OffsetsAckedTable,
+		s.config.OffsetsAckedTable,
+		s.config.MessagesTable,
+	)
+
+	s.config.Logger.Trace("Preparing query to select messages from db", watermill.LogFields{
+		"q": q,
+	})
+
 	stmt, err = s.db.PrepareContext(
 		ctx,
-		fmt.Sprintf(`SELECT * FROM %s WHERE idx > ? AND TOPIC=? ORDER BY idx ASC`, s.config.Table),
+		q,
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not prepare statement for SELECT")
@@ -166,99 +156,44 @@ func (s *Subscriber) consume(ctx context.Context, stmt *sql.Stmt, topic string, 
 		"topic": topic,
 	})
 
-	offset := s.config.Offset
-	var err error
-	if offset == OffsetLastSaved {
-		offset, err = s.restoreOffset(ctx, topic)
-		if err != nil {
-			logger.Error("could not restore last offset for topic", err, nil)
-			// todo: continue with offset 0?
-			return
-		}
-	}
-
-	lock := sync.RWMutex{}
-
-	offsetCh := make(chan Offset)
-	go func() {
-		for offsetRead := range offsetCh {
-			lock.RLock()
-			if offsetRead > offset {
-				lock.RUnlock()
-				lock.Lock()
-				offset = offsetRead
-
-				lock.Unlock()
-				// todo: should offsets be per topic or per consumer?
-				if persistErr := s.persistOffset(ctx, topic, offset); persistErr != nil {
-					logger.Error("Could not persist current offset", persistErr, nil)
-				}
-				continue
-			}
-
-			lock.RUnlock()
-		}
-	}()
-
-	sendWg := &sync.WaitGroup{}
-
-ConsumeLoop:
 	for {
 		select {
 		case <-ctx.Done():
 			logger.Info("Stopping consume, subscriber closing", nil)
-			break ConsumeLoop
-		case <-time.After(s.config.PollInterval):
+			return
+		default:
 			// go on querying
 		}
 
-		selectArgs, err := s.config.Unmarshaler.ForSelect(int64(offset), topic)
-		if err != nil {
-			logger.Error("Obtained incorrect parameters for SELECT query", err, nil)
+		row := stmt.QueryRowContext(
+			ctx,
+			topic,
+			s.config.ConsumerGroup,
+		)
+
+		msg, err := s.config.Unmarshaler.Unmarshal(row)
+		if err != nil && errors.Cause(err) == sql.ErrNoRows {
+			// wait until polling for the next message
+			time.Sleep(s.config.PollInterval)
 			continue
 		}
-
-		lock.RLock()
-		rows, err := stmt.QueryContext(ctx, selectArgs.Idx, selectArgs.Topic)
-		lock.RUnlock()
-		if err != nil {
-			logger.Error("SELECT query failed", err, nil)
-			continue
-		}
-
-		scanned, err := s.scan(rows)
 		if err != nil {
 			logger.Error("Could not scan rows from query", err, nil)
 			continue
 		}
 
-		for _, msg := range scanned {
-			offsetCh <- Offset(msg.Idx)
-			watermillMsg, err := s.config.Unmarshaler.Unmarshal(msg)
-			if err != nil {
-				logger.Error("Could not scan rows from query", err, nil)
-				continue
-			}
-			go s.sendMessage(ctx, watermillMsg, out, sendWg, logger)
-
-		}
+		s.sendMessage(ctx, msg, out, logger)
 	}
-
-	sendWg.Wait()
-	close(offsetCh)
 }
 
 // sendMessages sends messages on the output channel.
 // whenever a message is successfully sent and acked, the message's index is sent of the offsetCh.
 func (s *Subscriber) sendMessage(
 	ctx context.Context,
-	msg *message.Message,
+	msg MessageWithOffset,
 	out chan *message.Message,
-	sendWg *sync.WaitGroup,
 	logger watermill.LoggerAdapter,
 ) {
-	sendWg.Add(1)
-	defer sendWg.Done()
 
 ResendLoop:
 	for {
@@ -267,7 +202,7 @@ ResendLoop:
 		})
 
 		select {
-		case out <- msg:
+		case out <- msg.Message:
 		// message sent, go on
 		case <-ctx.Done():
 			logger.Info("Discarding queued message, subscriber closing", nil)
@@ -276,51 +211,27 @@ ResendLoop:
 
 		select {
 		case <-msg.Acked():
-			// message acked, move to the next message
+			logger.Debug("Message acked", nil)
+
+			err := s.saveOffset(ctx, msg.Offset)
+			if err != nil {
+				logger.Error("Could not mark message as acked", err, nil)
+			} else {
+				logger.Debug("Saved msg offset to db", nil)
+			}
+
 			return
+
 		case <-msg.Nacked():
 			//message nacked, try resending
+			logger.Debug("Message nacked, resending", nil)
 			continue ResendLoop
+
 		case <-ctx.Done():
 			logger.Info("Discarding queued message, subscriber closing", nil)
 			return
 		}
 	}
-}
-
-func (s *Subscriber) scan(rows *sql.Rows) ([]dbTransport, error) {
-	var messages []dbTransport
-	var msg *dbTransport
-	var err error
-
-	defer func() {
-		closeErr := rows.Close()
-		if closeErr != nil {
-			err = multierror.Append(err, closeErr)
-		}
-	}()
-
-	for rows.Next() {
-		msg = new(dbTransport)
-		scanErr := sqlstruct.Scan(msg, rows)
-		if scanErr != nil {
-			err = multierror.Append(err, scanErr)
-		} else {
-			messages = append(messages, *msg)
-		}
-	}
-
-	return messages, err
-}
-
-// SetOffset sets the offset to begin with for each new Subscribe call.
-func (s *Subscriber) SetOffset(offset Offset) error {
-	if err := offset.Valid(); err != nil {
-		return err
-	}
-
-	s.config.Offset = offset
-	return nil
 }
 
 func (s *Subscriber) Close() error {
@@ -340,72 +251,43 @@ func (s *Subscriber) Close() error {
 	return nil
 }
 
-// persistOffset saves the lastest offset for the topic.
-// Separate consumer groups have separate offsets.
-// If Subscribe is called with OffsetLastSaved, it resumes from the last saved offset.
-func (s *Subscriber) persistOffset(ctx context.Context, topic string, offset Offset) (err error) {
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return errors.Wrap(err, "could not begin tx")
-	}
-
+func (s *Subscriber) saveOffset(ctx context.Context, offset int64) (err error) {
+	var tx *sql.Tx
+	tx, err = s.db.BeginTx(ctx, nil)
 	defer func() {
 		if err != nil {
-			if rollbackErr := tx.Rollback(); rollbackErr != nil {
+			rollbackErr := tx.Rollback()
+			if rollbackErr != nil {
 				err = multierror.Append(err, rollbackErr)
 			}
 		} else {
-			if commitErr := tx.Commit(); commitErr != nil {
+			commitErr := tx.Commit()
+			if commitErr != nil {
 				err = multierror.Append(err, commitErr)
 			}
 		}
-	}()
 
-	_, err = s.db.ExecContext(
+	}()
+	if err != nil {
+		return errors.Wrap(err, "could not begin transaction")
+	}
+
+	q := fmt.Sprintf(
+		`INSERT INTO %s (offset, consumer_group) VALUES (?, ?) ON DUPLICATE KEY UPDATE offset=VALUES(offset)`,
+		s.config.OffsetsAckedTable,
+	)
+
+	s.config.Logger.Trace("Updating consumer group offset", watermill.LogFields{
+		"q":              q,
+		"consumer_group": s.config.ConsumerGroup,
+	})
+
+	_, err = tx.ExecContext(
 		ctx,
-		fmt.Sprintf(
-			"INSERT INTO %s (topic, offset, consumer_group) VALUES(?,?,?) ON DUPLICATE KEY UPDATE offset=VALUES(offset)",
-			s.config.OffsetsTable,
-		),
-		topic,
-		int64(offset),
+		q,
+		offset,
 		s.config.ConsumerGroup,
 	)
 
 	return err
-}
-
-func (s *Subscriber) restoreOffset(ctx context.Context, topic string) (o Offset, err error) {
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return 0, errors.Wrap(err, "could not begin tx")
-	}
-
-	// todo: is the transaction necessary? it is read-only
-	defer func() {
-		if err != nil {
-			if rollbackErr := tx.Rollback(); rollbackErr != nil {
-				err = multierror.Append(err, rollbackErr)
-			}
-		} else {
-			if commitErr := tx.Commit(); commitErr != nil {
-				err = multierror.Append(err, commitErr)
-			}
-		}
-	}()
-
-	row := s.db.QueryRowContext(
-		ctx,
-		fmt.Sprintf(
-			`SELECT offset FROM %s WHERE topic=? AND consumer_group=?`,
-			s.config.OffsetsTable,
-		),
-		topic,
-		s.config.ConsumerGroup,
-	)
-
-	var offset int64
-	err = row.Scan(&offset)
-
-	return Offset(offset), err
 }

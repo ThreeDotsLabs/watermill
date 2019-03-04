@@ -16,11 +16,10 @@ func TestSubscriber_Subscribe(t *testing.T) {
 	sub, err := mysql.NewSubscriber(
 		getDB(t),
 		mysql.SubscriberConfig{
-			Table:        "events",
-			Offset:       15,
-			Unmarshaler:  mysql.DefaultUnmarshaler{},
-			Logger:       watermill.NewStdLogger(true, true),
-			PollInterval: time.Second,
+			ConsumerGroup: "cg5",
+			Unmarshaler:   mysql.DefaultUnmarshaler{},
+			Logger:        watermill.NewStdLogger(true, true),
+			PollInterval:  time.Second,
 		},
 	)
 	require.NoError(t, err)

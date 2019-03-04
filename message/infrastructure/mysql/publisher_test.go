@@ -15,7 +15,7 @@ func TestPublisher_Publish(t *testing.T) {
 	pub, err := mysql.NewPublisher(
 		getDB(t),
 		mysql.PublisherConfig{
-			Table:     "events",
+			Table:     "messages",
 			Marshaler: mysql.DefaultMarshaler{},
 		},
 	)

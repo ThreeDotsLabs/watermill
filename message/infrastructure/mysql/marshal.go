@@ -1,6 +1,7 @@
 package mysql
 
 import (
+	"database/sql"
 	"encoding/json"
 	"time"
 
@@ -71,20 +72,17 @@ func (DefaultMarshaler) ForInsert(topic string, msg *message.Message) (InsertArg
 	}, nil
 }
 
-// SelectArgs are used as arguments for the SQL SELECT statements used in the Subscriber.
-type SelectArgs struct {
-	Idx   int64
-	Topic string
+type MessageWithOffset struct {
+	Offset int64
+	*message.Message
 }
 
 type Unmarshaler interface {
-	// ForSelect provides the parameters for an SQL SELECT statement looking for messages from given topic and offset.
-	// The data types in SelectArgs are intentionally broad, but in the SQL schema they might be more specific.
-	// It is the responsibility of the Unmarshaler to throw an error if the parameters may not be transformed
-	// into the targeted schema, for example due to size limits of a column.
-	ForSelect(index int64, topic string) (SelectArgs, error)
-	// Unmarshal takes an sql Rows result and returns the messages that it contains.
-	Unmarshal(transport dbTransport) (*message.Message, error)
+	// SelectColumns returns the slice of column names that should be passed to the SELECT query that recovers the events.
+	// The Row that Unmarshal takes will have these columns available for Scan.
+	SelectColumns() []string
+	// Unmarshal takes an sql Row result and returns the message that it contains and its offset.
+	Unmarshal(row *sql.Row) (MessageWithOffset, error)
 }
 
 // DefaultUnmarshaler is compatible with the following schema:
@@ -92,21 +90,8 @@ type Unmarshaler interface {
 // topic VARCHAR(255)
 type DefaultUnmarshaler struct{}
 
-// ForSelect of DefaultUnmarshaler makes the following assumptions:
-// - uuid may be parsed to ULID.
-// - topic is at most 255 characters long.
-//
-// Error will be thrown if these assumtions are not met.
-func (DefaultUnmarshaler) ForSelect(index int64, topic string) (SelectArgs, error) {
-	if len(topic) > 255 {
-		return SelectArgs{}, errors.New("topic does not fit into VARCHAR(255)")
-	}
-
-	return SelectArgs{index, topic}, nil
-}
-
 type dbTransport struct {
-	Idx       int64
+	Offset    int64
 	UUID      []byte
 	CreatedAt time.Time
 	Payload   []byte
@@ -114,24 +99,36 @@ type dbTransport struct {
 	Metadata  []byte
 }
 
-func (DefaultUnmarshaler) Unmarshal(transport dbTransport) (*message.Message, error) {
-	if len(transport.UUID) != 16 {
-		return nil, errors.New("uuid length not suitable for unmarshaling to ULID")
+func (DefaultUnmarshaler) SelectColumns() []string {
+	return []string{
+		"offset", "uuid", "payload", "topic", "metadata",
+	}
+}
+
+func (DefaultUnmarshaler) Unmarshal(row *sql.Row) (MessageWithOffset, error) {
+	t := dbTransport{}
+	err := row.Scan(&t.Offset, &t.UUID, &t.Payload, &t.Topic, &t.Metadata)
+	if err != nil {
+		return MessageWithOffset{}, errors.Wrap(err, "could not scan row")
+	}
+
+	if len(t.UUID) != 16 {
+		return MessageWithOffset{}, errors.New("uuid length not suitable for unmarshaling to ULID")
 	}
 
 	uuid := ulid.ULID{}
 	for i := 0; i < 16; i++ {
-		uuid[i] = transport.UUID[i]
+		uuid[i] = t.UUID[i]
 	}
 
 	metadata := message.Metadata{}
-	err := json.Unmarshal(transport.Metadata, &metadata)
+	err = json.Unmarshal(t.Metadata, &metadata)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not unmarshal metadata as JSON")
+		return MessageWithOffset{}, errors.Wrap(err, "could not unmarshal metadata as JSON")
 	}
 
-	msg := message.NewMessage(uuid.String(), transport.Payload)
+	msg := message.NewMessage(uuid.String(), t.Payload)
 	msg.Metadata = metadata
 
-	return msg, nil
+	return MessageWithOffset{Offset: t.Offset, Message: msg}, nil
 }
