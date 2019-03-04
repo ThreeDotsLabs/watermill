@@ -18,7 +18,6 @@ func TestSubscriber_Subscribe(t *testing.T) {
 		mysql.SubscriberConfig{
 			Table:        "events",
 			Offset:       15,
-			OnlyOnce:     true,
 			Unmarshaler:  mysql.DefaultUnmarshaler{},
 			Logger:       watermill.NewStdLogger(true, true),
 			PollInterval: time.Second,
