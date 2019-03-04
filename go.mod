@@ -21,7 +21,6 @@ require (
 	github.com/hashicorp/go-msgpack v0.0.0-20150518234257-fa3f63826f7c // indirect
 	github.com/hashicorp/go-multierror v1.0.0
 	github.com/hashicorp/raft v1.0.0 // indirect
-	github.com/kisielk/sqlstruct v0.0.0-20150923205031-648daed35d49
 	github.com/lib/pq v1.0.0 // indirect
 	github.com/nats-io/gnatsd v1.3.0 // indirect
 	github.com/nats-io/go-nats v1.7.0 // indirect
