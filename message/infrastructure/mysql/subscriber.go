@@ -21,7 +21,7 @@ var (
 type SubscriberConfig struct {
 	// MessagesTable is the name of the table to read messages from. Defaults to `messages`.
 	MessagesTable string
-	// OffsetsAckedTable stores the information about which consumer group has acked which message. Defaults to `messages_acked`.
+	// OffsetsAckedTable stores the information about which consumer group has acked which message. Defaults to `offsets_acked`.
 	OffsetsAckedTable string
 
 	// ConsumerGroup marks a group of consumers that will receive each message exactly once.
