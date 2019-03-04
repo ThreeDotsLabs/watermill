@@ -12,10 +12,12 @@ CREATE TABLE IF NOT EXISTS events (
 CREATE TABLE IF NOT EXISTS subscriber_offsets (
   topic VARCHAR(255) NOT NULL,
   offset BIGINT NOT NULL,
-  PRIMARY KEY (topic)
+  consumer_group VARCHAR(255) NOT NULL,
+  PRIMARY KEY(topic, consumer_group)
 );
 
 CREATE TABLE IF NOT EXISTS processed_messages (
   uuid BINARY(16) NOT NULL,
-  PRIMARY KEY (uuid)
+  consumer_group VARCHAR(255) NOT NULL,
+  PRIMARY KEY(uuid, consumer_group)
 );

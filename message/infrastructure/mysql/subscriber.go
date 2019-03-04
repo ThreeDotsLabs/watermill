@@ -31,15 +31,19 @@ func (o Offset) Valid() error {
 	return nil
 }
 
-// TODO: consumer groups!
-
 type SubscriberConfig struct {
+	// Table is the name of the table to read messages from. Defaults to `events`.
 	Table string
 	// OffsetsTable is the name of the sql table that stores offsets. Defaults to `subscriber_offsets`.
+	// After reading, offset of the last read message is persisted for each consumer group.
 	OffsetsTable string
-	Offset       Offset
+	// Offset is the initial offset to read from. Must be non-negative or OffsetLastSaved.
+	Offset Offset
 
-	// OnlyOnce, if true, makes Subscriber process each message exactly once.
+	// Subscribe calls within the same consumer groups share
+	ConsumerGroup string
+
+	// OnlyOnce, if true, makes Subscriber process each message exactly once for each consumer group.
 	// At startup, the processed UUIDs are restored from DB.
 	// In runtime, it is stored in memory, and persited to DB on Close.
 	OnlyOnce bool
@@ -55,6 +59,9 @@ type SubscriberConfig struct {
 }
 
 func (c *SubscriberConfig) setDefaults() {
+	if c.Table == "" {
+		c.Table = "events"
+	}
 	if c.OffsetsTable == "" {
 		c.OffsetsTable = "subscriber_offsets"
 	}
@@ -70,10 +77,6 @@ func (c *SubscriberConfig) setDefaults() {
 }
 
 func (c SubscriberConfig) validate() error {
-	if c.Table == "" {
-		return errors.New("table not set")
-	}
-
 	if err := c.Offset.Valid(); err != nil {
 		return err
 	}
@@ -327,73 +330,6 @@ func (s *Subscriber) scan(rows *sql.Rows) ([]dbTransport, error) {
 	return messages, err
 }
 
-// persistOffset saves the lastest offset for the topic.
-// If Subscribe is called with OffsetLastSaved, it resumes from the last saved offset.
-func (s *Subscriber) persistOffset(ctx context.Context, topic string, offset Offset) (err error) {
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return errors.Wrap(err, "could not begin tx")
-	}
-
-	defer func() {
-		if err != nil {
-			if rollbackErr := tx.Rollback(); rollbackErr != nil {
-				err = multierror.Append(err, rollbackErr)
-			}
-		} else {
-			if commitErr := tx.Commit(); commitErr != nil {
-				err = multierror.Append(err, commitErr)
-			}
-		}
-	}()
-
-	_, err = s.db.ExecContext(
-		ctx,
-		fmt.Sprintf(
-			"INSERT INTO %s (topic, offset) VALUES(?,?) ON DUPLICATE KEY UPDATE offset=VALUES(offset)",
-			s.config.OffsetsTable,
-		),
-		topic,
-		int64(offset),
-	)
-
-	return err
-}
-
-func (s *Subscriber) restoreOffset(ctx context.Context, topic string) (Offset, error) {
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return 0, errors.Wrap(err, "could not begin tx")
-	}
-
-	// todo: is the transaction necessary? it is read-only
-	defer func() {
-		if err != nil {
-			if rollbackErr := tx.Rollback(); rollbackErr != nil {
-				err = multierror.Append(err, rollbackErr)
-			}
-		} else {
-			if commitErr := tx.Commit(); commitErr != nil {
-				err = multierror.Append(err, commitErr)
-			}
-		}
-	}()
-
-	row := s.db.QueryRowContext(
-		ctx,
-		fmt.Sprintf(
-			`SELECT offset FROM %s WHERE topic=?`,
-			s.config.OffsetsTable,
-		),
-		topic,
-	)
-
-	var offset int64
-	err = row.Scan(&offset)
-
-	return Offset(offset), err
-}
-
 // SetOffset sets the offset to begin with for each new Subscribe call.
 func (s *Subscriber) SetOffset(offset Offset) error {
 	if err := offset.Valid(); err != nil {
@@ -431,11 +367,81 @@ func (s *Subscriber) Close() error {
 	return err
 }
 
+// persistOffset saves the lastest offset for the topic.
+// Separate consumer groups have separate offsets.
+// If Subscribe is called with OffsetLastSaved, it resumes from the last saved offset.
+func (s *Subscriber) persistOffset(ctx context.Context, topic string, offset Offset) (err error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return errors.Wrap(err, "could not begin tx")
+	}
+
+	defer func() {
+		if err != nil {
+			if rollbackErr := tx.Rollback(); rollbackErr != nil {
+				err = multierror.Append(err, rollbackErr)
+			}
+		} else {
+			if commitErr := tx.Commit(); commitErr != nil {
+				err = multierror.Append(err, commitErr)
+			}
+		}
+	}()
+
+	_, err = s.db.ExecContext(
+		ctx,
+		fmt.Sprintf(
+			"INSERT INTO %s (topic, offset, consumer_group) VALUES(?,?,?) ON DUPLICATE KEY UPDATE offset=VALUES(offset)",
+			s.config.OffsetsTable,
+		),
+		topic,
+		int64(offset),
+		s.config.ConsumerGroup,
+	)
+
+	return err
+}
+
+func (s *Subscriber) restoreOffset(ctx context.Context, topic string) (Offset, error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, errors.Wrap(err, "could not begin tx")
+	}
+
+	// todo: is the transaction necessary? it is read-only
+	defer func() {
+		if err != nil {
+			if rollbackErr := tx.Rollback(); rollbackErr != nil {
+				err = multierror.Append(err, rollbackErr)
+			}
+		} else {
+			if commitErr := tx.Commit(); commitErr != nil {
+				err = multierror.Append(err, commitErr)
+			}
+		}
+	}()
+
+	row := s.db.QueryRowContext(
+		ctx,
+		fmt.Sprintf(
+			`SELECT offset FROM %s WHERE topic=? AND consumer_group=?`,
+			s.config.OffsetsTable,
+		),
+		topic,
+		s.config.ConsumerGroup,
+	)
+
+	var offset int64
+	err = row.Scan(&offset)
+
+	return Offset(offset), err
+}
+
 func (s *Subscriber) restoreProcessedMessages(ctx context.Context) error {
-	// todo: consumer group? transaction?
 	rows, err := s.db.QueryContext(
 		ctx,
-		fmt.Sprintf(`SELECT uuid FROM %s`, s.config.ProcessedMessagesTable),
+		fmt.Sprintf(`SELECT uuid FROM %s WHERE consumer_group=?`, s.config.ProcessedMessagesTable),
+		s.config.ConsumerGroup,
 	)
 
 	if err != nil {
@@ -479,7 +485,7 @@ func (s *Subscriber) storeProcessedMessages(ctx context.Context) (err error) {
 	stmt, err := tx.PrepareContext(
 		ctx,
 		fmt.Sprintf(
-			`INSERT INTO %s (uuid) VALUES(?) ON DUPLICATE KEY UPDATE uuid=VALUES(uuid)`,
+			`INSERT INTO %s (uuid, consumer_group) VALUES(?,?) ON DUPLICATE KEY UPDATE uuid=VALUES(uuid)`,
 			s.config.ProcessedMessagesTable,
 		),
 	)
@@ -496,7 +502,11 @@ func (s *Subscriber) storeProcessedMessages(ctx context.Context) (err error) {
 			return true
 		}
 
-		_, err = stmt.ExecContext(ctx, []byte(k))
+		if s.config.ConsumerGroup == "" {
+			_, err = stmt.ExecContext(ctx, []byte(k))
+		} else {
+			_, err = stmt.ExecContext(ctx, []byte(k), s.config.ConsumerGroup)
+		}
 		if err != nil {
 			s.config.Logger.Error("could not insert processed message UUID", err, nil)
 			return true
@@ -508,12 +518,19 @@ func (s *Subscriber) storeProcessedMessages(ctx context.Context) (err error) {
 	return nil
 }
 
+func (s Subscriber) processedMessageKey(transport dbTransport) string {
+	if s.config.ConsumerGroup == "" {
+		return string(transport.UUID)
+	}
+	return string(transport.UUID) + ":" + s.config.ConsumerGroup
+}
+
 func (s *Subscriber) messageAlreadyProcessed(transport dbTransport) bool {
 	if !s.config.OnlyOnce {
 		return false
 	}
 
-	_, ok := s.processedMessages.Load(string(transport.UUID))
+	_, ok := s.processedMessages.Load(s.processedMessageKey(transport))
 	return ok
 }
 
@@ -522,5 +539,5 @@ func (s *Subscriber) markMessageProcessed(transport dbTransport) {
 		return
 	}
 
-	s.processedMessages.Store(string(transport.UUID), struct{}{})
+	s.processedMessages.Store(s.processedMessageKey(transport), struct{}{})
 }
