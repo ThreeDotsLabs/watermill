@@ -22,6 +22,9 @@ type SubscriberConfig struct {
 
 	// PollInterval is the interval between subsequent SELECT queries. Defaults to 5s.
 	PollInterval time.Duration
+
+	// ResendInterval is the time to wait before resending a nacked message. Must be non-negative.
+	ResendInterval time.Duration
 }
 
 func (c *SubscriberConfig) setDefaults() {
@@ -41,6 +44,10 @@ func (c SubscriberConfig) validate() error {
 	// TODO: any restraint to prevent really quick polling? I think not, caveat programmator
 	if c.PollInterval <= 0 {
 		return errors.New("poll interval must be a positive duration")
+	}
+
+	if c.ResendInterval <= 0 {
+		return errors.New("resend interval must be a positive duration")
 	}
 
 	return nil
@@ -160,6 +167,12 @@ ResendLoop:
 		case <-msg.Nacked():
 			//message nacked, try resending
 			logger.Debug("Message nacked, resending", nil)
+			msg = msg.Copy()
+
+			if s.config.ResendInterval != 0 {
+				time.Sleep(s.config.ResendInterval)
+			}
+
 			continue ResendLoop
 
 		case <-ctx.Done():
