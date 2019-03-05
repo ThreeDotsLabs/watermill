@@ -1,4 +1,4 @@
-package mysql_test
+package sql_test
 
 import (
 	"context"
@@ -7,17 +7,17 @@ import (
 	"time"
 
 	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure/mysql"
+	"github.com/ThreeDotsLabs/watermill/message/infrastructure/sql"
 
 	"github.com/stretchr/testify/require"
 )
 
 func TestSubscriber_Subscribe(t *testing.T) {
-	sub, err := mysql.NewSubscriber(
-		getDB(t),
-		mysql.SubscriberConfig{
+	sub, err := sql.NewSubscriber(
+		getMySQL(t),
+		sql.SubscriberConfig{
 			ConsumerGroup: "cg5",
-			Unmarshaler:   mysql.DefaultUnmarshaler{},
+			Unmarshaler:   sql.DefaultUnmarshaler{},
 			Logger:        watermill.NewStdLogger(true, true),
 			PollInterval:  time.Second,
 		},

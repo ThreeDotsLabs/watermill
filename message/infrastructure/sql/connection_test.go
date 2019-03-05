@@ -1,4 +1,4 @@
-package mysql_test
+package sql_test
 
 import (
 	"database/sql"
@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func getDB(t *testing.T) *sql.DB {
+func getMySQL(t *testing.T) *sql.DB {
 	conf := driver.Config{
 		User:                 "root",
 		Passwd:               "",
@@ -23,7 +23,7 @@ func getDB(t *testing.T) *sql.DB {
 	return db
 }
 
-func TestGetDB(t *testing.T) {
-	db := getDB(t)
+func TestGetMySQL(t *testing.T) {
+	db := getMySQL(t)
 	require.NoError(t, db.Ping())
 }

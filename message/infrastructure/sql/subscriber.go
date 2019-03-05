@@ -1,4 +1,4 @@
-package mysql
+package sql
 
 import (
 	"context"
@@ -110,7 +110,7 @@ func (s *Subscriber) Subscribe(ctx context.Context, topic string) (o <-chan *mes
 	out := make(chan *message.Message)
 	var stmt *sql.Stmt
 
-	// todo: this is hardly readable, maybe use text.template? complicated tho
+	// todo: this is hardly readable, maybe use text/template? complicated tho
 	q := fmt.Sprintf(
 		`SELECT %s FROM %s WHERE `+
 			`TOPIC=? `+

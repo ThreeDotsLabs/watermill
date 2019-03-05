@@ -1,9 +1,9 @@
-package mysql_test
+package sql_test
 
 import (
 	"testing"
 
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure/mysql"
+	"github.com/ThreeDotsLabs/watermill/message/infrastructure/sql"
 
 	"github.com/ThreeDotsLabs/watermill"
 
@@ -12,13 +12,13 @@ import (
 )
 
 func TestPublisher_Publish(t *testing.T) {
-	pub, err := mysql.NewPublisher(
-		getDB(t),
-		mysql.PublisherConfig{
-			Table:     "messages",
-			Marshaler: mysql.DefaultMarshaler{},
-		},
-	)
+	adapter := sql.MySQLDefaultAdapter{
+		DB:            getMySQL(t),
+		MessagesTable: "messages",
+	}
+	pub, err := sql.NewPublisher(sql.PublisherConfig{
+		Adapter: &adapter,
+	})
 	require.NoError(t, err)
 
 	msg := message.NewMessage(
