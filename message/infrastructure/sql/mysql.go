@@ -5,12 +5,45 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"time"
+
+	"github.com/ThreeDotsLabs/watermill"
 
 	"github.com/ThreeDotsLabs/watermill/message"
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/oklog/ulid"
 	"github.com/pkg/errors"
 )
+
+type MySQLDefaultAdapterConf struct {
+	// MessagesTable is the name of the table to read messages from. Defaults to `messages`.
+	MessagesTable string
+	// OffsetsAckedTable stores the information about which consumer group has acked which message. Defaults to `offsets_acked`.
+	OffsetsAckedTable string
+
+	Logger watermill.LoggerAdapter
+}
+
+func (c *MySQLDefaultAdapterConf) setDefaults() {
+	if c.MessagesTable == "" {
+		c.MessagesTable = "messages"
+	}
+	if c.OffsetsAckedTable == "" {
+		c.OffsetsAckedTable = "offsets_acked"
+	}
+	if c.Logger == nil {
+		c.Logger = watermill.NopLogger{}
+	}
+}
+
+type mysqlDefaultAdapterRow struct {
+	Offset    int64
+	UUID      []byte
+	CreatedAt time.Time
+	Payload   []byte
+	Topic     string
+	Metadata  []byte
+}
 
 // MySQLDefaultAdapter is an adapter for MySQL.
 // Is compatible with the following schema:
@@ -19,9 +52,67 @@ import (
 // metadata JSON,
 // topic VARCHAR(255)
 type MySQLDefaultAdapter struct {
-	DB *sql.DB
-	// MessagesTable is the name of the table to read messages from. Defaults to `messages`.
-	MessagesTable string
+	conf MySQLDefaultAdapterConf
+	db   *sql.DB
+
+	insertQ    string
+	insertStmt *sql.Stmt
+
+	selectQ    string
+	selectStmt *sql.Stmt
+
+	insertOffsetQ    string
+	insertOffsetStmt *sql.Stmt
+}
+
+func NewMySQLDefaultAdapter(db *sql.DB, conf MySQLDefaultAdapterConf) (*MySQLDefaultAdapter, error) {
+	conf.setDefaults()
+	if db == nil {
+		return nil, errors.New("db is nil")
+	}
+
+	insertQ := fmt.Sprintf(`INSERT INTO %s (uuid, payload, topic, metadata) VALUES (?, ?, ?, ?)`, conf.MessagesTable)
+	insertStmt, err := db.Prepare(insertQ)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not prepare insert statement")
+	}
+
+	// todo: this is hardly readable, maybe use text/template? complicated tho
+	selectQ := fmt.Sprintf(
+		`SELECT offset,uuid,payload,topic,metadata FROM %s `+
+			`WHERE TOPIC=? `+
+			`AND %s.offset > (SELECT COALESCE(MAX(%s.offset), 0) FROM %s WHERE consumer_group=?) `+
+			`ORDER BY %s.offset ASC LIMIT 1`,
+		conf.MessagesTable,
+		conf.MessagesTable,
+		conf.OffsetsAckedTable,
+		conf.OffsetsAckedTable,
+		conf.MessagesTable,
+	)
+	selectStmt, err := db.Prepare(selectQ)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not prepare select statement")
+	}
+
+	insertOffsetQ := fmt.Sprintf(
+		`INSERT INTO %s (offset, consumer_group) VALUES (?, ?) ON DUPLICATE KEY UPDATE offset=VALUES(offset)`,
+		conf.OffsetsAckedTable,
+	)
+	insertOffsetStmt, err := db.Prepare(insertOffsetQ)
+	if err != nil {
+		return nil, errors.Wrap(err, "could not prepare insert offset statement")
+	}
+
+	return &MySQLDefaultAdapter{
+		conf,
+		db,
+		insertQ,
+		insertStmt,
+		selectQ,
+		selectStmt,
+		insertOffsetQ,
+		insertOffsetStmt,
+	}, nil
 }
 
 // InsertMessages of DefaultMarshaler makes the following assumptions about the message:
@@ -35,7 +126,7 @@ func (a *MySQLDefaultAdapter) InsertMessages(ctx context.Context, topic string, 
 		return errors.New("topic does not fit into VARCHAR(255)")
 	}
 
-	tx, err := a.DB.BeginTx(ctx, nil)
+	tx, err := a.db.BeginTx(ctx, nil)
 	defer func() {
 		if err != nil {
 			rollbackErr := tx.Rollback()
@@ -54,24 +145,19 @@ func (a *MySQLDefaultAdapter) InsertMessages(ctx context.Context, topic string, 
 		return errors.Wrap(err, "could not begin transaction")
 	}
 
-	stmt, err := tx.Prepare(
-		fmt.Sprintf(`INSERT INTO %s (uuid, payload, topic, metadata) VALUES (?, ?, ?, ?)`, a.MessagesTable),
-	)
-	if err != nil {
-		return errors.Wrap(err, "could not prepare statement")
-	}
-	defer func() {
-		if closeErr := stmt.Close(); closeErr != nil {
-			err = multierror.Append(err, closeErr)
-		}
-	}()
-
+	stmt := tx.Stmt(a.insertStmt)
 	for _, msg := range messages {
 		id, metadata, argsErr := a.insertArgs(msg)
 		if argsErr != nil {
 			err = multierror.Append(err, errors.Wrap(argsErr, "could not prepare args for insert"))
 			continue
 		}
+
+		a.conf.Logger.Trace("Inserting message", watermill.LogFields{
+			"q":     a.insertQ,
+			"uuid":  msg.UUID,
+			"topic": topic,
+		})
 
 		_, execErr := stmt.ExecContext(ctx, id, msg.Payload, topic, metadata)
 		if execErr != nil {
@@ -105,6 +191,121 @@ func (a MySQLDefaultAdapter) insertArgs(msg *message.Message) (idBytes []byte, m
 	return idBytes, metadata, nil
 }
 
-func (a *MySQLDefaultAdapter) SelectMessage(ctx context.Context, topic string, consumerGroup string) (*message.Message, error) {
-	panic("implement me")
+func (a *MySQLDefaultAdapter) PopMessage(ctx context.Context, topic string, consumerGroup string) (*message.Message, error) {
+	tx, err := a.db.BeginTx(ctx, nil)
+	defer func() {
+		if err != nil {
+			rollbackErr := tx.Rollback()
+			if rollbackErr != nil {
+				err = multierror.Append(err, rollbackErr)
+			}
+		} else {
+			commitErr := tx.Commit()
+			if commitErr != nil {
+				err = multierror.Append(err, commitErr)
+			}
+		}
+
+	}()
+	if err != nil {
+		return nil, errors.Wrap(err, "could not begin transaction")
+	}
+
+	logger := a.conf.Logger.With(watermill.LogFields{
+		"topic":          topic,
+		"consumer_group": consumerGroup,
+	})
+
+	stmt := tx.Stmt(a.selectStmt)
+
+	row := stmt.QueryRowContext(ctx, topic, consumerGroup)
+	msg, offset, err := a.unmarshal(row)
+	if err != nil {
+		return nil, err
+	}
+
+	logger.Trace("Message found", watermill.LogFields{
+		"q": a.selectQ,
+	})
+
+	go func() {
+		select {
+		case <-msg.Acked():
+			// todo: if message is resent, this will not arrive
+			saveOffsetErr := a.saveOffset(ctx, logger, consumerGroup, offset)
+			if saveOffsetErr != nil {
+				logger.Error("Could not save offset", err, watermill.LogFields{
+					"uuid": msg.UUID,
+				})
+			}
+		case <-ctx.Done():
+			return
+		}
+	}()
+
+	return msg, nil
+}
+
+func (a *MySQLDefaultAdapter) unmarshal(row *sql.Row) (*message.Message, int64, error) {
+	dest := mysqlDefaultAdapterRow{}
+	err := row.Scan(&dest.Offset, &dest.UUID, &dest.Payload, &dest.Topic, &dest.Metadata)
+	if err != nil {
+		return nil, 0, errors.Wrap(err, "could not scan row")
+	}
+
+	if len(dest.UUID) != 16 {
+		return nil, 0, errors.New("uuid length not suitable for unmarshaling to ULID")
+	}
+
+	uuid := ulid.ULID{}
+	for i := 0; i < 16; i++ {
+		uuid[i] = dest.UUID[i]
+	}
+
+	metadata := message.Metadata{}
+	err = json.Unmarshal(dest.Metadata, &metadata)
+	if err != nil {
+		return nil, 0, errors.Wrap(err, "could not unmarshal metadata as JSON")
+	}
+
+	msg := message.NewMessage(uuid.String(), dest.Payload)
+	msg.Metadata = metadata
+
+	return msg, dest.Offset, nil
+}
+
+func (a *MySQLDefaultAdapter) saveOffset(ctx context.Context, logger watermill.LoggerAdapter, consumerGroup string, offset int64) (err error) {
+	var tx *sql.Tx
+	tx, err = a.db.BeginTx(ctx, nil)
+	defer func() {
+		if err != nil {
+			rollbackErr := tx.Rollback()
+			if rollbackErr != nil {
+				err = multierror.Append(err, rollbackErr)
+			}
+		} else {
+			commitErr := tx.Commit()
+			if commitErr != nil {
+				err = multierror.Append(err, commitErr)
+			}
+		}
+
+	}()
+	if err != nil {
+		return errors.Wrap(err, "could not begin transaction")
+	}
+
+	logger.Trace("Updating consumer group offset", watermill.LogFields{
+		"q": a.insertOffsetQ,
+	})
+
+	stmt := tx.Stmt(a.insertOffsetStmt)
+
+	_, err = stmt.ExecContext(
+		ctx,
+		offset,
+		consumerGroup,
+	)
+
+	return err
 }

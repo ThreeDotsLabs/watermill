@@ -3,14 +3,11 @@ package sql
 import (
 	"context"
 	"database/sql"
-	"fmt"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
-	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 )
 
@@ -19,30 +16,15 @@ var (
 )
 
 type SubscriberConfig struct {
-	// MessagesTable is the name of the table to read messages from. Defaults to `messages`.
-	MessagesTable string
-	// OffsetsAckedTable stores the information about which consumer group has acked which message. Defaults to `offsets_acked`.
-	OffsetsAckedTable string
-
-	// ConsumerGroup marks a group of consumers that will receive each message exactly once.
-	// For now, the Subscriber implementation is experimental, so using multiple consumers with the same consumer group
-	// at once may be risky.
+	Adapter       SQLAdapter
+	Logger        watermill.LoggerAdapter
 	ConsumerGroup string
-
-	Unmarshaler Unmarshaler
-	Logger      watermill.LoggerAdapter
 
 	// PollInterval is the interval between subsequent SELECT queries. Defaults to 5s.
 	PollInterval time.Duration
 }
 
 func (c *SubscriberConfig) setDefaults() {
-	if c.MessagesTable == "" {
-		c.MessagesTable = "messages"
-	}
-	if c.OffsetsAckedTable == "" {
-		c.OffsetsAckedTable = "offsets_acked"
-	}
 	if c.Logger == nil {
 		c.Logger = watermill.NopLogger{}
 	}
@@ -52,8 +34,8 @@ func (c *SubscriberConfig) setDefaults() {
 }
 
 func (c SubscriberConfig) validate() error {
-	if c.Unmarshaler == nil {
-		return errors.New("unmarshaler not set")
+	if c.Adapter == nil {
+		return errors.New("adapter is nil")
 	}
 
 	// TODO: any restraint to prevent really quick polling? I think not, caveat programmator
@@ -69,14 +51,12 @@ func (c SubscriberConfig) validate() error {
 type Subscriber struct {
 	config SubscriberConfig
 
-	db *sql.DB
-
 	subscribeWg *sync.WaitGroup
 	closing     chan struct{}
 	closed      bool
 }
 
-func NewSubscriber(db *sql.DB, conf SubscriberConfig) (*Subscriber, error) {
+func NewSubscriber(conf SubscriberConfig) (*Subscriber, error) {
 	conf.setDefaults()
 	err := conf.validate()
 	if err != nil {
@@ -85,8 +65,6 @@ func NewSubscriber(db *sql.DB, conf SubscriberConfig) (*Subscriber, error) {
 
 	sub := &Subscriber{
 		config: conf,
-
-		db: db,
 
 		subscribeWg: &sync.WaitGroup{},
 		closing:     make(chan struct{}),
@@ -108,52 +86,23 @@ func (s *Subscriber) Subscribe(ctx context.Context, topic string) (o <-chan *mes
 	}()
 
 	out := make(chan *message.Message)
-	var stmt *sql.Stmt
-
-	// todo: this is hardly readable, maybe use text/template? complicated tho
-	q := fmt.Sprintf(
-		`SELECT %s FROM %s WHERE `+
-			`TOPIC=? `+
-			`AND %s.offset > (SELECT COALESCE(MAX(%s.offset), 0) FROM %s WHERE consumer_group=?) `+
-			`ORDER BY %s.offset ASC LIMIT 1`,
-		strings.Join(s.config.Unmarshaler.SelectColumns(), ","),
-		s.config.MessagesTable,
-		s.config.MessagesTable,
-		s.config.OffsetsAckedTable,
-		s.config.OffsetsAckedTable,
-		s.config.MessagesTable,
-	)
-
-	s.config.Logger.Trace("Preparing query to select messages from db", watermill.LogFields{
-		"q": q,
-	})
-
-	stmt, err = s.db.PrepareContext(
-		ctx,
-		q,
-	)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not prepare statement for SELECT")
-	}
-
 	s.subscribeWg.Add(1)
-	go s.consume(ctx, stmt, topic, out)
+	go s.consume(ctx, topic, out)
 
 	go func() {
 		s.subscribeWg.Wait()
 		close(out)
-		if err := stmt.Close(); err != nil {
-			s.config.Logger.Error("Could not close statement", err, nil)
-		}
 	}()
 
 	return out, nil
 }
 
-func (s *Subscriber) consume(ctx context.Context, stmt *sql.Stmt, topic string, out chan *message.Message) {
+func (s *Subscriber) consume(ctx context.Context, topic string, out chan *message.Message) {
 	defer s.subscribeWg.Done()
+
 	logger := s.config.Logger.With(watermill.LogFields{
-		"topic": topic,
+		"topic":          topic,
+		"consumer_group": s.config.ConsumerGroup,
 	})
 
 	for {
@@ -165,13 +114,7 @@ func (s *Subscriber) consume(ctx context.Context, stmt *sql.Stmt, topic string, 
 			// go on querying
 		}
 
-		row := stmt.QueryRowContext(
-			ctx,
-			topic,
-			s.config.ConsumerGroup,
-		)
-
-		msg, err := s.config.Unmarshaler.Unmarshal(row)
+		msg, err := s.config.Adapter.PopMessage(ctx, topic, s.config.ConsumerGroup)
 		if err != nil && errors.Cause(err) == sql.ErrNoRows {
 			// wait until polling for the next message
 			time.Sleep(s.config.PollInterval)
@@ -190,7 +133,7 @@ func (s *Subscriber) consume(ctx context.Context, stmt *sql.Stmt, topic string, 
 // whenever a message is successfully sent and acked, the message's index is sent of the offsetCh.
 func (s *Subscriber) sendMessage(
 	ctx context.Context,
-	msg MessageWithOffset,
+	msg *message.Message,
 	out chan *message.Message,
 	logger watermill.LoggerAdapter,
 ) {
@@ -202,7 +145,7 @@ ResendLoop:
 		})
 
 		select {
-		case out <- msg.Message:
+		case out <- msg:
 		// message sent, go on
 		case <-ctx.Done():
 			logger.Info("Discarding queued message, subscriber closing", nil)
@@ -212,14 +155,6 @@ ResendLoop:
 		select {
 		case <-msg.Acked():
 			logger.Debug("Message acked", nil)
-
-			err := s.saveOffset(ctx, msg.Offset)
-			if err != nil {
-				logger.Error("Could not mark message as acked", err, nil)
-			} else {
-				logger.Debug("Saved msg offset to db", nil)
-			}
-
 			return
 
 		case <-msg.Nacked():
@@ -244,50 +179,5 @@ func (s *Subscriber) Close() error {
 	close(s.closing)
 	s.subscribeWg.Wait()
 
-	if err := s.db.Close(); err != nil {
-		return err
-	}
-
 	return nil
-}
-
-func (s *Subscriber) saveOffset(ctx context.Context, offset int64) (err error) {
-	var tx *sql.Tx
-	tx, err = s.db.BeginTx(ctx, nil)
-	defer func() {
-		if err != nil {
-			rollbackErr := tx.Rollback()
-			if rollbackErr != nil {
-				err = multierror.Append(err, rollbackErr)
-			}
-		} else {
-			commitErr := tx.Commit()
-			if commitErr != nil {
-				err = multierror.Append(err, commitErr)
-			}
-		}
-
-	}()
-	if err != nil {
-		return errors.Wrap(err, "could not begin transaction")
-	}
-
-	q := fmt.Sprintf(
-		`INSERT INTO %s (offset, consumer_group) VALUES (?, ?) ON DUPLICATE KEY UPDATE offset=VALUES(offset)`,
-		s.config.OffsetsAckedTable,
-	)
-
-	s.config.Logger.Trace("Updating consumer group offset", watermill.LogFields{
-		"q":              q,
-		"consumer_group": s.config.ConsumerGroup,
-	})
-
-	_, err = tx.ExecContext(
-		ctx,
-		q,
-		offset,
-		s.config.ConsumerGroup,
-	)
-
-	return err
 }

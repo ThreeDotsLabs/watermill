@@ -13,12 +13,18 @@ import (
 )
 
 func TestSubscriber_Subscribe(t *testing.T) {
+	logger := watermill.NewStdLogger(true, true)
+
+	adapter, err := sql.NewMySQLDefaultAdapter(getMySQL(t), sql.MySQLDefaultAdapterConf{
+		Logger: logger,
+	})
+	require.NoError(t, err)
+
 	sub, err := sql.NewSubscriber(
-		getMySQL(t),
 		sql.SubscriberConfig{
-			ConsumerGroup: "cg5",
-			Unmarshaler:   sql.DefaultUnmarshaler{},
-			Logger:        watermill.NewStdLogger(true, true),
+			Adapter:       adapter,
+			Logger:        logger,
+			ConsumerGroup: "cg6",
 			PollInterval:  time.Second,
 		},
 	)

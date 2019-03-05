@@ -11,11 +11,14 @@ type SQLAdapter interface {
 	// InsertMessages inserts rows representing messages on a topic.
 	// Order of messages must be preserved so that SelectMessage reads them in the order they were published.
 	InsertMessages(ctx context.Context, topic string, messages ...*message.Message) error
-	// SelectMessage returns the messages on topic in the order they were published.
-	// Different consumer groups should track their own offsets.
+
+	// PopMessage returns subsquent undelivered messages on topic in the order they were published.
+	// Offsets should be tracked separately for separate consumer groups.
+	// Empty string is allowed as consumer group.
 	//
-	// The same message should not be delivered more than once to each consumer group, but it is is not
-	// guaranteed at this point, so the receiving party should deduplicate or make sure that the effects are idempotent.
-	// todo: implement only once?
-	SelectMessage(ctx context.Context, topic string, consumerGroup string) (*message.Message, error)
+	// Once ACKed, the same message should not be delivered more than once to a consumer group, but it is is not
+	// guaranteed in this simple implementation.
+	// The receiving party should deduplicate or make sure that the message's effects are idempotent.
+	// todo: implement only once
+	PopMessage(ctx context.Context, topic string, consumerGroup string) (*message.Message, error)
 }

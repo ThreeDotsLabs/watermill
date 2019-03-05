@@ -12,12 +12,15 @@ import (
 )
 
 func TestPublisher_Publish(t *testing.T) {
-	adapter := sql.MySQLDefaultAdapter{
-		DB:            getMySQL(t),
-		MessagesTable: "messages",
-	}
+	logger := watermill.NewStdLogger(true, true)
+
+	adapter, err := sql.NewMySQLDefaultAdapter(getMySQL(t), sql.MySQLDefaultAdapterConf{
+		Logger: logger,
+	})
+	require.NoError(t, err)
+
 	pub, err := sql.NewPublisher(sql.PublisherConfig{
-		Adapter: &adapter,
+		Adapter: adapter,
 	})
 	require.NoError(t, err)
 
