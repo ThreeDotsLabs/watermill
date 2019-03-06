@@ -15,16 +15,9 @@ import (
 )
 
 type StreamingSubscriberConfig struct {
-	// ClusterID is the NATS Streaming cluster ID.
-	ClusterID string
 
-	// ClientID is the NATS Streaming client ID to connect with.
-	// ClientID can contain only alphanumeric and `-` or `_` characters.
-	//
-	// Using DurableName causes the NATS Streaming server to track
-	// the last acknowledged message for that ClientID + DurableName.
-	ClientID string
-
+	// NatsStreamingConfig is configuration for NATS Streamin connection
+	NatsStreamingConfig
 	// QueueGroup is the NATS Streaming queue group.
 	//
 	// All subscriptions with the same queue name (regardless of the connection they originate from)
@@ -62,11 +55,6 @@ type StreamingSubscriberConfig struct {
 	// It is mapped to stan.AckWait option.
 	AckWaitTimeout time.Duration
 
-	// StanOptions are custom []stan.Option passed to the connection.
-	// It is also used to provide connection parameters, for example:
-	// 		stan.NatsURL("nats://localhost:4222")
-	StanOptions []stan.Option
-
 	// StanSubscriptionOptions are custom []stan.SubscriptionOption passed to subscription.
 	StanSubscriptionOptions []stan.SubscriptionOption
 
@@ -84,12 +72,6 @@ func (c *StreamingSubscriberConfig) setDefaults() {
 	if c.AckWaitTimeout <= 0 {
 		c.AckWaitTimeout = time.Second * 30
 	}
-
-	c.StanSubscriptionOptions = append(
-		c.StanSubscriptionOptions,
-		stan.SetManualAckMode(), // manual AckMode is required to support acking/nacking by client
-		stan.AckWait(c.AckWaitTimeout),
-	)
 
 	if c.DurableName != "" {
 		c.StanSubscriptionOptions = append(c.StanSubscriptionOptions, stan.DurableName(c.DurableName))
@@ -137,17 +119,20 @@ type StreamingSubscriber struct {
 //		}
 //		// ...
 func NewStreamingSubscriber(config StreamingSubscriberConfig, logger watermill.LoggerAdapter) (*StreamingSubscriber, error) {
+
+	conn, err:= NewStanConnectionWithDefaultSubscriberOption(&config.NatsStreamingConfig)
+	if err != nil {
+		return nil,err
+	}
+	return NewStreamingSubscriberWithStanConn(conn,config,logger)
+}
+
+func NewStreamingSubscriberWithStanConn(conn stan.Conn,config StreamingSubscriberConfig,logger watermill.LoggerAdapter) (*StreamingSubscriber, error) {
 	config.setDefaults()
 
 	if err := config.Validate(); err != nil {
 		return nil, err
 	}
-
-	conn, err := stan.Connect(config.ClusterID, config.ClientID, config.StanOptions...)
-	if err != nil {
-		return nil, errors.Wrap(err, "cannot connect to NATS")
-	}
-
 	return &StreamingSubscriber{
 		conn:    conn,
 		logger:  logger,
