@@ -14,7 +14,7 @@ jobs:
           name: Prepare Docker Compose
           command: |
             cp ./.ci/docker-compose.override.yml .
-            docker-compose pull -q
+            docker-compose pull
       - run:
           name: Run Docker Compose
           command: docker-compose up -d
