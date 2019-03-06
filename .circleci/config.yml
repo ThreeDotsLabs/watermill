@@ -14,15 +14,15 @@ jobs:
       - setup_remote_docker
       - run:
           name: Prepare Docker Compose
-          run: |
+          command: |
             cp ./.ci/docker-compose.override.yml .
             docker-compose pull -q
       - run:
           name: Run Docker Compose
-          run: docker-compose up -d
+          command: docker-compose up -d
       - run:
           name: Wait for services
-          run: docker-compose run watermill ./.ci/wait-for-services.sh
+          command: docker-compose run watermill ./.ci/wait-for-services.sh
       - run: docker-compose run watermill go test ./... -short
 workflows:
   version: 2
