@@ -8,8 +8,21 @@ import (
 )
 
 type StreamingPublisherConfig struct {
-	NatsStreamingConfig
+	// ClusterID is the NATS Streaming cluster ID.
+	ClusterID string
 
+	// ClientID is the NATS Streaming client ID to connect with.
+	// ClientID can contain only alphanumeric and `-` or `_` characters.
+	ClientID string
+
+	// StanOptions are custom options for a connection.
+	StanOptions []stan.Option
+
+	// Marshaler is marshaler used to marshal messages to stan format.
+	Marshaler Marshaler
+}
+
+type StreamingPublisherPublishConfig struct {
 	// Marshaler is marshaler used to marshal messages to stan format.
 	Marshaler Marshaler
 }
@@ -22,9 +35,15 @@ func (c StreamingPublisherConfig) Validate() error {
 	return nil
 }
 
+func (c StreamingPublisherConfig) GetStreamingPublisherPublishConfig() StreamingPublisherPublishConfig {
+	return StreamingPublisherPublishConfig{
+		Marshaler: c.Marshaler,
+	}
+}
+
 type StreamingPublisher struct {
 	conn   stan.Conn
-	config StreamingPublisherConfig
+	config StreamingPublisherPublishConfig
 	logger watermill.LoggerAdapter
 }
 
@@ -37,26 +56,25 @@ type StreamingPublisher struct {
 //		}
 //		// ...
 func NewStreamingPublisher(config StreamingPublisherConfig, logger watermill.LoggerAdapter) (*StreamingPublisher, error) {
+	if err := config.Validate(); err != nil {
+		return nil, err
+	}
+
 	conn, err := stan.Connect(config.ClusterID, config.ClientID, config.StanOptions...)
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot connect to nats")
 	}
 
-	return NewStreamingPublisherWithStanConn(conn,config,logger)
+	return NewStreamingPublisherWithStanConn(conn, config.GetStreamingPublisherPublishConfig(), logger)
 }
 
-func NewStreamingPublisherWithStanConn(conn stan.Conn,config StreamingPublisherConfig, logger watermill.LoggerAdapter) (*StreamingPublisher, error) {
-	if err := config.Validate(); err != nil {
-		return nil, err
-	}
-
+func NewStreamingPublisherWithStanConn(conn stan.Conn, config StreamingPublisherPublishConfig, logger watermill.LoggerAdapter) (*StreamingPublisher, error) {
 	return &StreamingPublisher{
 		conn:   conn,
 		config: config,
 		logger: logger,
 	}, nil
 }
-
 
 // Publish publishes message to NATS.
 //

@@ -2,7 +2,7 @@ package nats
 
 import "github.com/nats-io/go-nats-streaming"
 
-type NatsStreamingConfig struct {
+type StanConnConfig struct {
 	// ClusterID is the NATS Streaming cluster ID.
 	ClusterID string
 
@@ -17,19 +17,8 @@ type NatsStreamingConfig struct {
 	// It is also used to provide connection parameters, for example:
 	// 		stan.NatsURL("nats://localhost:4222")
 	StanOptions []stan.Option
-
 }
 
-func NewStanConnection(config *NatsStreamingConfig) (stan.Conn,error) {
+func NewStanConnection(config *StanConnConfig) (stan.Conn, error) {
 	return stan.Connect(config.ClusterID, config.ClientID, config.StanOptions...)
 }
-
-func NewStanConnectionWithDefaultSubscriberOption(config *NatsStreamingConfig)  (stan.Conn,error) {
-	config.StanOptions = append(
-		config.StanOptions,
-		stan.SetManualAckMode(), // manual AckMode is required to support acking/nacking by client
-		stan.AckWait(c.AckWaitTimeout),
-	)
-	return NewStanConnection(config)
-}
-
