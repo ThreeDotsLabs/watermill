@@ -263,14 +263,14 @@ func (a *MySQLDefaultAdapter) unmarshal(row *sql.Row) (*message.Message, int64, 
 		uuid[i] = dest.UUID[i]
 	}
 
-	metadata := message.Metadata{}
-	err = json.Unmarshal(dest.Metadata, &metadata)
-	if err != nil {
-		return nil, 0, errors.Wrap(err, "could not unmarshal metadata as JSON")
-	}
-
 	msg := message.NewMessage(uuid.String(), dest.Payload)
-	msg.Metadata = metadata
+
+	if dest.Metadata != nil {
+		err = json.Unmarshal(dest.Metadata, &msg.Metadata)
+		if err != nil {
+			return nil, 0, errors.Wrap(err, "could not unmarshal metadata as JSON")
+		}
+	}
 
 	return msg, dest.Offset, nil
 }
@@ -278,6 +278,10 @@ func (a *MySQLDefaultAdapter) unmarshal(row *sql.Row) (*message.Message, int64, 
 func (a *MySQLDefaultAdapter) MarkAcked(ctx context.Context, msg *message.Message, consumerGroup string) (err error) {
 	var tx *sql.Tx
 	tx, err = a.db.BeginTx(ctx, nil)
+	if err != nil {
+		return errors.Wrap(err, "could not begin transaction")
+	}
+
 	defer func() {
 		if err != nil {
 			rollbackErr := tx.Rollback()
@@ -292,9 +296,6 @@ func (a *MySQLDefaultAdapter) MarkAcked(ctx context.Context, msg *message.Messag
 		}
 
 	}()
-	if err != nil {
-		return errors.Wrap(err, "could not begin transaction")
-	}
 
 	a.conf.Logger.Trace("Updating consumer group offset", watermill.LogFields{
 		"uuid":           msg.UUID,

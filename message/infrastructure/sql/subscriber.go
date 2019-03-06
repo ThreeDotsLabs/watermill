@@ -90,18 +90,13 @@ func (s *Subscriber) Subscribe(ctx context.Context, topic string) (o <-chan *mes
 
 	// propagate the information about closing subscriber through ctx
 	ctx, cancel := context.WithCancel(ctx)
-	go func() {
-		<-s.closing
-		cancel()
-	}()
-
 	out := make(chan *message.Message)
-	s.subscribeWg.Add(1)
-	go s.consume(ctx, topic, out)
 
+	s.subscribeWg.Add(1)
 	go func() {
-		s.subscribeWg.Wait()
+		s.consume(ctx, topic, out)
 		close(out)
+		cancel()
 	}()
 
 	return out, nil
@@ -117,9 +112,14 @@ func (s *Subscriber) consume(ctx context.Context, topic string, out chan *messag
 
 	for {
 		select {
-		case <-ctx.Done():
-			logger.Info("Stopping consume, subscriber closing", nil)
+		case <-s.closing:
+			logger.Info("Discarding queued message, subscriber closing", nil)
 			return
+
+		case <-ctx.Done():
+			logger.Info("Stopping consume, context canceled", nil)
+			return
+
 		default:
 			// go on querying
 		}
@@ -159,8 +159,13 @@ ResendLoop:
 		select {
 		case out <- msg:
 		// message sent, go on
-		case <-ctx.Done():
+
+		case <-s.closing:
 			logger.Info("Discarding queued message, subscriber closing", nil)
+			return
+
+		case <-ctx.Done():
+			logger.Info("Discarding queued message, context canceled", nil)
 			return
 		}
 
@@ -186,8 +191,12 @@ ResendLoop:
 
 			continue ResendLoop
 
-		case <-ctx.Done():
+		case <-s.closing:
 			logger.Info("Discarding queued message, subscriber closing", nil)
+			return
+
+		case <-ctx.Done():
+			logger.Info("Discarding queued message, context canceled", nil)
 			return
 		}
 	}

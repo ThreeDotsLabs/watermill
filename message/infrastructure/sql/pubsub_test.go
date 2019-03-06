@@ -16,9 +16,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func newPubSub(t *testing.T, adapter sql.SQLAdapter, consumerGroup string) message.PubSub {
-	logger := watermill.NewStdLogger(false, false)
+var (
+	logger = watermill.NewStdLogger(false, false)
+)
 
+func newPubSub(t *testing.T, adapter sql.SQLAdapter, consumerGroup string) message.PubSub {
 	publisher, err := sql.NewPublisher(sql.PublisherConfig{
 		Adapter: adapter,
 	})
@@ -53,7 +55,7 @@ func getMySQLDefaultAdapter(t *testing.T) sql.SQLAdapter {
 	require.NoError(t, db.Ping(), "could not ping database")
 
 	adapter, err := sql.NewMySQLDefaultAdapter(db, sql.MySQLDefaultAdapterConf{
-		Logger: watermill.NewStdLogger(true, true),
+		Logger: logger,
 	})
 	require.NoError(t, err)
 

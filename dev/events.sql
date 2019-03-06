@@ -2,8 +2,8 @@ CREATE TABLE IF NOT EXISTS messages (
   offset BIGINT AUTO_INCREMENT,
   uuid BINARY(16) NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  payload JSON NOT NULL,
-  metadata JSON NOT NULL,
+  payload JSON NULL,
+  metadata JSON NULL,
   topic VARCHAR(255) NOT NULL,
   PRIMARY KEY (uuid),
   UNIQUE(offset)
