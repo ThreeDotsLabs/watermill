@@ -7,11 +7,10 @@ jobs:
       - checkout
       - run: go build ./...
   tests:
-    docker:
-      - image: circleci/golang:1.11
+    machine:
+      image: circleci/golang:1.11
     steps:
       - checkout
-      - setup_remote_docker
       - run:
           name: Prepare Docker Compose
           command: |
