@@ -16,9 +16,13 @@ type SQLAdapter interface {
 	// Offsets should be tracked separately for separate consumer groups.
 	// Empty string is allowed as consumer group.
 	//
-	// Once ACKed, the same message should not be delivered more than once to a consumer group, but it is is not
+	// Once acked, the same message should not be delivered more than once to a consumer group, but it is is not
 	// guaranteed in this simple implementation.
 	// The receiving party should deduplicate or make sure that the message's effects are idempotent.
 	// todo: implement only once
 	PopMessage(ctx context.Context, topic string, consumerGroup string) (*message.Message, error)
+
+	// MarkRead is called by the Subscriber once the message (or its resent copy) has been acked.
+	// PopMessage should not return messages that have been marked as read.
+	MarkRead(ctx context.Context, msg *message.Message, consumerGroup string) error
 }

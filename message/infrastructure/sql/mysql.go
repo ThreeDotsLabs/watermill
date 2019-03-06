@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/ThreeDotsLabs/watermill"
@@ -63,6 +64,11 @@ type MySQLDefaultAdapter struct {
 
 	insertOffsetQ    string
 	insertOffsetStmt *sql.Stmt
+
+	// messageOffsets saves the offset retrieved for database for each message that PopMessage returns.
+	// when MarkRead is called with the message, we know what offset to save.
+	messageOffsetsLock *sync.Mutex
+	messageOffsets     map[*message.Message]int64
 }
 
 func NewMySQLDefaultAdapter(db *sql.DB, conf MySQLDefaultAdapterConf) (*MySQLDefaultAdapter, error) {
@@ -106,12 +112,18 @@ func NewMySQLDefaultAdapter(db *sql.DB, conf MySQLDefaultAdapterConf) (*MySQLDef
 	return &MySQLDefaultAdapter{
 		conf,
 		db,
+
 		insertQ,
 		insertStmt,
+
 		selectQ,
 		selectStmt,
+
 		insertOffsetQ,
 		insertOffsetStmt,
+
+		&sync.Mutex{},
+		make(map[*message.Message]int64),
 	}, nil
 }
 
@@ -228,20 +240,9 @@ func (a *MySQLDefaultAdapter) PopMessage(ctx context.Context, topic string, cons
 		"q": a.selectQ,
 	})
 
-	go func() {
-		select {
-		case <-msg.Acked():
-			// todo: if message is resent, this will not arrive
-			saveOffsetErr := a.saveOffset(ctx, logger, consumerGroup, offset)
-			if saveOffsetErr != nil {
-				logger.Error("Could not save offset", err, watermill.LogFields{
-					"uuid": msg.UUID,
-				})
-			}
-		case <-ctx.Done():
-			return
-		}
-	}()
+	a.messageOffsetsLock.Lock()
+	a.messageOffsets[msg] = offset
+	a.messageOffsetsLock.Unlock()
 
 	return msg, nil
 }
@@ -274,7 +275,7 @@ func (a *MySQLDefaultAdapter) unmarshal(row *sql.Row) (*message.Message, int64, 
 	return msg, dest.Offset, nil
 }
 
-func (a *MySQLDefaultAdapter) saveOffset(ctx context.Context, logger watermill.LoggerAdapter, consumerGroup string, offset int64) (err error) {
+func (a *MySQLDefaultAdapter) MarkRead(ctx context.Context, msg *message.Message, consumerGroup string) (err error) {
 	var tx *sql.Tx
 	tx, err = a.db.BeginTx(ctx, nil)
 	defer func() {
@@ -295,12 +296,18 @@ func (a *MySQLDefaultAdapter) saveOffset(ctx context.Context, logger watermill.L
 		return errors.Wrap(err, "could not begin transaction")
 	}
 
-	logger.Trace("Updating consumer group offset", watermill.LogFields{
-		"q": a.insertOffsetQ,
+	a.conf.Logger.Trace("Updating consumer group offset", watermill.LogFields{
+		"uuid":           msg.UUID,
+		"consumer_group": consumerGroup,
+		"q":              a.insertOffsetQ,
 	})
 
-	stmt := tx.Stmt(a.insertOffsetStmt)
+	offset, err := a.getOffset(msg)
+	if err != nil {
+		return err
+	}
 
+	stmt := tx.Stmt(a.insertOffsetStmt)
 	_, err = stmt.ExecContext(
 		ctx,
 		offset,
@@ -308,4 +315,18 @@ func (a *MySQLDefaultAdapter) saveOffset(ctx context.Context, logger watermill.L
 	)
 
 	return err
+}
+
+func (a *MySQLDefaultAdapter) getOffset(msg *message.Message) (int64, error) {
+	a.messageOffsetsLock.Lock()
+	defer a.messageOffsetsLock.Unlock()
+	offset, ok := a.messageOffsets[msg]
+
+	if !ok {
+		return 0, errors.New("unknown offset for message")
+	}
+
+	delete(a.messageOffsets, msg)
+
+	return offset, nil
 }
