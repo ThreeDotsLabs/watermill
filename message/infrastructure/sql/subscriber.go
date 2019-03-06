@@ -124,7 +124,7 @@ func (s *Subscriber) consume(ctx context.Context, topic string, out chan *messag
 			// go on querying
 		}
 
-		msg, err := s.config.Adapter.PopMessage(ctx, topic, s.config.ConsumerGroup)
+		msg, err := s.config.Adapter.GetMessage(ctx, topic, s.config.ConsumerGroup)
 		if err != nil && errors.Cause(err) == sql.ErrNoRows {
 			// wait until polling for the next message
 			time.Sleep(s.config.PollInterval)
