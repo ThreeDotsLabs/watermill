@@ -24,3 +24,9 @@ jobs:
           name: Wait for services
           run: docker-compose run watermill ./.ci/wait-for-services.sh
       - run: docker-compose run watermill go test ./... -short
+workflows:
+  version: 2
+  build_and_tests:
+    jobs:
+      - build
+      - test
