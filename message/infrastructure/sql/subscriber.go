@@ -20,10 +20,10 @@ type SubscriberConfig struct {
 	Logger        watermill.LoggerAdapter
 	ConsumerGroup string
 
-	// PollInterval is the interval between subsequent SELECT queries. Defaults to 5s.
+	// PollInterval is the interval between subsequent SELECT queries. Must be non-negative. Defaults to 5s.
 	PollInterval time.Duration
 
-	// ResendInterval is the time to wait before resending a nacked message. Must be non-negative.
+	// ResendInterval is the time to wait before resending a nacked message. Must be non-negative. Defaults to 1s.
 	ResendInterval time.Duration
 }
 
@@ -33,6 +33,9 @@ func (c *SubscriberConfig) setDefaults() {
 	}
 	if c.PollInterval == 0 {
 		c.PollInterval = 5 * time.Second
+	}
+	if c.ResendInterval == 0 {
+		c.ResendInterval = time.Second
 	}
 }
 
@@ -145,6 +148,8 @@ func (s *Subscriber) sendMessage(
 	logger watermill.LoggerAdapter,
 ) {
 
+	originalMsg := msg
+
 ResendLoop:
 	for {
 		logger = logger.With(watermill.LogFields{
@@ -162,6 +167,12 @@ ResendLoop:
 		select {
 		case <-msg.Acked():
 			logger.Debug("Message acked", nil)
+			err := s.config.Adapter.MarkAcked(ctx, originalMsg, s.config.ConsumerGroup)
+			if err != nil {
+				logger.Error("could not mark message as acked", err, watermill.LogFields{
+					"consumer_group": s.config.ConsumerGroup,
+				})
+			}
 			return
 
 		case <-msg.Nacked():

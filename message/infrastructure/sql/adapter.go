@@ -22,7 +22,7 @@ type SQLAdapter interface {
 	// todo: implement only once
 	PopMessage(ctx context.Context, topic string, consumerGroup string) (*message.Message, error)
 
-	// MarkRead is called by the Subscriber once the message (or its resent copy) has been acked.
+	// MarkAcked is called by the Subscriber once the message (or its resent copy) has been acked.
 	// PopMessage should not return messages that have been marked as read.
-	MarkRead(ctx context.Context, msg *message.Message, consumerGroup string) error
+	MarkAcked(ctx context.Context, msg *message.Message, consumerGroup string) error
 }

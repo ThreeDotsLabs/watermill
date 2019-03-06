@@ -66,7 +66,7 @@ type MySQLDefaultAdapter struct {
 	insertOffsetStmt *sql.Stmt
 
 	// messageOffsets saves the offset retrieved for database for each message that PopMessage returns.
-	// when MarkRead is called with the message, we know what offset to save.
+	// when MarkAcked is called with the message, we know what offset to save.
 	messageOffsetsLock *sync.Mutex
 	messageOffsets     map[*message.Message]int64
 }
@@ -275,7 +275,7 @@ func (a *MySQLDefaultAdapter) unmarshal(row *sql.Row) (*message.Message, int64, 
 	return msg, dest.Offset, nil
 }
 
-func (a *MySQLDefaultAdapter) MarkRead(ctx context.Context, msg *message.Message, consumerGroup string) (err error) {
+func (a *MySQLDefaultAdapter) MarkAcked(ctx context.Context, msg *message.Message, consumerGroup string) (err error) {
 	var tx *sql.Tx
 	tx, err = a.db.BeginTx(ctx, nil)
 	defer func() {
