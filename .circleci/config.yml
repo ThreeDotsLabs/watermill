@@ -7,8 +7,7 @@ jobs:
       - checkout
       - run: go build ./...
   tests:
-    machine:
-      image: circleci/golang:1.11
+    machine: true
     steps:
       - checkout
       - run:
