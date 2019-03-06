@@ -6,3 +6,21 @@ jobs:
     steps:
       - checkout
       - run: go build ./...
+  tests:
+    docker:
+      - image: circleci/golang:1.11
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run:
+          name: Prepare Docker Compose
+          run: |
+            cp ./.ci/docker-compose.override.yml .
+            docker-compose pull -q
+      - run:
+          name: Run Docker Compose
+          run: docker-compose up -d
+      - run:
+          name: Wait for services
+          run: docker-compose run watermill ./.ci/wait-for-services.sh
+      - run: docker-compose run watermill go test ./... -short
