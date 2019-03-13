@@ -1,6 +1,8 @@
 package cqrs
 
 import (
+	"context"
+
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
@@ -30,11 +32,13 @@ func NewEventBus(
 }
 
 // Send sends command to the event bus.
-func (c EventBus) Publish(event interface{}) error {
+func (c EventBus) Publish(ctx context.Context, event interface{}) error {
 	msg, err := c.marshaler.Marshal(event)
 	if err != nil {
 		return err
 	}
+
+	msg.SetContext(ctx)
 
 	return c.publisher.Publish(c.topic, msg)
 }
