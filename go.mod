@@ -6,6 +6,7 @@ require (
 	github.com/cenkalti/backoff v2.1.1+incompatible
 	github.com/go-chi/chi v4.0.2+incompatible
 	github.com/gogo/protobuf v1.2.1
+	github.com/golang/protobuf v1.2.1-0.20190205222052-c823c79ea157
 	github.com/google/uuid v1.1.1
 	github.com/hashicorp/go-multierror v1.0.0
 	github.com/nats-io/go-nats v1.7.2 // indirect
