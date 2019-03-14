@@ -3,7 +3,7 @@ tests_steps: &tests_steps
   steps:
     - checkout
     - restore_cache:
-      key: '{{ .Branch }}-{{ .Revision }}'
+        key: '{{ .Branch }}-{{ .Revision }}'
     - run:
         name: Prepare Docker Compose
         command: |
@@ -28,10 +28,11 @@ jobs:
     steps:
       - checkout
       - run: go build ./...
+      - run: cp -r $GOPATH/pkg/mod/. .mod-cache
       - save_cache:
           key: '{{ .Branch }}-{{ .Revision }}'
           paths:
-            - $GOPATH/pkg/mod
+            - .mod-cache
   tests_full:
     <<: *tests_steps
 
