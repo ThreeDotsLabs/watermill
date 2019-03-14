@@ -51,14 +51,14 @@ workflows:
     jobs:
       - build
       - tests_full:
-          filter:
+          filters:
             branches:
               only:
                 - master
           requires:
             - build
       - tests_short:
-          filter:
+          filters:
             branches:
               ignore:
                 - master
