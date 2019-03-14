@@ -15,7 +15,7 @@ tests_steps: &tests_steps
     - run:
         name: Wait for services
         command: docker-compose run watermill ./.circleci/wait-for-services.sh
-    - run: echo Running tests with flags: $TEST_FLAGS
+    - run: "echo Running tests with flags: $TEST_FLAGS"
     - run:
         name: Run tests
         command: docker-compose run watermill go test ./... $TEST_FLAGS
