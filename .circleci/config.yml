@@ -2,29 +2,68 @@ version: 2
 jobs:
   build:
     docker:
-      - image: golang:1.11
+      - image: golang:1.12
     steps:
       - checkout
       - run: go build ./...
-  tests:
-    machine: true
-    steps:
-      - checkout
-      - run:
-          name: Prepare Docker Compose
-          command: |
-            cp ./.ci/docker-compose.override.yml .
-            docker-compose pull
-      - run:
-          name: Run Docker Compose
-          command: docker-compose up -d
-      - run:
-          name: Wait for services
-          command: docker-compose run watermill ./.ci/wait-for-services.sh
-      - run: docker-compose run watermill go test ./... -short
+      - save_cache:
+          key: '{{ .Branch }}-{{ .Revision }}'
+          paths:
+            - $GOPATH/pkg/mod
+  tests_full:
+    <<: *tests_steps
+
+  tests_short:
+    <<: *tests_steps
+    environment:
+      TEST_FLAGS: "-short"
+
+  tests_race:
+    <<: *tests_steps
+    environment:
+      TEST_FLAGS: "-short -race"
+
 workflows:
   version: 2
   build_and_tests:
     jobs:
       - build
-      - tests
+      - tests_full:
+          filter:
+            branches:
+              only:
+                - master
+          requires:
+            - build
+      - tests_short:
+          filter:
+            branches:
+              ignore:
+                - master
+          requires:
+            - build
+      - tests_race:
+          requires:
+            - build
+
+tests_steps: &tests_steps
+  machine: true
+  steps:
+    - checkout
+    - restore_cache:
+      key: '{{ .Branch }}-{{ .Revision }}'
+    - run:
+        name: Prepare Docker Compose
+        command: |
+          cp ./.circleci/docker-compose.override.yml .
+          docker-compose pull
+    - run:
+        name: Run Docker Compose
+        command: docker-compose up -d
+    - run:
+        name: Wait for services
+        command: docker-compose run watermill ./.circleci/wait-for-services.sh
+    - run: echo Running tests with flags: $TEST_FLAGS
+    - run:
+        name: Run tests
+        command: docker-compose run watermill go test ./... $TEST_FLAGS
