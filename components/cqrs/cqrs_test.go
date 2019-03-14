@@ -1,15 +1,17 @@
 package cqrs_test
 
 import (
+	"context"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/components/cqrs"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/gochannel"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 // TestCQRS is functional test of CQRS command handler and event handler.
@@ -22,23 +24,23 @@ func TestCQRS(t *testing.T) {
 	router, cqrsFacade := createRouterAndFacade(ts, t, captureCommandHandler, captureEventHandler)
 
 	pointerCmd := &TestCommand{ID: watermill.NewULID()}
-	require.NoError(t, cqrsFacade.CommandBus().Send(pointerCmd))
+	require.NoError(t, cqrsFacade.CommandBus().Send(context.Background(), pointerCmd))
 	assert.EqualValues(t, []interface{}{pointerCmd}, captureCommandHandler.HandledCommands())
 	captureCommandHandler.Reset()
 
 	nonPointerCmd := TestCommand{ID: watermill.NewULID()}
-	require.NoError(t, cqrsFacade.CommandBus().Send(nonPointerCmd))
+	require.NoError(t, cqrsFacade.CommandBus().Send(context.Background(), nonPointerCmd))
 	// command is always unmarshaled to pointer value
 	assert.EqualValues(t, []interface{}{&nonPointerCmd}, captureCommandHandler.HandledCommands())
 	captureCommandHandler.Reset()
 
 	pointerEvent := &TestEvent{ID: watermill.NewULID()}
-	require.NoError(t, cqrsFacade.EventBus().Publish(pointerEvent))
+	require.NoError(t, cqrsFacade.EventBus().Publish(context.Background(), pointerEvent))
 	assert.EqualValues(t, []interface{}{pointerEvent}, captureEventHandler.HandledEvents())
 	captureEventHandler.Reset()
 
 	nonPointerEvent := TestEvent{ID: watermill.NewULID()}
-	require.NoError(t, cqrsFacade.EventBus().Publish(nonPointerEvent))
+	require.NoError(t, cqrsFacade.EventBus().Publish(context.Background(), nonPointerEvent))
 	// event is always unmarshaled to pointer value
 	assert.EqualValues(t, []interface{}{&nonPointerEvent}, captureEventHandler.HandledEvents())
 	captureEventHandler.Reset()
@@ -126,7 +128,7 @@ func (CaptureCommandHandler) NewCommand() interface{} {
 	return &TestCommand{}
 }
 
-func (h *CaptureCommandHandler) Handle(cmd interface{}) error {
+func (h *CaptureCommandHandler) Handle(ctx context.Context, cmd interface{}) error {
 	h.handledCommands = append(h.handledCommands, cmd.(*TestCommand))
 	return nil
 }
@@ -152,7 +154,7 @@ func (CaptureEventHandler) NewEvent() interface{} {
 	return &TestEvent{}
 }
 
-func (h *CaptureEventHandler) Handle(cmd interface{}) error {
-	h.handledEvents = append(h.handledEvents, cmd.(*TestEvent))
+func (h *CaptureEventHandler) Handle(ctx context.Context, event interface{}) error {
+	h.handledEvents = append(h.handledEvents, event.(*TestEvent))
 	return nil
 }

@@ -1,6 +1,8 @@
 package cqrs
 
 import (
+	"context"
+
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
@@ -30,11 +32,13 @@ func NewCommandBus(
 }
 
 // Send sends command to the command bus.
-func (c CommandBus) Send(cmd interface{}) error {
+func (c CommandBus) Send(ctx context.Context, cmd interface{}) error {
 	msg, err := c.marshaler.Marshal(cmd)
 	if err != nil {
 		return err
 	}
+
+	msg.SetContext(ctx)
 
 	return c.publisher.Publish(c.topic, msg)
 }

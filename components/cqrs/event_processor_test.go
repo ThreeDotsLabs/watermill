@@ -1,6 +1,7 @@
 package cqrs_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/pkg/errors"
@@ -19,7 +20,7 @@ func (nonPointerEventProcessor) NewEvent() interface{} {
 	return TestEvent{}
 }
 
-func (nonPointerEventProcessor) Handle(cmd interface{}) error {
+func (nonPointerEventProcessor) Handle(ctx context.Context, cmd interface{}) error {
 	panic("not implemented")
 }
 
@@ -47,7 +48,7 @@ func (duplicateTestEventHandler1) NewEvent() interface{} {
 	return &TestEvent{}
 }
 
-func (h *duplicateTestEventHandler1) Handle(cmd interface{}) error { return nil }
+func (h *duplicateTestEventHandler1) Handle(ctx context.Context, event interface{}) error { return nil }
 
 type duplicateTestEventHandler2 struct{}
 
@@ -55,7 +56,7 @@ func (duplicateTestEventHandler2) NewEvent() interface{} {
 	return &TestEvent{}
 }
 
-func (h *duplicateTestEventHandler2) Handle(cmd interface{}) error { return nil }
+func (h *duplicateTestEventHandler2) Handle(ctx context.Context, event interface{}) error { return nil }
 
 func TestEventProcessor_multiple_same_event_handlers(t *testing.T) {
 	ts := NewTestServices()

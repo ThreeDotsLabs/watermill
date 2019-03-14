@@ -1,6 +1,7 @@
 package cqrs
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/pkg/errors"
@@ -16,7 +17,7 @@ import (
 // In contrast to CommandHandler, every Event can have multiple EventHandlers.
 type EventHandler interface {
 	NewEvent() interface{}
-	Handle(event interface{}) error
+	Handle(ctx context.Context, event interface{}) error
 }
 
 // EventProcessor determines which EventHandler should handle event received from event bus.
@@ -115,7 +116,7 @@ func (p EventProcessor) RouterHandlerFunc(handler EventHandler) (message.Handler
 			return nil, err
 		}
 
-		if err := handler.Handle(event); err != nil {
+		if err := handler.Handle(msg.Context(), event); err != nil {
 			return nil, err
 		}
 
