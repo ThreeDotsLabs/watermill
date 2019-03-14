@@ -20,6 +20,7 @@ tests_steps: &tests_steps
     - run:
         name: Run tests
         command: docker-compose run watermill go test ./... $TEST_FLAGS
+        no_output_timeout: 30m
 
 version: 2
 jobs:
