@@ -37,6 +37,11 @@ jobs:
   tests_full:
     <<: *tests_steps
 
+  tests_stress:
+    <<: *tests_steps
+    environment:
+      TEST_FLAGS: "-tags=stress"
+
   tests_short:
     <<: *tests_steps
     environment:
@@ -53,6 +58,13 @@ workflows:
     jobs:
       - build
       - tests_full:
+          filters:
+            branches:
+              only:
+                - master
+          requires:
+            - build
+      - tests_stress:
           filters:
             branches:
               only:
