@@ -1,5 +1,5 @@
 # Watermill
-[![Build Status](https://gitlab.com/threedotslabs/watermill/badges/master/build.svg)](https://gitlab.com/threedotslabs/watermill/pipelines)
+[![CircleCI](https://circleci.com/gh/ThreeDotsLabs/watermill/tree/master.svg?style=svg)](https://circleci.com/gh/ThreeDotsLabs/watermill/tree/master)
 [![Go Report Card](https://goreportcard.com/badge/github.com/ThreeDotsLabs/watermill)](https://goreportcard.com/report/github.com/ThreeDotsLabs/watermill)
 [![codecov](https://codecov.io/gh/ThreeDotsLabs/watermill/branch/master/graph/badge.svg)](https://codecov.io/gh/ThreeDotsLabs/watermill)
 
