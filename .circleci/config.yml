@@ -29,6 +29,7 @@ jobs:
       - checkout
       - run: go build ./...
       - run: cp -r $GOPATH/pkg/mod/. .mod-cache
+      - run: chmod -R 777 .mod-cache
       - save_cache:
           key: '{{ .Branch }}-{{ .Revision }}'
           paths:
