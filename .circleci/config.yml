@@ -1,3 +1,25 @@
+tests_steps: &tests_steps
+  machine: true
+  steps:
+    - checkout
+    - restore_cache:
+      key: '{{ .Branch }}-{{ .Revision }}'
+    - run:
+        name: Prepare Docker Compose
+        command: |
+          cp ./.circleci/docker-compose.override.yml .
+          docker-compose pull
+    - run:
+        name: Run Docker Compose
+        command: docker-compose up -d
+    - run:
+        name: Wait for services
+        command: docker-compose run watermill ./.circleci/wait-for-services.sh
+    - run: echo Running tests with flags: $TEST_FLAGS
+    - run:
+        name: Run tests
+        command: docker-compose run watermill go test ./... $TEST_FLAGS
+
 version: 2
 jobs:
   build:
@@ -45,25 +67,3 @@ workflows:
       - tests_race:
           requires:
             - build
-
-tests_steps: &tests_steps
-  machine: true
-  steps:
-    - checkout
-    - restore_cache:
-      key: '{{ .Branch }}-{{ .Revision }}'
-    - run:
-        name: Prepare Docker Compose
-        command: |
-          cp ./.circleci/docker-compose.override.yml .
-          docker-compose pull
-    - run:
-        name: Run Docker Compose
-        command: docker-compose up -d
-    - run:
-        name: Wait for services
-        command: docker-compose run watermill ./.circleci/wait-for-services.sh
-    - run: echo Running tests with flags: $TEST_FLAGS
-    - run:
-        name: Run tests
-        command: docker-compose run watermill go test ./... $TEST_FLAGS
