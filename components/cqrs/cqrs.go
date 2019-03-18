@@ -3,18 +3,20 @@ package cqrs
 import (
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
-	multierror "github.com/hashicorp/go-multierror"
+	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 )
 
 type FacadeConfig struct {
-	CommandsTopic   string
-	CommandHandlers func(commandBus *CommandBus, eventBus *EventBus) []CommandHandler
-	CommandsPubSub  message.PubSub
+	CommandsTopic                 string
+	CommandHandlers               func(commandBus *CommandBus, eventBus *EventBus) []CommandHandler
+	CommandsPublisher             message.Publisher
+	CommandsSubscriberConstructor CommandsSubscriberConstructor
 
-	EventsTopic   string
-	EventHandlers func(commandBus *CommandBus, eventBus *EventBus) []EventHandler
-	EventsPubSub  message.PubSub
+	EventsTopic                 string
+	EventHandlers               func(commandBus *CommandBus, eventBus *EventBus) []EventHandler
+	EventsPublisher             message.Publisher
+	EventsSubscriberConstructor EventsSubscriberConstructor
 
 	Router                *message.Router
 	Logger                watermill.LoggerAdapter
@@ -28,16 +30,22 @@ func (c FacadeConfig) Validate() error {
 		if c.CommandsTopic == "" {
 			err = multierror.Append(err, errors.New("CommandsTopic is empty"))
 		}
-		if c.CommandsPubSub == nil {
-			err = multierror.Append(err, errors.New("CommandsPubSub is nil"))
+		if c.CommandsSubscriberConstructor == nil {
+			err = multierror.Append(err, errors.New("CommandsSubscriberConstructor is nil"))
+		}
+		if c.CommandsPublisher == nil {
+			err = multierror.Append(err, errors.New("CommandsPublisher is nil"))
 		}
 	}
 	if c.EventsEnabled() {
 		if c.EventsTopic == "" {
 			err = multierror.Append(err, errors.New("EventsTopic is empty"))
 		}
-		if c.EventsPubSub == nil {
-			err = multierror.Append(err, errors.New("EventsPubSub is nil"))
+		if c.EventsSubscriberConstructor == nil {
+			err = multierror.Append(err, errors.New("EventsSubscriberConstructor is nil"))
+		}
+		if c.EventsPublisher == nil {
+			err = multierror.Append(err, errors.New("EventsPublisher is nil"))
 		}
 	}
 
@@ -55,11 +63,11 @@ func (c FacadeConfig) Validate() error {
 }
 
 func (c FacadeConfig) EventsEnabled() bool {
-	return c.EventsTopic != "" || c.EventsPubSub != nil
+	return c.EventsTopic != "" || c.EventsPublisher != nil || c.EventsSubscriberConstructor != nil
 }
 
 func (c FacadeConfig) CommandsEnabled() bool {
-	return c.CommandsTopic != "" || c.CommandsPubSub != nil
+	return c.CommandsTopic != "" || c.CommandsPublisher != nil || c.CommandsSubscriberConstructor != nil
 }
 
 // Facade is a facade for creating the Command and Event buses and processors.
@@ -107,12 +115,12 @@ func NewFacade(config FacadeConfig) (*Facade, error) {
 	}
 
 	if config.CommandsEnabled() {
-		c.commandBus = NewCommandBus(config.CommandsPubSub, config.CommandsTopic, config.CommandEventMarshaler)
+		c.commandBus = NewCommandBus(config.CommandsPublisher, config.CommandsTopic, config.CommandEventMarshaler)
 	} else {
 		config.Logger.Info("Empty CommandsTopic, command bus will be not created", nil)
 	}
 	if config.EventsEnabled() {
-		c.eventBus = NewEventBus(config.EventsPubSub, config.EventsTopic, config.CommandEventMarshaler)
+		c.eventBus = NewEventBus(config.EventsPublisher, config.EventsTopic, config.CommandEventMarshaler)
 	} else {
 		config.Logger.Info("Empty EventsTopic, event bus will be not created", nil)
 	}
@@ -121,7 +129,7 @@ func NewFacade(config FacadeConfig) (*Facade, error) {
 		commandProcessor := NewCommandProcessor(
 			config.CommandHandlers(c.commandBus, c.eventBus),
 			config.CommandsTopic,
-			config.CommandsPubSub,
+			config.CommandsSubscriberConstructor,
 			config.CommandEventMarshaler,
 			config.Logger,
 		)
@@ -135,7 +143,7 @@ func NewFacade(config FacadeConfig) (*Facade, error) {
 		eventProcessor := NewEventProcessor(
 			config.EventHandlers(c.commandBus, c.eventBus),
 			config.EventsTopic,
-			config.EventsPubSub,
+			config.EventsSubscriberConstructor,
 			config.CommandEventMarshaler,
 			config.Logger,
 		)

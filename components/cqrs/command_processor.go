@@ -18,20 +18,23 @@ type CommandHandler interface {
 	Handle(cmd interface{}) error
 }
 
+type CommandsSubscriberConstructor func(handlerName string) (message.Subscriber, error)
+
 // CommandProcessor determines which CommandHandler should handle the command received from the command bus.
 type CommandProcessor struct {
 	handlers      []CommandHandler
 	commandsTopic string
 
-	subscriber message.Subscriber
-	marshaler  CommandEventMarshaler
-	logger     watermill.LoggerAdapter
+	subscriberConstructor CommandsSubscriberConstructor
+
+	marshaler CommandEventMarshaler
+	logger    watermill.LoggerAdapter
 }
 
 func NewCommandProcessor(
 	handlers []CommandHandler,
 	commandsTopic string,
-	subscriber message.Subscriber,
+	subscriberConstructor CommandsSubscriberConstructor,
 	marshaler CommandEventMarshaler,
 	logger watermill.LoggerAdapter,
 ) *CommandProcessor {
@@ -41,8 +44,8 @@ func NewCommandProcessor(
 	if commandsTopic == "" {
 		panic("empty commandsTopic name")
 	}
-	if subscriber == nil {
-		panic("missing subscriber")
+	if subscriberConstructor == nil {
+		panic("missing subscriberConstructor")
 	}
 	if marshaler == nil {
 		panic("missing marshaler")
@@ -54,7 +57,7 @@ func NewCommandProcessor(
 	return &CommandProcessor{
 		handlers,
 		commandsTopic,
-		subscriber,
+		subscriberConstructor,
 		marshaler,
 		logger,
 	}
@@ -63,22 +66,30 @@ func NewCommandProcessor(
 func (p CommandProcessor) AddHandlersToRouter(r *message.Router) error {
 	for i := range p.Handlers() {
 		handler := p.handlers[i]
-		commandName := p.marshaler.Name(handler.NewCommand())
 
-		handlerFunc, err := p.RouterHandlerFunc(handler)
+		commandName := p.marshaler.Name(handler.NewCommand())
+		handlerName := fmt.Sprintf("command_processor-%s", commandName) // todo - should be passed implicit!
+
+		logger := p.logger.With(watermill.LogFields{"handler_name": handlerName})
+
+		handlerFunc, err := p.RouterHandlerFunc(handler, logger)
 		if err != nil {
 			return err
 		}
 
-		handlerName := fmt.Sprintf("command_processor-%s", commandName)
-		p.logger.Debug("Adding CQRS handler to router", watermill.LogFields{
+		logger.Debug("Adding CQRS handler to router", watermill.LogFields{
 			"handler_name": handlerName,
 		})
+
+		subscriber, err := p.subscriberConstructor(handlerName)
+		if err != nil {
+			return errors.Wrap(err, "cannot create subscriber for command processor")
+		}
 
 		r.AddNoPublisherHandler(
 			handlerName,
 			p.commandsTopic,
-			p.subscriber,
+			subscriber,
 			handlerFunc,
 		)
 	}
@@ -90,7 +101,7 @@ func (p CommandProcessor) Handlers() []CommandHandler {
 	return p.handlers
 }
 
-func (p CommandProcessor) RouterHandlerFunc(handler CommandHandler) (message.HandlerFunc, error) {
+func (p CommandProcessor) RouterHandlerFunc(handler CommandHandler, logger watermill.LoggerAdapter) (message.HandlerFunc, error) {
 	cmd := handler.NewCommand()
 	cmdName := p.marshaler.Name(cmd)
 
@@ -103,7 +114,7 @@ func (p CommandProcessor) RouterHandlerFunc(handler CommandHandler) (message.Han
 		messageCmdName := p.marshaler.NameFromMessage(msg)
 
 		if messageCmdName != cmdName {
-			p.logger.Trace("Received different command type than expected, ignoring", watermill.LogFields{
+			logger.Trace("Received different command type than expected, ignoring", watermill.LogFields{
 				"message_uuid":          msg.UUID,
 				"expected_command_type": cmdName,
 				"received_command_type": messageCmdName,
@@ -111,7 +122,7 @@ func (p CommandProcessor) RouterHandlerFunc(handler CommandHandler) (message.Han
 			return nil, nil
 		}
 
-		p.logger.Debug("Handling command", watermill.LogFields{
+		logger.Debug("Handling command", watermill.LogFields{
 			"message_uuid":          msg.UUID,
 			"received_command_type": messageCmdName,
 		})
@@ -121,6 +132,7 @@ func (p CommandProcessor) RouterHandlerFunc(handler CommandHandler) (message.Han
 		}
 
 		if err := handler.Handle(cmd); err != nil {
+			logger.Debug("Error when handling command", watermill.LogFields{"err": err})
 			return nil, err
 		}
 

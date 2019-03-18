@@ -19,20 +19,23 @@ type EventHandler interface {
 	Handle(event interface{}) error
 }
 
+type EventsSubscriberConstructor func(handlerName string) (message.Subscriber, error)
+
 // EventProcessor determines which EventHandler should handle event received from event bus.
 type EventProcessor struct {
 	handlers    []EventHandler
 	eventsTopic string
 
-	subscriber message.Subscriber
-	marshaler  CommandEventMarshaler
-	logger     watermill.LoggerAdapter
+	subscriberConstructor EventsSubscriberConstructor
+
+	marshaler CommandEventMarshaler
+	logger    watermill.LoggerAdapter
 }
 
 func NewEventProcessor(
 	handlers []EventHandler,
 	eventsTopic string,
-	subscriber message.Subscriber,
+	subscriberConstructor EventsSubscriberConstructor,
 	marshaler CommandEventMarshaler,
 	logger watermill.LoggerAdapter,
 ) *EventProcessor {
@@ -42,8 +45,8 @@ func NewEventProcessor(
 	if eventsTopic == "" {
 		panic("empty eventsTopic")
 	}
-	if subscriber == nil {
-		panic("missing subscriber")
+	if subscriberConstructor == nil {
+		panic("missing subscriberConstructor")
 	}
 	if marshaler == nil {
 		panic("missing marshaler")
@@ -55,7 +58,7 @@ func NewEventProcessor(
 	return &EventProcessor{
 		handlers,
 		eventsTopic,
-		subscriber,
+		subscriberConstructor,
 		marshaler,
 		logger,
 	}
@@ -65,15 +68,26 @@ func (p EventProcessor) AddHandlersToRouter(r *message.Router) error {
 	for i := range p.Handlers() {
 		handler := p.handlers[i]
 
-		handlerFunc, err := p.RouterHandlerFunc(handler)
+		handlerName := fmt.Sprintf("event_processor-%s", ObjectName(handler))
+
+		logger := p.logger.With(watermill.LogFields{"handler_name": handlerName})
+
+		handlerFunc, err := p.RouterHandlerFunc(handler, logger)
 		if err != nil {
 			return err
 		}
 
+		// todo - should be passed implicit!
+		// todo - doc it really well how it is executed
+		subscriber, err := p.subscriberConstructor(handlerName)
+		if err != nil {
+			return errors.Wrap(err, "cannot create subscriber for event processor")
+		}
+
 		r.AddNoPublisherHandler(
-			fmt.Sprintf("event_processor-%s", ObjectName(handler)),
+			handlerName,
 			p.eventsTopic,
-			p.subscriber,
+			subscriber,
 			handlerFunc,
 		)
 	}
@@ -85,7 +99,7 @@ func (p EventProcessor) Handlers() []EventHandler {
 	return p.handlers
 }
 
-func (p EventProcessor) RouterHandlerFunc(handler EventHandler) (message.HandlerFunc, error) {
+func (p EventProcessor) RouterHandlerFunc(handler EventHandler, logger watermill.LoggerAdapter) (message.HandlerFunc, error) {
 	initEvent := handler.NewEvent()
 	expectedEventName := p.marshaler.Name(initEvent)
 
@@ -98,7 +112,7 @@ func (p EventProcessor) RouterHandlerFunc(handler EventHandler) (message.Handler
 		messageEventName := p.marshaler.NameFromMessage(msg)
 
 		if messageEventName != expectedEventName {
-			p.logger.Trace("Received different event type than expected, ignoring", watermill.LogFields{
+			logger.Trace("Received different event type than expected, ignoring", watermill.LogFields{
 				"message_uuid":        msg.UUID,
 				"expected_event_type": expectedEventName,
 				"received_event_type": messageEventName,
@@ -106,7 +120,7 @@ func (p EventProcessor) RouterHandlerFunc(handler EventHandler) (message.Handler
 			return nil, nil
 		}
 
-		p.logger.Debug("Handling event", watermill.LogFields{
+		logger.Debug("Handling event", watermill.LogFields{
 			"message_uuid":        msg.UUID,
 			"received_event_type": messageEventName,
 		})

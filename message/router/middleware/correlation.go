@@ -19,6 +19,25 @@ func CorrelationID(h message.HandlerFunc) message.HandlerFunc {
 	}
 }
 
+func CorrelationIDWithAutogenerate(generateFunc func() string) message.HandlerMiddleware {
+	return func(h message.HandlerFunc) message.HandlerFunc {
+		return func(message *message.Message) ([]*message.Message, error) {
+			producedMessages, err := h(message)
+
+			correlationID := MessageCorrelationID(message)
+			if correlationID == "" {
+				correlationID = generateFunc()
+			}
+
+			for _, msg := range producedMessages {
+				SetCorrelationID(correlationID, msg)
+			}
+
+			return producedMessages, err
+		}
+	}
+}
+
 func MessageCorrelationID(message *message.Message) string {
 	return message.Metadata.Get(CorrelationIDMetadataKey)
 }
