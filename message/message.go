@@ -175,6 +175,8 @@ func (m *Message) SetContext(ctx context.Context) {
 // The context is not propagated to the copy.
 func (m *Message) Copy() *Message {
 	msg := NewMessage(m.UUID, m.Payload)
-	msg.Metadata = m.Metadata
+	for k, v := range m.Metadata {
+		msg.Metadata.Set(k, v)
+	}
 	return msg
 }

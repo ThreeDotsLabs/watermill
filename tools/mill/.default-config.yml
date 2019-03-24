@@ -1,0 +1,40 @@
+# These are the current default settings for the Watermill CLI tool.
+# Use them as a template for your own config
+log: false
+trace: false
+debug: false
+
+amqp:
+  uri: ""
+  durable: true
+  consume:
+    exchange: ""
+    queue: ""
+  produce:
+    exchange: ""
+    exchangetype: fanout
+    routingkey: ""
+
+googlecloud:
+  projectid: ""
+  topic: ""
+  consume:
+    subscription: ""
+  produce:
+  subscription:
+    add:
+      ackdeadline: 10s
+      labels: ""
+      retainacked: false
+      retentionduration: 168h0m0s
+    rm:
+      # no flags for rm yet
+
+kafka:
+  brokers: []
+  topic: ""
+  consume:
+    consumergroup: ""
+    frombeginning: false
+  produce:
+    # no flags for produce yet

@@ -4,11 +4,11 @@ import (
 	"crypto/tls"
 	"time"
 
+	multierror "github.com/hashicorp/go-multierror"
 	"github.com/streadway/amqp"
 
 	"github.com/cenkalti/backoff"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 )
 
@@ -199,9 +199,6 @@ func (c Config) validate() error {
 	if c.Marshaler == nil {
 		err = multierror.Append(err, errors.New("missing Config.Marshaler"))
 	}
-	if c.Publish.GenerateRoutingKey == nil {
-		err = multierror.Append(err, errors.New("missing Config.GenerateRoutingKey"))
-	}
 	if c.Exchange.GenerateName == nil {
 		err = multierror.Append(err, errors.New("missing Config.GenerateName"))
 	}
@@ -210,7 +207,13 @@ func (c Config) validate() error {
 }
 
 func (c Config) ValidatePublisher() error {
-	return c.validate()
+	err := c.validate()
+
+	if c.Publish.GenerateRoutingKey == nil {
+		err = multierror.Append(err, errors.New("missing Config.GenerateRoutingKey"))
+	}
+
+	return err
 }
 
 func (c Config) ValidateSubscriber() error {
