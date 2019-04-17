@@ -2,7 +2,7 @@ sql.Executor
 
 Particular instances may differ in:
 - schema
-- SQL statements (a consequence of different schema)
+- SQL statements (a consequence of different schema) (actually not quite, []interface{} may be used)
 - what values/structs the select is scanned onto (a consequence of different schema)
 - table names
 
@@ -47,4 +47,7 @@ Ideas:
 - jmoiron/sqlx allows for some elasticity, like the use of map[string]interface{} for named queries/inserts and so on.
 However, the code becomes somewhat muddy then. Not that with database/sql it's any better.
 
-
+Newer Ideas:
+- ACK may be performed by a separate Acker
+- Use []interface{} in insertArgs to enable more elasticity
+- Publisher takes a *sql.Tx, Subscriber takes a *sql.DB and manages Txs itself.
