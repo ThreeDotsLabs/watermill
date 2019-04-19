@@ -31,7 +31,7 @@ func NewEventBus(
 	return &EventBus{publisher, topic, marshaler}
 }
 
-// Send sends command to the event bus.
+// Publish sends event to the event bus.
 func (c EventBus) Publish(ctx context.Context, event interface{}) error {
 	msg, err := c.marshaler.Marshal(event)
 	if err != nil {
