@@ -17,7 +17,7 @@ func TestSubscriber_Subscribe(t *testing.T) {
 
 	sub, err := sql.NewSubscriber(
 		sql.SubscriberConfig{
-			Adapter:       getMySQLDefaultAdapter(t),
+			//Adapter:       getMySQLDefaultAdapter(t),
 			Logger:        logger,
 			ConsumerGroup: "cg6",
 			PollInterval:  time.Second,

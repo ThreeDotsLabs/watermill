@@ -20,15 +20,15 @@ var (
 	logger = watermill.NewStdLogger(false, false)
 )
 
-func newPubSub(t *testing.T, adapter sql.SQLAdapter, consumerGroup string) message.PubSub {
-	publisher, err := sql.NewPublisher(sql.PublisherConfig{
-		Adapter: adapter,
-	})
+func newPubSub(t *testing.T, db *std_sql.DB, consumerGroup string) message.PubSub {
+	publisher, err := sql.NewPublisher(
+		db,
+		sql.PublisherConfig{})
 	require.NoError(t, err)
 
 	subscriber, err := sql.NewSubscriber(
 		sql.SubscriberConfig{
-			Adapter:        adapter,
+			//Adapter:        adapter,
 			Logger:         logger,
 			ConsumerGroup:  consumerGroup,
 			PollInterval:   100 * time.Millisecond,
@@ -40,7 +40,7 @@ func newPubSub(t *testing.T, adapter sql.SQLAdapter, consumerGroup string) messa
 	return message.NewPubSub(publisher, subscriber)
 }
 
-func getMySQLDefaultAdapter(t *testing.T) sql.SQLAdapter {
+func newMySQL(t *testing.T) *std_sql.DB {
 	conf := driver.Config{
 		User:                 "root",
 		Passwd:               "",
@@ -53,17 +53,11 @@ func getMySQLDefaultAdapter(t *testing.T) sql.SQLAdapter {
 	require.NoError(t, err)
 
 	require.NoError(t, db.Ping(), "could not ping database")
-
-	adapter, err := sql.NewMySQLDefaultAdapter(db, sql.MySQLDefaultAdapterConf{
-		Logger: logger,
-	})
-	require.NoError(t, err)
-
-	return adapter
+	return db
 }
 
 func createPubSubWithConsumerGroup(t *testing.T, consumerGroup string) infrastructure.PubSub {
-	return newPubSub(t, getMySQLDefaultAdapter(t), consumerGroup).(infrastructure.PubSub)
+	return newPubSub(t, newMySQL(t), consumerGroup).(infrastructure.PubSub)
 }
 
 func createPubSub(t *testing.T) infrastructure.PubSub {

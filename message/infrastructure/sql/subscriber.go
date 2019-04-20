@@ -2,7 +2,6 @@ package sql
 
 import (
 	"context"
-	"database/sql"
 	"sync"
 	"time"
 
@@ -16,7 +15,7 @@ var (
 )
 
 type SubscriberConfig struct {
-	Adapter       SQLAdapter
+	//Adapter       SQLAdapter
 	Logger        watermill.LoggerAdapter
 	ConsumerGroup string
 
@@ -40,9 +39,9 @@ func (c *SubscriberConfig) setDefaults() {
 }
 
 func (c SubscriberConfig) validate() error {
-	if c.Adapter == nil {
-		return errors.New("adapter is nil")
-	}
+	//if c.Adapter == nil {
+	//	return errors.New("adapter is nil")
+	//}
 
 	// TODO: any restraint to prevent really quick polling? I think not, caveat programmator
 	if c.PollInterval <= 0 {
@@ -124,18 +123,18 @@ func (s *Subscriber) consume(ctx context.Context, topic string, out chan *messag
 			// go on querying
 		}
 
-		msg, err := s.config.Adapter.GetMessage(ctx, topic, s.config.ConsumerGroup)
-		if err != nil && errors.Cause(err) == sql.ErrNoRows {
-			// wait until polling for the next message
-			time.Sleep(s.config.PollInterval)
-			continue
-		}
-		if err != nil {
-			logger.Error("Could not scan rows from query", err, nil)
-			continue
-		}
+		//msg, err := s.config.Adapter.GetMessage(ctx, topic, s.config.ConsumerGroup)
+		//if err != nil && errors.Cause(err) == sql.ErrNoRows {
+		//	// wait until polling for the next message
+		//	time.Sleep(s.config.PollInterval)
+		//	continue
+		//}
+		//if err != nil {
+		//	logger.Error("Could not scan rows from query", err, nil)
+		//	continue
+		//}
 
-		s.sendMessage(ctx, msg, out, logger)
+		//s.sendMessage(ctx, msg, out, logger)
 	}
 }
 
@@ -148,7 +147,7 @@ func (s *Subscriber) sendMessage(
 	logger watermill.LoggerAdapter,
 ) {
 
-	originalMsg := msg
+	//originalMsg := msg
 
 ResendLoop:
 	for {
@@ -172,12 +171,12 @@ ResendLoop:
 		select {
 		case <-msg.Acked():
 			logger.Debug("Message acked", nil)
-			err := s.config.Adapter.MarkAcked(ctx, originalMsg, s.config.ConsumerGroup)
-			if err != nil {
-				logger.Error("could not mark message as acked", err, watermill.LogFields{
-					"consumer_group": s.config.ConsumerGroup,
-				})
-			}
+			//err := s.config.Adapter.MarkAcked(ctx, originalMsg, s.config.ConsumerGroup)
+			//if err != nil {
+			//	logger.Error("could not mark message as acked", err, watermill.LogFields{
+			//		"consumer_group": s.config.ConsumerGroup,
+			//	})
+			//}
 			return
 
 		case <-msg.Nacked():

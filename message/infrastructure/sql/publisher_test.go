@@ -12,9 +12,13 @@ import (
 )
 
 func TestPublisher_Publish(t *testing.T) {
-	pub, err := sql.NewPublisher(sql.PublisherConfig{
-		Adapter: getMySQLDefaultAdapter(t),
-	})
+	pub, err := sql.NewPublisher(
+		newMySQL(t),
+		sql.PublisherConfig{
+			Inserter: &sql.DefaultInserter{
+				Logger: watermill.NewStdLogger(true, true),
+			},
+		})
 	require.NoError(t, err)
 
 	msg := message.NewMessage(
