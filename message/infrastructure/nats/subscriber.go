@@ -246,10 +246,6 @@ func (s *StreamingSubscriber) Subscribe(ctx context.Context, topic string) (<-ch
 				s.logger.Error("Cannot close subscriber", err, subscriberLogFields)
 			}
 
-			// ugly fix for race conditions - subscriber can still receive messages after close
-			// there is (probably) no way to find that consumer already really stopped to work
-			time.Sleep(time.Millisecond * 100)
-
 			processMessagesWg.Wait()
 			close(output)
 			s.outputsWg.Done()
@@ -290,6 +286,10 @@ func (s *StreamingSubscriber) subscribe(
 			topic,
 			s.config.QueueGroup,
 			func(m *stan.Msg) {
+				if s.isClosed() {
+					return
+				}
+
 				processMessagesWg.Add(1)
 				defer processMessagesWg.Done()
 
