@@ -125,7 +125,7 @@ func TestPubSub(
 	})
 }
 
-var stressTestTestsCount = 10 // todo - change to 20 after splitting Pub/Subs to repos
+var stressTestTestsCount = 5 // todo - change to 20 after splitting Pub/Subs to repos
 
 func TestPubSubStressTest(
 	t *testing.T,
