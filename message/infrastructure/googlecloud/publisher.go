@@ -95,7 +95,7 @@ func (p *Publisher) Publish(topic string, messages ...*message.Message) error {
 		return err
 	}
 
-	logFields := make(watermill.LogFields, 3)
+	logFields := make(watermill.LogFields, 2)
 	logFields["topic"] = topic
 
 	for _, msg := range messages {

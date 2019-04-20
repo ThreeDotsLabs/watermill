@@ -37,6 +37,8 @@ func init() {
 	}
 }
 
+// RunOnlyFastTests returns true if -short flag was provided -race was not provided.
+// Useful for excluding some slow tests.
 func RunOnlyFastTests() bool {
 	return testing.Short() && !internal.RaceEnabled
 }
