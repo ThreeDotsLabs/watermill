@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ThreeDotsLabs/watermill/internal"
+
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/internal/tests"
 	"github.com/ThreeDotsLabs/watermill/message"
@@ -33,6 +35,10 @@ func init() {
 			break
 		}
 	}
+}
+
+func RunOnlyFastTests() bool {
+	return testing.Short() && !internal.RaceEnabled
 }
 
 type Features struct {

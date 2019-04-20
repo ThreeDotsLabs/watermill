@@ -75,7 +75,6 @@ type StreamingSubscriberConfig struct {
 }
 
 type StreamingSubscriberSubscriptionConfig struct {
-
 	// StanSubscriptionOptions are custom []stan.SubscriptionOption passed to subscription.
 	StanSubscriptionOptions []stan.SubscriptionOption
 
@@ -175,7 +174,7 @@ type StreamingSubscriber struct {
 	config StreamingSubscriberSubscriptionConfig
 
 	subs     []stan.Subscription
-	subsLock sync.Mutex
+	subsLock sync.RWMutex
 
 	closed  bool
 	closing chan struct{}
@@ -247,6 +246,10 @@ func (s *StreamingSubscriber) Subscribe(ctx context.Context, topic string) (<-ch
 				s.logger.Error("Cannot close subscriber", err, subscriberLogFields)
 			}
 
+			// ugly fix for race conditions - subscriber can still receive messages after close
+			// there is (probably) no way to find that consumer already really stopped to work
+			time.Sleep(time.Millisecond * 100)
+
 			processMessagesWg.Wait()
 			close(output)
 			s.outputsWg.Done()
@@ -314,7 +317,7 @@ func (s *StreamingSubscriber) processMessage(
 	output chan *message.Message,
 	logFields watermill.LogFields,
 ) {
-	if s.closed {
+	if s.isClosed() {
 		return
 	}
 
@@ -390,4 +393,11 @@ func (s *StreamingSubscriber) Close() error {
 	}
 
 	return result
+}
+
+func (s *StreamingSubscriber) isClosed() bool {
+	s.subsLock.RLock()
+	defer s.subsLock.RUnlock()
+
+	return s.closed
 }
