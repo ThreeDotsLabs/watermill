@@ -494,9 +494,7 @@ func TestContinueAfterErrors(t *testing.T, createPubSub PubSubConstructor, featu
 	require.NoError(t, err)
 
 	// only nacks was sent, so all messages should be consumed
-	receivedMessages, all := bulkRead(messages, totalMessagesCount, defaultTimeout, features)
-	assert.True(t, all)
-
+	receivedMessages, _ := bulkRead(messages, totalMessagesCount, defaultTimeout*6, features)
 	tests.AssertAllMessagesReceived(t, messagesToPublish, receivedMessages)
 }
 
