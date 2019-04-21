@@ -97,7 +97,7 @@ func NewSubscriber(db *sql.DB, conf SubscriberConfig) (*Subscriber, error) {
 		return nil, errors.Wrap(err, "invalid config")
 	}
 
-	ackStmt, err := db.Prepare(conf.Acker.AckQuery(conf.MessageOffsetsTable))
+	ackStmt, err := db.Prepare(conf.Acker.AckQuery(conf.MessageOffsetsTable, conf.ConsumerGroup))
 	if err != nil {
 		return nil, errors.Wrap(err, "could not prepare the ack statement")
 	}
@@ -200,10 +200,12 @@ func (s *Subscriber) query(
 	}()
 
 	selectStmt := tx.Stmt(s.selectStmt)
-
 	// todo: there might be some args to pass to the query (?) in what case?
 	row := selectStmt.QueryRowContext(ctx)
-	offset, msg, err := s.config.Selecter.UnmarshalMessage(row)
+
+	var offset int
+	var msg *message.Message
+	offset, msg, err = s.config.Selecter.UnmarshalMessage(row)
 	if errors.Cause(err) == sql.ErrNoRows {
 		// wait until polling for the next message
 		time.Sleep(s.config.PollInterval)
@@ -221,7 +223,9 @@ func (s *Subscriber) query(
 	acked := s.sendMessage(ctx, msg, out, logger)
 	if acked {
 		ackStmt := tx.Stmt(s.ackStmt)
-		ackArgs, err := s.config.Acker.AckArgs(offset, s.config.ConsumerGroup)
+
+		var ackArgs []interface{}
+		ackArgs, err = s.config.Acker.AckArgs(offset)
 		if err != nil {
 			return errors.Wrap(err, "could not get args for acking the message")
 		}

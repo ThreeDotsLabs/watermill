@@ -5,7 +5,8 @@ package sql
 type Acker interface {
 	// AckQuery returns the SQL query that will mark a message as read for a given consumer group.
 	// Subscriber will not return those messages again for this consumer group.
-	AckQuery(messageOffsetsTable string) string
+	AckQuery(messageOffsetsTable string, consumerGroup string) string
 	// AckArgs transforms the recovered message's offset and consumer group into the arguments put into AckQuery.
-	AckArgs(offset int, consumerGroup string) ([]interface{}, error)
+	// todo: there should be probably only one arg, and it's an int, so we could skip the whole AckArgs thing (?)
+	AckArgs(offset int) ([]interface{}, error)
 }
