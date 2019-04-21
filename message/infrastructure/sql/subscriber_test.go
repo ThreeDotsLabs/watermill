@@ -6,21 +6,22 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/sql"
 
 	"github.com/stretchr/testify/require"
 )
 
 func TestSubscriber_Subscribe(t *testing.T) {
-	logger := watermill.NewStdLogger(true, true)
+	schemaAdapter := &sql.DefaultSchema{Logger: logger}
 
 	sub, err := sql.NewSubscriber(
+		newMySQL(t),
 		sql.SubscriberConfig{
-			//Adapter:       getMySQLDefaultAdapter(t),
 			Logger:        logger,
 			ConsumerGroup: "cg6",
 			PollInterval:  time.Second,
+			Acker:         schemaAdapter,
+			Selecter:      schemaAdapter,
 		},
 	)
 	require.NoError(t, err)

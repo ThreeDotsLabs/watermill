@@ -12,12 +12,11 @@ import (
 )
 
 func TestPublisher_Publish(t *testing.T) {
+	schemaAdapter := &sql.DefaultSchema{Logger: logger}
 	pub, err := sql.NewPublisher(
 		newMySQL(t),
 		sql.PublisherConfig{
-			Inserter: &sql.DefaultInserter{
-				Logger: watermill.NewStdLogger(true, true),
-			},
+			Inserter: schemaAdapter,
 		})
 	require.NoError(t, err)
 

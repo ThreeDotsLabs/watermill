@@ -21,18 +21,23 @@ var (
 )
 
 func newPubSub(t *testing.T, db *std_sql.DB, consumerGroup string) message.PubSub {
+	schemaAdapter := &sql.DefaultSchema{Logger: logger}
 	publisher, err := sql.NewPublisher(
 		db,
-		sql.PublisherConfig{})
+		sql.PublisherConfig{
+			Inserter: schemaAdapter,
+		})
 	require.NoError(t, err)
 
 	subscriber, err := sql.NewSubscriber(
+		db,
 		sql.SubscriberConfig{
-			//Adapter:        adapter,
 			Logger:         logger,
 			ConsumerGroup:  consumerGroup,
 			PollInterval:   100 * time.Millisecond,
 			ResendInterval: 50 * time.Millisecond,
+			Acker:          schemaAdapter,
+			Selecter:       schemaAdapter,
 		},
 	)
 	require.NoError(t, err)

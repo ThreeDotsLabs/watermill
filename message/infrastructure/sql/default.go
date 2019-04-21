@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"strings"
-	"time"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
@@ -101,7 +100,7 @@ func (s *DefaultSchema) AckQuery(messageOffsetsTable string, consumerGroup strin
 	}
 
 	ackQ := strings.Join([]string{
-		`INSERT INTO`, messageOffsetsTable, `(offset, consumer_group) `,
+		`INSERT INTO `, messageOffsetsTable, ` (offset, consumer_group) `,
 		`VALUES (?, "`, consumerGroup, `") ON DUPLICATE KEY UPDATE offset=VALUES(offset)`,
 	}, "")
 
@@ -124,10 +123,10 @@ func (s *DefaultSchema) SelectQuery(messagesTable string, messagesAckedTable str
 
 	selectQ := strings.Join([]string{
 		`SELECT offset,uuid,payload,metadata FROM `, messagesTable,
-		`WHERE TOPIC=? AND `, messagesTable, `.offset > `,
-		`(SELECT COALESCE(MAX(`, messagesAckedTable, `.offset), 0) FROM `, messagesAckedTable,
-		`WHERE consumer_group=`, consumerGroup,
-		` ORDER BY {{.MessagesTable}}.offset ASC LIMIT 1`,
+		` WHERE TOPIC=? AND `, messagesTable, `.offset >`,
+		` (SELECT COALESCE(MAX(`, messagesAckedTable, `.offset), 0) FROM `, messagesAckedTable,
+		` WHERE consumer_group="`, consumerGroup, `")`,
+		` ORDER BY `, messagesTable, `.offset ASC LIMIT 1`,
 	}, "")
 
 	s.Logger.Info("Preparing query to select messages", watermill.LogFields{
@@ -138,17 +137,23 @@ func (s *DefaultSchema) SelectQuery(messagesTable string, messagesAckedTable str
 	return selectQ
 }
 
+func (s *DefaultSchema) SelectArgs(topic string) ([]interface{}, error) {
+	if len(topic) > 255 {
+		return nil, errors.New("the topic does not fit into VARCHAR(255)")
+	}
+	return []interface{}{topic}, nil
+}
+
 type defaultSchemaRow struct {
-	Offset    int64
-	UUID      []byte
-	CreatedAt time.Time
-	Payload   []byte
-	Metadata  []byte
+	Offset   int64
+	UUID     []byte
+	Payload  []byte
+	Metadata []byte
 }
 
 func (s *DefaultSchema) UnmarshalMessage(row *sql.Row) (offset int, msg *message.Message, err error) {
 	r := defaultSchemaRow{}
-	err = row.Scan(&r.Offset, &r.UUID, &r.CreatedAt, &r.Payload, &r.Metadata)
+	err = row.Scan(&r.Offset, &r.UUID, &r.Payload, &r.Metadata)
 	if err != nil {
 		return 0, nil, errors.Wrap(err, "could not scan message row")
 	}

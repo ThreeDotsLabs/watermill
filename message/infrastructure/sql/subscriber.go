@@ -200,8 +200,13 @@ func (s *Subscriber) query(
 	}()
 
 	selectStmt := tx.Stmt(s.selectStmt)
+	selectArgs, err := s.config.Selecter.SelectArgs(topic)
+	if err != nil {
+		return errors.Wrap(err, "could not get args for the select query")
+	}
+
 	// todo: there might be some args to pass to the query (?) in what case?
-	row := selectStmt.QueryRowContext(ctx)
+	row := selectStmt.QueryRowContext(ctx, selectArgs...)
 
 	var offset int
 	var msg *message.Message
