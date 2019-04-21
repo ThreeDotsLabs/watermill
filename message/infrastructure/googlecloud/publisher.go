@@ -100,7 +100,7 @@ func (p *Publisher) Publish(topic string, messages ...*message.Message) error {
 
 	for _, msg := range messages {
 		logFields["message_uuid"] = msg.UUID
-		p.config.Logger.Trace("Sending message to Google Pub/Sub", logFields)
+		p.config.Logger.Trace("Sending message to Google PubSub", logFields)
 
 		googlecloudMsg, err := p.config.Marshaler.Marshal(topic, msg)
 		if err != nil {
@@ -115,7 +115,7 @@ func (p *Publisher) Publish(topic string, messages ...*message.Message) error {
 			return errors.Wrapf(err, "publishing message %s failed", msg.UUID)
 		}
 
-		p.config.Logger.Trace("Message published to Google Pub/Sub", logFields)
+		p.config.Logger.Trace("Message published to Google PubSub", logFields)
 	}
 
 	return nil
@@ -123,8 +123,8 @@ func (p *Publisher) Publish(topic string, messages ...*message.Message) error {
 
 // Close notifies the Publisher to stop processing messages, send all the remaining messages and close the connection.
 func (p *Publisher) Close() error {
-	p.config.Logger.Info("Closing Google Pub/Sub publisher", nil)
-	defer p.config.Logger.Info("Google Pub/Sub publisher closed", nil)
+	p.config.Logger.Info("Closing Google PubSub publisher", nil)
+	defer p.config.Logger.Info("Google PubSub publisher closed", nil)
 
 	if p.closed {
 		return nil
