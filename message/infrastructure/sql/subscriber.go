@@ -162,64 +162,89 @@ func (s *Subscriber) consume(ctx context.Context, topic string, out chan *messag
 			// go on querying
 		}
 
-		// start the transaction
-		// it is finalized after the ACK is written
-		tx, err := s.db.BeginTx(ctx, nil)
+		err := s.query(ctx, topic, out, logger)
 		if err != nil {
-			logger.Error("Could not begin tx", err, nil)
+			logger.Error("Error querying for message", err, nil)
 			continue
 		}
 
-		selectStmt := tx.Stmt(s.selectStmt)
-		// todo: there might be some args to pass to the query (?) in what case?
-
-		row := selectStmt.QueryRowContext(ctx)
-		offset, msg, err := s.config.Selecter.UnmarshalMessage(row)
-		if errors.Cause(err) == sql.ErrNoRows {
-			// wait until polling for the next message
-			time.Sleep(s.config.PollInterval)
-		}
-
-		if err != nil {
-			logger.Error("Could not unmarshal message from query", err, nil)
-			continue
-		}
-
-		// todo: different acking strategies
-		consumed := s.sendMessage(ctx, offset, msg, out, logger)
-		if consumed {
-			err = tx.Commit()
-			if err != nil {
-				logger.Error("Could not commit read/ack transaction", err, nil)
-			}
-			return
-		}
-
-		err = tx.Rollback()
-		if err != nil {
-			logger.Error("Could not rollback read/ack transaction", err, nil)
-		}
 	}
 }
 
+func (s *Subscriber) query(
+	ctx context.Context,
+	topic string,
+	out chan *message.Message,
+	logger watermill.LoggerAdapter,
+) (err error) {
+	// start the transaction
+	// it is finalized after the ACK is written
+	var tx *sql.Tx
+	tx, err = s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return errors.Wrap(err, "could not begin tx for querying")
+	}
+
+	defer func() {
+		if err != nil {
+			rollbackErr := tx.Rollback()
+			if rollbackErr != nil {
+				logger.Error("could not rollback tx for querying message", rollbackErr, nil)
+			}
+		} else {
+			commitErr := tx.Commit()
+			if commitErr != nil {
+				logger.Error("could not commit tx for querying message", commitErr, nil)
+			}
+		}
+	}()
+
+	selectStmt := tx.Stmt(s.selectStmt)
+
+	// todo: there might be some args to pass to the query (?) in what case?
+	row := selectStmt.QueryRowContext(ctx)
+	offset, msg, err := s.config.Selecter.UnmarshalMessage(row)
+	if errors.Cause(err) == sql.ErrNoRows {
+		// wait until polling for the next message
+		time.Sleep(s.config.PollInterval)
+		return nil
+	}
+	if err != nil {
+		return errors.Wrap(err, "could not unmarshal message from query")
+	}
+
+	logger = logger.With(watermill.LogFields{
+		"msg_uuid": msg.UUID,
+	})
+
+	// todo: different acking strategies?
+	acked := s.sendMessage(ctx, msg, out, logger)
+	if acked {
+		ackStmt := tx.Stmt(s.ackStmt)
+		ackArgs, err := s.config.Acker.AckArgs(offset, s.config.ConsumerGroup)
+		if err != nil {
+			return errors.Wrap(err, "could not get args for acking the message")
+		}
+
+		_, err = ackStmt.ExecContext(ctx, ackArgs...)
+		if err != nil {
+			return errors.Wrap(err, "could not get args for acking the message")
+		}
+	}
+
+	return nil
+}
+
 // sendMessages sends messages on the output channel.
-// whenever a message is successfully sent and acked, the message's index is sent of the offsetCh.
 func (s *Subscriber) sendMessage(
 	ctx context.Context,
-	offset int,
 	msg *message.Message,
 	out chan *message.Message,
 	logger watermill.LoggerAdapter,
-) (consumed bool) {
-
-	//originalMsg := msg
+) (acked bool) {
 
 ResendLoop:
 	for {
-		logger = logger.With(watermill.LogFields{
-			"msg_uuid": msg.UUID,
-		})
-
 		select {
 		case out <- msg:
 		// message sent, go on
@@ -236,12 +261,6 @@ ResendLoop:
 		select {
 		case <-msg.Acked():
 			logger.Debug("Message acked", nil)
-			//err := s.config.Adapter.MarkAcked(ctx, originalMsg, s.config.ConsumerGroup)
-			//if err != nil {
-			//	logger.Error("could not mark message as acked", err, watermill.LogFields{
-			//		"consumer_group": s.config.ConsumerGroup,
-			//	})
-			//}
 			return true
 
 		case <-msg.Nacked():
