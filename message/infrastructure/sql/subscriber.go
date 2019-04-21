@@ -2,6 +2,7 @@ package sql
 
 import (
 	"context"
+	"database/sql"
 	"sync"
 	"time"
 
@@ -15,7 +16,6 @@ var (
 )
 
 type SubscriberConfig struct {
-	//Adapter       SQLAdapter
 	Logger        watermill.LoggerAdapter
 	ConsumerGroup string
 
@@ -24,6 +24,17 @@ type SubscriberConfig struct {
 
 	// ResendInterval is the time to wait before resending a nacked message. Must be non-negative. Defaults to 1s.
 	ResendInterval time.Duration
+
+	// MessagesTable is the name of the table that stores Watermill messages as rows. Defaults to `messages`.
+	MessagesTable string
+	// MessageOffsetsTable is the name of the table that stores the offsets of messages read by each consumer group.
+	// Defaults to `offsets_acked`.
+	MessageOffsetsTable string
+
+	// Acker serves to record which messages have already been received by which consumer group.
+	Acker Acker
+	// Selecter serves to retrieve the Watermill messages from the SQL storage.
+	Selecter Selecter
 }
 
 func (c *SubscriberConfig) setDefaults() {
@@ -36,20 +47,27 @@ func (c *SubscriberConfig) setDefaults() {
 	if c.ResendInterval == 0 {
 		c.ResendInterval = time.Second
 	}
+	if c.MessagesTable == "" {
+		c.MessagesTable = "messages"
+	}
+	if c.MessageOffsetsTable == "" {
+		c.MessageOffsetsTable = "offsets_acked"
+	}
 }
 
 func (c SubscriberConfig) validate() error {
-	//if c.Adapter == nil {
-	//	return errors.New("adapter is nil")
-	//}
-
 	// TODO: any restraint to prevent really quick polling? I think not, caveat programmator
 	if c.PollInterval <= 0 {
 		return errors.New("poll interval must be a positive duration")
 	}
-
 	if c.ResendInterval <= 0 {
 		return errors.New("resend interval must be a positive duration")
+	}
+	if c.Acker == nil {
+		return errors.New("acker is nil")
+	}
+	if c.Selecter == nil {
+		return errors.New("selecter is nil")
 	}
 
 	return nil
@@ -58,25 +76,46 @@ func (c SubscriberConfig) validate() error {
 // Subscriber makes SELECT queries on the chosen table with the interval defined in the config.
 // The rows are unmarshaled into Watermill messages.
 type Subscriber struct {
+	db     *sql.DB
 	config SubscriberConfig
 
 	subscribeWg *sync.WaitGroup
 	closing     chan struct{}
 	closed      bool
+
+	ackStmt    *sql.Stmt
+	selectStmt *sql.Stmt
 }
 
-func NewSubscriber(conf SubscriberConfig) (*Subscriber, error) {
+func NewSubscriber(db *sql.DB, conf SubscriberConfig) (*Subscriber, error) {
+	if db == nil {
+		return nil, errors.New("db is nil")
+	}
 	conf.setDefaults()
 	err := conf.validate()
 	if err != nil {
 		return nil, errors.Wrap(err, "invalid config")
 	}
 
+	ackStmt, err := db.Prepare(conf.Acker.AckQuery(conf.MessageOffsetsTable))
+	if err != nil {
+		return nil, errors.Wrap(err, "could not prepare the ack statement")
+	}
+
+	selectStmt, err := db.Prepare(conf.Selecter.SelectQuery(conf.MessagesTable, conf.MessageOffsetsTable, conf.ConsumerGroup))
+	if err != nil {
+		return nil, errors.Wrap(err, "could not prepare the select message statement")
+	}
+
 	sub := &Subscriber{
+		db:     db,
 		config: conf,
 
 		subscribeWg: &sync.WaitGroup{},
 		closing:     make(chan struct{}),
+
+		ackStmt:    ackStmt,
+		selectStmt: selectStmt,
 	}
 
 	return sub, nil
@@ -87,7 +126,7 @@ func (s *Subscriber) Subscribe(ctx context.Context, topic string) (o <-chan *mes
 		return nil, ErrSubscriberClosed
 	}
 
-	// propagate the information about closing subscriber through ctx
+	// the information about closing the subscriber is propagated through ctx
 	ctx, cancel := context.WithCancel(ctx)
 	out := make(chan *message.Message)
 
@@ -123,18 +162,43 @@ func (s *Subscriber) consume(ctx context.Context, topic string, out chan *messag
 			// go on querying
 		}
 
-		//msg, err := s.config.Adapter.GetMessage(ctx, topic, s.config.ConsumerGroup)
-		//if err != nil && errors.Cause(err) == sql.ErrNoRows {
-		//	// wait until polling for the next message
-		//	time.Sleep(s.config.PollInterval)
-		//	continue
-		//}
-		//if err != nil {
-		//	logger.Error("Could not scan rows from query", err, nil)
-		//	continue
-		//}
+		// start the transaction
+		// it is finalized after the ACK is written
+		tx, err := s.db.BeginTx(ctx, nil)
+		if err != nil {
+			logger.Error("Could not begin tx", err, nil)
+			continue
+		}
 
-		//s.sendMessage(ctx, msg, out, logger)
+		selectStmt := tx.Stmt(s.selectStmt)
+		// todo: there might be some args to pass to the query (?) in what case?
+
+		row := selectStmt.QueryRowContext(ctx)
+		offset, msg, err := s.config.Selecter.UnmarshalMessage(row)
+		if errors.Cause(err) == sql.ErrNoRows {
+			// wait until polling for the next message
+			time.Sleep(s.config.PollInterval)
+		}
+
+		if err != nil {
+			logger.Error("Could not unmarshal message from query", err, nil)
+			continue
+		}
+
+		// todo: different acking strategies
+		consumed := s.sendMessage(ctx, offset, msg, out, logger)
+		if consumed {
+			err = tx.Commit()
+			if err != nil {
+				logger.Error("Could not commit read/ack transaction", err, nil)
+			}
+			return
+		}
+
+		err = tx.Rollback()
+		if err != nil {
+			logger.Error("Could not rollback read/ack transaction", err, nil)
+		}
 	}
 }
 
@@ -142,10 +206,11 @@ func (s *Subscriber) consume(ctx context.Context, topic string, out chan *messag
 // whenever a message is successfully sent and acked, the message's index is sent of the offsetCh.
 func (s *Subscriber) sendMessage(
 	ctx context.Context,
+	offset int,
 	msg *message.Message,
 	out chan *message.Message,
 	logger watermill.LoggerAdapter,
-) {
+) (consumed bool) {
 
 	//originalMsg := msg
 
@@ -161,11 +226,11 @@ ResendLoop:
 
 		case <-s.closing:
 			logger.Info("Discarding queued message, subscriber closing", nil)
-			return
+			return false
 
 		case <-ctx.Done():
 			logger.Info("Discarding queued message, context canceled", nil)
-			return
+			return false
 		}
 
 		select {
@@ -177,7 +242,7 @@ ResendLoop:
 			//		"consumer_group": s.config.ConsumerGroup,
 			//	})
 			//}
-			return
+			return true
 
 		case <-msg.Nacked():
 			//message nacked, try resending
@@ -192,11 +257,11 @@ ResendLoop:
 
 		case <-s.closing:
 			logger.Info("Discarding queued message, subscriber closing", nil)
-			return
+			return false
 
 		case <-ctx.Done():
 			logger.Info("Discarding queued message, context canceled", nil)
-			return
+			return false
 		}
 	}
 }
