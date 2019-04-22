@@ -1,6 +1,7 @@
 package sql_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/sql"
@@ -12,16 +13,17 @@ import (
 )
 
 func TestPublisher_Publish(t *testing.T) {
-	schemaAdapter := &sql.DefaultSchema{Logger: logger}
+	schemaAdapter := &testSchema{}
 	pub, err := sql.NewPublisher(
 		newMySQL(t),
 		sql.PublisherConfig{
-			Inserter: schemaAdapter,
+			MessagesTable: "messages_test",
+			Inserter:      schemaAdapter,
 		})
 	require.NoError(t, err)
 
 	msg := message.NewMessage(
-		watermill.NewULID(),
+		watermill.NewShortUUID(),
 		[]byte(`{"foo": "bar"}`),
 	)
 	msg.Metadata.Set("k", "v")
@@ -30,8 +32,8 @@ func TestPublisher_Publish(t *testing.T) {
 	require.NoError(t, err)
 
 	malformedMsg := message.NewMessage(
-		watermill.NewULID(),
-		[]byte(`"foo": "bar"}`),
+		watermill.NewShortUUID(),
+		[]byte(strings.Repeat("1", 300)),
 	)
 	malformedMsg.Metadata.Set("k", "v")
 

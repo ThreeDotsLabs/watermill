@@ -9,8 +9,6 @@ CREATE TABLE IF NOT EXISTS messages (
   UNIQUE(offset)
 );
 
-CREATE INDEX CLUSTERED ON messages(offset);
-
 CREATE TABLE IF NOT EXISTS offsets_acked (
   offset BIGINT NOT NULL,
   consumer_group VARCHAR(255) NOT NULL,

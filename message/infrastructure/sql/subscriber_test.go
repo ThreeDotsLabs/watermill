@@ -2,9 +2,13 @@ package sql_test
 
 import (
 	"context"
+	std_sql "database/sql"
 	"fmt"
 	"testing"
 	"time"
+
+	"github.com/ThreeDotsLabs/watermill"
+	"github.com/ThreeDotsLabs/watermill/message"
 
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/sql"
 
@@ -12,24 +16,29 @@ import (
 )
 
 func TestSubscriber_Subscribe(t *testing.T) {
-	schemaAdapter := &sql.DefaultSchema{Logger: logger}
-
+	schemaAdapter := &testSchema{}
+	db := newMySQL(t)
 	sub, err := sql.NewSubscriber(
-		newMySQL(t),
+		db,
 		sql.SubscriberConfig{
 			Logger:        logger,
 			ConsumerGroup: "cg6",
-			PollInterval:  time.Second,
-			Acker:         schemaAdapter,
-			Selecter:      schemaAdapter,
+
+			MessagesTable:       "messages_test",
+			MessageOffsetsTable: "offsets_acked_test",
+
+			PollInterval: time.Second,
+			Acker:        schemaAdapter,
+			Selecter:     schemaAdapter,
 		},
 	)
 	require.NoError(t, err)
 
-	ctx, _ := context.WithTimeout(context.Background(), 15*time.Second)
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 
 	messages, err := sub.Subscribe(ctx, "sometopic")
 	require.NoError(t, err)
+	go publishMessages(t, db)
 
 	for msg := range messages {
 		fmt.Printf("%s:%s\n", msg.UUID, string(msg.Payload))
@@ -37,4 +46,24 @@ func TestSubscriber_Subscribe(t *testing.T) {
 	}
 
 	require.NoError(t, sub.Close())
+}
+
+func publishMessages(t *testing.T, db *std_sql.DB) {
+	pub, err := sql.NewPublisher(
+		db,
+		sql.PublisherConfig{
+			Inserter:      &testSchema{},
+			MessagesTable: "messages_test",
+		})
+	require.NoError(t, err)
+
+	for i := 0; i < 5; i++ {
+		err := pub.Publish("sometopic", message.NewMessage(
+			watermill.NewShortUUID(),
+			[]byte(fmt.Sprintf("message_%d", i)),
+		))
+		if err != nil {
+			t.Error(err)
+		}
+	}
 }

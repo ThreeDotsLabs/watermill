@@ -12,7 +12,6 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure"
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/sql"
 
-	driver "github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/require"
 )
 
@@ -21,19 +20,24 @@ var (
 )
 
 func newPubSub(t *testing.T, db *std_sql.DB, consumerGroup string) message.PubSub {
-	schemaAdapter := &sql.DefaultSchema{Logger: logger}
+	schemaAdapter := &testSchema{}
 	publisher, err := sql.NewPublisher(
 		db,
 		sql.PublisherConfig{
-			Inserter: schemaAdapter,
+			MessagesTable: "messages_test",
+			Inserter:      schemaAdapter,
 		})
 	require.NoError(t, err)
 
 	subscriber, err := sql.NewSubscriber(
 		db,
 		sql.SubscriberConfig{
-			Logger:         logger,
-			ConsumerGroup:  consumerGroup,
+			Logger:        logger,
+			ConsumerGroup: consumerGroup,
+
+			MessagesTable:       "messages_test",
+			MessageOffsetsTable: "offsets_acked_test",
+
 			PollInterval:   100 * time.Millisecond,
 			ResendInterval: 50 * time.Millisecond,
 			Acker:          schemaAdapter,
@@ -43,22 +47,6 @@ func newPubSub(t *testing.T, db *std_sql.DB, consumerGroup string) message.PubSu
 	require.NoError(t, err)
 
 	return message.NewPubSub(publisher, subscriber)
-}
-
-func newMySQL(t *testing.T) *std_sql.DB {
-	conf := driver.Config{
-		User:                 "root",
-		Passwd:               "",
-		Net:                  "",
-		Addr:                 "localhost",
-		DBName:               "watermill",
-		AllowNativePasswords: true,
-	}
-	db, err := std_sql.Open("mysql", conf.FormatDSN())
-	require.NoError(t, err)
-
-	require.NoError(t, db.Ping(), "could not ping database")
-	return db
 }
 
 func createPubSubWithConsumerGroup(t *testing.T, consumerGroup string) infrastructure.PubSub {
