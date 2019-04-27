@@ -1,6 +1,7 @@
 package cqrs_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/pkg/errors"
@@ -23,7 +24,7 @@ func (nonPointerCommandHandler) NewCommand() interface{} {
 	return TestCommand{}
 }
 
-func (nonPointerCommandHandler) Handle(cmd interface{}) error {
+func (nonPointerCommandHandler) Handle(ctx context.Context, cmd interface{}) error {
 	panic("not implemented")
 }
 

@@ -1,6 +1,8 @@
 package cqrs
 
 import (
+	"context"
+
 	"github.com/pkg/errors"
 
 	"github.com/ThreeDotsLabs/watermill"
@@ -14,7 +16,7 @@ import (
 // In contrast to CommandHandler, every Event can have multiple EventHandlers.
 type EventHandler interface {
 	NewEvent() interface{}
-	Handle(event interface{}) error
+	Handle(ctx context.Context, event interface{}) error
 
 	// HandlerName is named used in message.Router for creating handler.
 	//
@@ -142,7 +144,7 @@ func (p EventProcessor) RouterHandlerFunc(handler EventHandler, logger watermill
 			return nil, err
 		}
 
-		if err := handler.Handle(event); err != nil {
+		if err := handler.Handle(msg.Context(), event); err != nil {
 			logger.Debug("Error when handling event", watermill.LogFields{"err": err})
 			return nil, err
 		}

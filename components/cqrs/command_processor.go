@@ -1,6 +1,7 @@
 package cqrs
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/pkg/errors"
@@ -15,7 +16,7 @@ import (
 // In contrast to EvenHandler, every Command must have only one CommandHandler.
 type CommandHandler interface {
 	NewCommand() interface{}
-	Handle(cmd interface{}) error
+	Handle(ctx context.Context, cmd interface{}) error
 
 	// HandlerName is named used in message.Router for creating handler.
 	//
@@ -158,7 +159,7 @@ func (p CommandProcessor) RouterHandlerFunc(handler CommandHandler, logger water
 			return nil, err
 		}
 
-		if err := handler.Handle(cmd); err != nil {
+		if err := handler.Handle(msg.Context(), cmd); err != nil {
 			logger.Debug("Error when handling command", watermill.LogFields{"err": err})
 			return nil, err
 		}
