@@ -6,6 +6,28 @@ import (
 
 const CorrelationIDMetadataKey = "correlation_id"
 
+// SetCorrelationID sets correlation ID for the message.
+//
+// SetCorrelationID should be called when message enters the system.
+// When message is produced in request (for example HTTP),
+// message correlation ID should be the same as HTTP request's correlation ID.
+func SetCorrelationID(id string, msg *message.Message) {
+	if MessageCorrelationID(msg) != "" {
+		return
+	}
+
+	msg.Metadata.Set(CorrelationIDMetadataKey, id)
+}
+
+// MessageCorrelationID returns correlation ID from the message.
+func MessageCorrelationID(message *message.Message) string {
+	return message.Metadata.Get(CorrelationIDMetadataKey)
+}
+
+// CorrelationID adds correlation ID to all messages produced in handler.
+// ID is based on ID from message received by handler.
+//
+// To make CorrelationID working correctly, SetCorrelationID must be called to first message entering the system.
 func CorrelationID(h message.HandlerFunc) message.HandlerFunc {
 	return func(message *message.Message) ([]*message.Message, error) {
 		producedMessages, err := h(message)
@@ -17,35 +39,4 @@ func CorrelationID(h message.HandlerFunc) message.HandlerFunc {
 
 		return producedMessages, err
 	}
-}
-
-func CorrelationIDWithAutogenerate(generateFunc func() string) message.HandlerMiddleware {
-	return func(h message.HandlerFunc) message.HandlerFunc {
-		return func(message *message.Message) ([]*message.Message, error) {
-			producedMessages, err := h(message)
-
-			correlationID := MessageCorrelationID(message)
-			if correlationID == "" {
-				correlationID = generateFunc()
-			}
-
-			for _, msg := range producedMessages {
-				SetCorrelationID(correlationID, msg)
-			}
-
-			return producedMessages, err
-		}
-	}
-}
-
-func MessageCorrelationID(message *message.Message) string {
-	return message.Metadata.Get(CorrelationIDMetadataKey)
-}
-
-func SetCorrelationID(id string, msg *message.Message) {
-	if MessageCorrelationID(msg) != "" {
-		return
-	}
-
-	msg.Metadata.Set(CorrelationIDMetadataKey, id)
 }
