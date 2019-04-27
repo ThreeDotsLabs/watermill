@@ -15,9 +15,6 @@ import (
 //
 // In contrast to EvenHandler, every Command must have only one CommandHandler.
 type CommandHandler interface {
-	NewCommand() interface{}
-	Handle(ctx context.Context, cmd interface{}) error
-
 	// HandlerName is named used in message.Router for creating handler.
 	//
 	// It will be also passed to CommandsSubscriberConstructor.
@@ -26,6 +23,10 @@ type CommandHandler interface {
 	// WARNING: If HandlerName was changed changed and is used for example for generating consumer groups,
 	// it may result with **reconsuming all messages**!
 	HandlerName() string
+
+	NewCommand() interface{}
+
+	Handle(ctx context.Context, cmd interface{}) error
 }
 
 // CommandsSubscriberConstructor creates subscriber for CommandHandler.

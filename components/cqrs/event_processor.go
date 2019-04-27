@@ -15,9 +15,6 @@ import (
 //
 // In contrast to CommandHandler, every Event can have multiple EventHandlers.
 type EventHandler interface {
-	NewEvent() interface{}
-	Handle(ctx context.Context, event interface{}) error
-
 	// HandlerName is named used in message.Router for creating handler.
 	//
 	// It will be also passed to EventsSubscriberConstructor.
@@ -26,6 +23,10 @@ type EventHandler interface {
 	// WARNING: If HandlerName was changed changed and is used for example for generating consumer groups,
 	// it may result with **reconsuming all messages** !!!
 	HandlerName() string
+
+	NewEvent() interface{}
+
+	Handle(ctx context.Context, event interface{}) error
 }
 
 // EventsSubscriberConstructor creates subscriber for EventHandler.
