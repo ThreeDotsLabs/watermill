@@ -1,8 +1,6 @@
 package cqrs
 
 import (
-	"fmt"
-
 	"github.com/pkg/errors"
 
 	"github.com/ThreeDotsLabs/watermill"
@@ -17,14 +15,25 @@ import (
 type EventHandler interface {
 	NewEvent() interface{}
 	Handle(event interface{}) error
+
+	// HandlerName is named used in message.Router for creating handler.
+	//
+	// It will be also passed to EventsSubscriberConstructor.
+	// May be useful for creating for example consumer group per handler.
+	//
+	// WARNING: If HandlerName was changed changed and is used for example for generating consumer groups,
+	// it may result with **reconsuming all messages** !!!
+	HandlerName() string
 }
 
+// EventsSubscriberConstructor creates subscriber for EventHandler.
+// It allows you to create separated customized Subscriber for every command handler.
 type EventsSubscriberConstructor func(handlerName string) (message.Subscriber, error)
 
 // EventProcessor determines which EventHandler should handle event received from event bus.
 type EventProcessor struct {
-	handlers    []EventHandler
-	eventsTopic string
+	handlers      []EventHandler
+	generateTopic EventTopicGenerator
 
 	subscriberConstructor EventsSubscriberConstructor
 
@@ -34,7 +43,7 @@ type EventProcessor struct {
 
 func NewEventProcessor(
 	handlers []EventHandler,
-	eventsTopic string,
+	generateTopic EventTopicGenerator,
 	subscriberConstructor EventsSubscriberConstructor,
 	marshaler CommandEventMarshaler,
 	logger watermill.LoggerAdapter,
@@ -42,8 +51,8 @@ func NewEventProcessor(
 	if len(handlers) == 0 {
 		panic("missing handlers")
 	}
-	if eventsTopic == "" {
-		panic("empty eventsTopic")
+	if generateTopic == nil {
+		panic("nil generateTopic")
 	}
 	if subscriberConstructor == nil {
 		panic("missing subscriberConstructor")
@@ -57,7 +66,7 @@ func NewEventProcessor(
 
 	return &EventProcessor{
 		handlers,
-		eventsTopic,
+		generateTopic,
 		subscriberConstructor,
 		marshaler,
 		logger,
@@ -67,18 +76,22 @@ func NewEventProcessor(
 func (p EventProcessor) AddHandlersToRouter(r *message.Router) error {
 	for i := range p.Handlers() {
 		handler := p.handlers[i]
+		handlerName := handler.HandlerName()
+		eventName := p.marshaler.Name(handler.NewEvent())
+		topicName := p.generateTopic(eventName)
 
-		handlerName := fmt.Sprintf("event_processor-%s", ObjectName(handler))
-
-		logger := p.logger.With(watermill.LogFields{"handler_name": handlerName})
+		logger := p.logger.With(watermill.LogFields{
+			"event_handler_name": handlerName,
+			"topic":              topicName,
+		})
 
 		handlerFunc, err := p.RouterHandlerFunc(handler, logger)
 		if err != nil {
 			return err
 		}
 
-		// todo - should be passed implicit!
-		// todo - doc it really well how it is executed
+		logger.Debug("Adding CQRS event handler to router", nil)
+
 		subscriber, err := p.subscriberConstructor(handlerName)
 		if err != nil {
 			return errors.Wrap(err, "cannot create subscriber for event processor")
@@ -86,7 +99,7 @@ func (p EventProcessor) AddHandlersToRouter(r *message.Router) error {
 
 		r.AddNoPublisherHandler(
 			handlerName,
-			p.eventsTopic,
+			topicName,
 			subscriber,
 			handlerFunc,
 		)
@@ -130,6 +143,7 @@ func (p EventProcessor) RouterHandlerFunc(handler EventHandler, logger watermill
 		}
 
 		if err := handler.Handle(event); err != nil {
+			logger.Debug("Error when handling event", watermill.LogFields{"err": err})
 			return nil, err
 		}
 

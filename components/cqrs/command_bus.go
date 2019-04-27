@@ -6,27 +6,27 @@ import (
 
 // CommandBus transports commands to command handlers.
 type CommandBus struct {
-	publisher message.Publisher
-	topic     string
-	marshaler CommandEventMarshaler
+	publisher     message.Publisher
+	generateTopic CommandTopicGenerator
+	marshaler     CommandEventMarshaler
 }
 
 func NewCommandBus(
 	publisher message.Publisher,
-	topic string,
+	generateTopic CommandTopicGenerator,
 	marshaler CommandEventMarshaler,
 ) *CommandBus {
 	if publisher == nil {
 		panic("missing publisher")
 	}
-	if topic == "" {
-		panic("missing topic")
+	if generateTopic == nil {
+		panic("missing generateTopic")
 	}
 	if marshaler == nil {
 		panic("missing marshaler")
 	}
 
-	return &CommandBus{publisher, topic, marshaler}
+	return &CommandBus{publisher, generateTopic, marshaler}
 }
 
 // Send sends command to the command bus.
@@ -36,5 +36,8 @@ func (c CommandBus) Send(cmd interface{}) error {
 		return err
 	}
 
-	return c.publisher.Publish(c.topic, msg)
+	commandName := c.marshaler.Name(cmd)
+	topicName := c.generateTopic(commandName)
+
+	return c.publisher.Publish(topicName, msg)
 }

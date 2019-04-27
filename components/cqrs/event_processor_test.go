@@ -15,6 +15,10 @@ import (
 type nonPointerEventProcessor struct {
 }
 
+func (nonPointerEventProcessor) HandlerName() string {
+	return "nonPointerEventProcessor"
+}
+
 func (nonPointerEventProcessor) NewEvent() interface{} {
 	return TestEvent{}
 }
@@ -28,8 +32,12 @@ func TestEventProcessor_non_pointer_event(t *testing.T) {
 
 	eventProcessor := cqrs.NewEventProcessor(
 		[]cqrs.EventHandler{nonPointerEventProcessor{}},
-		"events",
-		ts.EventsPubSub,
+		func(eventName string) string {
+			return "events"
+		},
+		func(handlerName string) (message.Subscriber, error) {
+			return ts.EventsPubSub, nil
+		},
 		ts.Marshaler,
 		ts.Logger,
 	)
@@ -43,6 +51,10 @@ func TestEventProcessor_non_pointer_event(t *testing.T) {
 
 type duplicateTestEventHandler1 struct{}
 
+func (h duplicateTestEventHandler1) HandlerName() string {
+	return "duplicateTestEventHandler1"
+}
+
 func (duplicateTestEventHandler1) NewEvent() interface{} {
 	return &TestEvent{}
 }
@@ -50,6 +62,10 @@ func (duplicateTestEventHandler1) NewEvent() interface{} {
 func (h *duplicateTestEventHandler1) Handle(cmd interface{}) error { return nil }
 
 type duplicateTestEventHandler2 struct{}
+
+func (h duplicateTestEventHandler2) HandlerName() string {
+	return "duplicateTestEventHandler2"
+}
 
 func (duplicateTestEventHandler2) NewEvent() interface{} {
 	return &TestEvent{}
@@ -65,8 +81,12 @@ func TestEventProcessor_multiple_same_event_handlers(t *testing.T) {
 			&duplicateTestEventHandler1{},
 			&duplicateTestEventHandler2{},
 		},
-		"events",
-		ts.EventsPubSub,
+		func(eventName string) string {
+			return "events"
+		},
+		func(handlerName string) (message.Subscriber, error) {
+			return ts.EventsPubSub, nil
+		},
 		ts.Marshaler,
 		ts.Logger,
 	)

@@ -6,27 +6,27 @@ import (
 
 // EventBus transports events to event handlers.
 type EventBus struct {
-	publisher message.Publisher
-	topic     string
-	marshaler CommandEventMarshaler
+	publisher     message.Publisher
+	generateTopic EventTopicGenerator
+	marshaler     CommandEventMarshaler
 }
 
 func NewEventBus(
 	publisher message.Publisher,
-	topic string,
+	generateTopic EventTopicGenerator,
 	marshaler CommandEventMarshaler,
 ) *EventBus {
 	if publisher == nil {
 		panic("missing publisher")
 	}
-	if topic == "" {
-		panic("missing topic")
+	if generateTopic == nil {
+		panic("missing generateTopic")
 	}
 	if marshaler == nil {
 		panic("missing marshaler")
 	}
 
-	return &EventBus{publisher, topic, marshaler}
+	return &EventBus{publisher, generateTopic, marshaler}
 }
 
 // Send sends command to the event bus.
@@ -36,5 +36,8 @@ func (c EventBus) Publish(event interface{}) error {
 		return err
 	}
 
-	return c.publisher.Publish(c.topic, msg)
+	eventName := c.marshaler.Name(event)
+	topicName := c.generateTopic(eventName)
+
+	return c.publisher.Publish(topicName, msg)
 }

@@ -16,14 +16,25 @@ import (
 type CommandHandler interface {
 	NewCommand() interface{}
 	Handle(cmd interface{}) error
+
+	// HandlerName is named used in message.Router for creating handler.
+	//
+	// It will be also passed to CommandsSubscriberConstructor.
+	// May be useful for creating for example consumer group per handler.
+	//
+	// WARNING: If HandlerName was changed changed and is used for example for generating consumer groups,
+	// it may result with **reconsuming all messages**!
+	HandlerName() string
 }
 
+// CommandsSubscriberConstructor creates subscriber for CommandHandler.
+// It allows you to create separated customized Subscriber for every command handler.
 type CommandsSubscriberConstructor func(handlerName string) (message.Subscriber, error)
 
 // CommandProcessor determines which CommandHandler should handle the command received from the command bus.
 type CommandProcessor struct {
 	handlers      []CommandHandler
-	commandsTopic string
+	generateTopic CommandTopicGenerator
 
 	subscriberConstructor CommandsSubscriberConstructor
 
@@ -33,7 +44,7 @@ type CommandProcessor struct {
 
 func NewCommandProcessor(
 	handlers []CommandHandler,
-	commandsTopic string,
+	generateTopic CommandTopicGenerator,
 	subscriberConstructor CommandsSubscriberConstructor,
 	marshaler CommandEventMarshaler,
 	logger watermill.LoggerAdapter,
@@ -41,8 +52,8 @@ func NewCommandProcessor(
 	if len(handlers) == 0 {
 		panic("missing handlers")
 	}
-	if commandsTopic == "" {
-		panic("empty commandsTopic name")
+	if generateTopic == nil {
+		panic("missing generateTopic")
 	}
 	if subscriberConstructor == nil {
 		panic("missing subscriberConstructor")
@@ -56,30 +67,46 @@ func NewCommandProcessor(
 
 	return &CommandProcessor{
 		handlers,
-		commandsTopic,
+		generateTopic,
 		subscriberConstructor,
 		marshaler,
 		logger,
 	}
 }
 
+type DuplicateCommandHandlerError struct {
+	CommandName string
+}
+
+func (d DuplicateCommandHandlerError) Error() string {
+	return fmt.Sprintf("command handler for command %s already exists", d.CommandName)
+}
+
 func (p CommandProcessor) AddHandlersToRouter(r *message.Router) error {
+	handledCommands := map[string]struct{}{}
+
 	for i := range p.Handlers() {
 		handler := p.handlers[i]
-
+		handlerName := handler.HandlerName()
 		commandName := p.marshaler.Name(handler.NewCommand())
-		handlerName := fmt.Sprintf("command_processor-%s", commandName) // todo - should be passed implicit!
+		topicName := p.generateTopic(commandName)
 
-		logger := p.logger.With(watermill.LogFields{"handler_name": handlerName})
+		if _, ok := handledCommands[commandName]; ok {
+			return DuplicateCommandHandlerError{commandName}
+		}
+		handledCommands[commandName] = struct{}{}
+
+		logger := p.logger.With(watermill.LogFields{
+			"command_handler_name": handlerName,
+			"topic":                topicName,
+		})
 
 		handlerFunc, err := p.RouterHandlerFunc(handler, logger)
 		if err != nil {
 			return err
 		}
 
-		logger.Debug("Adding CQRS handler to router", watermill.LogFields{
-			"handler_name": handlerName,
-		})
+		logger.Debug("Adding CQRS command handler to router", nil)
 
 		subscriber, err := p.subscriberConstructor(handlerName)
 		if err != nil {
@@ -88,7 +115,7 @@ func (p CommandProcessor) AddHandlersToRouter(r *message.Router) error {
 
 		r.AddNoPublisherHandler(
 			handlerName,
-			p.commandsTopic,
+			topicName,
 			subscriber,
 			handlerFunc,
 		)

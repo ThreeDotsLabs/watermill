@@ -15,6 +15,10 @@ import (
 type nonPointerCommandHandler struct {
 }
 
+func (nonPointerCommandHandler) HandlerName() string {
+	return "nonPointerCommandHandler"
+}
+
 func (nonPointerCommandHandler) NewCommand() interface{} {
 	return TestCommand{}
 }
@@ -28,8 +32,12 @@ func TestCommandProcessor_non_pointer_command(t *testing.T) {
 
 	commandProcessor := cqrs.NewCommandProcessor(
 		[]cqrs.CommandHandler{nonPointerCommandHandler{}},
-		"commands",
-		ts.CommandsPubSub,
+		func(commandName string) string {
+			return "commands"
+		},
+		func(handlerName string) (message.Subscriber, error) {
+			return ts.CommandsPubSub, nil
+		},
 		ts.Marshaler,
 		ts.Logger,
 	)
@@ -50,8 +58,12 @@ func TestCommandProcessor_multiple_same_command_handlers(t *testing.T) {
 			&CaptureCommandHandler{},
 			&CaptureCommandHandler{},
 		},
-		"commands",
-		ts.CommandsPubSub,
+		func(commandName string) string {
+			return "commands"
+		},
+		func(handlerName string) (message.Subscriber, error) {
+			return ts.CommandsPubSub, nil
+		},
 		ts.Marshaler,
 		ts.Logger,
 	)
@@ -59,11 +71,6 @@ func TestCommandProcessor_multiple_same_command_handlers(t *testing.T) {
 	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
 	require.NoError(t, err)
 
-	assert.PanicsWithValue(t,
-		message.DuplicateHandlerNameError{HandlerName: "command_processor-cqrs_test.TestCommand"},
-		func() {
-			err := commandProcessor.AddHandlersToRouter(router)
-			require.NoError(t, err)
-		},
-	)
+	err = commandProcessor.AddHandlersToRouter(router)
+	assert.EqualValues(t, cqrs.DuplicateCommandHandlerError{CommandName: "cqrs_test.TestCommand"}, err)
 }
