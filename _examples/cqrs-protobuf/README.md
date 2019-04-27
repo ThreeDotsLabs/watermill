@@ -9,5 +9,5 @@ Detailed documentation for CQRS can be found in Watermill's docs: [http://waterm
 ## Running
 
 ```bash
-go run .
+docker-compose up
 ```
