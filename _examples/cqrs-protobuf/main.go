@@ -174,8 +174,6 @@ func (b *BookingsFinancialReport) Handle(ctx context.Context, e interface{}) err
 var amqpAddress = "amqp://guest:guest@rabbitmq:5672/"
 
 func main() {
-	time.Sleep(time.Second)
-
 	logger := watermill.NewStdLogger(false, false)
 	cqrsMarshaler := cqrs.ProtobufMarshaler{}
 
@@ -191,11 +189,7 @@ func main() {
 	}
 
 	// todo - this is stupid
-	eventsAmqpConfig := amqp.NewDurablePubSubConfig(amqpAddress, func(topic string) string {
-		// todo - doc
-		return ""
-	})
-	eventsPublisher, err := amqp.NewPublisher(eventsAmqpConfig, logger)
+	eventsPublisher, err := amqp.NewPublisher(amqp.NewDurablePubSubConfig(amqpAddress, nil), logger)
 	if err != nil {
 		panic(err)
 	}
