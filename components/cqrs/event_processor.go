@@ -9,9 +9,9 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
-// EventHandler receive event defined by NewEvent and handle it with Handle method.
+// EventHandler receives events defined by NewEvent and handles them with its Handle method.
 // If using DDD, CommandHandler may modify and persist the aggregate.
-// It can also invoke process manager, saga or just build a read model.
+// It can also invoke a process manager, a saga or just build a read model.
 //
 // In contrast to CommandHandler, every Event can have multiple EventHandlers.
 type EventHandler interface {
@@ -21,7 +21,7 @@ type EventHandler interface {
 	// May be useful, for example, to create a consumer group per each handler.
 	//
 	// WARNING: If HandlerName was changed and is used for generating consumer groups,
-	// it may result with **reconsuming all messages**!
+	// it may result with **reconsuming all messages** !!!
 	HandlerName() string
 
 	NewEvent() interface{}
@@ -29,7 +29,7 @@ type EventHandler interface {
 	Handle(ctx context.Context, event interface{}) error
 }
 
-// EventsSubscriberConstructor creates subscriber for EventHandler.
+// EventsSubscriberConstructor creates a subscriber for EventHandler.
 // It allows you to create separated customized Subscriber for every command handler.
 type EventsSubscriberConstructor func(handlerName string) (message.Subscriber, error)
 
