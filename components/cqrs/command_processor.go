@@ -103,7 +103,7 @@ func (p CommandProcessor) AddHandlersToRouter(r *message.Router) error {
 			"topic":                topicName,
 		})
 
-		handlerFunc, err := p.RouterHandlerFunc(handler, logger)
+		handlerFunc, err := p.routerHandlerFunc(handler, logger)
 		if err != nil {
 			return err
 		}
@@ -130,7 +130,7 @@ func (p CommandProcessor) Handlers() []CommandHandler {
 	return p.handlers
 }
 
-func (p CommandProcessor) RouterHandlerFunc(handler CommandHandler, logger watermill.LoggerAdapter) (message.HandlerFunc, error) {
+func (p CommandProcessor) routerHandlerFunc(handler CommandHandler, logger watermill.LoggerAdapter) (message.HandlerFunc, error) {
 	cmd := handler.NewCommand()
 	cmdName := p.marshaler.Name(cmd)
 

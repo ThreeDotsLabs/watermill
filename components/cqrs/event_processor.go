@@ -88,7 +88,7 @@ func (p EventProcessor) AddHandlersToRouter(r *message.Router) error {
 			"topic":              topicName,
 		})
 
-		handlerFunc, err := p.RouterHandlerFunc(handler, logger)
+		handlerFunc, err := p.routerHandlerFunc(handler, logger)
 		if err != nil {
 			return err
 		}
@@ -115,7 +115,7 @@ func (p EventProcessor) Handlers() []EventHandler {
 	return p.handlers
 }
 
-func (p EventProcessor) RouterHandlerFunc(handler EventHandler, logger watermill.LoggerAdapter) (message.HandlerFunc, error) {
+func (p EventProcessor) routerHandlerFunc(handler EventHandler, logger watermill.LoggerAdapter) (message.HandlerFunc, error) {
 	initEvent := handler.NewEvent()
 	expectedEventName := p.marshaler.Name(initEvent)
 
