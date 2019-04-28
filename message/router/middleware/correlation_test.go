@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/pkg/errors"
+
 	"github.com/stretchr/testify/assert"
 
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
@@ -23,6 +24,16 @@ func TestCorrelationID(t *testing.T) {
 
 	producedMsgs, err := handler(msg)
 
+	assert.Equal(t, "2", producedMsgs[0].UUID)
 	assert.Equal(t, middleware.MessageCorrelationID(producedMsgs[0]), "correlation_id")
 	assert.Equal(t, handlerErr, err)
+}
+
+func TestSetCorrelationID_already_set(t *testing.T) {
+	msg := message.NewMessage("", nil)
+
+	middleware.SetCorrelationID("foo", msg)
+	middleware.SetCorrelationID("bar", msg)
+
+	assert.Equal(t, "foo", middleware.MessageCorrelationID(msg))
 }
