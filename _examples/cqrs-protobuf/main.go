@@ -28,7 +28,6 @@ type BookRoomHandler struct {
 }
 
 func (b BookRoomHandler) HandlerName() string {
-	// todo - doc why important
 	return "BookRoomHandler"
 }
 
@@ -73,8 +72,8 @@ type OrderBeerOnRoomBooked struct {
 	commandBus *cqrs.CommandBus
 }
 
-func (b OrderBeerOnRoomBooked) HandlerName() string {
-	// todo - doc why important
+func (o OrderBeerOnRoomBooked) HandlerName() string {
+	// this name is passed to EventsSubscriberConstructor and used to generate queue name
 	return "OrderBeerOnRoomBooked"
 }
 
@@ -99,16 +98,15 @@ type OrderBeerHandler struct {
 	eventBus *cqrs.EventBus
 }
 
-func (b OrderBeerHandler) HandlerName() string {
-	// todo - doc why important
+func (o OrderBeerHandler) HandlerName() string {
 	return "OrderBeerHandler"
 }
 
-func (b OrderBeerHandler) NewCommand() interface{} {
+func (o OrderBeerHandler) NewCommand() interface{} {
 	return &OrderBeer{}
 }
 
-func (b OrderBeerHandler) Handle(ctx context.Context, c interface{}) error {
+func (o OrderBeerHandler) Handle(ctx context.Context, c interface{}) error {
 	cmd := c.(*OrderBeer)
 
 	if rand.Int63n(10) == 0 {
@@ -116,7 +114,7 @@ func (b OrderBeerHandler) Handle(ctx context.Context, c interface{}) error {
 		return errors.Errorf("no beer left for room %s, please try later", cmd.RoomId)
 	}
 
-	if err := b.eventBus.Publish(ctx, &BeerOrdered{
+	if err := o.eventBus.Publish(ctx, &BeerOrdered{
 		RoomId: cmd.RoomId,
 		Count:  cmd.Count,
 	}); err != nil {
@@ -142,7 +140,7 @@ func NewBookingsFinancialReport() *BookingsFinancialReport {
 }
 
 func (b BookingsFinancialReport) HandlerName() string {
-	// todo - doc why important
+	// this name is passed to EventsSubscriberConstructor and used to generate queue name
 	return "BookingsFinancialReport"
 }
 
@@ -174,21 +172,23 @@ func (b *BookingsFinancialReport) Handle(ctx context.Context, e interface{}) err
 var amqpAddress = "amqp://guest:guest@rabbitmq:5672/"
 
 func main() {
+	time.Sleep(time.Second)
+
 	logger := watermill.NewStdLogger(false, false)
 	cqrsMarshaler := cqrs.ProtobufMarshaler{}
 
 	// You can use any Pub/Sub implementation from here: https://watermill.io/docs/pub-sub-implementations/
-	commandsAmqpConfig := amqp.NewDurableQueueConfig(amqpAddress)
-	commandsPublisher, err := amqp.NewPublisher(commandsAmqpConfig, logger)
+	// Detailed RabbitMQ implementation: https://watermill.io/docs/pub-sub-implementations/#rabbitmq-amqp
+	commandsAMQPConfig := amqp.NewDurableQueueConfig(amqpAddress)
+	commandsPublisher, err := amqp.NewPublisher(commandsAMQPConfig, logger)
 	if err != nil {
 		panic(err)
 	}
-	comandsSubscriber, err := amqp.NewSubscriber(commandsAmqpConfig, logger)
+	commandsSubscriber, err := amqp.NewSubscriber(commandsAMQPConfig, logger)
 	if err != nil {
 		panic(err)
 	}
 
-	// todo - this is stupid
 	eventsPublisher, err := amqp.NewPublisher(amqp.NewDurablePubSubConfig(amqpAddress, nil), logger)
 	if err != nil {
 		panic(err)
@@ -211,7 +211,7 @@ func main() {
 	// You can use facade, or create buses and processors manually (you can inspire with cqrs.NewFacade)
 	cqrsFacade, err := cqrs.NewFacade(cqrs.FacadeConfig{
 		GenerateCommandsTopic: func(commandName string) string {
-			// todo - doc
+			// we are using queue RabbitMQ config, so we need to have topic per command type
 			return commandName
 		},
 		CommandHandlers: func(cb *cqrs.CommandBus, eb *cqrs.EventBus) []cqrs.CommandHandler {
@@ -222,11 +222,13 @@ func main() {
 		},
 		CommandsPublisher: commandsPublisher,
 		CommandsSubscriberConstructor: func(handlerName string) (message.Subscriber, error) {
-			// todo - doc
-			return comandsSubscriber, nil
+			// we can reuse subscriber, because all commands have separated topics
+			return commandsSubscriber, nil
 		},
 		GenerateEventsTopic: func(eventName string) string {
-			return eventName
+			// because we are using PubSub RabbitMQ config, we can use one topic for all events (todo - why???)
+			// we can also use topic per event type
+			return "events"
 		},
 		EventHandlers: func(cb *cqrs.CommandBus, eb *cqrs.EventBus) []cqrs.EventHandler {
 			return []cqrs.EventHandler{
