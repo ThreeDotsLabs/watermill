@@ -10,13 +10,13 @@ import (
 // EventBus transports events to event handlers.
 type EventBus struct {
 	publisher     message.Publisher
-	generateTopic EventTopicGenerator
+	generateTopic func(eventName string) string
 	marshaler     CommandEventMarshaler
 }
 
 func NewEventBus(
 	publisher message.Publisher,
-	generateTopic EventTopicGenerator,
+	generateTopic func(eventName string) string,
 	marshaler CommandEventMarshaler,
 ) (*EventBus, error) {
 	if publisher == nil {

@@ -36,7 +36,7 @@ type EventsSubscriberConstructor func(handlerName string) (message.Subscriber, e
 // EventProcessor determines which EventHandler should handle event received from event bus.
 type EventProcessor struct {
 	handlers      []EventHandler
-	generateTopic EventTopicGenerator
+	generateTopic func(eventName string) string
 
 	subscriberConstructor EventsSubscriberConstructor
 
@@ -46,7 +46,7 @@ type EventProcessor struct {
 
 func NewEventProcessor(
 	handlers []EventHandler,
-	generateTopic EventTopicGenerator,
+	generateTopic func(eventName string) string,
 	subscriberConstructor EventsSubscriberConstructor,
 	marshaler CommandEventMarshaler,
 	logger watermill.LoggerAdapter,

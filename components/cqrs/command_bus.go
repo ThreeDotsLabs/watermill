@@ -11,13 +11,13 @@ import (
 // CommandBus transports commands to command handlers.
 type CommandBus struct {
 	publisher     message.Publisher
-	generateTopic CommandTopicGenerator
+	generateTopic func(commandName string) string
 	marshaler     CommandEventMarshaler
 }
 
 func NewCommandBus(
 	publisher message.Publisher,
-	generateTopic CommandTopicGenerator,
+	generateTopic func(commandName string) string,
 	marshaler CommandEventMarshaler,
 ) (*CommandBus, error) {
 	if publisher == nil {
