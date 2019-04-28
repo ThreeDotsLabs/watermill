@@ -25,7 +25,7 @@ func (e NonPointerError) Error() string {
 }
 
 // ObjectName name returns object name in format [package].[type name].
-// It ignores that the value is pointer or not.
+// It ignores if the value is a pointer or not.
 func ObjectName(v interface{}) string {
 	s := fmt.Sprintf("%T", v)
 	s = strings.TrimLeft(s, "*")
