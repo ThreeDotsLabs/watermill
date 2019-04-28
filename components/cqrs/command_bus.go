@@ -3,6 +3,8 @@ package cqrs
 import (
 	"context"
 
+	"github.com/pkg/errors"
+
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
@@ -17,18 +19,18 @@ func NewCommandBus(
 	publisher message.Publisher,
 	generateTopic func(commandName string) string,
 	marshaler CommandEventMarshaler,
-) *CommandBus {
+) (*CommandBus, error) {
 	if publisher == nil {
-		panic("missing publisher")
+		return nil, errors.New("missing publisher")
 	}
 	if generateTopic == nil {
-		panic("missing generateTopic")
+		return nil, errors.New("missing generateTopic")
 	}
 	if marshaler == nil {
-		panic("missing marshaler")
+		return nil, errors.New("missing marshaler")
 	}
 
-	return &CommandBus{publisher, generateTopic, marshaler}
+	return &CommandBus{publisher, generateTopic, marshaler}, nil
 }
 
 // Send sends command to the command bus.

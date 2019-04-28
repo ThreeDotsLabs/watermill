@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/pkg/errors"
 )
 
 // EventBus transports events to event handlers.
@@ -17,18 +18,18 @@ func NewEventBus(
 	publisher message.Publisher,
 	generateTopic func(eventName string) string,
 	marshaler CommandEventMarshaler,
-) *EventBus {
+) (*EventBus, error) {
 	if publisher == nil {
-		panic("missing publisher")
+		return nil, errors.New("missing publisher")
 	}
 	if generateTopic == nil {
-		panic("missing generateTopic")
+		return nil, errors.New("missing generateTopic")
 	}
 	if marshaler == nil {
-		panic("missing marshaler")
+		return nil, errors.New("missing marshaler")
 	}
 
-	return &EventBus{publisher, generateTopic, marshaler}
+	return &EventBus{publisher, generateTopic, marshaler}, nil
 }
 
 // Publish sends event to the event bus.
