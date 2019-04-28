@@ -15,12 +15,12 @@ import (
 //
 // In contrast to EvenHandler, every Command must have only one CommandHandler.
 type CommandHandler interface {
-	// HandlerName is named used in message.Router for creating handler.
+	// HandlerName is the name used in message.Router while creating handler.
 	//
 	// It will be also passed to CommandsSubscriberConstructor.
-	// May be useful for creating for example consumer group per handler.
+	// May be useful, for example, to create a consumer group per each handler.
 	//
-	// WARNING: If HandlerName was changed changed and is used for example for generating consumer groups,
+	// WARNING: If HandlerName was changed and is used for generating consumer groups,
 	// it may result with **reconsuming all messages**!
 	HandlerName() string
 
@@ -30,7 +30,7 @@ type CommandHandler interface {
 }
 
 // CommandsSubscriberConstructor creates subscriber for CommandHandler.
-// It allows you to create separated customized Subscriber for every command handler.
+// It allows you to create a separate customized Subscriber for every command handler.
 type CommandsSubscriberConstructor func(handlerName string) (message.Subscriber, error)
 
 // CommandProcessor determines which CommandHandler should handle the command received from the command bus.
