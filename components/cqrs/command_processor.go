@@ -36,7 +36,7 @@ type CommandsSubscriberConstructor func(handlerName string) (message.Subscriber,
 // CommandProcessor determines which CommandHandler should handle the command received from the command bus.
 type CommandProcessor struct {
 	handlers      []CommandHandler
-	generateTopic CommandTopicGenerator
+	generateTopic func(commandName string) string
 
 	subscriberConstructor CommandsSubscriberConstructor
 
@@ -46,7 +46,7 @@ type CommandProcessor struct {
 
 func NewCommandProcessor(
 	handlers []CommandHandler,
-	generateTopic CommandTopicGenerator,
+	generateTopic func(commandName string) string,
 	subscriberConstructor CommandsSubscriberConstructor,
 	marshaler CommandEventMarshaler,
 	logger watermill.LoggerAdapter,
