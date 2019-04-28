@@ -15,13 +15,13 @@ import (
 //
 // In contrast to CommandHandler, every Event can have multiple EventHandlers.
 type EventHandler interface {
-	// HandlerName is named used in message.Router for creating handler.
+	// HandlerName is the name used in message.Router while creating handler.
 	//
 	// It will be also passed to EventsSubscriberConstructor.
-	// May be useful for creating for example consumer group per handler.
+	// May be useful, for example, to create a consumer group per each handler.
 	//
-	// WARNING: If HandlerName was changed changed and is used for example for generating consumer groups,
-	// it may result with **reconsuming all messages** !!!
+	// WARNING: If HandlerName was changed and is used for generating consumer groups,
+	// it may result with **reconsuming all messages**!
 	HandlerName() string
 
 	NewEvent() interface{}

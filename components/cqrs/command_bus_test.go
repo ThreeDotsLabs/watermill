@@ -32,7 +32,7 @@ func TestCommandBus_Send_ContextPropagation(t *testing.T) {
 
 func TestCommandBus_Send_topic_name(t *testing.T) {
 	cb, err := cqrs.NewCommandBus(
-		assertPublishTopicPublisher{"cqrs_test.TestCommand", t},
+		assertPublishTopicPublisher{ExpectedTopic: "cqrs_test.TestCommand", T: t},
 		func(commandName string) string {
 			return commandName
 		},
