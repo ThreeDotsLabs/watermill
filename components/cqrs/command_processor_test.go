@@ -31,7 +31,7 @@ func (nonPointerCommandHandler) Handle(ctx context.Context, cmd interface{}) err
 func TestCommandProcessor_non_pointer_command(t *testing.T) {
 	ts := NewTestServices()
 
-	commandProcessor := cqrs.NewCommandProcessor(
+	commandProcessor, err := cqrs.NewCommandProcessor(
 		[]cqrs.CommandHandler{nonPointerCommandHandler{}},
 		func(commandName string) string {
 			return "commands"
@@ -42,6 +42,7 @@ func TestCommandProcessor_non_pointer_command(t *testing.T) {
 		ts.Marshaler,
 		ts.Logger,
 	)
+	require.NoError(t, err)
 
 	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
 	require.NoError(t, err)
@@ -54,7 +55,7 @@ func TestCommandProcessor_non_pointer_command(t *testing.T) {
 func TestCommandProcessor_multiple_same_command_handlers(t *testing.T) {
 	ts := NewTestServices()
 
-	commandProcessor := cqrs.NewCommandProcessor(
+	commandProcessor, err := cqrs.NewCommandProcessor(
 		[]cqrs.CommandHandler{
 			&CaptureCommandHandler{},
 			&CaptureCommandHandler{},
@@ -68,6 +69,7 @@ func TestCommandProcessor_multiple_same_command_handlers(t *testing.T) {
 		ts.Marshaler,
 		ts.Logger,
 	)
+	require.NoError(t, err)
 
 	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
 	require.NoError(t, err)

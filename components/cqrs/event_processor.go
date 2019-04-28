@@ -50,18 +50,18 @@ func NewEventProcessor(
 	subscriberConstructor EventsSubscriberConstructor,
 	marshaler CommandEventMarshaler,
 	logger watermill.LoggerAdapter,
-) *EventProcessor {
+) (*EventProcessor, error) {
 	if len(handlers) == 0 {
-		panic("missing handlers")
+		return nil, errors.New("missing handlers")
 	}
 	if generateTopic == nil {
-		panic("nil generateTopic")
+		return nil, errors.New("nil generateTopic")
 	}
 	if subscriberConstructor == nil {
-		panic("missing subscriberConstructor")
+		return nil, errors.New("missing subscriberConstructor")
 	}
 	if marshaler == nil {
-		panic("missing marshaler")
+		return nil, errors.New("missing marshaler")
 	}
 	if logger == nil {
 		logger = watermill.NopLogger{}
@@ -73,7 +73,7 @@ func NewEventProcessor(
 		subscriberConstructor,
 		marshaler,
 		logger,
-	}
+	}, nil
 }
 
 func (p EventProcessor) AddHandlersToRouter(r *message.Router) error {

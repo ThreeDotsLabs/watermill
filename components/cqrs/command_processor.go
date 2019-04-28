@@ -50,18 +50,18 @@ func NewCommandProcessor(
 	subscriberConstructor CommandsSubscriberConstructor,
 	marshaler CommandEventMarshaler,
 	logger watermill.LoggerAdapter,
-) *CommandProcessor {
+) (*CommandProcessor, error) {
 	if len(handlers) == 0 {
-		panic("missing handlers")
+		return nil, errors.New("missing handlers")
 	}
 	if generateTopic == nil {
-		panic("missing generateTopic")
+		return nil, errors.New("missing generateTopic")
 	}
 	if subscriberConstructor == nil {
-		panic("missing subscriberConstructor")
+		return nil, errors.New("missing subscriberConstructor")
 	}
 	if marshaler == nil {
-		panic("missing marshaler")
+		return nil, errors.New("missing marshaler")
 	}
 	if logger == nil {
 		logger = watermill.NopLogger{}
@@ -73,7 +73,7 @@ func NewCommandProcessor(
 		subscriberConstructor,
 		marshaler,
 		logger,
-	}
+	}, nil
 }
 
 type DuplicateCommandHandlerError struct {

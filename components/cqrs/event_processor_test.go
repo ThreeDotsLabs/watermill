@@ -31,7 +31,7 @@ func (nonPointerEventProcessor) Handle(ctx context.Context, cmd interface{}) err
 func TestEventProcessor_non_pointer_event(t *testing.T) {
 	ts := NewTestServices()
 
-	eventProcessor := cqrs.NewEventProcessor(
+	eventProcessor, err := cqrs.NewEventProcessor(
 		[]cqrs.EventHandler{nonPointerEventProcessor{}},
 		func(eventName string) string {
 			return "events"
@@ -42,6 +42,7 @@ func TestEventProcessor_non_pointer_event(t *testing.T) {
 		ts.Marshaler,
 		ts.Logger,
 	)
+	require.NoError(t, err)
 
 	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
 	require.NoError(t, err)
@@ -77,7 +78,7 @@ func (h *duplicateTestEventHandler2) Handle(ctx context.Context, event interface
 func TestEventProcessor_multiple_same_event_handlers(t *testing.T) {
 	ts := NewTestServices()
 
-	eventProcessor := cqrs.NewEventProcessor(
+	eventProcessor, err := cqrs.NewEventProcessor(
 		[]cqrs.EventHandler{
 			&duplicateTestEventHandler1{},
 			&duplicateTestEventHandler2{},
@@ -91,6 +92,7 @@ func TestEventProcessor_multiple_same_event_handlers(t *testing.T) {
 		ts.Marshaler,
 		ts.Logger,
 	)
+	require.NoError(t, err)
 
 	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
 	require.NoError(t, err)
