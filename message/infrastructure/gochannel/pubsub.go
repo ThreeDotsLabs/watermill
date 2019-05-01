@@ -141,15 +141,18 @@ func (g *GoChannel) sendMessage(topic string, message *message.Message) (<-chan 
 	subscribers := g.topicSubscribers(topic)
 	ackedBySubscribers := make(chan struct{})
 
+	logFields := watermill.LogFields{"message_uuid": message.UUID, "topic": topic}
+
 	if len(subscribers) == 0 {
 		close(ackedBySubscribers)
+		g.logger.Info("No subscribers to send message", logFields)
 		return ackedBySubscribers, nil
 	}
 
 	go func(subscribers []*subscriber) {
 		for i := range subscribers {
 			subscriber := subscribers[i]
-			subscriber.sendMessageToSubscriber(message)
+			subscriber.sendMessageToSubscriber(message, logFields)
 		}
 		close(ackedBySubscribers)
 	}(subscribers)
@@ -221,8 +224,9 @@ func (g *GoChannel) Subscribe(ctx context.Context, topic string) (<-chan *messag
 		if ok {
 			for i := range messages {
 				msg := g.persistedMessages[topic][i]
+				logFields := watermill.LogFields{"message_uuid": msg.UUID, "topic": topic}
 
-				go s.sendMessageToSubscriber(msg)
+				go s.sendMessageToSubscriber(msg, logFields)
 			}
 		}
 
@@ -313,14 +317,9 @@ func (s *subscriber) Close() {
 	close(s.outputChannel)
 }
 
-func (s *subscriber) sendMessageToSubscriber(msg *message.Message) {
+func (s *subscriber) sendMessageToSubscriber(msg *message.Message, logFields watermill.LogFields) {
 	s.sending.Lock()
 	defer s.sending.Unlock()
-
-	subscriberLogFields := watermill.LogFields{
-		"message_uuid": msg.UUID,
-		"pubsub_uuid":  s.uuid,
-	}
 
 	ctx, cancelCtx := context.WithCancel(s.ctx)
 	defer cancelCtx()
@@ -332,30 +331,30 @@ SendToSubscriber:
 		msgToSend := msg.Copy()
 		msgToSend.SetContext(ctx)
 
-		s.logger.Trace("Sending msg to subscriber", subscriberLogFields)
+		s.logger.Trace("Sending msg to subscriber", logFields)
 
 		if s.closed {
-			s.logger.Info("Pub/Sub closed, discarding msg", subscriberLogFields)
+			s.logger.Info("Pub/Sub closed, discarding msg", logFields)
 			return
 		}
 
 		select {
 		case s.outputChannel <- msgToSend:
-			s.logger.Trace("Sent message to subscriber", subscriberLogFields)
+			s.logger.Trace("Sent message to subscriber", logFields)
 		case <-s.closing:
-			s.logger.Trace("Closing, message discarded", subscriberLogFields)
+			s.logger.Trace("Closing, message discarded", logFields)
 			return
 		}
 
 		select {
 		case <-msgToSend.Acked():
-			s.logger.Trace("Message acked", subscriberLogFields)
+			s.logger.Trace("Message acked", logFields)
 			return
 		case <-msgToSend.Nacked():
-			s.logger.Trace("Nack received, resending message", subscriberLogFields)
+			s.logger.Trace("Nack received, resending message", logFields)
 			continue SendToSubscriber
 		case <-s.closing:
-			s.logger.Trace("Closing, message discarded", subscriberLogFields)
+			s.logger.Trace("Closing, message discarded", logFields)
 			return
 		}
 	}

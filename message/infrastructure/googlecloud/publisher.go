@@ -4,6 +4,8 @@ import (
 	"context"
 	"sync"
 
+	"github.com/ThreeDotsLabs/watermill"
+
 	"cloud.google.com/go/pubsub"
 	"github.com/pkg/errors"
 	"google.golang.org/api/option"
@@ -42,11 +44,17 @@ type PublisherConfig struct {
 	ClientOptions   []option.ClientOption
 
 	Marshaler Marshaler
+
+	Logger watermill.LoggerAdapter
 }
 
 func (c *PublisherConfig) setDefaults() {
 	if c.Marshaler == nil {
 		c.Marshaler = DefaultMarshalerUnmarshaler{}
+	}
+
+	if c.Logger == nil {
+		c.Logger = watermill.NopLogger{}
 	}
 }
 
@@ -87,7 +95,13 @@ func (p *Publisher) Publish(topic string, messages ...*message.Message) error {
 		return err
 	}
 
+	logFields := make(watermill.LogFields, 2)
+	logFields["topic"] = topic
+
 	for _, msg := range messages {
+		logFields["message_uuid"] = msg.UUID
+		p.config.Logger.Trace("Sending message to Google PubSub", logFields)
+
 		googlecloudMsg, err := p.config.Marshaler.Marshal(topic, msg)
 		if err != nil {
 			return errors.Wrapf(err, "cannot marshal message %s", msg.UUID)
@@ -100,6 +114,8 @@ func (p *Publisher) Publish(topic string, messages ...*message.Message) error {
 		if err != nil {
 			return errors.Wrapf(err, "publishing message %s failed", msg.UUID)
 		}
+
+		p.config.Logger.Trace("Message published to Google PubSub", logFields)
 	}
 
 	return nil
@@ -107,10 +123,12 @@ func (p *Publisher) Publish(topic string, messages ...*message.Message) error {
 
 // Close notifies the Publisher to stop processing messages, send all the remaining messages and close the connection.
 func (p *Publisher) Close() error {
+	p.config.Logger.Info("Closing Google PubSub publisher", nil)
+	defer p.config.Logger.Info("Google PubSub publisher closed", nil)
+
 	if p.closed {
 		return nil
 	}
-
 	p.closed = true
 
 	p.topicsLock.Lock()
