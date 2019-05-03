@@ -17,10 +17,15 @@ import (
 // `payload` VARBINARY(255) DEFAULT NULL,
 // `metadata` JSON DEFAULT NULL,
 // `topic` VARCHAR(255) NOT NULL,
+//
+// testSchema maintains a separate table for each topic, which helps to prevent deadlock in parallel tests.
 type testSchema struct {
 	insertQ string
 	selectQ string
 	ackQ    string
+
+	// db is needed to create a separate table per topic if needed
+	db *sql.DB
 }
 
 func (s *testSchema) InsertQuery(messagesTable string) string {

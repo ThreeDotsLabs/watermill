@@ -13,9 +13,10 @@ import (
 )
 
 func TestPublisher_Publish(t *testing.T) {
-	schemaAdapter := &testSchema{}
+	db := newMySQL(t)
+	schemaAdapter := &testSchema{db: db}
 	pub, err := sql.NewPublisher(
-		newMySQL(t),
+		db,
 		sql.PublisherConfig{
 			MessagesTable: "messages_test",
 			Inserter:      schemaAdapter,

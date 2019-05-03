@@ -16,8 +16,8 @@ import (
 )
 
 func TestSubscriber_Subscribe(t *testing.T) {
-	schemaAdapter := &testSchema{}
 	db := newMySQL(t)
+	schemaAdapter := &testSchema{db: db}
 	sub, err := sql.NewSubscriber(
 		db,
 		sql.SubscriberConfig{
@@ -52,7 +52,7 @@ func publishMessages(t *testing.T, db *std_sql.DB) {
 	pub, err := sql.NewPublisher(
 		db,
 		sql.PublisherConfig{
-			Inserter:      &testSchema{},
+			Inserter:      &testSchema{db: db},
 			MessagesTable: "messages_test",
 		})
 	require.NoError(t, err)

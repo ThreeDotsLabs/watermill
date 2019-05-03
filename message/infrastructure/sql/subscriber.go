@@ -251,12 +251,15 @@ func (s *Subscriber) sendMessage(
 	out chan *message.Message,
 	logger watermill.LoggerAdapter,
 ) (acked bool) {
+	msgCtx, cancel := context.WithCancel(ctx)
+	msg.SetContext(msgCtx)
+	defer cancel()
 
 ResendLoop:
 	for {
+
 		select {
 		case out <- msg:
-		// message sent, go on
 
 		case <-s.closing:
 			logger.Info("Discarding queued message, subscriber closing", nil)

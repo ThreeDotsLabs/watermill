@@ -598,6 +598,8 @@ func TestMessageCtx(t *testing.T, pubSub PubSub, features Features) {
 	msg.SetContext(ctx)
 
 	require.NoError(t, publishWithRetry(pubSub, topicName, msg))
+
+	msg.UUID = watermill.NewUUID()
 	// this might actually be an error in some pubsubs (http), because we close the subscriber without ACK.
 	_ = pubSub.Publish(topicName, msg)
 
