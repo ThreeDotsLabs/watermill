@@ -198,7 +198,7 @@ func TestPartitionOffsets(t *testing.T) {
 		if expectedOffset, ok := expectedPartitionsOffsets[offset.Partition]; ok {
 			assert.Equal(t, expectedOffset, offset.Offset)
 		} else {
-			assert.EqualValues(t, 0, offset.Offset)
+			assert.EqualValues(t, -1, offset.Offset)
 		}
 	}
 

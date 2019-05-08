@@ -501,7 +501,7 @@ func (s *Subscriber) SubscribeInitialize(topic string) (err error) {
 
 type PartitionOffset struct {
 	Partition int32
-	Offset    int64
+	Offset    int64 // todo - doc -1
 }
 
 func (s *Subscriber) PartitionOffsets(topic string) (offsets []PartitionOffset, err error) {
@@ -526,14 +526,10 @@ func (s *Subscriber) PartitionOffsets(topic string) (offsets []PartitionOffset, 
 		if err != nil {
 			return nil, err
 		}
-		if offset > 0 {
-			// todo - doc why
-			offset -= 1
-		}
 
 		offsets = append(offsets, PartitionOffset{
 			Partition: partition,
-			Offset:    offset,
+			Offset:    offset - 1, // todo - doc why
 		})
 	}
 
