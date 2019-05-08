@@ -25,6 +25,8 @@ type Message struct {
 	//
 	// Can be used to store data which doesn't require unmarshaling entire payload.
 	// It is something similar to HTTP request's headers.
+	//
+	// Metadata is marshaled and will be saved to PubSub.
 	Metadata Metadata
 
 	// Payload is message's payload.

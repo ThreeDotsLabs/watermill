@@ -229,6 +229,10 @@ func (s *Subscriber) consumeGroupMessages(
 	}
 	go func() {
 		for err := range group.Errors() {
+			if err == nil {
+				continue
+			}
+
 			s.logger.Error("Sarama internal error", err, logFields)
 		}
 	}()
@@ -245,10 +249,6 @@ func (s *Subscriber) consumeGroupMessages(
 	go func() {
 		if err := group.Consume(ctx, []string{topic}, handler); err != nil && err != sarama.ErrUnknown {
 			s.logger.Error("Group consume error", err, logFields)
-		}
-
-		if err := group.Close(); err != nil {
-			s.logger.Error("Cannot close group client", err, logFields)
 		}
 
 		s.logger.Info("Consuming done", logFields)

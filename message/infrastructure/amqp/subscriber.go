@@ -148,7 +148,7 @@ func (s *Subscriber) prepareConsume(queueName string, exchangeName string, logFi
 
 	if err := channel.QueueBind(
 		queueName,
-		s.config.QueueBind.RoutingKey,
+		s.config.QueueBind.GenerateRoutingKey(queueName),
 		exchangeName,
 		s.config.QueueBind.NoWait,
 		s.config.QueueBind.Arguments,

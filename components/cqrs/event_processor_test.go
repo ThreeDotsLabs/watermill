@@ -16,6 +16,10 @@ import (
 type nonPointerEventProcessor struct {
 }
 
+func (nonPointerEventProcessor) HandlerName() string {
+	return "nonPointerEventProcessor"
+}
+
 func (nonPointerEventProcessor) NewEvent() interface{} {
 	return TestEvent{}
 }
@@ -27,13 +31,18 @@ func (nonPointerEventProcessor) Handle(ctx context.Context, cmd interface{}) err
 func TestEventProcessor_non_pointer_event(t *testing.T) {
 	ts := NewTestServices()
 
-	eventProcessor := cqrs.NewEventProcessor(
+	eventProcessor, err := cqrs.NewEventProcessor(
 		[]cqrs.EventHandler{nonPointerEventProcessor{}},
-		"events",
-		ts.EventsPubSub,
+		func(eventName string) string {
+			return "events"
+		},
+		func(handlerName string) (message.Subscriber, error) {
+			return ts.EventsPubSub, nil
+		},
 		ts.Marshaler,
 		ts.Logger,
 	)
+	require.NoError(t, err)
 
 	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
 	require.NoError(t, err)
@@ -44,6 +53,10 @@ func TestEventProcessor_non_pointer_event(t *testing.T) {
 
 type duplicateTestEventHandler1 struct{}
 
+func (h duplicateTestEventHandler1) HandlerName() string {
+	return "duplicateTestEventHandler1"
+}
+
 func (duplicateTestEventHandler1) NewEvent() interface{} {
 	return &TestEvent{}
 }
@@ -51,6 +64,10 @@ func (duplicateTestEventHandler1) NewEvent() interface{} {
 func (h *duplicateTestEventHandler1) Handle(ctx context.Context, event interface{}) error { return nil }
 
 type duplicateTestEventHandler2 struct{}
+
+func (h duplicateTestEventHandler2) HandlerName() string {
+	return "duplicateTestEventHandler2"
+}
 
 func (duplicateTestEventHandler2) NewEvent() interface{} {
 	return &TestEvent{}
@@ -61,16 +78,21 @@ func (h *duplicateTestEventHandler2) Handle(ctx context.Context, event interface
 func TestEventProcessor_multiple_same_event_handlers(t *testing.T) {
 	ts := NewTestServices()
 
-	eventProcessor := cqrs.NewEventProcessor(
+	eventProcessor, err := cqrs.NewEventProcessor(
 		[]cqrs.EventHandler{
 			&duplicateTestEventHandler1{},
 			&duplicateTestEventHandler2{},
 		},
-		"events",
-		ts.EventsPubSub,
+		func(eventName string) string {
+			return "events"
+		},
+		func(handlerName string) (message.Subscriber, error) {
+			return ts.EventsPubSub, nil
+		},
 		ts.Marshaler,
 		ts.Logger,
 	)
+	require.NoError(t, err)
 
 	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
 	require.NoError(t, err)

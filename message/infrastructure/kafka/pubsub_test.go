@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ThreeDotsLabs/watermill/internal"
 	"github.com/ThreeDotsLabs/watermill/message/subscriber"
 
 	"github.com/stretchr/testify/assert"
@@ -112,7 +111,7 @@ func TestPublishSubscribe(t *testing.T) {
 		Persistent:          true,
 	}
 
-	if testing.Short() && !internal.RaceEnabled {
+	if infrastructure.RunOnlyFastTests() {
 		// Kafka tests are a bit slow, so let's run only basic test
 		// todo - speed up
 		t.Log("Running only TestPublishSubscribe for Kafka with -short flag")

@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ThreeDotsLabs/watermill/internal"
+
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/gochannel"
 
 	"github.com/ThreeDotsLabs/watermill"
@@ -124,7 +126,7 @@ func TestRouter_functional_nack(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	nackSend := false
+	nackSend := make(chan struct{})
 	messageReceived := make(chan *message.Message, 2)
 
 	r.AddNoPublisherHandler(
@@ -134,9 +136,9 @@ func TestRouter_functional_nack(t *testing.T) {
 		func(msg *message.Message) (producedMessages []*message.Message, err error) {
 			messageReceived <- msg
 
-			if !nackSend {
+			if !internal.IsChannelClosed(nackSend) {
 				msg.Nack()
-				nackSend = true
+				close(nackSend)
 			}
 
 			return nil, nil

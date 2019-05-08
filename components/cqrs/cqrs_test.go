@@ -2,6 +2,7 @@ package cqrs_test
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -53,8 +54,16 @@ func createRouterAndFacade(ts TestServices, t *testing.T, commandHandler *Captur
 	require.NoError(t, err)
 
 	c, err := cqrs.NewFacade(cqrs.FacadeConfig{
-		CommandsTopic: "commands",
-		EventsTopic:   "events",
+		GenerateCommandsTopic: func(commandName string) string {
+			assert.Equal(t, "cqrs_test.TestCommand", commandName)
+
+			return commandName
+		},
+		GenerateEventsTopic: func(eventName string) string {
+			assert.Equal(t, "cqrs_test.TestEvent", eventName)
+
+			return eventName
+		},
 		CommandHandlers: func(cb *cqrs.CommandBus, eb *cqrs.EventBus) []cqrs.CommandHandler {
 			require.NotNil(t, cb)
 			require.NotNil(t, eb)
@@ -67,9 +76,19 @@ func createRouterAndFacade(ts TestServices, t *testing.T, commandHandler *Captur
 
 			return []cqrs.EventHandler{eventHandler}
 		},
-		Router:                router,
-		CommandsPubSub:        ts.CommandsPubSub,
-		EventsPubSub:          ts.EventsPubSub,
+		Router:            router,
+		CommandsPublisher: ts.CommandsPubSub,
+		CommandsSubscriberConstructor: func(handlerName string) (message.Subscriber, error) {
+			assert.Equal(t, "CaptureCommandHandler", handlerName)
+
+			return ts.CommandsPubSub, nil
+		},
+		EventsPublisher: ts.EventsPubSub,
+		EventsSubscriberConstructor: func(handlerName string) (message.Subscriber, error) {
+			assert.Equal(t, "CaptureEventHandler", handlerName)
+
+			return ts.EventsPubSub, nil
+		},
 		Logger:                ts.Logger,
 		CommandEventMarshaler: ts.Marshaler,
 	})
@@ -116,6 +135,10 @@ type CaptureCommandHandler struct {
 	handledCommands []interface{}
 }
 
+func (h CaptureCommandHandler) HandlerName() string {
+	return "CaptureCommandHandler"
+}
+
 func (h CaptureCommandHandler) HandledCommands() []interface{} {
 	return h.handledCommands
 }
@@ -142,6 +165,10 @@ type CaptureEventHandler struct {
 	handledEvents []interface{}
 }
 
+func (h CaptureEventHandler) HandlerName() string {
+	return "CaptureEventHandler"
+}
+
 func (h CaptureEventHandler) HandledEvents() []interface{} {
 	return h.handledEvents
 }
@@ -156,5 +183,44 @@ func (CaptureEventHandler) NewEvent() interface{} {
 
 func (h *CaptureEventHandler) Handle(ctx context.Context, event interface{}) error {
 	h.handledEvents = append(h.handledEvents, event.(*TestEvent))
+	return nil
+}
+
+type assertPublishTopicPublisher struct {
+	ExpectedTopic string
+	T             *testing.T
+}
+
+func (a assertPublishTopicPublisher) Publish(topic string, messages ...*message.Message) error {
+	assert.Equal(a.T, a.ExpectedTopic, topic)
+	return nil
+}
+
+func (assertPublishTopicPublisher) Close() error {
+	return nil
+}
+
+type publisherStub struct {
+	messages map[string]message.Messages
+
+	mu sync.Mutex
+}
+
+func newPublisherStub() *publisherStub {
+	return &publisherStub{
+		messages: make(map[string]message.Messages),
+	}
+}
+
+func (*publisherStub) Close() error {
+	return nil
+}
+
+func (p *publisherStub) Publish(topic string, messages ...*message.Message) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	p.messages[topic] = append(p.messages[topic], messages...)
+
 	return nil
 }
