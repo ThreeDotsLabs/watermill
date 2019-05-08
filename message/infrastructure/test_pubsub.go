@@ -51,6 +51,7 @@ type SimpleMessage struct {
 	Num int `json:"num"`
 }
 
+// todo - rename? make priv?
 type PubSub interface {
 	message.PubSub
 
@@ -142,7 +143,7 @@ func TestPubSubStressTest(
 }
 
 func TestPublishSubscribe(t *testing.T, pubSub PubSub, features Features) {
-	topicName := testTopicName()
+	topicName := TestTopicName()
 
 	if subscribeInitializer, ok := pubSub.Subscriber().(message.SubscribeInitializer); ok {
 		require.NoError(t, subscribeInitializer.SubscribeInitialize(topicName))
@@ -188,7 +189,7 @@ func TestPublishSubscribeInOrder(t *testing.T, pubSub PubSub, features Features)
 	}
 
 	defer closePubSub(t, pubSub)
-	topicName := testTopicName()
+	topicName := TestTopicName()
 
 	if subscribeInitializer, ok := pubSub.Subscriber().(message.SubscribeInitializer); ok {
 		require.NoError(t, subscribeInitializer.SubscribeInitialize(topicName))
@@ -238,7 +239,7 @@ func TestPublishSubscribeInOrder(t *testing.T, pubSub PubSub, features Features)
 
 func TestResendOnError(t *testing.T, pubSub PubSub, features Features) {
 	defer closePubSub(t, pubSub)
-	topicName := testTopicName()
+	topicName := TestTopicName()
 
 	if subscribeInitializer, ok := pubSub.Subscriber().(message.SubscribeInitializer); ok {
 		require.NoError(t, subscribeInitializer.SubscribeInitialize(topicName))
@@ -283,7 +284,7 @@ func TestNoAck(t *testing.T, pubSub PubSub, features Features) {
 	}
 
 	defer closePubSub(t, pubSub)
-	topicName := testTopicName()
+	topicName := TestTopicName()
 
 	if subscribeInitializer, ok := pubSub.Subscriber().(message.SubscribeInitializer); ok {
 		require.NoError(t, subscribeInitializer.SubscribeInitialize(topicName))
@@ -360,7 +361,7 @@ func TestContinueAfterSubscribeClose(t *testing.T, createPubSub PubSubConstructo
 	pubSub := createPubSub(t)
 	defer closePubSub(t, pubSub)
 
-	topicName := testTopicName()
+	topicName := TestTopicName()
 	if subscribeInitializer, ok := pubSub.Subscriber().(message.SubscribeInitializer); ok {
 		require.NoError(t, subscribeInitializer.SubscribeInitialize(topicName))
 	}
@@ -400,7 +401,7 @@ func TestConcurrentClose(t *testing.T, createPubSub PubSubConstructor, features 
 		t.Skip("ExactlyOnceDelivery test is not supported yet")
 	}
 
-	topicName := testTopicName()
+	topicName := TestTopicName()
 	createTopicPubSub := createPubSub(t)
 	if subscribeInitializer, ok := createTopicPubSub.Subscriber().(message.SubscribeInitializer); ok {
 		require.NoError(t, subscribeInitializer.SubscribeInitialize(topicName))
@@ -443,7 +444,7 @@ func TestContinueAfterErrors(t *testing.T, createPubSub PubSubConstructor, featu
 	pubSub := createPubSub(t)
 	defer closePubSub(t, pubSub)
 
-	topicName := testTopicName()
+	topicName := TestTopicName()
 	if subscribeInitializer, ok := pubSub.Subscriber().(message.SubscribeInitializer); ok {
 		require.NoError(t, subscribeInitializer.SubscribeInitialize(topicName))
 	}
@@ -501,7 +502,7 @@ func TestConsumerGroups(t *testing.T, pubSubConstructor ConsumerGroupPubSubConst
 
 	publisherPubSub := pubSubConstructor(t, "test_"+watermill.NewUUID())
 
-	topicName := testTopicName()
+	topicName := TestTopicName()
 	if subscribeInitializer, ok := publisherPubSub.Subscriber().(message.SubscribeInitializer); ok {
 		require.NoError(t, subscribeInitializer.SubscribeInitialize(topicName))
 	}
@@ -521,7 +522,7 @@ func TestConsumerGroups(t *testing.T, pubSubConstructor ConsumerGroupPubSubConst
 
 // TestPublisherClose sends big amount of messages and them run close to ensure that messages are not lost during adding.
 func TestPublisherClose(t *testing.T, pubSub PubSub, features Features) {
-	topicName := testTopicName()
+	topicName := TestTopicName()
 	if subscribeInitializer, ok := pubSub.Subscriber().(message.SubscribeInitializer); ok {
 		require.NoError(t, subscribeInitializer.SubscribeInitialize(topicName))
 	}
@@ -544,8 +545,8 @@ func TestPublisherClose(t *testing.T, pubSub PubSub, features Features) {
 func TestTopic(t *testing.T, pubSub PubSub, features Features) {
 	defer closePubSub(t, pubSub)
 
-	topic1 := testTopicName()
-	topic2 := testTopicName()
+	topic1 := TestTopicName()
+	topic2 := TestTopicName()
 
 	if subscribeInitializer, ok := pubSub.Subscriber().(message.SubscribeInitializer); ok {
 		require.NoError(t, subscribeInitializer.SubscribeInitialize(topic1))
@@ -579,7 +580,7 @@ func TestTopic(t *testing.T, pubSub PubSub, features Features) {
 func TestMessageCtx(t *testing.T, pubSub PubSub, features Features) {
 	defer closePubSub(t, pubSub)
 
-	topicName := testTopicName()
+	topicName := TestTopicName()
 	if subscribeInitializer, ok := pubSub.Subscriber().(message.SubscribeInitializer); ok {
 		require.NoError(t, subscribeInitializer.SubscribeInitialize(topicName))
 	}
@@ -653,7 +654,7 @@ func TestSubscribeCtx(t *testing.T, pubSub PubSub, features Features) {
 	ctxWithCancel, cancel := context.WithCancel(context.Background())
 	ctxWithCancel = context.WithValue(ctxWithCancel, "foo", "bar")
 
-	topicName := testTopicName()
+	topicName := TestTopicName()
 	if subscribeInitializer, ok := pubSub.Subscriber().(message.SubscribeInitializer); ok {
 		require.NoError(t, subscribeInitializer.SubscribeInitialize(topicName))
 	}
@@ -697,7 +698,7 @@ func TestReconnect(t *testing.T, pubSub PubSub, features Features) {
 		t.Skip("no RestartServiceCommand provided, cannot test reconnect")
 	}
 
-	topicName := testTopicName()
+	topicName := TestTopicName()
 	if subscribeInitializer, ok := pubSub.Subscriber().(message.SubscribeInitializer); ok {
 		require.NoError(t, subscribeInitializer.SubscribeInitialize(topicName))
 	}
@@ -801,7 +802,7 @@ func assertConsumerGroupReceivedMessages(
 	tests.AssertAllMessagesReceived(t, expectedMessages, receivedMessages)
 }
 
-func testTopicName() string {
+func TestTopicName() string {
 	return "topic_" + watermill.NewUUID()
 }
 

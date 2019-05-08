@@ -1,12 +1,16 @@
 package kafka_test
 
 import (
+	"context"
 	"os"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/ThreeDotsLabs/watermill/internal"
+	"github.com/ThreeDotsLabs/watermill/message/subscriber"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/Shopify/sarama"
 
@@ -17,6 +21,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var logger = watermill.NewStdLogger(true, true)
+
 func kafkaBrokers() []string {
 	brokers := os.Getenv("WATERMILL_TEST_KAFKA_BROKERS")
 	if brokers != "" {
@@ -26,19 +32,10 @@ func kafkaBrokers() []string {
 }
 
 func newPubSub(t *testing.T, marshaler kafka.MarshalerUnmarshaler, consumerGroup string) message.PubSub {
-	logger := watermill.NewStdLogger(true, true)
-
 	publisher, err := kafka.NewPublisher(kafkaBrokers(), marshaler, nil, logger)
 	require.NoError(t, err)
 
-	saramaConfig := kafka.DefaultSaramaSubscriberConfig()
-	saramaConfig.Consumer.Offsets.Initial = sarama.OffsetOldest
-
-	saramaConfig.Admin.Timeout = time.Second * 30
-	saramaConfig.Producer.RequiredAcks = sarama.WaitForAll
-	saramaConfig.ChannelBufferSize = 10240
-	saramaConfig.Consumer.Group.Heartbeat.Interval = time.Millisecond * 500
-	saramaConfig.Consumer.Group.Rebalance.Timeout = time.Millisecond * 500
+	saramaConfig := newSaramaConfig()
 
 	subscriber, err := kafka.NewSubscriber(
 		kafka.SubscriberConfig{
@@ -56,6 +53,17 @@ func newPubSub(t *testing.T, marshaler kafka.MarshalerUnmarshaler, consumerGroup
 	require.NoError(t, err)
 
 	return message.NewPubSub(publisher, subscriber)
+}
+
+func newSaramaConfig() *sarama.Config {
+	saramaConfig := kafka.DefaultSaramaSubscriberConfig()
+	saramaConfig.Consumer.Offsets.Initial = sarama.OffsetOldest
+	saramaConfig.Admin.Timeout = time.Second * 30
+	saramaConfig.Producer.RequiredAcks = sarama.WaitForAll
+	saramaConfig.ChannelBufferSize = 10240
+	saramaConfig.Consumer.Group.Heartbeat.Interval = time.Millisecond * 500
+	saramaConfig.Consumer.Group.Rebalance.Timeout = time.Millisecond * 500
+	return saramaConfig
 }
 
 func generatePartitionKey(topic string, msg *message.Message) (string, error) {
@@ -144,4 +152,56 @@ func TestNoGroupSubscriber(t *testing.T) {
 	}
 
 	infrastructure.TestNoGroupSubscriber(t, createPubSub, createNoGroupSubscriberConstructor)
+}
+
+// todo - consumer groups and no consumer groups
+func TestPartitionOffsets(t *testing.T) {
+	pubSub := createPubSub(t)
+	topicName := infrastructure.TestTopicName()
+
+	if subscribeInitializer, ok := pubSub.Subscriber().(message.SubscribeInitializer); ok {
+		require.NoError(t, subscribeInitializer.SubscribeInitialize(topicName))
+	}
+
+	var messagesToPublish []*message.Message
+
+	for i := 0; i < 20; i++ {
+		id := watermill.NewUUID()
+		messagesToPublish = append(messagesToPublish, message.NewMessage(id, nil))
+	}
+	err := pubSub.Publish(topicName, messagesToPublish...)
+	require.NoError(t, err, "cannot publish message")
+
+	messages, err := pubSub.Subscribe(context.Background(), topicName)
+	require.NoError(t, err)
+
+	receivedMessages, all := subscriber.BulkReadWithDeduplication(messages, len(messagesToPublish), time.Second*10)
+	assert.True(t, all)
+
+	expectedPartitionsOffsets := map[int32]int64{}
+	for _, msg := range receivedMessages {
+		partition := kafka.MessagePartitionFromCtx(msg.Context())
+		partitionOffset := kafka.MessagePartitionOffsetFromCtx(msg.Context())
+
+		if _, ok := expectedPartitionsOffsets[partition]; !ok {
+			expectedPartitionsOffsets[partition] = 0
+		}
+		if expectedPartitionsOffsets[partition] < partitionOffset {
+			expectedPartitionsOffsets[partition] = partitionOffset
+		}
+	}
+
+	offsets, err := pubSub.Subscriber().(*kafka.Subscriber).PartitionOffsets(topicName)
+	require.NoError(t, err)
+	assert.NotEmpty(t, offsets)
+
+	for _, offset := range offsets {
+		if expectedOffset, ok := expectedPartitionsOffsets[offset.Partition]; ok {
+			assert.Equal(t, expectedOffset, offset.Offset)
+		} else {
+			assert.EqualValues(t, 0, offset.Offset)
+		}
+	}
+
+	require.NoError(t, pubSub.Close())
 }

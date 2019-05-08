@@ -46,7 +46,7 @@ func testNoGroupSubscriberConcurrentSubscribers(
 	consumersStarted := &sync.WaitGroup{}
 	consumersStarted.Add(3)
 
-	topicName := testTopicName()
+	topicName := TestTopicName()
 
 	receivedMessages := map[int][]*message.Message{}
 	receivedMessagesMutex := &sync.Mutex{}
@@ -95,7 +95,7 @@ func testNoGroupSubscriberJoiningSubscribers(
 	noGroupSubscriberConstructor NoGroupSubscriberConstructor,
 ) {
 	subscribersCount := 3
-	topicName := testTopicName()
+	topicName := TestTopicName()
 
 	createSubscriber := make(chan struct{})
 	subscriberCreated := make(chan struct{})
@@ -176,7 +176,7 @@ func testNoGroupSubscriber_Close(
 	noGroupSubscriberConstructor NoGroupSubscriberConstructor,
 ) {
 
-	topicName := testTopicName()
+	topicName := TestTopicName()
 
 	var messagesToPublish []*message.Message
 

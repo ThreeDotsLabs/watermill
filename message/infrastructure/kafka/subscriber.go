@@ -36,7 +36,7 @@ func NewSubscriber(
 	overwriteSaramaConfig *sarama.Config,
 	unmarshaler Unmarshaler,
 	logger watermill.LoggerAdapter,
-) (message.Subscriber, error) {
+) (*Subscriber, error) {
 	config.setDefaults()
 
 	if err := config.Validate(); err != nil {
@@ -424,6 +424,9 @@ func (h messageHandler) processMessage(
 		"kafka_partition":        kafkaMsg.Partition,
 	})
 
+	ctx = setPartitionToCtx(ctx, kafkaMsg.Partition)
+	ctx = setPartitionOffsetToCtx(ctx, kafkaMsg.Offset)
+
 	h.logger.Trace("Received message from Kafka", receivedMsgLogFields)
 
 	msg, err := h.unmarshaler.Unmarshal(kafkaMsg)
@@ -494,4 +497,45 @@ func (s *Subscriber) SubscribeInitialize(topic string) (err error) {
 	s.logger.Info("Created Kafka topic", watermill.LogFields{"topic": topic})
 
 	return nil
+}
+
+type PartitionOffset struct {
+	Partition int32
+	Offset    int64
+}
+
+func (s *Subscriber) PartitionOffsets(topic string) (offsets []PartitionOffset, err error) {
+	client, err := sarama.NewClient(s.config.Brokers, s.saramaConfig)
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot create new Sarama client")
+	}
+
+	defer func() {
+		if closeErr := client.Close(); closeErr != nil {
+			err = multierror.Append(err, closeErr)
+		}
+	}()
+
+	partitions, err := client.Partitions(topic)
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot get topic partitions")
+	}
+
+	for _, partition := range partitions {
+		offset, err := client.GetOffset(topic, partition, sarama.OffsetNewest)
+		if err != nil {
+			return nil, err
+		}
+		if offset > 0 {
+			// todo - doc why
+			offset -= 1
+		}
+
+		offsets = append(offsets, PartitionOffset{
+			Partition: partition,
+			Offset:    offset,
+		})
+	}
+
+	return offsets, nil
 }
