@@ -22,3 +22,6 @@ require (
 	google.golang.org/api v0.1.0
 	google.golang.org/grpc v1.19.0
 )
+
+replace sourcegraph.com/sourcegraph/go-diff v0.5.1 => github.com/sourcegraph/go-diff v0.5.1
+replace github.com/golang/lint => golang.org/x/lint v0.0.0-20190409202823-959b441ac422
