@@ -24,3 +24,7 @@ test_reconnect:
 
 validate_examples:
 	bash dev/validate_examples.sh
+
+generate_gomod:
+	rm go.mod go.sum
+	go install ./...
