@@ -16,6 +16,7 @@ type Subscriber struct {
 	*connectionWrapper
 
 	config Config
+	topologyBuilder topologyBuilder
 }
 
 func NewSubscriber(config Config, logger watermill.LoggerAdapter) (*Subscriber, error) {
@@ -28,7 +29,9 @@ func NewSubscriber(config Config, logger watermill.LoggerAdapter) (*Subscriber, 
 		return nil, err
 	}
 
-	return &Subscriber{conn, config}, nil
+	return &Subscriber{conn, config, &defaultTopologyBuilder{
+		config, logger,
+	}}, nil
 }
 
 // Subscribe consumes messages from AMQP broker.
@@ -91,6 +94,10 @@ func (s *Subscriber) Subscribe(ctx context.Context, topic string) (<-chan *messa
 	return out, nil
 }
 
+func (s *Subscriber) SetTopologyBuilder(builder topologyBuilder) {
+	s.topologyBuilder = builder
+}
+
 func (s *Subscriber) SubscribeInitialize(topic string) (err error) {
 	if s.closed {
 		return errors.New("pub/sub is closed")
@@ -124,37 +131,10 @@ func (s *Subscriber) prepareConsume(queueName string, exchangeName string, logFi
 		}
 	}()
 
-	if _, err := channel.QueueDeclare(
-		queueName,
-		s.config.Queue.Durable,
-		s.config.Queue.AutoDelete,
-		s.config.Queue.Exclusive,
-		s.config.Queue.NoWait,
-		s.config.Queue.Arguments,
-	); err != nil {
-		return errors.Wrap(err, "cannot declare queue")
-	}
-	s.logger.Debug("Queue declared", logFields)
-
-	if exchangeName == "" {
-		s.logger.Debug("No exchange to declare", logFields)
-		return nil
+	if err = s.topologyBuilder.buildTopology(channel, queueName, logFields, exchangeName, s.exchangeDeclare); err != nil {
+		return err
 	}
 
-	if err := s.exchangeDeclare(channel, exchangeName); err != nil {
-		return errors.Wrap(err, "cannot declare exchange")
-	}
-	s.logger.Debug("Exchange declared", logFields)
-
-	if err := channel.QueueBind(
-		queueName,
-		s.config.QueueBind.GenerateRoutingKey(queueName),
-		exchangeName,
-		s.config.QueueBind.NoWait,
-		s.config.QueueBind.Arguments,
-	); err != nil {
-		return errors.Wrap(err, "cannot bind queue")
-	}
 	s.logger.Debug("Queue bound to exchange", logFields)
 
 	return nil
