@@ -7,15 +7,13 @@ import (
 )
 
 type TopologyBuilder interface {
-	BuildTopology(channel *amqp.Channel, queueName string, exchangeName string, exchangeDeclare ExchangeDeclare, config Config, logger watermill.LoggerAdapter) error
+	BuildTopology(channel *amqp.Channel, queueName string, exchangeName string, config Config, logger watermill.LoggerAdapter) error
 }
-
-type ExchangeDeclare func(channel *amqp.Channel, exchangeName string) error
 
 type DefaultTopologyBuilder struct {
 }
 
-func (builder *DefaultTopologyBuilder) BuildTopology(channel *amqp.Channel, queueName string, exchangeName string, exchangeDeclare ExchangeDeclare, config Config, logger watermill.LoggerAdapter) error  {
+func (builder *DefaultTopologyBuilder) BuildTopology(channel *amqp.Channel, queueName string, exchangeName string, config Config, logger watermill.LoggerAdapter) error  {
 	if _, err := channel.QueueDeclare(
 		queueName,
 		config.Queue.Durable,
@@ -33,7 +31,7 @@ func (builder *DefaultTopologyBuilder) BuildTopology(channel *amqp.Channel, queu
 		logger.Debug("No exchange to declare", nil)
 		return nil
 	}
-	if err := exchangeDeclare(channel, exchangeName); err != nil {
+	if err := config.exchangeDeclare(channel, exchangeName); err != nil {
 		return errors.Wrap(err, "cannot declare exchange")
 	}
 

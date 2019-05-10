@@ -248,6 +248,18 @@ func (c Config) ValidateSubscriber() error {
 	return err
 }
 
+func (c Config) exchangeDeclare(channel *amqp.Channel, exchangeName string) error {
+	return channel.ExchangeDeclare(
+		exchangeName,
+		c.Exchange.Type,
+		c.Exchange.Durable,
+		c.Exchange.AutoDeleted,
+		c.Exchange.Internal,
+		c.Exchange.NoWait,
+		c.Exchange.Arguments,
+	)
+}
+
 type ConnectionConfig struct {
 	AmqpURI string
 

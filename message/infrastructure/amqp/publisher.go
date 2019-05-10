@@ -149,7 +149,7 @@ func (p *Publisher) preparePublishBindings(topic string, channel *amqp.Channel) 
 	defer p.publishBindingsLock.Unlock()
 
 	if p.config.Exchange.GenerateName(topic) != "" {
-		if err := p.exchangeDeclare(channel, p.config.Exchange.GenerateName(topic)); err != nil {
+		if err := p.config.exchangeDeclare(channel, p.config.Exchange.GenerateName(topic)); err != nil {
 			return err
 		}
 	}
