@@ -9,3 +9,4 @@
 7. [ ] - commit && push to master
 8. [ ] - wait for `master` CI build
 9. [ ] - [add release in GitHub](https://github.com/ThreeDotsLabs/watermill/releases)
+    - it should contain changelog
