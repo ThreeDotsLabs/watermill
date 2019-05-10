@@ -15,7 +15,7 @@ import (
 type Subscriber struct {
 	*connectionWrapper
 
-	config          Config
+	config Config
 }
 
 func NewSubscriber(config Config, logger watermill.LoggerAdapter) (*Subscriber, error) {

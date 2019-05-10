@@ -4,6 +4,7 @@
 2. [ ] - commit && push to master
 3. [ ] - update and validate examples: `make validate_examples`
 4. [ ] - update missing documentation
+5. [ ] - check snippets in documentation (sometimes `first_line_contains` or `last_line_contains` can change position and load too much)
 5. [ ] - commit && push to master
 6. [ ] - add breaking changes to `UPGRADE-[new-version].md`
 7. [ ] - commit && push to master
