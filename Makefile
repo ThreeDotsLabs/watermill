@@ -29,3 +29,6 @@ validate_examples:
 generate_gomod:
 	rm go.mod go.sum
 	go install ./...
+	go get -u github.com/golang/protobuf/proto
+	sed -i '\|go |d' go.mod
+	go mod edit -fmt

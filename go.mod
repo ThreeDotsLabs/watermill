@@ -1,11 +1,11 @@
 module github.com/ThreeDotsLabs/watermill
 
 require (
-	cloud.google.com/go v0.38.0
 	github.com/Shopify/sarama v1.22.1
 	github.com/cenkalti/backoff v2.1.1+incompatible
 	github.com/go-chi/chi v4.0.2+incompatible
 	github.com/gogo/protobuf v1.2.1
+	github.com/golang/protobuf v1.3.1 // indirect
 	github.com/google/uuid v1.1.1
 	github.com/hashicorp/go-multierror v1.0.0
 	github.com/nats-io/go-nats v1.7.2 // indirect
