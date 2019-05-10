@@ -16,7 +16,6 @@ type Subscriber struct {
 	*connectionWrapper
 
 	config          Config
-	topologyBuilder TopologyBuilder
 }
 
 func NewSubscriber(config Config, logger watermill.LoggerAdapter) (*Subscriber, error) {
@@ -29,9 +28,7 @@ func NewSubscriber(config Config, logger watermill.LoggerAdapter) (*Subscriber, 
 		return nil, err
 	}
 
-	return &Subscriber{conn, config, &DefaultTopologyBuilder{
-		config: config, logger: logger,
-	}}, nil
+	return &Subscriber{conn, config}, nil
 }
 
 // Subscribe consumes messages from AMQP broker.
@@ -94,10 +91,6 @@ func (s *Subscriber) Subscribe(ctx context.Context, topic string) (<-chan *messa
 	return out, nil
 }
 
-func (s *Subscriber) SetTopologyBuilder(builder TopologyBuilder) {
-	s.topologyBuilder = builder
-}
-
 func (s *Subscriber) SubscribeInitialize(topic string) (err error) {
 	if s.closed {
 		return errors.New("pub/sub is closed")
@@ -131,7 +124,7 @@ func (s *Subscriber) prepareConsume(queueName string, exchangeName string, logFi
 		}
 	}()
 
-	if err = s.topologyBuilder.BuildTopology(channel, queueName, exchangeName, s.exchangeDeclare); err != nil {
+	if err = s.config.TopologyBuilder.BuildTopology(channel, queueName, exchangeName, s.exchangeDeclare, s.config, s.logger, logFields); err != nil {
 		return err
 	}
 
