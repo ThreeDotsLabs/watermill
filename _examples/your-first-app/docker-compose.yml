@@ -2,7 +2,7 @@ version: '3'
 services:
   server:
     image: golang:1.11
-    restart: on-failure
+    restart: always
     depends_on:
     - kafka
     volumes:

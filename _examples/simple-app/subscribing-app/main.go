@@ -39,7 +39,7 @@ func main() {
 	retryMiddleware.MaxRetries = 1
 	retryMiddleware.WaitTime = time.Millisecond * 10
 
-	poisonQueue, err := middleware.NewPoisonQueue(pub, "poison_queue")
+	poisonQueue, err := middleware.PoisonQueue(pub, "poison_queue")
 	if err != nil {
 		panic(err)
 	}
@@ -49,7 +49,7 @@ func main() {
 		middleware.NewThrottle(100, time.Second).Middleware,
 
 		// retry middleware retries message processing if error occurred in handler
-		poisonQueue.Middleware,
+		poisonQueue,
 
 		// if retries limit was exceeded, message is sent to poison queue (poison_queue topic)
 		retryMiddleware.Middleware,

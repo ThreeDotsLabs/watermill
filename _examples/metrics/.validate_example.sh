@@ -3,6 +3,6 @@
 # how to run the command
 CMD="docker-compose up"
 # how long to wait for the output
-TIMEOUT=8
+TIMEOUT=60
 # we expect this regexp to be present in the output
 EXPECTED_OUTPUT="msg=\"Message acked\""
