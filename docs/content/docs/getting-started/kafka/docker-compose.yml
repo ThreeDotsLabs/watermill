@@ -2,7 +2,7 @@ version: '3'
 services:
   server:
     image: golang:1.11
-    restart: on-failure
+    restart: always
     depends_on:
       - kafka
     volumes:
@@ -13,7 +13,7 @@ services:
 
   zookeeper:
     image: confluentinc/cp-zookeeper:latest
-    restart: on-failure
+    restart: always
     logging:
       driver: none
     environment:
@@ -21,7 +21,7 @@ services:
 
   kafka:
     image: confluentinc/cp-kafka:latest
-    restart: on-failure
+    restart: always
     depends_on:
       - zookeeper
     logging:

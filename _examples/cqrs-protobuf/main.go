@@ -172,13 +172,12 @@ func (b *BookingsFinancialReport) Handle(ctx context.Context, e interface{}) err
 var amqpAddress = "amqp://guest:guest@rabbitmq:5672/"
 
 func main() {
-	time.Sleep(time.Second)
-
 	logger := watermill.NewStdLogger(false, false)
 	cqrsMarshaler := cqrs.ProtobufMarshaler{}
 
 	// You can use any Pub/Sub implementation from here: https://watermill.io/docs/pub-sub-implementations/
 	// Detailed RabbitMQ implementation: https://watermill.io/docs/pub-sub-implementations/#rabbitmq-amqp
+	// Commands will be send to queue, because they need to be consumed once.
 	commandsAMQPConfig := amqp.NewDurableQueueConfig(amqpAddress)
 	commandsPublisher, err := amqp.NewPublisher(commandsAMQPConfig, logger)
 	if err != nil {
@@ -189,12 +188,14 @@ func main() {
 		panic(err)
 	}
 
+	// Events will be published to PubSub configured Rabbit, because they may be consumed by multiple consumers.
+	// (in that case BookingsFinancialReport and OrderBeerOnRoomBooked).
 	eventsPublisher, err := amqp.NewPublisher(amqp.NewDurablePubSubConfig(amqpAddress, nil), logger)
 	if err != nil {
 		panic(err)
 	}
 
-	// CQRS is built on already existing messages router: https://watermill.io/docs/messages-router/
+	// CQRS is built on messages router. Detailed documentation: https://watermill.io/docs/messages-router/
 	router, err := message.NewRouter(message.RouterConfig{}, logger)
 	if err != nil {
 		panic(err)
