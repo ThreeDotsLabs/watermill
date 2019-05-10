@@ -10,7 +10,7 @@ type TopologyBuilder interface {
 	BuildTopology(channel *amqp.Channel, queueName string, exchangeName string, exchangeDeclarer ExchangeDeclarer) error
 }
 
-type ExchangeDeclarer func(channel *amqp.Channel, exchangeName string, config Config, logger watermill.LoggerAdapter) error
+type ExchangeDeclarer func(channel *amqp.Channel, exchangeName string) error
 
 type DefaultTopologyBuilder struct {
 	config Config
