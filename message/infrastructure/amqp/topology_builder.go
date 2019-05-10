@@ -7,7 +7,7 @@ import (
 )
 
 type TopologyBuilder interface {
-	BuildTopology(channel *amqp.Channel, queueName string, exchangeName string, exchangeDeclarer ExchangeDeclarer, config Config, logger watermill.LoggerAdapter, logFields watermill.LogFields) error
+	BuildTopology(channel *amqp.Channel, queueName string, exchangeName string, exchangeDeclarer ExchangeDeclarer, config Config, logger watermill.LoggerAdapter) error
 }
 
 type ExchangeDeclarer func(channel *amqp.Channel, exchangeName string) error
@@ -15,7 +15,7 @@ type ExchangeDeclarer func(channel *amqp.Channel, exchangeName string) error
 type DefaultTopologyBuilder struct {
 }
 
-func (builder *DefaultTopologyBuilder) BuildTopology(channel *amqp.Channel, queueName string, exchangeName string, exchangeDeclarer ExchangeDeclarer, config Config, logger watermill.LoggerAdapter, logFields watermill.LogFields) error  {
+func (builder *DefaultTopologyBuilder) BuildTopology(channel *amqp.Channel, queueName string, exchangeName string, exchangeDeclarer ExchangeDeclarer, config Config, logger watermill.LoggerAdapter) error  {
 	if _, err := channel.QueueDeclare(
 		queueName,
 		config.Queue.Durable,
@@ -27,17 +27,17 @@ func (builder *DefaultTopologyBuilder) BuildTopology(channel *amqp.Channel, queu
 		return errors.Wrap(err, "cannot declare queue")
 	}
 
-	logger.Debug("Queue declared", logFields)
+	logger.Debug("Queue declared", nil)
 
 	if exchangeName == "" {
-		logger.Debug("No exchange to declare", logFields)
+		logger.Debug("No exchange to declare", nil)
 		return nil
 	}
 	if err := exchangeDeclarer(channel, exchangeName); err != nil {
 		return errors.Wrap(err, "cannot declare exchange")
 	}
 
-	logger.Debug("Exchange declared", logFields)
+	logger.Debug("Exchange declared", nil)
 
 	if err := channel.QueueBind(
 		queueName,
