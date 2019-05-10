@@ -8,9 +8,22 @@ import (
 
 type TopologyBuilder interface {
 	BuildTopology(channel *amqp.Channel, queueName string, exchangeName string, config Config, logger watermill.LoggerAdapter) error
+	ExchangeDeclare(channel *amqp.Channel, exchangeName string, config Config) error
 }
 
 type DefaultTopologyBuilder struct {
+}
+
+func (builder DefaultTopologyBuilder) ExchangeDeclare(channel *amqp.Channel, exchangeName string, config Config) error {
+	return channel.ExchangeDeclare(
+		exchangeName,
+		config.Exchange.Type,
+		config.Exchange.Durable,
+		config.Exchange.AutoDeleted,
+		config.Exchange.Internal,
+		config.Exchange.NoWait,
+		config.Exchange.Arguments,
+	)
 }
 
 func (builder *DefaultTopologyBuilder) BuildTopology(channel *amqp.Channel, queueName string, exchangeName string, config Config, logger watermill.LoggerAdapter) error  {
@@ -31,7 +44,7 @@ func (builder *DefaultTopologyBuilder) BuildTopology(channel *amqp.Channel, queu
 		logger.Debug("No exchange to declare", nil)
 		return nil
 	}
-	if err := config.exchangeDeclare(channel, exchangeName); err != nil {
+	if err := builder.ExchangeDeclare(channel, exchangeName, config); err != nil {
 		return errors.Wrap(err, "cannot declare exchange")
 	}
 
