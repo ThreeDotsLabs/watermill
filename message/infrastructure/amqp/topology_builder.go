@@ -6,18 +6,19 @@ import (
 	"github.com/streadway/amqp"
 )
 
-type topologyBuilder interface {
-	buildTopology(channel *amqp.Channel, queueName string, logFields watermill.LogFields, exchangeName string, exchangeDeclarer exchangeDeclarer) error
+type TopologyBuilder interface {
+	buildTopology(channel *amqp.Channel, queueName string, exchangeName string, exchangeDeclarer ExchangeDeclarer) error
 }
 
-type exchangeDeclarer func(channel *amqp.Channel, exchangeName string) error
+type ExchangeDeclarer func(channel *amqp.Channel, exchangeName string) error
 
-type defaultTopologyBuilder struct {
+type DefaultTopologyBuilder struct {
 	config Config
 	logger watermill.LoggerAdapter
+	logFields watermill.LogFields
 }
 
-func (builder *defaultTopologyBuilder) buildTopology(channel *amqp.Channel, queueName string, logFields watermill.LogFields, exchangeName string, exchangeDeclarer exchangeDeclarer) error  {
+func (builder *DefaultTopologyBuilder) buildTopology(channel *amqp.Channel, queueName string, exchangeName string, exchangeDeclarer ExchangeDeclarer) error  {
 	if _, err := channel.QueueDeclare(
 		queueName,
 		builder.config.Queue.Durable,
@@ -29,17 +30,17 @@ func (builder *defaultTopologyBuilder) buildTopology(channel *amqp.Channel, queu
 		return errors.Wrap(err, "cannot declare queue")
 	}
 
-	builder.logger.Debug("Queue declared", logFields)
+	builder.logger.Debug("Queue declared", builder.logFields)
 
 	if exchangeName == "" {
-		builder.logger.Debug("No exchange to declare", logFields)
+		builder.logger.Debug("No exchange to declare", builder.logFields)
 		return nil
 	}
 	if err := exchangeDeclarer(channel, exchangeName); err != nil {
 		return errors.Wrap(err, "cannot declare exchange")
 	}
 
-	builder.logger.Debug("Exchange declared", logFields)
+	builder.logger.Debug("Exchange declared", builder.logFields)
 
 	if err := channel.QueueBind(
 		queueName,

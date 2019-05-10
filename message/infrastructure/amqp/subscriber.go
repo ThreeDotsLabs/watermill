@@ -15,8 +15,8 @@ import (
 type Subscriber struct {
 	*connectionWrapper
 
-	config Config
-	topologyBuilder topologyBuilder
+	config          Config
+	topologyBuilder TopologyBuilder
 }
 
 func NewSubscriber(config Config, logger watermill.LoggerAdapter) (*Subscriber, error) {
@@ -29,8 +29,8 @@ func NewSubscriber(config Config, logger watermill.LoggerAdapter) (*Subscriber, 
 		return nil, err
 	}
 
-	return &Subscriber{conn, config, &defaultTopologyBuilder{
-		config, logger,
+	return &Subscriber{conn, config, &DefaultTopologyBuilder{
+		config: config, logger: logger,
 	}}, nil
 }
 
@@ -94,7 +94,7 @@ func (s *Subscriber) Subscribe(ctx context.Context, topic string) (<-chan *messa
 	return out, nil
 }
 
-func (s *Subscriber) SetTopologyBuilder(builder topologyBuilder) {
+func (s *Subscriber) SetTopologyBuilder(builder TopologyBuilder) {
 	s.topologyBuilder = builder
 }
 
@@ -131,7 +131,7 @@ func (s *Subscriber) prepareConsume(queueName string, exchangeName string, logFi
 		}
 	}()
 
-	if err = s.topologyBuilder.buildTopology(channel, queueName, logFields, exchangeName, s.exchangeDeclare); err != nil {
+	if err = s.topologyBuilder.buildTopology(channel, queueName, exchangeName, s.exchangeDeclare); err != nil {
 		return err
 	}
 
