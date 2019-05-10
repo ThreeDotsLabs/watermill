@@ -2,7 +2,7 @@ version: '3'
 services:
   golang:
     image: golang:1.12
-    restart: always
+    restart: unless-stopped
     ports:
     - 8080:8080
     depends_on:
@@ -17,4 +17,4 @@ services:
 
   rabbitmq:
     image: rabbitmq:3.7
-    restart: always
+    restart: unless-stopped
