@@ -24,7 +24,7 @@ import (
 // with durable added for exchange, queue and amqp.Persistent DeliveryMode.
 // Thanks to this, we don't lose messages on broker restart.
 func NewDurablePubSubConfig(amqpURI string, generateQueueName QueueNameGenerator) Config {
-	return Config{
+	config := Config{
 		Connection: ConnectionConfig{
 			AmqpURI: amqpURI,
 		},
@@ -58,6 +58,12 @@ func NewDurablePubSubConfig(amqpURI string, generateQueueName QueueNameGenerator
 			},
 		},
 	}
+
+	config.TopologyBuilder = DefaultTopologyBuilder{
+		config:config,
+	}
+
+	return config
 }
 
 // NewNonDurablePubSubConfig creates config for non durable PubSub.

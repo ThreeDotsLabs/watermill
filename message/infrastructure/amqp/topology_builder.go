@@ -7,7 +7,7 @@ import (
 )
 
 type TopologyBuilder interface {
-	buildTopology(channel *amqp.Channel, queueName string, exchangeName string, exchangeDeclarer ExchangeDeclarer) error
+	BuildTopology(channel *amqp.Channel, queueName string, exchangeName string, exchangeDeclarer ExchangeDeclarer) error
 }
 
 type ExchangeDeclarer func(channel *amqp.Channel, exchangeName string) error
@@ -18,7 +18,7 @@ type DefaultTopologyBuilder struct {
 	logFields watermill.LogFields
 }
 
-func (builder *DefaultTopologyBuilder) buildTopology(channel *amqp.Channel, queueName string, exchangeName string, exchangeDeclarer ExchangeDeclarer) error  {
+func (builder *DefaultTopologyBuilder) BuildTopology(channel *amqp.Channel, queueName string, exchangeName string, exchangeDeclarer ExchangeDeclarer) error  {
 	if _, err := channel.QueueDeclare(
 		queueName,
 		builder.config.Queue.Durable,

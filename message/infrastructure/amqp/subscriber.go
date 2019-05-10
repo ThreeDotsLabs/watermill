@@ -131,7 +131,7 @@ func (s *Subscriber) prepareConsume(queueName string, exchangeName string, logFi
 		}
 	}()
 
-	if err = s.topologyBuilder.buildTopology(channel, queueName, exchangeName, s.exchangeDeclare); err != nil {
+	if err = s.topologyBuilder.BuildTopology(channel, queueName, exchangeName, s.exchangeDeclare); err != nil {
 		return err
 	}
 
