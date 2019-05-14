@@ -28,10 +28,41 @@ type testSchema struct {
 	db *sql.DB
 }
 
-func (s *testSchema) InsertQuery(messagesTable string) string {
+func (s testSchema) messagesTable(topic string) string {
+	return "`test_" + topic + "`"
+}
+
+func (s testSchema) messagesOffsetsTable(topic string) string {
+	return "`test_ack_" + topic + "`"
+}
+
+func (s *testSchema) EnsureTableForTopicQueries(topic string) []string {
+	createMessagesTable := strings.Join([]string{
+		// todo: sql injection
+		"CREATE TABLE IF NOT EXISTS " + s.messagesTable(topic) + " (",
+		"`offset` BIGINT(20) NOT NULL AUTO_INCREMENT PRIMARY KEY,",
+		"`uuid` VARCHAR(255) NOT NULL,",
+		"`payload` VARBINARY(255) DEFAULT NULL,",
+		"`metadata` JSON DEFAULT NULL,",
+		"`topic` VARCHAR(255) NOT NULL",
+		");",
+	}, "\n")
+	createAcksTable := strings.Join([]string{
+		"CREATE TABLE IF NOT EXISTS " + s.messagesOffsetsTable(topic) + " (",
+		"`offset` BIGINT NOT NULL,",
+		"`consumer_group` VARCHAR(255) NOT NULL,",
+		"PRIMARY KEY(consumer_group),",
+		"FOREIGN KEY (offset) REFERENCES " + s.messagesTable(topic) + "(offset)",
+		");",
+	}, "\n")
+
+	return []string{createMessagesTable, createAcksTable}
+}
+
+func (s *testSchema) InsertQuery(topic string) string {
 	insertQ := strings.Join([]string{
 		`INSERT INTO`,
-		messagesTable,
+		s.messagesTable(topic),
 		`(uuid, payload, metadata, topic) VALUES (?,?,?,?)`,
 	}, " ")
 
@@ -55,17 +86,12 @@ func (s *testSchema) InsertArgs(topic string, msg *message.Message) (args []inte
 			return
 		}
 		logger.Debug("Marshaled message into insert args", watermill.LogFields{
-			"uuid":  msg.UUID,
-			"topic": topic,
+			"uuid": msg.UUID,
 		})
 	}()
 
 	if len(msg.UUID) > 255 {
 		return nil, errors.New("the message UUID does not fit into VARCHAR(255)")
-	}
-
-	if len(topic) > 255 {
-		return nil, errors.New("the topic does not fit into VARCHAR(255)")
 	}
 
 	var metadata []byte
@@ -82,9 +108,9 @@ func (s *testSchema) InsertArgs(topic string, msg *message.Message) (args []inte
 	}, nil
 }
 
-func (s *testSchema) AckQuery(messageOffsetsTable string, consumerGroup string) string {
+func (s *testSchema) AckQuery(topic string, consumerGroup string) string {
 	ackQ := strings.Join([]string{
-		`INSERT INTO `, messageOffsetsTable, ` (offset, consumer_group) `,
+		`INSERT INTO `, s.messagesOffsetsTable(topic), ` (offset, consumer_group) `,
 		`VALUES (?, "`, consumerGroup, `") ON DUPLICATE KEY UPDATE offset=VALUES(offset)`,
 	}, "")
 
@@ -100,13 +126,13 @@ func (s *testSchema) AckArgs(offset int) ([]interface{}, error) {
 	return []interface{}{offset}, nil
 }
 
-func (s *testSchema) SelectQuery(messagesTable string, messagesAckedTable string, consumerGroup string) string {
+func (s *testSchema) SelectQuery(topic string, consumerGroup string) string {
 	selectQ := strings.Join([]string{
-		`SELECT offset,uuid,payload,metadata FROM `, messagesTable,
-		` WHERE TOPIC=? AND `, messagesTable, `.offset >`,
-		` (SELECT COALESCE(MAX(`, messagesAckedTable, `.offset), 0) FROM `, messagesAckedTable,
+		`SELECT offset,uuid,payload,metadata FROM `, s.messagesTable(topic),
+		` WHERE TOPIC=? AND `, s.messagesTable(topic), `.offset >`,
+		` (SELECT COALESCE(MAX(`, s.messagesOffsetsTable(topic), `.offset), 0) FROM `, s.messagesOffsetsTable(topic),
 		` WHERE consumer_group="`, consumerGroup, `")`,
-		` ORDER BY `, messagesTable, `.offset ASC LIMIT 1`,
+		` ORDER BY `, s.messagesTable(topic), `.offset ASC LIMIT 1`,
 	}, "")
 
 	logger.Info("Preparing query to select messages", watermill.LogFields{

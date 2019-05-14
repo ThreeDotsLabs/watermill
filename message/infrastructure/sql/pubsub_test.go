@@ -5,8 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ThreeDotsLabs/watermill/internal"
-
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure"
@@ -16,16 +14,18 @@ import (
 )
 
 var (
-	logger = watermill.NewStdLogger(false, false)
+	logger = watermill.NewStdLogger(false, true)
 )
 
 func newPubSub(t *testing.T, db *std_sql.DB, consumerGroup string) message.PubSub {
+	testName := t.Name()
+	t.Log(testName)
 	schemaAdapter := &testSchema{db: db}
 	publisher, err := sql.NewPublisher(
 		db,
 		sql.PublisherConfig{
 			MessagesTable: "messages_test",
-			Inserter:      schemaAdapter,
+			SchemaAdapter: schemaAdapter,
 		})
 	require.NoError(t, err)
 
@@ -40,8 +40,7 @@ func newPubSub(t *testing.T, db *std_sql.DB, consumerGroup string) message.PubSu
 
 			PollInterval:   100 * time.Millisecond,
 			ResendInterval: 50 * time.Millisecond,
-			Acker:          schemaAdapter,
-			Selecter:       schemaAdapter,
+			SchemaAdapter:  schemaAdapter,
 		},
 	)
 	require.NoError(t, err)
@@ -64,12 +63,6 @@ func TestPublishSubscribe(t *testing.T) {
 		ExactlyOnceDelivery: false,
 		GuaranteedOrder:     true,
 		Persistent:          true,
-	}
-
-	if testing.Short() && !internal.RaceEnabled {
-		t.Log("Running only TestPublishSubscribe for SQL with -short flag")
-		infrastructure.TestPublishSubscribe(t, createPubSub(t), features)
-		return
 	}
 
 	infrastructure.TestPubSub(

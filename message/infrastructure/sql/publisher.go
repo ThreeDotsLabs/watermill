@@ -13,15 +13,16 @@ var (
 )
 
 type PublisherConfig struct {
-	// Inserter provides methods for inserting the published messages that are schema-dependent.
-	Inserter Inserter
+	// SchemaAdapter provides the schema-dependent queries and arguments for them, based on topic/message etc.
+	SchemaAdapter SchemaAdapter
+
 	// MessagesTable is the name of the table that will store the published messages. Defaults to `messages`.
 	MessagesTable string
 }
 
 func (c PublisherConfig) validate() error {
-	if c.Inserter == nil {
-		return errors.New("inserter is nil")
+	if c.SchemaAdapter == nil {
+		return errors.New("schema adapter is nil")
 	}
 
 	return nil
@@ -42,8 +43,7 @@ type db interface {
 type Publisher struct {
 	conf PublisherConfig
 
-	executor   db
-	insertStmt *sql.Stmt
+	db db
 
 	publishWg *sync.WaitGroup
 	closeCh   chan struct{}
@@ -60,16 +60,9 @@ func NewPublisher(db db, conf PublisherConfig) (*Publisher, error) {
 		return nil, errors.New("db is nil")
 	}
 
-	insertQ := conf.Inserter.InsertQuery(conf.MessagesTable)
-	insertStmt, err := db.Prepare(insertQ)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not prepare the insert message statement")
-	}
-
 	return &Publisher{
 		conf: conf,
-
-		insertStmt: insertStmt,
+		db:   db,
 
 		publishWg: new(sync.WaitGroup),
 		closeCh:   make(chan struct{}),
@@ -88,13 +81,19 @@ func (p *Publisher) Publish(topic string, messages ...*message.Message) error {
 	p.publishWg.Add(1)
 	defer p.publishWg.Done()
 
+	insertQ := p.conf.SchemaAdapter.InsertQuery(topic)
+	stmt, err := p.db.Prepare(insertQ)
+	if err != nil {
+		return errors.Wrap(err, "could not prepare stmt for inserting messages")
+	}
+
 	for _, msg := range messages {
-		insertArgs, err := p.conf.Inserter.InsertArgs(topic, msg)
+		insertArgs, err := p.conf.SchemaAdapter.InsertArgs(topic, msg)
 		if err != nil {
 			return errors.Wrap(err, "could not marshal message into insert args")
 		}
 
-		_, err = p.insertStmt.Exec(insertArgs...)
+		_, err = stmt.Exec(insertArgs...)
 		if err != nil {
 			return errors.Wrap(err, "could not insert message as row")
 		}

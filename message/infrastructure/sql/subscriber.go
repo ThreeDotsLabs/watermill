@@ -3,6 +3,7 @@ package sql
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"sync"
 	"time"
 
@@ -31,10 +32,8 @@ type SubscriberConfig struct {
 	// Defaults to `offsets_acked`.
 	MessageOffsetsTable string
 
-	// Acker serves to record which messages have already been received by which consumer group.
-	Acker Acker
-	// Selecter serves to retrieve the Watermill messages from the SQL storage.
-	Selecter Selecter
+	// SchemaAdapter provides the schema-dependent queries and arguments for them, based on topic/message etc.
+	SchemaAdapter SchemaAdapter
 }
 
 func (c *SubscriberConfig) setDefaults() {
@@ -63,11 +62,8 @@ func (c SubscriberConfig) validate() error {
 	if c.ResendInterval <= 0 {
 		return errors.New("resend interval must be a positive duration")
 	}
-	if c.Acker == nil {
-		return errors.New("acker is nil")
-	}
-	if c.Selecter == nil {
-		return errors.New("selecter is nil")
+	if c.SchemaAdapter == nil {
+		return errors.New("schema adapter is nil")
 	}
 
 	return nil
@@ -82,9 +78,6 @@ type Subscriber struct {
 	subscribeWg *sync.WaitGroup
 	closing     chan struct{}
 	closed      bool
-
-	ackStmt    *sql.Stmt
-	selectStmt *sql.Stmt
 }
 
 func NewSubscriber(db *sql.DB, conf SubscriberConfig) (*Subscriber, error) {
@@ -97,25 +90,12 @@ func NewSubscriber(db *sql.DB, conf SubscriberConfig) (*Subscriber, error) {
 		return nil, errors.Wrap(err, "invalid config")
 	}
 
-	ackStmt, err := db.Prepare(conf.Acker.AckQuery(conf.MessageOffsetsTable, conf.ConsumerGroup))
-	if err != nil {
-		return nil, errors.Wrap(err, "could not prepare the ack statement")
-	}
-
-	selectStmt, err := db.Prepare(conf.Selecter.SelectQuery(conf.MessagesTable, conf.MessageOffsetsTable, conf.ConsumerGroup))
-	if err != nil {
-		return nil, errors.Wrap(err, "could not prepare the select message statement")
-	}
-
 	sub := &Subscriber{
 		db:     db,
 		config: conf,
 
 		subscribeWg: &sync.WaitGroup{},
 		closing:     make(chan struct{}),
-
-		ackStmt:    ackStmt,
-		selectStmt: selectStmt,
 	}
 
 	return sub, nil
@@ -180,9 +160,22 @@ func (s *Subscriber) query(
 	// start the transaction
 	// it is finalized after the ACK is written
 	var tx *sql.Tx
-	tx, err = s.db.BeginTx(ctx, nil)
+	tx, err = s.db.BeginTx(ctx, &sql.TxOptions{
+	//Isolation: sql.LevelSerializable,
+	})
 	if err != nil {
 		return errors.Wrap(err, "could not begin tx for querying")
+	}
+
+	selectQ := s.config.SchemaAdapter.SelectQuery(topic, s.config.ConsumerGroup)
+	selectStmt, err := tx.Prepare(selectQ)
+	if err != nil {
+		return errors.Wrap(err, "could not prepare statement to select messages")
+	}
+	ackQ := s.config.SchemaAdapter.AckQuery(topic, s.config.ConsumerGroup)
+	ackStmt, err := tx.Prepare(ackQ)
+	if err != nil {
+		return errors.Wrap(err, "could not prepare statement to ack messages")
 	}
 
 	defer func() {
@@ -199,18 +192,21 @@ func (s *Subscriber) query(
 		}
 	}()
 
-	selectStmt := tx.Stmt(s.selectStmt)
-	selectArgs, err := s.config.Selecter.SelectArgs(topic)
+	selectArgs, err := s.config.SchemaAdapter.SelectArgs(topic)
 	if err != nil {
 		return errors.Wrap(err, "could not get args for the select query")
 	}
+
+	logger.Trace(selectQ, watermill.LogFields{
+		"args": fmt.Sprintf("%+v", selectArgs),
+	})
 
 	// todo: there might be some args to pass to the query (?) in what case?
 	row := selectStmt.QueryRowContext(ctx, selectArgs...)
 
 	var offset int
 	var msg *message.Message
-	offset, msg, err = s.config.Selecter.UnmarshalMessage(row)
+	offset, msg, err = s.config.SchemaAdapter.UnmarshalMessage(row)
 	if errors.Cause(err) == sql.ErrNoRows {
 		// wait until polling for the next message
 		time.Sleep(s.config.PollInterval)
@@ -227,14 +223,15 @@ func (s *Subscriber) query(
 	// todo: different acking strategies?
 	acked := s.sendMessage(ctx, msg, out, logger)
 	if acked {
-		ackStmt := tx.Stmt(s.ackStmt)
-
 		var ackArgs []interface{}
-		ackArgs, err = s.config.Acker.AckArgs(offset)
+		ackArgs, err = s.config.SchemaAdapter.AckArgs(offset)
 		if err != nil {
 			return errors.Wrap(err, "could not get args for acking the message")
 		}
 
+		logger.Trace(ackQ, watermill.LogFields{
+			"args": fmt.Sprintf("%+v", ackArgs),
+		})
 		_, err = ackStmt.ExecContext(ctx, ackArgs...)
 		if err != nil {
 			return errors.Wrap(err, "could not get args for acking the message")
@@ -306,6 +303,22 @@ func (s *Subscriber) Close() error {
 
 	close(s.closing)
 	s.subscribeWg.Wait()
+
+	return nil
+}
+
+func (s *Subscriber) SubscribeInitialize(topic string) error {
+	ensureTableQueries := s.config.SchemaAdapter.EnsureTableForTopicQueries(topic)
+	s.config.Logger.Trace("ensuring table exists", watermill.LogFields{
+		"q": ensureTableQueries,
+	})
+
+	for _, q := range ensureTableQueries {
+		_, err := s.db.Exec(q)
+		if err != nil {
+			return errors.Wrap(err, "could not ensure table exists for topic")
+		}
+	}
 
 	return nil
 }

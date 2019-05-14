@@ -11,6 +11,33 @@ import (
 	"github.com/pkg/errors"
 )
 
+type SchemaAdapter interface {
+	// AckQuery returns the SQL query that will mark a message as read for a given consumer group.
+	// Subscriber will not return those messages again for this consumer group.
+	AckQuery(topic string, consumerGroup string) string
+	// AckArgs transforms the recovered message's offset and consumer group into the arguments put into AckQuery.
+	// todo: there should be probably only one arg, and it's an int, so we could skip the whole AckArgs thing (?)
+	AckArgs(offset int) ([]interface{}, error)
+
+	// InsertQuery returns the SQL query that will insert the Watermill message into the SQL storage.
+	InsertQuery(topic string) string
+	// InsertArgs transforms the topic and Watermill message into the arguments put into InsertQuery.
+	InsertArgs(topic string, msg *message.Message) ([]interface{}, error)
+
+	// SelectQuery returns the SQL query that returns the next unread message for a given consumer group.
+	// Subscriber will not return those messages again for this consumer group.
+	SelectQuery(topic string, consumerGroup string) string
+	// SelectArgs transforms the topic into the argument put into SelectQuery.
+	SelectArgs(topic string) ([]interface{}, error)
+	// UnmarshalMessage transforms the Row obtained from the SQL query into a Watermill message.
+	// It also returns the offset of the last read message, for the purpose of acking.
+	UnmarshalMessage(row *sql.Row) (offset int, msg *message.Message, err error)
+
+	// EnsureTableForTopicQueries returns SQL query which will make sure (CREATE IF NOT EXISTS)
+	// that the tables exist to write messages to the given topic.
+	EnsureTableForTopicQueries(topic string) []string
+}
+
 // DefaultSchema is a default implementation of Inserter, Selecter and Acker that works with the following schema:
 //
 // `offset` bigint(20) NOT NULL AUTO_INCREMENT,
@@ -26,14 +53,32 @@ type DefaultSchema struct {
 	ackQ    string
 }
 
-func (s *DefaultSchema) InsertQuery(messagesTable string) string {
+func (s *DefaultSchema) EnsureTableForTopicQuery(topic string) []string {
+	messagesQ := strings.Join([]string{
+		// todo: sql injection
+		"CREATE TABLE IF NOT EXISTS `watermill_" + topic + "` (",
+		"`offset` bigint(20) NOT NULL AUTO_INCREMENT PRIMARY KEY,",
+		"`uuid` binary(16) NOT NULL,",
+		"`created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,",
+		"`payload` json DEFAULT NULL,",
+		"`metadata` json DEFAULT NULL,",
+		"`topic` varchar(255) NOT NULL",
+		");",
+	}, "\n")
+
+	return []string{messagesQ}
+}
+
+func (s *DefaultSchema) InsertQuery(topic string) string {
 	if s.Logger == nil {
 		s.Logger = watermill.NopLogger{}
 	}
 
+	table := "watermill_" + topic
+
 	insertQ := strings.Join([]string{
 		`INSERT INTO`,
-		messagesTable,
+		table,
 		`(uuid, payload, metadata, topic) VALUES (?,?,?,?)`,
 	}, " ")
 
@@ -59,14 +104,9 @@ func (s *DefaultSchema) InsertArgs(topic string, msg *message.Message) (args []i
 			return
 		}
 		logger.Debug("Marshaled message into insert args", watermill.LogFields{
-			"uuid":  msg.UUID,
-			"topic": topic,
+			"uuid": msg.UUID,
 		})
 	}()
-
-	if len(topic) > 255 {
-		return nil, errors.New("the topic does not fit into VARCHAR(255)")
-	}
 
 	var uuid ulid.ULID
 	uuid, err = ulid.Parse(msg.UUID)
@@ -94,13 +134,15 @@ func (s *DefaultSchema) InsertArgs(topic string, msg *message.Message) (args []i
 	}, nil
 }
 
-func (s *DefaultSchema) AckQuery(messageOffsetsTable string, consumerGroup string) string {
+func (s *DefaultSchema) AckQuery(topic string, consumerGroup string) string {
+	messagesAckedTable := "watermill_acked" + topic
+
 	if s.Logger == nil {
 		s.Logger = watermill.NopLogger{}
 	}
 
 	ackQ := strings.Join([]string{
-		`INSERT INTO `, messageOffsetsTable, ` (offset, consumer_group) `,
+		`INSERT INTO `, messagesAckedTable, ` (offset, consumer_group) `,
 		`VALUES (?, "`, consumerGroup, `") ON DUPLICATE KEY UPDATE offset=VALUES(offset)`,
 	}, "")
 
@@ -116,7 +158,11 @@ func (s *DefaultSchema) AckArgs(offset int) ([]interface{}, error) {
 	return []interface{}{offset}, nil
 }
 
-func (s *DefaultSchema) SelectQuery(messagesTable string, messagesAckedTable string, consumerGroup string) string {
+func (s *DefaultSchema) SelectQuery(topic string, consumerGroup string) string {
+	// todo: ugly
+	messagesTable := "watermill_" + topic
+	messagesAckedTable := "watermill_acked" + topic
+
 	if s.Logger == nil {
 		s.Logger = watermill.NopLogger{}
 	}
