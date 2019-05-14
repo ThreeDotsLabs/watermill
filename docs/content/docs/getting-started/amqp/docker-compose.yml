@@ -2,7 +2,7 @@ version: '3'
 services:
   server:
     image: golang:1.11
-    restart: on-failure
+    restart: unless-stopped
     depends_on:
       - rabbitmq
     volumes:
@@ -13,4 +13,4 @@ services:
 
   rabbitmq:
     image: rabbitmq:3.7
-    restart: on-failure
+    restart: unless-stopped
