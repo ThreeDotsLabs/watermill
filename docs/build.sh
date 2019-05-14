@@ -4,7 +4,7 @@ if [[ ! -d themes/kube ]]; then
     mkdir -p themes/kube && pushd themes/kube
     git init
     git remote add origin https://github.com/jeblister/kube
-    git fetch --depth 1 origin 0e5397b788dce3f428aeced1cd30aa309927a2c5
+    git fetch --depth 1 origin bda578df413e441fb24e4f5f751d2b15b7efb53a
     git checkout FETCH_HEAD
     popd
 fi
@@ -36,6 +36,7 @@ else
         "message/infrastructure/amqp/subscriber.go"
         "message/infrastructure/amqp/config.go"
         "message/infrastructure/amqp/marshaler.go"
+        "message/infrastructure/amqp/topology_builder.go"
         "message/infrastructure/io/publisher.go"
         "message/infrastructure/io/subscriber.go"
         "message/infrastructure/io/marshal.go"

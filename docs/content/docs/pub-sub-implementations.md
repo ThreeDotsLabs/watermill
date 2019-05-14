@@ -334,6 +334,8 @@ Example:
 {{% load-snippet-partial file="content/docs/getting-started/nats-streaming/main.go" first_line_contains="subscriber, err :=" last_line_contains="panic(err)" padding_after="1" %}}
 {{% /render-md %}}
 
+You can also use `NewStreamingSubscriberWithStanConn` and `NewStreamingPublisherWithStanConn` to use a custom `stan.Conn` created by `NewStanConnection`.
+
 #### Publishing
 
 {{% render-md %}}
@@ -394,7 +396,6 @@ For detailed configuration description, please check [message/infrastructure/amq
 
 TLS config can be passed to `Config.TLSConfig`.
 
-
 ##### Connecting
 
 {{% render-md %}}
@@ -436,8 +437,13 @@ AMQP doesn't provide mechanism like Kafka's "consumer groups". You can still ach
 {{% load-snippet-partial file="content/docs/snippets/amqp-consumer-groups/main.go" first_line_contains="func createSubscriber(" last_line_contains="go process(\"subscriber_2\", messages2)" %}}
 {{% /render-md %}}
 
-
 In this example both `pubSub1` and `pubSub2` will receive some messages independently.
+
+#### AMQP `TopologyBuilder`
+
+{{% render-md %}}
+{{% load-snippet-partial file="content/src-link/message/infrastructure/amqp/topology_builder.go" first_line_contains="// TopologyBuilder" last_line_contains="}" padding_after="0" %}}
+{{% /render-md %}}
 
 ### io.Writer/io.Reader
 

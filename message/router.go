@@ -239,6 +239,8 @@ func (r *Router) AddNoPublisherHandler(
 // When all handlers have stopped (for example, because subscriptions were closed), the router will also stop.
 //
 // To stop Run() you should call Close() on the router.
+//
+// When all handlers are stopped (for example: because of closed connection), Run() will be also stopped.
 func (r *Router) Run() (err error) {
 	if r.isRunning {
 		return errors.New("router is already running")

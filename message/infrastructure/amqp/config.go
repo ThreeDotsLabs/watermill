@@ -57,7 +57,7 @@ func NewDurablePubSubConfig(amqpURI string, generateQueueName QueueNameGenerator
 				PrefetchCount: 1,
 			},
 		},
-		TopologyBuilder:&DefaultTopologyBuilder{},
+		TopologyBuilder: &DefaultTopologyBuilder{},
 	}
 }
 
@@ -103,7 +103,7 @@ func NewNonDurablePubSubConfig(amqpURI string, generateQueueName QueueNameGenera
 				PrefetchCount: 1,
 			},
 		},
-		TopologyBuilder:&DefaultTopologyBuilder{},
+		TopologyBuilder: &DefaultTopologyBuilder{},
 	}
 }
 
@@ -149,7 +149,7 @@ func NewDurableQueueConfig(amqpURI string) Config {
 				PrefetchCount: 1,
 			},
 		},
-		TopologyBuilder:&DefaultTopologyBuilder{},
+		TopologyBuilder: &DefaultTopologyBuilder{},
 	}
 }
 
@@ -193,7 +193,7 @@ func NewNonDurableQueueConfig(amqpURI string) Config {
 				PrefetchCount: 1,
 			},
 		},
-		TopologyBuilder:&DefaultTopologyBuilder{},
+		TopologyBuilder: &DefaultTopologyBuilder{},
 	}
 }
 
