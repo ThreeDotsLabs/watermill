@@ -24,9 +24,9 @@ func (h EventHandler) HandlerName() string {
 
 ### Added `CommandsSubscriberConstructor` and `EventsSubscriberConstructor`
 
-Now `CommandsSubscriberConstructor` and `EventsSubscriberConstructor` are passed to constructors in CQRS component.
+From now on, `CommandsSubscriberConstructor` and `EventsSubscriberConstructor` are passed to constructors in CQRS component.
 
-It allows you to created customized subscribers for every handler. For usage examples please check [_examples/cqrs-protobuf](_examples/cqrs-protobuf).
+They allow creating customized subscribers for every handler. For usage examples please check [_examples/cqrs-protobuf](_examples/cqrs-protobuf).
 
 
 ### Added context to `CommandHandler.Handle`, `CommandBus.Send`, `EventHandler.Handle` and `EventBus.Send`
@@ -35,7 +35,7 @@ Added missing context, which is passed to Publish function and handlers.
 
 ### Other
 
-- `NewCommandProcessor` and `NewEventProcessor` now returns error instead of panic
+- `NewCommandProcessor` and `NewEventProcessor` now return an error instead of panic
 - `DuplicateCommandHandlerError` is returned instead of panic when two handlers are handling the same command
 - `CommandProcessor.routerHandlerFunc` and `EventProcessor.routerHandlerFunc` are now private
 - using `GenerateCommandsTopic` and `GenerateEventsTopic` functions instead of constant topic to allow more flexibility
@@ -45,7 +45,7 @@ Added missing context, which is passed to Publish function and handlers.
 
 ### `Config.QueueBindConfig.RoutingKey` was replaced with `GenerateRoutingKey`
 
-For backward comparability, when using the constant value you should use a function:
+For backward compatibility, when using the constant value you should use a function:
 
 
 ```
@@ -57,9 +57,9 @@ func(topic string) string {
 
 ## `message/router/middleware`
 
-- `PoisonQueue` is now `PoisonQueue(pub message.Publisher, topic string) (message.HandlerMiddleware, error)`, not struct
+- `PoisonQueue` is now `PoisonQueue(pub message.Publisher, topic string) (message.HandlerMiddleware, error)`, not a struct
 
 
 ## `message/router.go`
 
-- now when all handlers are stopped, the router will also stop (`TestRouter_stop_when_all_handlers_stopped` test)
+- From now on, when all handlers are stopped, the router will also stop (`TestRouter_stop_when_all_handlers_stopped` test)
