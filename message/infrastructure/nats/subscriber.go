@@ -6,11 +6,11 @@ import (
 	"time"
 
 	internalSync "github.com/ThreeDotsLabs/watermill/internal/sync"
+	stan "github.com/nats-io/stan.go"
 
 	"github.com/ThreeDotsLabs/watermill"
 
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/nats-io/go-nats-streaming"
 	"github.com/pkg/errors"
 )
 
