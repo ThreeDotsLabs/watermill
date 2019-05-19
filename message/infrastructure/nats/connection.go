@@ -1,6 +1,6 @@
 package nats
 
-import "github.com/nats-io/go-nats-streaming"
+import stan "github.com/nats-io/stan.go"
 
 type StanConnConfig struct {
 	// ClusterID is the NATS Streaming cluster ID.

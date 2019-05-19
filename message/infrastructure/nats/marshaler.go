@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"encoding/gob"
 
+	stan "github.com/nats-io/stan.go"
 	"github.com/pkg/errors"
 
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/nats-io/go-nats-streaming"
 )
 
 type Marshaler interface {
