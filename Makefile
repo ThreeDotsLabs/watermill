@@ -23,4 +23,13 @@ test_reconnect:
 	go test -tags=reconnect ./...
 
 validate_examples:
+	go run dev/update-examples-deps/main.go
 	bash dev/validate_examples.sh
+
+generate_gomod:
+	rm go.mod go.sum || true
+	go mod init github.com/ThreeDotsLabs/watermill
+	go install ./...
+	go get -u github.com/golang/protobuf/proto
+	sed -i '\|go |d' go.mod
+	go mod edit -fmt

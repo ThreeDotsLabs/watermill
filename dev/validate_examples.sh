@@ -8,6 +8,8 @@
 #
 # If any code check fails, investigate the log to find out about the cause.
 
+set -e
+
 function enumerate() {
         msg=$1
         # message in green
@@ -24,35 +26,6 @@ function fail() {
         # red
         echo -e "\e[31m\tFAIL\e[39m"
 }
-
-# update_gomod finds all the go.mod enabled subprojects and updates their dependency
-# to a specified version.
-function update_gomod() {
-        dependency="$1"
-        if [ -z "$dependency" ]; then dependency="github.com/ThreeDotsLabs/watermill"; fi
-        revision="$2"
-        if [ -z "$revision" ]; then revision="master"; fi
-
-        echo "Pinning $dependency to current $revision..."
-
-        for gomod in $(find . -name "go.mod")
-        do
-                dir="$(realpath --relative-to=$(pwd) $(dirname "$gomod"))"
-                pushd "$(realpath $(dirname "$gomod"))" &> /dev/null
-
-                # skip files that currently have no dependency
-                if grep -q "$dependency" ./go.mod
-                then
-                        enumerate $dir
-                        go get "$dependency@$revision" 2> /dev/null
-                fi
-
-                popd &> /dev/null
-        done
-
-        echo "...done"
-}
-        
 
 # check_output runs a selected command in the caller's working directory for a defined time;
 # It looks in the logs for a defined phrase. The phrase may be a grep-compatible regexp.
@@ -141,14 +114,6 @@ function wrap_check_output() {
 if [ "$0" = "$BASH_SOURCE" ]
 then
 # script executed directly, not sourced
-        pushd _examples &> /dev/null
-        update_gomod
-        popd &> /dev/null
-
-        pushd docs &> /dev/null
-        update_gomod
-        popd &> /dev/null
-
         anyError=0
 
         check_examples || anyError=1

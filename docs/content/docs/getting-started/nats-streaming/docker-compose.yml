@@ -2,7 +2,7 @@ version: '3'
 services:
   server:
     image: golang:1.11
-    restart: on-failure
+    restart: unless-stopped
     depends_on:
       - nats-streaming
     volumes:
@@ -13,4 +13,4 @@ services:
 
   nats-streaming:
     image: nats-streaming:0.11.2
-    restart: on-failure
+    restart: unless-stopped

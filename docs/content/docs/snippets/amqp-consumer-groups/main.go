@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/amqp"
@@ -35,14 +36,14 @@ func createSubscriber(queueSuffix string) *amqp.Subscriber {
 
 func main() {
 	subscriber1 := createSubscriber("test_consumer_group_1")
-	messages1, err := subscriber1.Subscribe("example.topic")
+	messages1, err := subscriber1.Subscribe(context.Background(), "example.topic")
 	if err != nil {
 		panic(err)
 	}
 	go process("subscriber_1", messages1)
 
 	subscriber2 := createSubscriber("test_consumer_group_2")
-	messages2, err := subscriber2.Subscribe("example.topic")
+	messages2, err := subscriber2.Subscribe(context.Background(), "example.topic")
 	if err != nil {
 		panic(err)
 	}
@@ -65,7 +66,7 @@ func main() {
 
 func publishMessages(publisher message.Publisher) {
 	for {
-		msg := message.NewMessage(watermill.UUID(), []byte("Hello, world!"))
+		msg := message.NewMessage(watermill.NewUUID(), []byte("Hello, world!"))
 
 		if err := publisher.Publish("example.topic", msg); err != nil {
 			panic(err)
@@ -73,7 +74,7 @@ func publishMessages(publisher message.Publisher) {
 	}
 }
 
-func process(subscriber string, messages chan *message.Message) {
+func process(subscriber string, messages <-chan *message.Message) {
 	for msg := range messages {
 		log.Printf("[%s] received message: %s, payload: %s", subscriber, msg.UUID, string(msg.Payload))
 		msg.Ack()
