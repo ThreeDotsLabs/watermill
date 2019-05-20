@@ -56,7 +56,7 @@ type Publisher interface {
 }
 
 type Subscriber interface {
-	Subscribe(topic string) (chan *Message, error)
+	Subscribe(ctx context.Context, topic string) (<-chan *Message, error)
 	Close() error
 }
 ```
@@ -67,6 +67,8 @@ All Pub/Subs implementation can be found in the [documentation](https://watermil
 * [Your first app](_examples/your-first-app) - start here!
 * [Simple application with publisher and subscriber](_examples/simple-app)
 * [HTTP to Kafka](_examples/http-to-kafka)
+* [NATS example](https://github.com/ThreeDotsLabs/nats-example)
+* [RabbitMQ, webhooks and Kafka integration](https://github.com/ThreeDotsLabs/event-driven-example)
 * [...and more!](_examples/)
 
 ## Contributing
@@ -77,9 +79,9 @@ and submit your pull request via GitHub.
 
 ## Support
 
-If you didn't found answer to your question in [the documentation](https://watermill.io/), feel free to ask!
+If you didn't find the answer to your question in [the documentation](https://watermill.io/), feel free to ask us directly!
 
-Please join us on the `#watermill` channel on the [Gophers slack](https://gophers.slack.com/): You can get invite [here](https://gophersinvite.herokuapp.com/).
+Please join us on the `#watermill` channel on the [Gophers slack](https://gophers.slack.com/): You can get an invite [here](https://gophersinvite.herokuapp.com/).
 
 ## Why the name?
 
