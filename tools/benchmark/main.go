@@ -44,8 +44,13 @@ var pubSubs = map[string]pubSub{
 	},
 	"kafka": {
 		Constructor: func() message.PubSub {
+			broker := os.Getenv("WATERMILL_KAFKA_BROKER")
+			if broker == "" {
+				broker = "localhost:9092"
+			}
+
 			publisher, err := kafka.NewPublisher(
-				[]string{"localhost:9092"},
+				[]string{broker},
 				kafka.DefaultMarshaler{},
 				nil,
 				logger,
@@ -59,7 +64,7 @@ var pubSubs = map[string]pubSub{
 
 			subscriber, err := kafka.NewSubscriber(
 				kafka.SubscriberConfig{
-					Brokers:       []string{"localhost:9092"},
+					Brokers:       []string{broker},
 					ConsumerGroup: "benchmark",
 				},
 				saramaConfig,
