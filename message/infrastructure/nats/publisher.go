@@ -3,7 +3,7 @@ package nats
 import (
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/nats-io/go-nats-streaming"
+	stan "github.com/nats-io/stan.go"
 	"github.com/pkg/errors"
 )
 
@@ -22,6 +22,11 @@ type StreamingPublisherConfig struct {
 	Marshaler Marshaler
 }
 
+type StreamingPublisherPublishConfig struct {
+	// Marshaler is marshaler used to marshal messages to stan format.
+	Marshaler Marshaler
+}
+
 func (c StreamingPublisherConfig) Validate() error {
 	if c.Marshaler == nil {
 		return errors.New("StreamingPublisherConfig.Marshaler is missing")
@@ -30,9 +35,15 @@ func (c StreamingPublisherConfig) Validate() error {
 	return nil
 }
 
+func (c StreamingPublisherConfig) GetStreamingPublisherPublishConfig() StreamingPublisherPublishConfig {
+	return StreamingPublisherPublishConfig{
+		Marshaler: c.Marshaler,
+	}
+}
+
 type StreamingPublisher struct {
 	conn   stan.Conn
-	config StreamingPublisherConfig
+	config StreamingPublisherPublishConfig
 	logger watermill.LoggerAdapter
 }
 
@@ -54,6 +65,10 @@ func NewStreamingPublisher(config StreamingPublisherConfig, logger watermill.Log
 		return nil, errors.Wrap(err, "cannot connect to nats")
 	}
 
+	return NewStreamingPublisherWithStanConn(conn, config.GetStreamingPublisherPublishConfig(), logger)
+}
+
+func NewStreamingPublisherWithStanConn(conn stan.Conn, config StreamingPublisherPublishConfig, logger watermill.LoggerAdapter) (*StreamingPublisher, error) {
 	return &StreamingPublisher{
 		conn:   conn,
 		config: config,

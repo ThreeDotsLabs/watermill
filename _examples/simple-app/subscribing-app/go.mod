@@ -1,8 +1,9 @@
 module main.go
 
 require (
-	github.com/ThreeDotsLabs/watermill v0.2.2-0.20190211093512-120551e326b8 // indirect
-	github.com/deathowl/go-metrics-prometheus v0.0.0-20181105123824-7cfe975c505b // indirect
-	github.com/googleapis/gax-go v2.0.2+incompatible // indirect
-	github.com/stretchr/objx v0.1.1 // indirect
+	github.com/DataDog/zstd v1.4.0 // indirect
+	github.com/ThreeDotsLabs/watermill v0.2.2-0.20190509215427-f56712e7284c
+	github.com/pierrec/lz4 v2.0.5+incompatible // indirect
+	github.com/pkg/errors v0.8.1
+	golang.org/x/net v0.0.0-20190503192946-f4e77d36d62c // indirect
 )

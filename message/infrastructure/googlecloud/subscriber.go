@@ -225,16 +225,19 @@ func (s *Subscriber) Close() error {
 func (s *Subscriber) receive(
 	ctx context.Context,
 	sub *pubsub.Subscription,
-	logFields watermill.LogFields,
+	subcribeLogFields watermill.LogFields,
 	output chan *message.Message,
 ) error {
 	err := sub.Receive(ctx, func(ctx context.Context, pubsubMsg *pubsub.Message) {
+		logFields := subcribeLogFields.Copy()
+
 		msg, err := s.config.Unmarshaler.Unmarshal(pubsubMsg)
 		if err != nil {
 			s.logger.Error("Could not unmarshal Google Cloud PubSub message", err, logFields)
 			pubsubMsg.Nack()
 			return
 		}
+		logFields["message_uuid"] = msg.UUID
 
 		ctx, cancelCtx := context.WithCancel(ctx)
 		msg.SetContext(ctx)
@@ -288,7 +291,6 @@ func (s *Subscriber) receive(
 	})
 
 	if err != nil && !s.closed {
-		s.logger.Error("Receive failed", err, logFields)
 		return err
 	}
 

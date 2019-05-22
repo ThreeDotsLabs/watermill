@@ -2,7 +2,7 @@ version: '3'
 services:
   golang:
     image: golang:1.11
-    restart: on-failure
+    restart: unless-stopped
     ports:
     - 8080:8080
     depends_on:
@@ -15,7 +15,7 @@ services:
 
   zookeeper:
     image: confluentinc/cp-zookeeper:latest
-    restart: on-failure
+    restart: unless-stopped
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
     logging:
@@ -23,7 +23,7 @@ services:
 
   kafka:
     image: confluentinc/cp-kafka:latest
-    restart: on-failure
+    restart: unless-stopped
     logging:
       driver: none
     depends_on:

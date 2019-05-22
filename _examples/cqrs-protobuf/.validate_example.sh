@@ -1,8 +1,8 @@
 # configuration for the dev/validate_example script.
 #
 # how to run the command
-CMD="go run ."
+CMD="docker-compose up"
 # how long to wait for the output 
-TIMEOUT=3
+TIMEOUT=30
 # we expect this regexp to be present in the output
-EXPECTED_OUTPUT="Already booked rooms for"
+EXPECTED_OUTPUT="beers ordered to room 3"

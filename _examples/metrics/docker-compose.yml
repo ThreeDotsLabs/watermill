@@ -2,7 +2,7 @@ version: '3'
 services:
   golang:
     image: golang:1.11
-    restart: on-failure
+    restart: unless-stopped
     ports:
     - 8080:8080
     - 8081:8081
@@ -16,7 +16,7 @@ services:
 
   prometheus:
     image: prom/prometheus
-    restart: on-failure
+    restart: unless-stopped
     network_mode: host
     volumes:
      - ./prometheus.yml:/etc/prometheus/prometheus.yml

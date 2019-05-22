@@ -47,18 +47,6 @@ func newConnection(
 	return pubSub, nil
 }
 
-func (c *connectionWrapper) exchangeDeclare(channel *amqp.Channel, exchangeName string) error {
-	return channel.ExchangeDeclare(
-		exchangeName,
-		c.config.Exchange.Type,
-		c.config.Exchange.Durable,
-		c.config.Exchange.AutoDeleted,
-		c.config.Exchange.Internal,
-		c.config.Exchange.NoWait,
-		c.config.Exchange.Arguments,
-	)
-}
-
 func (c *connectionWrapper) Close() error {
 	if c.closed {
 		return nil

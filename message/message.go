@@ -25,6 +25,8 @@ type Message struct {
 	//
 	// Can be used to store data which doesn't require unmarshaling entire payload.
 	// It is something similar to HTTP request's headers.
+	//
+	// Metadata is marshaled and will be saved to PubSub.
 	Metadata Metadata
 
 	// Payload is message's payload.
@@ -175,6 +177,8 @@ func (m *Message) SetContext(ctx context.Context) {
 // The context is not propagated to the copy.
 func (m *Message) Copy() *Message {
 	msg := NewMessage(m.UUID, m.Payload)
-	msg.Metadata = m.Metadata
+	for k, v := range m.Metadata {
+		msg.Metadata.Set(k, v)
+	}
 	return msg
 }

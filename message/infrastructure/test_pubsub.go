@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ThreeDotsLabs/watermill/internal"
+
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/internal/tests"
 	"github.com/ThreeDotsLabs/watermill/message"
@@ -33,6 +35,12 @@ func init() {
 			break
 		}
 	}
+}
+
+// RunOnlyFastTests returns true if -short flag was provided -race was not provided.
+// Useful for excluding some slow tests.
+func RunOnlyFastTests() bool {
+	return testing.Short() && !internal.RaceEnabled
 }
 
 type Features struct {
@@ -125,7 +133,7 @@ func TestPubSub(
 	})
 }
 
-var stressTestTestsCount = 20
+var stressTestTestsCount = 5 // todo - change to 20 after splitting Pub/Subs to repos
 
 func TestPubSubStressTest(
 	t *testing.T,
@@ -488,9 +496,7 @@ func TestContinueAfterErrors(t *testing.T, createPubSub PubSubConstructor, featu
 	require.NoError(t, err)
 
 	// only nacks was sent, so all messages should be consumed
-	receivedMessages, all := bulkRead(messages, totalMessagesCount, defaultTimeout, features)
-	assert.True(t, all)
-
+	receivedMessages, _ := bulkRead(messages, totalMessagesCount, defaultTimeout*6, features)
 	tests.AssertAllMessagesReceived(t, messagesToPublish, receivedMessages)
 }
 

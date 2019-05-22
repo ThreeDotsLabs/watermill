@@ -1,40 +1,48 @@
 package cqrs
 
 import (
+	"context"
+
 	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/pkg/errors"
 )
 
 // EventBus transports events to event handlers.
 type EventBus struct {
-	publisher message.Publisher
-	topic     string
-	marshaler CommandEventMarshaler
+	publisher     message.Publisher
+	generateTopic func(eventName string) string
+	marshaler     CommandEventMarshaler
 }
 
 func NewEventBus(
 	publisher message.Publisher,
-	topic string,
+	generateTopic func(eventName string) string,
 	marshaler CommandEventMarshaler,
-) *EventBus {
+) (*EventBus, error) {
 	if publisher == nil {
-		panic("missing publisher")
+		return nil, errors.New("missing publisher")
 	}
-	if topic == "" {
-		panic("missing topic")
+	if generateTopic == nil {
+		return nil, errors.New("missing generateTopic")
 	}
 	if marshaler == nil {
-		panic("missing marshaler")
+		return nil, errors.New("missing marshaler")
 	}
 
-	return &EventBus{publisher, topic, marshaler}
+	return &EventBus{publisher, generateTopic, marshaler}, nil
 }
 
-// Send sends command to the event bus.
-func (c EventBus) Publish(event interface{}) error {
+// Publish sends event to the event bus.
+func (c EventBus) Publish(ctx context.Context, event interface{}) error {
 	msg, err := c.marshaler.Marshal(event)
 	if err != nil {
 		return err
 	}
 
-	return c.publisher.Publish(c.topic, msg)
+	eventName := c.marshaler.Name(event)
+	topicName := c.generateTopic(eventName)
+
+	msg.SetContext(ctx)
+
+	return c.publisher.Publish(topicName, msg)
 }

@@ -1,8 +1,9 @@
 # Watermill
-[![Build Status](https://gitlab.com/threedotslabs/watermill/badges/master/build.svg)](https://gitlab.com/threedotslabs/watermill/pipelines)
+<img align="right" width="200" src="https://threedots.tech/watermill-io/watermill-logo.png">
+
+[![CircleCI](https://circleci.com/gh/ThreeDotsLabs/watermill/tree/master.svg?style=svg)](https://circleci.com/gh/ThreeDotsLabs/watermill/tree/master)
 [![Go Report Card](https://goreportcard.com/badge/github.com/ThreeDotsLabs/watermill)](https://goreportcard.com/report/github.com/ThreeDotsLabs/watermill)
 [![codecov](https://codecov.io/gh/ThreeDotsLabs/watermill/branch/master/graph/badge.svg)](https://codecov.io/gh/ThreeDotsLabs/watermill)
-
 
 Watermill is a Go library for working efficiently with message streams. It is intended
 for building event driven applications, enabling event sourcing, RPC over messages,
@@ -55,7 +56,7 @@ type Publisher interface {
 }
 
 type Subscriber interface {
-	Subscribe(topic string) (chan *Message, error)
+	Subscribe(ctx context.Context, topic string) (<-chan *Message, error)
 	Close() error
 }
 ```
@@ -66,6 +67,8 @@ All Pub/Subs implementation can be found in the [documentation](https://watermil
 * [Your first app](_examples/your-first-app) - start here!
 * [Simple application with publisher and subscriber](_examples/simple-app)
 * [HTTP to Kafka](_examples/http-to-kafka)
+* [NATS example](https://github.com/ThreeDotsLabs/nats-example)
+* [RabbitMQ, webhooks and Kafka integration](https://github.com/ThreeDotsLabs/event-driven-example)
 * [...and more!](_examples/)
 
 ## Contributing
@@ -76,9 +79,9 @@ and submit your pull request via GitHub.
 
 ## Support
 
-If you didn't found answer to your question in [the documentation](https://watermill.io/), feel free to ask!
+If you didn't find the answer to your question in [the documentation](https://watermill.io/), feel free to ask us directly!
 
-Please join us on the `#watermill` channel on the [Gophers slack](https://gophers.slack.com/): You can get invite [here](https://gophersinvite.herokuapp.com/).
+Please join us on the `#watermill` channel on the [Gophers slack](https://gophers.slack.com/): You can get an invite [here](https://gophersinvite.herokuapp.com/).
 
 ## Why the name?
 

@@ -1,20 +1,22 @@
 package main
 
 import (
-	"errors"
+	"context"
 	"fmt"
 	"log"
 	"math/rand"
 	"sync"
 	"time"
 
+	"github.com/pkg/errors"
+
+	"github.com/ThreeDotsLabs/watermill/message/infrastructure/amqp"
+	"github.com/golang/protobuf/ptypes"
+
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/components/cqrs"
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure/gochannel"
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
-
-	"github.com/golang/protobuf/ptypes"
 )
 
 // BookRoomHandler is a command handler, which handles BookRoom command and emits RoomBooked.
@@ -25,23 +27,33 @@ type BookRoomHandler struct {
 	eventBus *cqrs.EventBus
 }
 
+func (b BookRoomHandler) HandlerName() string {
+	return "BookRoomHandler"
+}
+
 // NewCommand returns type of command which this handle should handle. It must be a pointer.
 func (b BookRoomHandler) NewCommand() interface{} {
 	return &BookRoom{}
 }
 
-func (b BookRoomHandler) Handle(c interface{}) error {
+func (b BookRoomHandler) Handle(ctx context.Context, c interface{}) error {
 	// c is always the type returned by `NewCommand`, so casting is always safe
 	cmd := c.(*BookRoom)
 
 	// some random price, in production you probably will calculate in wiser way
 	price := (rand.Int63n(40) + 1) * 10
 
-	log.Printf("Booked %s for %s from %s to %s", cmd.RoomId, cmd.GuestName, cmd.StartDate, cmd.EndDate)
+	log.Printf(
+		"Booked %s for %s from %s to %s",
+		cmd.RoomId,
+		cmd.GuestName,
+		time.Unix(cmd.StartDate.Seconds, int64(cmd.StartDate.Nanos)),
+		time.Unix(cmd.EndDate.Seconds, int64(cmd.EndDate.Nanos)),
+	)
 
 	// RoomBooked will be handled by OrderBeerOnRoomBooked event handler,
 	// in future RoomBooked may be handled by multiple event handler
-	if err := b.eventBus.Publish(&RoomBooked{
+	if err := b.eventBus.Publish(ctx, &RoomBooked{
 		ReservationId: watermill.NewUUID(),
 		RoomId:        cmd.RoomId,
 		GuestName:     cmd.GuestName,
@@ -60,11 +72,16 @@ type OrderBeerOnRoomBooked struct {
 	commandBus *cqrs.CommandBus
 }
 
+func (o OrderBeerOnRoomBooked) HandlerName() string {
+	// this name is passed to EventsSubscriberConstructor and used to generate queue name
+	return "OrderBeerOnRoomBooked"
+}
+
 func (OrderBeerOnRoomBooked) NewEvent() interface{} {
 	return &RoomBooked{}
 }
 
-func (o OrderBeerOnRoomBooked) Handle(e interface{}) error {
+func (o OrderBeerOnRoomBooked) Handle(ctx context.Context, e interface{}) error {
 	event := e.(*RoomBooked)
 
 	orderBeerCmd := &OrderBeer{
@@ -72,7 +89,7 @@ func (o OrderBeerOnRoomBooked) Handle(e interface{}) error {
 		Count:  rand.Int63n(10) + 1,
 	}
 
-	return o.commandBus.Send(orderBeerCmd)
+	return o.commandBus.Send(ctx, orderBeerCmd)
 }
 
 // OrderBeerHandler is a command handler, which handles OrderBeer command and emits BeerOrdered.
@@ -81,19 +98,23 @@ type OrderBeerHandler struct {
 	eventBus *cqrs.EventBus
 }
 
-func (b OrderBeerHandler) NewCommand() interface{} {
+func (o OrderBeerHandler) HandlerName() string {
+	return "OrderBeerHandler"
+}
+
+func (o OrderBeerHandler) NewCommand() interface{} {
 	return &OrderBeer{}
 }
 
-func (b OrderBeerHandler) Handle(c interface{}) error {
+func (o OrderBeerHandler) Handle(ctx context.Context, c interface{}) error {
 	cmd := c.(*OrderBeer)
 
 	if rand.Int63n(10) == 0 {
 		// sometimes there is no beer left, command will be retried
-		return errors.New("no beer left, please try later")
+		return errors.Errorf("no beer left for room %s, please try later", cmd.RoomId)
 	}
 
-	if err := b.eventBus.Publish(&BeerOrdered{
+	if err := o.eventBus.Publish(ctx, &BeerOrdered{
 		RoomId: cmd.RoomId,
 		Count:  cmd.Count,
 	}); err != nil {
@@ -118,11 +139,16 @@ func NewBookingsFinancialReport() *BookingsFinancialReport {
 	return &BookingsFinancialReport{handledBookings: map[string]struct{}{}}
 }
 
+func (b BookingsFinancialReport) HandlerName() string {
+	// this name is passed to EventsSubscriberConstructor and used to generate queue name
+	return "BookingsFinancialReport"
+}
+
 func (BookingsFinancialReport) NewEvent() interface{} {
 	return &RoomBooked{}
 }
 
-func (b *BookingsFinancialReport) Handle(e interface{}) error {
+func (b *BookingsFinancialReport) Handle(ctx context.Context, e interface{}) error {
 	// Handle may be called concurrently, so it need to be thread safe.
 	b.lock.Lock()
 	defer b.lock.Unlock()
@@ -139,18 +165,37 @@ func (b *BookingsFinancialReport) Handle(e interface{}) error {
 
 	b.totalCharge += event.Price
 
-	fmt.Printf("Already booked rooms for $%d\n", b.totalCharge)
+	fmt.Printf(">>> Already booked rooms for $%d\n", b.totalCharge)
 	return nil
 }
 
+var amqpAddress = "amqp://guest:guest@rabbitmq:5672/"
+
 func main() {
-	logger := watermill.NewStdLogger(true, false)
-	marshaler := cqrs.ProtobufMarshaler{}
+	logger := watermill.NewStdLogger(false, false)
+	cqrsMarshaler := cqrs.ProtobufMarshaler{}
 
 	// You can use any Pub/Sub implementation from here: https://watermill.io/docs/pub-sub-implementations/
-	pubSub := gochannel.NewGoChannel(gochannel.Config{}, logger)
+	// Detailed RabbitMQ implementation: https://watermill.io/docs/pub-sub-implementations/#rabbitmq-amqp
+	// Commands will be send to queue, because they need to be consumed once.
+	commandsAMQPConfig := amqp.NewDurableQueueConfig(amqpAddress)
+	commandsPublisher, err := amqp.NewPublisher(commandsAMQPConfig, logger)
+	if err != nil {
+		panic(err)
+	}
+	commandsSubscriber, err := amqp.NewSubscriber(commandsAMQPConfig, logger)
+	if err != nil {
+		panic(err)
+	}
 
-	// CQRS is built on already existing messages router: https://watermill.io/docs/messages-router/
+	// Events will be published to PubSub configured Rabbit, because they may be consumed by multiple consumers.
+	// (in that case BookingsFinancialReport and OrderBeerOnRoomBooked).
+	eventsPublisher, err := amqp.NewPublisher(amqp.NewDurablePubSubConfig(amqpAddress, nil), logger)
+	if err != nil {
+		panic(err)
+	}
+
+	// CQRS is built on messages router. Detailed documentation: https://watermill.io/docs/messages-router/
 	router, err := message.NewRouter(message.RouterConfig{}, logger)
 	if err != nil {
 		panic(err)
@@ -166,13 +211,27 @@ func main() {
 	// cqrs.Facade is facade for Command and Event buses and processors.
 	// You can use facade, or create buses and processors manually (you can inspire with cqrs.NewFacade)
 	cqrsFacade, err := cqrs.NewFacade(cqrs.FacadeConfig{
-		CommandsTopic: "commands",
-		EventsTopic:   "events",
+		GenerateCommandsTopic: func(commandName string) string {
+			// we are using queue RabbitMQ config, so we need to have topic per command type
+			return commandName
+		},
 		CommandHandlers: func(cb *cqrs.CommandBus, eb *cqrs.EventBus) []cqrs.CommandHandler {
 			return []cqrs.CommandHandler{
 				BookRoomHandler{eb},
 				OrderBeerHandler{eb},
 			}
+		},
+		CommandsPublisher: commandsPublisher,
+		CommandsSubscriberConstructor: func(handlerName string) (message.Subscriber, error) {
+			// we can reuse subscriber, because all commands have separated topics
+			return commandsSubscriber, nil
+		},
+		GenerateEventsTopic: func(eventName string) string {
+			// because we are using PubSub RabbitMQ config, we can use one topic for all events
+			return "events"
+
+			// we can also use topic per event type
+			// return eventName
 		},
 		EventHandlers: func(cb *cqrs.CommandBus, eb *cqrs.EventBus) []cqrs.EventHandler {
 			return []cqrs.EventHandler{
@@ -180,11 +239,18 @@ func main() {
 				NewBookingsFinancialReport(),
 			}
 		},
+		EventsPublisher: eventsPublisher,
+		EventsSubscriberConstructor: func(handlerName string) (message.Subscriber, error) {
+			config := amqp.NewDurablePubSubConfig(
+				amqpAddress,
+				amqp.GenerateQueueNameTopicNameWithSuffix(handlerName),
+			)
+
+			return amqp.NewSubscriber(config, logger)
+		},
 		Router:                router,
-		CommandsPubSub:        pubSub,
-		EventsPubSub:          pubSub,
+		CommandEventMarshaler: cqrsMarshaler,
 		Logger:                logger,
-		CommandEventMarshaler: marshaler,
 	})
 	if err != nil {
 		panic(err)
@@ -220,7 +286,7 @@ func publishCommands(commandBus *cqrs.CommandBus) func() {
 			StartDate: startDate,
 			EndDate:   endDate,
 		}
-		if err := commandBus.Send(bookRoomCmd); err != nil {
+		if err := commandBus.Send(context.Background(), bookRoomCmd); err != nil {
 			panic(err)
 		}
 

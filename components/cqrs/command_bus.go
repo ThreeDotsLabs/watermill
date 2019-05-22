@@ -1,40 +1,49 @@
 package cqrs
 
 import (
+	"context"
+
+	"github.com/pkg/errors"
+
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
 // CommandBus transports commands to command handlers.
 type CommandBus struct {
-	publisher message.Publisher
-	topic     string
-	marshaler CommandEventMarshaler
+	publisher     message.Publisher
+	generateTopic func(commandName string) string
+	marshaler     CommandEventMarshaler
 }
 
 func NewCommandBus(
 	publisher message.Publisher,
-	topic string,
+	generateTopic func(commandName string) string,
 	marshaler CommandEventMarshaler,
-) *CommandBus {
+) (*CommandBus, error) {
 	if publisher == nil {
-		panic("missing publisher")
+		return nil, errors.New("missing publisher")
 	}
-	if topic == "" {
-		panic("missing topic")
+	if generateTopic == nil {
+		return nil, errors.New("missing generateTopic")
 	}
 	if marshaler == nil {
-		panic("missing marshaler")
+		return nil, errors.New("missing marshaler")
 	}
 
-	return &CommandBus{publisher, topic, marshaler}
+	return &CommandBus{publisher, generateTopic, marshaler}, nil
 }
 
 // Send sends command to the command bus.
-func (c CommandBus) Send(cmd interface{}) error {
+func (c CommandBus) Send(ctx context.Context, cmd interface{}) error {
 	msg, err := c.marshaler.Marshal(cmd)
 	if err != nil {
 		return err
 	}
 
-	return c.publisher.Publish(c.topic, msg)
+	commandName := c.marshaler.Name(cmd)
+	topicName := c.generateTopic(commandName)
+
+	msg.SetContext(ctx)
+
+	return c.publisher.Publish(topicName, msg)
 }
