@@ -8,23 +8,17 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ThreeDotsLabs/watermill/message/subscriber"
-
 	"github.com/Shopify/sarama"
-
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure/googlecloud"
-
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure/nats"
-
 	"github.com/rcrowley/go-metrics"
 
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure/kafka"
-
 	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure/gochannel"
-
 	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ThreeDotsLabs/watermill/message/infrastructure/gochannel"
+	"github.com/ThreeDotsLabs/watermill/message/infrastructure/googlecloud"
+	"github.com/ThreeDotsLabs/watermill/message/infrastructure/kafka"
+	"github.com/ThreeDotsLabs/watermill/message/infrastructure/nats"
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
+	"github.com/ThreeDotsLabs/watermill/message/subscriber"
 )
 
 var pubsubFlag = flag.String("pubsub", "", "")
