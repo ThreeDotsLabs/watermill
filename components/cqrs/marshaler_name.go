@@ -23,10 +23,6 @@ func (m *NameMarshaler) marshaler() CommandEventMarshaler {
 	return m.Marshaler
 }
 
-type namedMessage interface {
-	Name() string
-}
-
 func (m *NameMarshaler) Marshal(v interface{}) (*message.Message, error) {
 	msg, err := m.marshaler().Marshal(v)
 	if err != nil {
