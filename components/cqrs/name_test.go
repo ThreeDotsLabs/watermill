@@ -32,8 +32,14 @@ func TestStructName(t *testing.T) {
 }
 
 func TestMessageName(t *testing.T) {
-	assert.Equal(t, "named object", cqrs.MessageName(namedObject{}))
-	assert.Equal(t, "named object", cqrs.MessageName(&namedObject{}))
+	assert.Equal(t, "named object", cqrs.MessageName(cqrs.StructName)(namedObject{}))
+	assert.Equal(t, "named object", cqrs.MessageName(cqrs.StructName)(&namedObject{}))
+
+	// Test fallback
+	type Object struct{}
+
+	assert.Equal(t, "Object", cqrs.MessageName(cqrs.StructName)(Object{}))
+	assert.Equal(t, "Object", cqrs.MessageName(cqrs.StructName)(&Object{}))
 }
 
 type namedObject struct{}

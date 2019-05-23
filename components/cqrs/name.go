@@ -27,14 +27,16 @@ type namedMessage interface {
 }
 
 // MessageName returns the name from a message implementing the following interface:
-//		type namedMessage interface {
-//			Name() string
-//		}
+// 		type namedMessage interface {
+// 			Name() string
+// 		}
 // It ignores if the value is a pointer or not.
-func MessageName(v interface{}) string {
-	if v, ok := v.(namedMessage); ok {
-		return v.Name()
-	}
+func MessageName(fallback func(v interface{}) string) func(v interface{}) string {
+	return func(v interface{}) string {
+		if v, ok := v.(namedMessage); ok {
+			return v.Name()
+		}
 
-	return ""
+		return fallback(v)
+	}
 }
