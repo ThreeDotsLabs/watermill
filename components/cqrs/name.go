@@ -5,9 +5,9 @@ import (
 	"strings"
 )
 
-// ObjectName name returns object name in format [package].[type name].
+// FullyQualifiedStructName name returns object name in format [package].[type name].
 // It ignores if the value is a pointer or not.
-func ObjectName(v interface{}) string {
+func FullyQualifiedStructName(v interface{}) string {
 	s := fmt.Sprintf("%T", v)
 	s = strings.TrimLeft(s, "*")
 
@@ -22,18 +22,18 @@ func StructName(v interface{}) string {
 	return segments[len(segments)-1]
 }
 
-type namedMessage interface {
+type namedStruct interface {
 	Name() string
 }
 
-// MessageName returns the name from a message implementing the following interface:
-// 		type namedMessage interface {
+// NamedStruct returns the name from a message implementing the following interface:
+// 		type namedStruct interface {
 // 			Name() string
 // 		}
 // It ignores if the value is a pointer or not.
-func MessageName(fallback func(v interface{}) string) func(v interface{}) string {
+func NamedStruct(fallback func(v interface{}) string) func(v interface{}) string {
 	return func(v interface{}) string {
-		if v, ok := v.(namedMessage); ok {
+		if v, ok := v.(namedStruct); ok {
 			return v.Name()
 		}
 

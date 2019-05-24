@@ -66,7 +66,7 @@ func (m ProtobufMarshaler) Name(cmdOrEvent interface{}) string {
 		return m.GenerateName(cmdOrEvent)
 	}
 
-	return ObjectName(cmdOrEvent)
+	return FullyQualifiedStructName(cmdOrEvent)
 }
 
 func (m ProtobufMarshaler) NameFromMessage(msg *message.Message) string {

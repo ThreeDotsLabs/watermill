@@ -45,7 +45,7 @@ func (m JSONMarshaler) Name(cmdOrEvent interface{}) string {
 		return m.GenerateName(cmdOrEvent)
 	}
 
-	return ObjectName(cmdOrEvent)
+	return FullyQualifiedStructName(cmdOrEvent)
 }
 
 func (m JSONMarshaler) NameFromMessage(msg *message.Message) string {
