@@ -8,7 +8,8 @@ import (
 )
 
 type JSONMarshaler struct {
-	NewUUID func() string
+	NewUUID      func() string
+	GenerateName func(v interface{}) string
 }
 
 func (m JSONMarshaler) Marshal(v interface{}) (*message.Message, error) {
@@ -40,7 +41,11 @@ func (JSONMarshaler) Unmarshal(msg *message.Message, v interface{}) (err error) 
 }
 
 func (m JSONMarshaler) Name(cmdOrEvent interface{}) string {
-	return ObjectName(cmdOrEvent)
+	if m.GenerateName != nil {
+		return m.GenerateName(cmdOrEvent)
+	}
+
+	return FullyQualifiedStructName(cmdOrEvent)
 }
 
 func (m JSONMarshaler) NameFromMessage(msg *message.Message) string {
