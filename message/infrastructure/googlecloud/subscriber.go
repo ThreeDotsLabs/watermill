@@ -78,6 +78,8 @@ type SubscriberConfig struct {
 	// Unmarshaler transforms the client library format into watermill/message.Message.
 	// Use a custom unmarshaler if needed, otherwise the default Unmarshaler should cover most use cases.
 	Unmarshaler Unmarshaler
+
+	Logger watermill.LoggerAdapter
 }
 
 type SubscriptionNameFn func(topic string) string
@@ -107,12 +109,12 @@ func (c *SubscriberConfig) setDefaults() {
 	if c.Unmarshaler == nil {
 		c.Unmarshaler = DefaultMarshalerUnmarshaler{}
 	}
+	if c.Logger == nil {
+		c.Logger = watermill.NopLogger{}
+	}
 }
 
-func NewSubscriber(
-	config SubscriberConfig,
-	logger watermill.LoggerAdapter,
-) (*Subscriber, error) {
+func NewSubscriber(config SubscriberConfig) (*Subscriber, error) {
 	config.setDefaults()
 
 	ctx, cancel := context.WithTimeout(context.Background(), config.ConnectTimeout)
@@ -133,8 +135,6 @@ func NewSubscriber(
 
 		client: client,
 		config: config,
-
-		logger: logger,
 	}, nil
 }
 

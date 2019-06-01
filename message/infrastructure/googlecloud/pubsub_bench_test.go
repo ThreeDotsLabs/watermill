@@ -21,8 +21,7 @@ func BenchmarkSubscriber(b *testing.B) {
 		}
 
 		subscriber, err := googlecloud.NewSubscriber(
-			googlecloud.SubscriberConfig{},
-			logger,
+			googlecloud.SubscriberConfig{Logger: logger},
 		)
 		if err != nil {
 			panic(err)

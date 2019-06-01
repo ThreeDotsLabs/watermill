@@ -46,8 +46,8 @@ For the configuration of consuming/producing of the messages, check the help of 
 						return subName
 					},
 					ProjectID: projectID(),
+					Logger:    logger,
 				},
-				logger,
 			)
 			if err != nil {
 				return err

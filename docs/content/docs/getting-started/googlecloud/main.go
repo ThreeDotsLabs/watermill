@@ -20,8 +20,8 @@ func main() {
 				return "test-sub_" + topic
 			},
 			ProjectID: "test-project",
+			Logger:    watermill.NewStdLogger(false, false),
 		},
-		watermill.NewStdLogger(false, false),
 	)
 	if err != nil {
 		panic(err)
