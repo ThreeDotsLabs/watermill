@@ -65,6 +65,8 @@ type SubscriberConfig struct {
 	// Otherwise, trying to create a subscription on non-existent topic results in `ErrTopicDoesNotExist`.
 	DoNotCreateTopicIfMissing bool
 
+	// ConnectTimeout defines the timeout for connecting to Pub/Sub
+	ConnectTimeout time.Duration
 	// InitializeTimeout defines the timeout for initializing topics.
 	InitializeTimeout time.Duration
 
@@ -96,6 +98,9 @@ func (c *SubscriberConfig) setDefaults() {
 	if c.GenerateSubscriptionName == nil {
 		c.GenerateSubscriptionName = TopicSubscriptionName
 	}
+	if c.ConnectTimeout == 0 {
+		c.ConnectTimeout = time.Second * 10
+	}
 	if c.InitializeTimeout == 0 {
 		c.InitializeTimeout = time.Second * 10
 	}
@@ -105,11 +110,13 @@ func (c *SubscriberConfig) setDefaults() {
 }
 
 func NewSubscriber(
-	ctx context.Context,
 	config SubscriberConfig,
 	logger watermill.LoggerAdapter,
 ) (*Subscriber, error) {
 	config.setDefaults()
+
+	ctx, cancel := context.WithTimeout(context.Background(), config.ConnectTimeout)
+	defer cancel()
 
 	client, err := pubsub.NewClient(ctx, config.ProjectID, config.ClientOptions...)
 	if err != nil {
