@@ -20,17 +20,17 @@ type SubscriberConfig struct {
 	Logger        watermill.LoggerAdapter
 	ConsumerGroup string
 
-	// PollInterval is the interval between subsequent SELECT queries. Must be non-negative. Defaults to 1s.
+	// PollInterval is the interval between subsequent SELECT queries.
+	// Must be non-negative. Defaults to 1s.
 	PollInterval time.Duration
 
-	// ResendInterval is the time to wait before resending a nacked message. Must be non-negative. Defaults to 1s.
+	// ResendInterval is the time to wait before resending a nacked message.
+	// Must be non-negative. Defaults to 1s.
 	ResendInterval time.Duration
 
-	// MessagesTable is the name of the table that stores Watermill messages as rows. Defaults to `messages`.
-	MessagesTable string
-	// MessageOffsetsTable is the name of the table that stores the offsets of messages read by each consumer group.
-	// Defaults to `offsets_acked`.
-	MessageOffsetsTable string
+	// RetryInterval is the time to wait before resuming querying for messages after an error.
+	// Must be non-negative. Defaults to 1s.
+	RetryInterval time.Duration
 
 	// SchemaAdapter provides the schema-dependent queries and arguments for them, based on topic/message etc.
 	SchemaAdapter SchemaAdapter
@@ -46,11 +46,8 @@ func (c *SubscriberConfig) setDefaults() {
 	if c.ResendInterval == 0 {
 		c.ResendInterval = time.Second
 	}
-	if c.MessagesTable == "" {
-		c.MessagesTable = "messages"
-	}
-	if c.MessageOffsetsTable == "" {
-		c.MessageOffsetsTable = "offsets_acked"
+	if c.RetryInterval == 0 {
+		c.ResendInterval = time.Second
 	}
 }
 
@@ -59,6 +56,9 @@ func (c SubscriberConfig) validate() error {
 		return errors.New("poll interval must be a positive duration")
 	}
 	if c.ResendInterval <= 0 {
+		return errors.New("resend interval must be a positive duration")
+	}
+	if c.RetryInterval <= 0 {
 		return errors.New("resend interval must be a positive duration")
 	}
 	if c.SchemaAdapter == nil {
@@ -105,7 +105,7 @@ func (s *Subscriber) Subscribe(ctx context.Context, topic string) (o <-chan *mes
 		return nil, ErrSubscriberClosed
 	}
 
-	if err = sanitizeTopicName(topic); err != nil {
+	if err = validateTopicName(topic); err != nil {
 		return nil, err
 	}
 

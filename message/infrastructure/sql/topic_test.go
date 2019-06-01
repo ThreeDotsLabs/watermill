@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestSanitizeTopicName(t *testing.T) {
+func TestValidateTopicName(t *testing.T) {
 	pubsub := newPubSub(t, newMySQL(t), "").(message.PubSub)
 	cleverlyNamedTopic := "some_topic; DROP DATABASE `watermill`"
 

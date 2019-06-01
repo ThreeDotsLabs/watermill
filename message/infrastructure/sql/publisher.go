@@ -19,16 +19,9 @@ type PublisherConfig struct {
 
 	// SchemaAdapter provides the schema-dependent queries and arguments for them, based on topic/message etc.
 	SchemaAdapter SchemaAdapter
-
-	// MessagesTable is the name of the table that will store the published messages. Defaults to `messages`.
-	MessagesTable string
 }
 
 func (c PublisherConfig) validate() error {
-	if c.Logger == nil {
-		c.Logger = watermill.NopLogger{}
-	}
-
 	if c.SchemaAdapter == nil {
 		return errors.New("schema adapter is nil")
 	}
@@ -37,8 +30,8 @@ func (c PublisherConfig) validate() error {
 }
 
 func (c *PublisherConfig) setDefaults() {
-	if c.MessagesTable == "" {
-		c.MessagesTable = "messages"
+	if c.Logger == nil {
+		c.Logger = watermill.NopLogger{}
 	}
 }
 
@@ -86,7 +79,7 @@ func (p *Publisher) Publish(topic string, messages ...*message.Message) error {
 		return ErrPublisherClosed
 	}
 
-	if err := sanitizeTopicName(topic); err != nil {
+	if err := validateTopicName(topic); err != nil {
 		return err
 	}
 
