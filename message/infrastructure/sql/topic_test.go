@@ -21,7 +21,8 @@ func TestSanitizeTopicName(t *testing.T) {
 	require.Error(t, err)
 	assert.Equal(t, sql.ErrInvalidTopicName, errors.Cause(err))
 
-	ctx, _ := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
 	_, err = pubsub.Subscribe(ctx, cleverlyNamedTopic)
 	require.Error(t, err)
 	assert.Equal(t, sql.ErrInvalidTopicName, errors.Cause(err))

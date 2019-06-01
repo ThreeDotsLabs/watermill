@@ -46,10 +46,7 @@ type SchemaAdapter interface {
 // `metadata` json DEFAULT NULL,
 // `topic` varchar(255) NOT NULL,
 type DefaultSchema struct {
-	Logger  watermill.LoggerAdapter
-	insertQ string
-	selectQ string
-	ackQ    string
+	Logger watermill.LoggerAdapter
 }
 
 func (s *DefaultSchema) EnsureTableForTopicQueries(topic string) []string {
@@ -82,18 +79,11 @@ func (s *DefaultSchema) InsertQuery(topic string) string {
 		"q": insertQ,
 	})
 
-	s.insertQ = insertQ
 	return insertQ
 }
 
 func (s *DefaultSchema) InsertArgs(topic string, msg *message.Message) (args []interface{}, err error) {
 	logger := s.Logger
-	if s.insertQ != "" {
-		logger = logger.With(watermill.LogFields{
-			"q": s.insertQ,
-		})
-	}
-
 	defer func() {
 		if err != nil {
 			logger.Error("Could not marshal message into SQL insert args", err, nil)
@@ -144,7 +134,6 @@ func (s *DefaultSchema) AckQuery(topic string) string {
 		"q": ackQ,
 	})
 
-	s.ackQ = ackQ
 	return ackQ
 }
 
@@ -153,7 +142,6 @@ func (s *DefaultSchema) AckArgs(offset int, consumerGroup string) ([]interface{}
 }
 
 func (s *DefaultSchema) SelectQuery(topic string) string {
-
 	if s.Logger == nil {
 		s.Logger = watermill.NopLogger{}
 	}
@@ -170,7 +158,6 @@ func (s *DefaultSchema) SelectQuery(topic string) string {
 		"q": selectQ,
 	})
 
-	s.ackQ = selectQ
 	return selectQ
 }
 

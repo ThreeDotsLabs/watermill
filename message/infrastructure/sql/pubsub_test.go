@@ -19,7 +19,7 @@ var (
 )
 
 func newPubSub(t *testing.T, db *std_sql.DB, consumerGroup string) message.PubSub {
-	schemaAdapter := &testSchema{db: db}
+	schemaAdapter := &testSchema{}
 	publisher, err := sql.NewPublisher(
 		db,
 		sql.PublisherConfig{

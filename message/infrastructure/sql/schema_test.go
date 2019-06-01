@@ -19,14 +19,7 @@ import (
 // `topic` VARCHAR(255) NOT NULL,
 //
 // testSchema maintains a separate table for each topic, which helps to prevent deadlock in parallel tests.
-type testSchema struct {
-	insertQ string
-	selectQ string
-	ackQ    string
-
-	// db is needed to create a separate table per topic if needed
-	db *sql.DB
-}
+type testSchema struct{}
 
 func (s testSchema) messagesTable(topic string) string {
 	return "`test_" + topic + "`"
@@ -69,16 +62,10 @@ func (s *testSchema) InsertQuery(topic string) string {
 		"q": insertQ,
 	})
 
-	s.insertQ = insertQ
 	return insertQ
 }
 
 func (s *testSchema) InsertArgs(topic string, msg *message.Message) (args []interface{}, err error) {
-	if s.insertQ != "" {
-		logger = logger.With(watermill.LogFields{
-			"q": s.insertQ,
-		})
-	}
 	defer func() {
 		if err != nil {
 			logger.Error("Could not marshal message into SQL insert args", err, nil)
@@ -117,7 +104,6 @@ func (s *testSchema) AckQuery(topic string) string {
 		"q": ackQ,
 	})
 
-	s.ackQ = ackQ
 	return ackQ
 }
 
@@ -138,7 +124,6 @@ func (s *testSchema) SelectQuery(topic string) string {
 		"q": selectQ,
 	})
 
-	s.ackQ = selectQ
 	return selectQ
 }
 
