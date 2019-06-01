@@ -39,8 +39,6 @@ type Subscriber struct {
 
 	client *pubsub.Client
 	config SubscriberConfig
-
-	logger watermill.LoggerAdapter
 }
 
 type SubscriberConfig struct {
@@ -162,7 +160,7 @@ func (s *Subscriber) Subscribe(ctx context.Context, topic string) (<-chan *messa
 		"topic":             topic,
 		"subscription_name": subscriptionName,
 	}
-	s.logger.Info("Subscribing to Google Cloud PubSub topic", logFields)
+	s.config.Logger.Info("Subscribing to Google Cloud PubSub topic", logFields)
 
 	output := make(chan *message.Message, 0)
 
@@ -176,14 +174,14 @@ func (s *Subscriber) Subscribe(ctx context.Context, topic string) (<-chan *messa
 	go func() {
 		err := s.receive(ctx, sub, logFields, output)
 		if err != nil {
-			s.logger.Error("Receiving messages failed", err, logFields)
+			s.config.Logger.Error("Receiving messages failed", err, logFields)
 		}
 		close(receiveFinished)
 	}()
 
 	go func() {
 		<-s.closing
-		s.logger.Debug("Closing message consumer", logFields)
+		s.config.Logger.Debug("Closing message consumer", logFields)
 		cancel()
 	}()
 
@@ -206,7 +204,7 @@ func (s *Subscriber) SubscribeInitialize(topic string) (err error) {
 		"topic":             topic,
 		"subscription_name": subscriptionName,
 	}
-	s.logger.Info("Initializing subscription to Google Cloud PubSub topic", logFields)
+	s.config.Logger.Info("Initializing subscription to Google Cloud PubSub topic", logFields)
 
 	if _, err := s.subscription(ctx, subscriptionName, topic); err != nil {
 		return err
@@ -231,7 +229,7 @@ func (s *Subscriber) Close() error {
 		return err
 	}
 
-	s.logger.Debug("Google Cloud PubSub subscriber closed", nil)
+	s.config.Logger.Debug("Google Cloud PubSub subscriber closed", nil)
 	return nil
 }
 
@@ -246,7 +244,7 @@ func (s *Subscriber) receive(
 
 		msg, err := s.config.Unmarshaler.Unmarshal(pubsubMsg)
 		if err != nil {
-			s.logger.Error("Could not unmarshal Google Cloud PubSub message", err, logFields)
+			s.config.Logger.Error("Could not unmarshal Google Cloud PubSub message", err, logFields)
 			pubsubMsg.Nack()
 			return
 		}
@@ -258,14 +256,14 @@ func (s *Subscriber) receive(
 
 		select {
 		case <-s.closing:
-			s.logger.Info(
+			s.config.Logger.Info(
 				"Message not consumed, subscriber is closing",
 				logFields,
 			)
 			pubsubMsg.Nack()
 			return
 		case <-ctx.Done():
-			s.logger.Info(
+			s.config.Logger.Info(
 				"Message not consumed, ctx canceled",
 				logFields,
 			)
@@ -278,25 +276,25 @@ func (s *Subscriber) receive(
 		select {
 		case <-s.closing:
 			pubsubMsg.Nack()
-			s.logger.Trace(
+			s.config.Logger.Trace(
 				"Closing, nacking message",
 				logFields,
 			)
 		case <-ctx.Done():
 			pubsubMsg.Nack()
-			s.logger.Trace(
+			s.config.Logger.Trace(
 				"Ctx done, nacking message",
 				logFields,
 			)
 		case <-msg.Acked():
-			s.logger.Trace(
+			s.config.Logger.Trace(
 				"Msg acked",
 				logFields,
 			)
 			pubsubMsg.Ack()
 		case <-msg.Nacked():
 			pubsubMsg.Nack()
-			s.logger.Trace(
+			s.config.Logger.Trace(
 				"Msg nacked",
 				logFields,
 			)
@@ -356,7 +354,7 @@ func (s *Subscriber) subscription(ctx context.Context, subscriptionName, topicNa
 		t, err = s.client.CreateTopic(ctx, topicName)
 
 		if grpc.Code(err) == codes.AlreadyExists {
-			s.logger.Debug("Topic already exists", watermill.LogFields{"topic": topicName})
+			s.config.Logger.Debug("Topic already exists", watermill.LogFields{"topic": topicName})
 			t = s.client.Topic(topicName)
 		} else if err != nil {
 			return nil, errors.Wrap(err, "could not create topic for subscription")
@@ -368,7 +366,7 @@ func (s *Subscriber) subscription(ctx context.Context, subscriptionName, topicNa
 
 	sub, err = s.client.CreateSubscription(ctx, subscriptionName, config)
 	if grpc.Code(err) == codes.AlreadyExists {
-		s.logger.Debug("Subscription already exists", watermill.LogFields{"subscription": subscriptionName})
+		s.config.Logger.Debug("Subscription already exists", watermill.LogFields{"subscription": subscriptionName})
 		sub = s.client.Subscription(subscriptionName)
 	} else if err != nil {
 		return nil, errors.Wrap(err, "cannot create subscription")
