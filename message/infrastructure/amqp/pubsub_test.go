@@ -22,44 +22,48 @@ func amqpURI() string {
 }
 
 func createPubSub(t *testing.T) (message.Publisher, message.Subscriber) {
-	publisher, err := amqp.NewPublisher(
-		amqp.NewDurablePubSubConfig(
-			amqpURI(),
-			nil,
-		),
-		watermill.NewStdLogger(true, true),
+	logger := watermill.NewStdLogger(true, true)
+
+	pubConfig := amqp.NewDurablePubSubConfig(
+		amqpURI(),
+		nil,
 	)
+	pubConfig.Logger = logger
+
+	publisher, err := amqp.NewPublisher(pubConfig)
 	require.NoError(t, err)
 
-	subscriber, err := amqp.NewSubscriber(
-		amqp.NewDurablePubSubConfig(
-			amqpURI(),
-			amqp.GenerateQueueNameTopicNameWithSuffix("test"),
-		),
-		watermill.NewStdLogger(true, true),
+	subConfig := amqp.NewDurablePubSubConfig(
+		amqpURI(),
+		amqp.GenerateQueueNameTopicNameWithSuffix("test"),
 	)
+	subConfig.Logger = logger
+
+	subscriber, err := amqp.NewSubscriber(subConfig)
 	require.NoError(t, err)
 
 	return publisher, subscriber
 }
 
 func createPubSubWithConsumerGroup(t *testing.T, consumerGroup string) (message.Publisher, message.Subscriber) {
-	publisher, err := amqp.NewPublisher(
-		amqp.NewDurablePubSubConfig(
-			amqpURI(),
-			nil,
-		),
-		watermill.NewStdLogger(true, true),
+	logger := watermill.NewStdLogger(true, true)
+
+	pubConfig := amqp.NewDurablePubSubConfig(
+		amqpURI(),
+		nil,
 	)
+	pubConfig.Logger = logger
+
+	publisher, err := amqp.NewPublisher(pubConfig)
 	require.NoError(t, err)
 
-	subscriber, err := amqp.NewSubscriber(
-		amqp.NewDurablePubSubConfig(
-			amqpURI(),
-			amqp.GenerateQueueNameTopicNameWithSuffix(consumerGroup),
-		),
-		watermill.NewStdLogger(true, true),
+	subConfig := amqp.NewDurablePubSubConfig(
+		amqpURI(),
+		amqp.GenerateQueueNameTopicNameWithSuffix(consumerGroup),
 	)
+	subConfig.Logger = logger
+
+	subscriber, err := amqp.NewSubscriber(subConfig)
 	require.NoError(t, err)
 
 	return publisher, subscriber
@@ -84,17 +88,12 @@ func createQueuePubSub(t *testing.T) (message.Publisher, message.Subscriber) {
 	config := amqp.NewDurableQueueConfig(
 		amqpURI(),
 	)
+	config.Logger = watermill.NewStdLogger(true, true)
 
-	publisher, err := amqp.NewPublisher(
-		config,
-		watermill.NewStdLogger(true, true),
-	)
+	publisher, err := amqp.NewPublisher(config)
 	require.NoError(t, err)
 
-	subscriber, err := amqp.NewSubscriber(
-		config,
-		watermill.NewStdLogger(true, true),
-	)
+	subscriber, err := amqp.NewSubscriber(config)
 	require.NoError(t, err)
 
 	return publisher, subscriber
@@ -122,17 +121,12 @@ func TestPublishSubscribe_transactional_publish(t *testing.T) {
 			amqp.GenerateQueueNameTopicNameWithSuffix("test"),
 		)
 		config.Publish.Transactional = true
+		config.Logger = watermill.NewStdLogger(true, true)
 
-		publisher, err := amqp.NewPublisher(
-			config,
-			watermill.NewStdLogger(true, true),
-		)
+		publisher, err := amqp.NewPublisher(config)
 		require.NoError(t, err)
 
-		subscriber, err := amqp.NewSubscriber(
-			config,
-			watermill.NewStdLogger(true, true),
-		)
+		subscriber, err := amqp.NewSubscriber(config)
 		require.NoError(t, err)
 
 		return publisher, subscriber

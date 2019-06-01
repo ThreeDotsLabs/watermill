@@ -1,11 +1,12 @@
 package amqp
 
 import (
-	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill/message"
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"github.com/streadway/amqp"
+
+	"github.com/ThreeDotsLabs/watermill"
+	"github.com/ThreeDotsLabs/watermill/message"
 )
 
 type Publisher struct {
@@ -14,12 +15,13 @@ type Publisher struct {
 	config Config
 }
 
-func NewPublisher(config Config, logger watermill.LoggerAdapter) (*Publisher, error) {
+func NewPublisher(config Config) (*Publisher, error) {
+	config.setDefaults()
 	if err := config.ValidatePublisher(); err != nil {
 		return nil, err
 	}
 
-	conn, err := newConnection(config, logger)
+	conn, err := newConnection(config, config.Logger)
 	if err != nil {
 		return nil, err
 	}

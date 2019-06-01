@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/amqp"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -21,14 +22,14 @@ For the configuration of consuming/producing of the messages, check the help of 
 		logger.Debug("Using AMQP Pub/Sub", nil)
 
 		if cmd.Use == "consume" {
-			consumer, err = amqp.NewSubscriber(amqpConsumerConfig(), logger)
+			consumer, err = amqp.NewSubscriber(amqpConsumerConfig(logger))
 			if err != nil {
 				return err
 			}
 		}
 
 		if cmd.Use == "produce" {
-			producer, err = amqp.NewPublisher(amqpProducerConfig(), logger)
+			producer, err = amqp.NewPublisher(amqpProducerConfig(logger))
 			if err != nil {
 				return err
 			}
@@ -38,7 +39,7 @@ For the configuration of consuming/producing of the messages, check the help of 
 	},
 }
 
-func amqpConsumerConfig() amqp.Config {
+func amqpConsumerConfig(logger watermill.LoggerAdapter) amqp.Config {
 	uri := viper.GetString("amqp.uri")
 	queue := viper.GetString("amqp.consume.queue")
 	exchangeName := viper.GetString("amqp.consume.exchange")
@@ -69,6 +70,8 @@ func amqpConsumerConfig() amqp.Config {
 			Type:    exchangeType,
 			Durable: durable,
 		},
+
+		Logger: logger,
 	}
 }
 

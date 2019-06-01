@@ -4,30 +4,28 @@ import (
 	"context"
 	"log"
 
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure/amqp"
-
 	"github.com/ThreeDotsLabs/watermill"
-
 	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ThreeDotsLabs/watermill/message/infrastructure/amqp"
 )
 
 var amqpURI = "amqp://guest:guest@rabbitmq:5672/"
 
 func createSubscriber(queueSuffix string) *amqp.Subscriber {
-	subscriber, err := amqp.NewSubscriber(
-		// This config is based on this example: https://www.rabbitmq.com/tutorials/tutorial-three-go.html
-		// to create just a simple queue, you can use NewDurableQueueConfig or create your own config.
-		amqp.NewDurablePubSubConfig(
-			amqpURI,
-			// Rabbit's queue name in this example is based on Watermill's topic passed to Subscribe
-			// plus provided suffix.
-			//
-			// Exchange is Rabbit's "fanout", so when subscribing with suffix other than "test_consumer_group",
-			// it will also receive all messages. It will work like separate consumer groups in Kafka.
-			amqp.GenerateQueueNameTopicNameWithSuffix(queueSuffix),
-		),
-		watermill.NewStdLogger(false, false),
+	// This config is based on this example: https://www.rabbitmq.com/tutorials/tutorial-three-go.html
+	// to create just a simple queue, you can use NewDurableQueueConfig or create your own config.
+	config := amqp.NewDurablePubSubConfig(
+		amqpURI,
+		// Rabbit's queue name in this example is based on Watermill's topic passed to Subscribe
+		// plus provided suffix.
+		//
+		// Exchange is Rabbit's "fanout", so when subscribing with suffix other than "test_consumer_group",
+		// it will also receive all messages. It will work like separate consumer groups in Kafka.
+		amqp.GenerateQueueNameTopicNameWithSuffix(queueSuffix),
 	)
+	config.Logger = watermill.NewStdLogger(false, false)
+
+	subscriber, err := amqp.NewSubscriber(config)
 	if err != nil {
 		panic(err)
 	}
@@ -50,13 +48,13 @@ func main() {
 	// subscriber2 will receive all messages independently from subscriber1
 	go process("subscriber_2", messages2)
 
-	publisher, err := amqp.NewPublisher(
-		amqp.NewDurablePubSubConfig(
-			amqpURI,
-			nil, // generateQueueName is not used with publisher
-		),
-		watermill.NewStdLogger(false, false),
+	config := amqp.NewDurablePubSubConfig(
+		amqpURI,
+		nil, // generateQueueName is not used with publisher
 	)
+	config.Logger = watermill.NewStdLogger(false, false)
+
+	publisher, err := amqp.NewPublisher(config)
 	if err != nil {
 		panic(err)
 	}

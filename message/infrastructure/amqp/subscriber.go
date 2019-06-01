@@ -5,11 +5,11 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-multierror"
+	"github.com/pkg/errors"
+	"github.com/streadway/amqp"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/pkg/errors"
-	"github.com/streadway/amqp"
 )
 
 type Subscriber struct {
@@ -18,12 +18,13 @@ type Subscriber struct {
 	config Config
 }
 
-func NewSubscriber(config Config, logger watermill.LoggerAdapter) (*Subscriber, error) {
+func NewSubscriber(config Config) (*Subscriber, error) {
+	config.setDefaults()
 	if err := config.ValidateSubscriber(); err != nil {
 		return nil, err
 	}
 
-	conn, err := newConnection(config, logger)
+	conn, err := newConnection(config, config.Logger)
 	if err != nil {
 		return nil, err
 	}

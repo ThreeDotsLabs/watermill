@@ -13,17 +13,15 @@ import (
 var amqpURI = "amqp://guest:guest@rabbitmq:5672/"
 
 func main() {
+	// This config is based on this example: https://www.rabbitmq.com/tutorials/tutorial-two-go.html
+	// It works as a simple queue.
+	//
+	// If you want to implement a Pub/Sub style service instead, check
+	// https://watermill.io/docs/pub-sub-implementations/#amqp-consumer-groups
 	amqpConfig := amqp.NewDurableQueueConfig(amqpURI)
+	amqpConfig.Logger = watermill.NewStdLogger(false, false)
 
-	subscriber, err := amqp.NewSubscriber(
-		// This config is based on this example: https://www.rabbitmq.com/tutorials/tutorial-two-go.html
-		// It works as a simple queue.
-		//
-		// If you want to implement a Pub/Sub style service instead, check
-		// https://watermill.io/docs/pub-sub-implementations/#amqp-consumer-groups
-		amqpConfig,
-		watermill.NewStdLogger(false, false),
-	)
+	subscriber, err := amqp.NewSubscriber(amqpConfig)
 	if err != nil {
 		panic(err)
 	}
@@ -35,7 +33,7 @@ func main() {
 
 	go process(messages)
 
-	publisher, err := amqp.NewPublisher(amqpConfig, watermill.NewStdLogger(false, false))
+	publisher, err := amqp.NewPublisher(amqpConfig)
 	if err != nil {
 		panic(err)
 	}

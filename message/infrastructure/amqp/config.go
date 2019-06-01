@@ -4,12 +4,12 @@ import (
 	"crypto/tls"
 	"time"
 
+	"github.com/cenkalti/backoff"
 	multierror "github.com/hashicorp/go-multierror"
+	"github.com/pkg/errors"
 	"github.com/streadway/amqp"
 
-	"github.com/cenkalti/backoff"
-
-	"github.com/pkg/errors"
+	"github.com/ThreeDotsLabs/watermill"
 )
 
 // NewDurablePubSubConfig creates config for durable PubSub.
@@ -210,6 +210,14 @@ type Config struct {
 	Consume ConsumeConfig
 
 	TopologyBuilder TopologyBuilder
+
+	Logger watermill.LoggerAdapter
+}
+
+func (c *Config) setDefaults() {
+	if c.Logger == nil {
+		c.Logger = watermill.NopLogger{}
+	}
 }
 
 func (c Config) validate() error {
