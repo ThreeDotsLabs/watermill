@@ -12,7 +12,7 @@ services:
       WATERMILL_TEST_NATS_URL: nats://nats-streaming:4222
       WATERMILL_TEST_AMQP_URI: amqp://guest:guest@rabbitmq:5672
       WATERMILL_TEST_KAFKA_BROKERS: kafka:9092
-      WATERMILL_TEST_MYSQL_HOST: mysql
+      WATERMILL_TEST_MYSQL_HOST: mysql:3306
 
   kafka:
     environment:
@@ -23,9 +23,6 @@ services:
 
   mysql:
     image: mysql:8.0
-    restart: on-failure
-    ports:
-      - 3306:3306
     environment:
       MYSQL_DATABASE: watermill
       MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
