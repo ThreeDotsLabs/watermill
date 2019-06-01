@@ -4,10 +4,10 @@ import (
 	"context"
 	"testing"
 
-	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/stretchr/testify/require"
 
 	"github.com/ThreeDotsLabs/watermill"
-	"github.com/stretchr/testify/require"
+	"github.com/ThreeDotsLabs/watermill/message"
 )
 
 type namedMockPublisher struct{}
@@ -50,7 +50,7 @@ func TestRouter_Context_Stringer(t *testing.T) {
 	)
 
 	go func() {
-		if err := router.Run(); err != nil {
+		if err := router.Run(context.Background()); err != nil {
 			panic(err)
 		}
 	}()
@@ -107,7 +107,7 @@ func TestRouter_Context_TypeName(t *testing.T) {
 	)
 
 	go func() {
-		if err := router.Run(); err != nil {
+		if err := router.Run(context.Background()); err != nil {
 			panic(err)
 		}
 	}()

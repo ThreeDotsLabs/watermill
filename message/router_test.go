@@ -7,16 +7,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ThreeDotsLabs/watermill/internal"
-
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure/gochannel"
-
-	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill/internal/tests"
-	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/ThreeDotsLabs/watermill/message/subscriber"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/ThreeDotsLabs/watermill"
+	"github.com/ThreeDotsLabs/watermill/internal"
+	"github.com/ThreeDotsLabs/watermill/internal/tests"
+	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ThreeDotsLabs/watermill/message/infrastructure/gochannel"
+	"github.com/ThreeDotsLabs/watermill/message/subscriber"
 )
 
 func TestRouter_functional(t *testing.T) {
@@ -89,7 +88,7 @@ func TestRouter_functional(t *testing.T) {
 	)
 
 	go func() {
-		require.NoError(t, r.Run())
+		require.NoError(t, r.Run(context.Background()))
 	}()
 	<-r.Running()
 
@@ -146,7 +145,7 @@ func TestRouter_functional_nack(t *testing.T) {
 	)
 
 	go func() {
-		require.NoError(t, r.Run())
+		require.NoError(t, r.Run(context.Background()))
 	}()
 	defer func() {
 		assert.NoError(t, r.Close())
@@ -198,7 +197,7 @@ func TestRouter_stop_when_all_handlers_stopped(t *testing.T) {
 
 	routerStopped := make(chan struct{})
 	go func() {
-		assert.NoError(t, r.Run())
+		assert.NoError(t, r.Run(context.Background()))
 		close(routerStopped)
 	}()
 	<-r.Running()
@@ -279,7 +278,7 @@ func BenchmarkRouterHandler(b *testing.B) {
 	}()
 
 	b.ResetTimer()
-	if err := router.Run(); err != nil {
+	if err := router.Run(context.Background()); err != nil {
 		b.Fatal(err)
 	}
 }
@@ -316,7 +315,7 @@ func TestRouterNoPublisherHandler(t *testing.T) {
 		},
 	)
 
-	go r.Run()
+	go r.Run(context.Background())
 	defer r.Close()
 
 	<-r.Running()
@@ -363,7 +362,7 @@ func BenchmarkRouterNoPublisherHandler(b *testing.B) {
 	}()
 
 	b.ResetTimer()
-	if err := router.Run(); err != nil {
+	if err := router.Run(context.Background()); err != nil {
 		b.Fatal(err)
 	}
 }
@@ -406,7 +405,7 @@ func TestRouterDecoratorsOrder(t *testing.T) {
 	)
 
 	go func() {
-		if err := router.Run(); err != nil {
+		if err := router.Run(context.Background()); err != nil {
 			panic(err)
 		}
 	}()
