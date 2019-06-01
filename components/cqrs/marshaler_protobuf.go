@@ -11,7 +11,8 @@ import (
 )
 
 type ProtobufMarshaler struct {
-	NewUUID func() string
+	NewUUID      func() string
+	GenerateName func(v interface{}) string
 }
 
 type NoProtoMessageError struct {
@@ -61,7 +62,11 @@ func (ProtobufMarshaler) Unmarshal(msg *message.Message, v interface{}) (err err
 }
 
 func (m ProtobufMarshaler) Name(cmdOrEvent interface{}) string {
-	return ObjectName(cmdOrEvent)
+	if m.GenerateName != nil {
+		return m.GenerateName(cmdOrEvent)
+	}
+
+	return FullyQualifiedStructName(cmdOrEvent)
 }
 
 func (m ProtobufMarshaler) NameFromMessage(msg *message.Message) string {
