@@ -4,9 +4,8 @@ import (
 	"context"
 	"sync"
 
-	"github.com/renstrom/shortuuid"
-
 	"github.com/pkg/errors"
+	"github.com/renstrom/shortuuid"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
@@ -52,19 +51,11 @@ type GoChannel struct {
 	persistedMessagesLock sync.RWMutex
 }
 
-func (g *GoChannel) Publisher() message.Publisher {
-	return g
-}
-
-func (g *GoChannel) Subscriber() message.Subscriber {
-	return g
-}
-
 // NewGoChannel creates new GoChannel Pub/Sub.
 //
 // This GoChannel is not persistent.
 // That means if you send a message to a topic to which no subscriber is subscribed, that message will be discarded.
-func NewGoChannel(config Config, logger watermill.LoggerAdapter) message.PubSub {
+func NewGoChannel(config Config, logger watermill.LoggerAdapter) *GoChannel {
 	return &GoChannel{
 		config: config,
 

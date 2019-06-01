@@ -13,7 +13,7 @@ import (
 // Run `docker-compose up` and set PUBSUB_EMULATOR_HOST=localhost:8085 for this to work
 
 func BenchmarkSubscriber(b *testing.B) {
-	infrastructure.BenchSubscriber(b, func(n int) message.PubSub {
+	infrastructure.BenchSubscriber(b, func(n int) (message.Publisher, message.Subscriber) {
 		ctx := context.Background()
 		logger := watermill.NopLogger{}
 
@@ -28,6 +28,6 @@ func BenchmarkSubscriber(b *testing.B) {
 			panic(err)
 		}
 
-		return message.NewPubSub(publisher, subscriber)
+		return publisher, subscriber
 	})
 }
