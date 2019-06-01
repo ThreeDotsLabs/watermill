@@ -76,4 +76,6 @@ else
     popd
 fi
 
+python3 ./extract_middleware_godocs.py > content/src-link/middleware-defs.md
+
 hugo --gc --minify
