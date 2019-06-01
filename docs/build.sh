@@ -1,4 +1,7 @@
+#!/bin/bash
 set -e -x
+
+cd "$(dirname "$0")"
 
 if [[ ! -d themes/kube ]]; then
     mkdir -p themes/kube && pushd themes/kube
