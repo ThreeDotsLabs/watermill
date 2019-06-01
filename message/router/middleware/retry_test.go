@@ -1,6 +1,7 @@
 package middleware_test
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -90,4 +91,85 @@ func TestRetry_logger(t *testing.T) {
 	_, _ = h(message.NewMessage("1", nil))
 
 	assert.True(t, logger.HasError(handlerErr))
+}
+
+func TestRetry_ctx_cancel(t *testing.T) {
+	retry := middleware.Retry{
+		InitialInterval: time.Minute,
+	}
+
+	producedMessages := message.Messages{message.NewMessage("2", nil)}
+
+	h := retry.Middleware(func(msg *message.Message) (messages []*message.Message, e error) {
+		return producedMessages, errors.New("err")
+	})
+
+	msg := message.NewMessage("1", nil)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	msg.SetContext(ctx)
+
+	done := make(chan struct{})
+
+	type handlerResult struct {
+		Messages message.Messages
+		Err      error
+	}
+	handlerResultCh := make(chan handlerResult, 1)
+
+	go func() {
+		messages, err := h(msg)
+		handlerResultCh <- handlerResult{messages, err}
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		t.Fatal("handler should be still during retrying")
+	default:
+		// ok
+	}
+
+	cancel()
+
+	select {
+	case <-done:
+		// ok
+	case <-time.After(time.Second):
+		t.Fatal("ctx cancelled, retrying should be done")
+	}
+
+	handlerResultReceived := <-handlerResultCh
+
+	assert.Error(t, handlerResultReceived.Err)
+	assert.Equal(t, producedMessages, handlerResultReceived.Messages)
+}
+
+func TestRetry_max_elapsed(t *testing.T) {
+	maxRetries := 10
+	sleepInHandler := time.Millisecond * 20
+
+	retry := middleware.Retry{
+		MaxElapsedTime: time.Millisecond * 10,
+		MaxRetries:     maxRetries,
+	}
+
+	runTimeWithoutMaxElapsedTime := sleepInHandler * time.Duration(maxRetries)
+
+	h := retry.Middleware(func(msg *message.Message) (messages []*message.Message, e error) {
+		time.Sleep(sleepInHandler)
+		return nil, errors.New("foo")
+	})
+
+	startTime := time.Now()
+	_, _ = h(message.NewMessage("1", nil))
+	timeElapsed := time.Since(startTime)
+
+	assert.True(
+		t,
+		timeElapsed < runTimeWithoutMaxElapsedTime,
+		"handler should run less than %s, time elapsed: %s",
+		runTimeWithoutMaxElapsedTime,
+		timeElapsed,
+	)
 }

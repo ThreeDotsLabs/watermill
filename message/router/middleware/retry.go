@@ -8,17 +8,15 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
-const RetryForever = -1
-
 type OnRetryHook func(retryNum int, delay time.Duration)
 
 type Retry struct {
 	MaxRetries int
 
-	WaitTime time.Duration
-	Backoff  int64
-
-	MaxDelay time.Duration
+	InitialInterval   time.Duration
+	MaxInterval       time.Duration
+	BackOffMultiplier int
+	MaxElapsedTime    time.Duration
 
 	OnRetryHook OnRetryHook
 
@@ -28,46 +26,64 @@ type Retry struct {
 func (r Retry) Middleware(h message.HandlerFunc) message.HandlerFunc {
 	return func(message *message.Message) ([]*message.Message, error) {
 		retries := 0
+		startTime := time.Now()
 
 		for {
 			events, err := h(message)
-			if r.shouldRetry(err, retries) {
-				waitTime := r.calculateWaitTime()
-
-				if r.Logger != nil {
-					r.Logger.Error("Error occurred, retrying", err, watermill.LogFields{
-						"retry_no":    retries,
-						"max_retries": r.MaxRetries,
-						"wait_time":   waitTime,
-					})
-				}
-
-				retries++
-				time.Sleep(waitTime)
-
-				if r.OnRetryHook != nil {
-					r.OnRetryHook(retries, r.WaitTime)
-
-				}
-
-				continue
+			if err == nil {
+				return events, nil
 			}
 
-			return events, err
+			elapsedTime := time.Since(startTime)
+			if !r.shouldRetry(retries, elapsedTime) {
+				return events, err
+			}
+
+			waitTime := r.calculateWaitTime()
+			if r.Logger != nil {
+				r.Logger.Error("Error occurred, retrying", err, watermill.LogFields{
+					"retry_no":     retries,
+					"max_retries":  r.MaxRetries,
+					"wait_time":    waitTime,
+					"elapsed_time": elapsedTime,
+				})
+			}
+			retries++
+
+			select {
+			case <-time.After(waitTime):
+			// ok
+			case <-message.Context().Done():
+				return events, err
+			}
+
+			if r.OnRetryHook != nil {
+				r.OnRetryHook(retries, r.InitialInterval)
+			}
 		}
 	}
 }
 
 func (r Retry) calculateWaitTime() time.Duration {
-	waitTime := r.WaitTime + (r.WaitTime * time.Duration(r.Backoff))
+	backOffToAdd := r.InitialInterval * time.Duration(r.BackOffMultiplier)
 
-	if r.MaxDelay != 0 && waitTime > r.MaxDelay {
-		return r.MaxDelay
+	waitTime := r.InitialInterval + backOffToAdd
+
+	if r.MaxInterval != 0 && waitTime > r.MaxInterval {
+		return r.MaxInterval
 	}
 
 	return waitTime
 }
 
-func (r Retry) shouldRetry(err error, retries int) bool {
-	return err != nil && (retries < r.MaxRetries || r.MaxRetries == RetryForever)
+func (r Retry) shouldRetry(retries int, elapsedTime time.Duration) bool {
+	if r.MaxElapsedTime != 0 && elapsedTime > r.MaxElapsedTime {
+		return false
+	}
+
+	if r.MaxRetries == 0 {
+		return true
+	}
+
+	return retries < r.MaxRetries
 }
