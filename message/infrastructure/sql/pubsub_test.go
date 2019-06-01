@@ -75,9 +75,8 @@ func createPubSub(t *testing.T) infrastructure.PubSub {
 
 func TestPublishSubscribe(t *testing.T) {
 	features := infrastructure.Features{
-		ConsumerGroups: true,
-		// todo: implement exactly once?
-		ExactlyOnceDelivery: false,
+		ConsumerGroups:      true,
+		ExactlyOnceDelivery: true,
 		GuaranteedOrder:     true,
 		Persistent:          true,
 	}

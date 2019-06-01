@@ -20,7 +20,7 @@ type SubscriberConfig struct {
 	Logger        watermill.LoggerAdapter
 	ConsumerGroup string
 
-	// PollInterval is the interval between subsequent SELECT queries. Must be non-negative. Defaults to 5s.
+	// PollInterval is the interval between subsequent SELECT queries. Must be non-negative. Defaults to 1s.
 	PollInterval time.Duration
 
 	// ResendInterval is the time to wait before resending a nacked message. Must be non-negative. Defaults to 1s.
@@ -41,7 +41,7 @@ func (c *SubscriberConfig) setDefaults() {
 		c.Logger = watermill.NopLogger{}
 	}
 	if c.PollInterval == 0 {
-		c.PollInterval = 5 * time.Second
+		c.PollInterval = time.Second
 	}
 	if c.ResendInterval == 0 {
 		c.ResendInterval = time.Second
@@ -55,7 +55,6 @@ func (c *SubscriberConfig) setDefaults() {
 }
 
 func (c SubscriberConfig) validate() error {
-	// TODO: any restraint to prevent really quick polling? I think not, caveat programmator
 	if c.PollInterval <= 0 {
 		return errors.New("poll interval must be a positive duration")
 	}
