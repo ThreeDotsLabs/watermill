@@ -74,6 +74,8 @@ func NewPublisher(db db, config PublisherConfig) (*Publisher, error) {
 // Publish inserts the messages as rows into the MessagesTable.
 // Order is guaranteed for messages within one call.
 // Publish is blocking until all rows have been added to the Publisher's transaction.
+// Publisher doesn't guarantee publishing messages in a single transaction,
+// but the constructor accepts both *sql.DB and *sql.Tx, so transactions may be handled upstream by the user.
 func (p *Publisher) Publish(topic string, messages ...*message.Message) error {
 	if p.closed {
 		return ErrPublisherClosed
