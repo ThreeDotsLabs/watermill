@@ -75,7 +75,7 @@ func goModTidy(dir string, file string) error {
 }
 
 func updateWatermill(dir string, file string) error {
-	cmd := exec.Command("go", "get", "-u", "github.com/ThreeDotsLabs/watermill@master")
+	cmd := exec.Command("go", "get", "-u", "github.com/ThreeDotsLabs/watermill")
 	cmd.Dir = dir
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
