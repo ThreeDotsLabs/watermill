@@ -309,7 +309,10 @@ func TestRouterNoPublisherHandler(t *testing.T) {
 		},
 	)
 
-	go r.Run(context.Background())
+	go func() {
+		err = r.Run(context.Background())
+		require.NoError(t, err)
+	}()
 	defer r.Close()
 
 	<-r.Running()
