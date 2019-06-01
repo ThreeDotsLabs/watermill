@@ -6,11 +6,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ThreeDotsLabs/watermill/internal"
+	"github.com/pkg/errors"
 
 	"github.com/ThreeDotsLabs/watermill"
+	"github.com/ThreeDotsLabs/watermill/internal"
 	sync_internal "github.com/ThreeDotsLabs/watermill/internal/sync"
-	"github.com/pkg/errors"
 )
 
 var (
@@ -247,12 +247,17 @@ func (r *Router) AddNoPublisherHandler(
 //
 // To stop Run() you should call Close() on the router.
 //
+// ctx will be propagated to all subscribers.
+//
 // When all handlers are stopped (for example: because of closed connection), Run() will be also stopped.
-func (r *Router) Run() (err error) {
+func (r *Router) Run(ctx context.Context) (err error) {
 	if r.isRunning {
 		return errors.New("router is already running")
 	}
 	r.isRunning = true
+
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -284,7 +289,7 @@ func (r *Router) Run() (err error) {
 			"topic":           h.subscribeTopic,
 		})
 
-		messages, err := h.subscriber.Subscribe(context.Background(), h.subscribeTopic)
+		messages, err := h.subscriber.Subscribe(ctx, h.subscribeTopic)
 		if err != nil {
 			return errors.Wrapf(err, "cannot subscribe topic %s", h.subscribeTopic)
 		}
@@ -313,6 +318,7 @@ func (r *Router) Run() (err error) {
 	go r.closeWhenAllHandlersStopped()
 
 	<-r.closeCh
+	cancel()
 
 	r.logger.Info("Waiting for messages", watermill.LogFields{
 		"timeout": r.config.CloseTimeout,
@@ -344,7 +350,7 @@ func (r *Router) closeWhenAllHandlersStopped() {
 // Running is closed when router is running.
 // In other words: you can wait till router is running using
 //		fmt.Println("Starting router")
-//		go r.Run()
+//		go r.Run(ctx)
 //		<- r.Running()
 //		fmt.Println("Router is running")
 func (r *Router) Running() chan struct{} {

@@ -95,7 +95,7 @@ func createRouterAndFacade(ts TestServices, t *testing.T, commandHandler *Captur
 	require.NoError(t, err)
 
 	go func() {
-		require.NoError(t, router.Run())
+		require.NoError(t, router.Run(context.Background()))
 	}()
 
 	<-router.Running()
