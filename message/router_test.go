@@ -44,7 +44,7 @@ func TestRouter_functional(t *testing.T) {
 	publishedByHandlerCh, err := pubSub.Subscribe(context.Background(), publishedEventsTopic)
 
 	var publishedByHandler message.Messages
-	allPublishedByHandler := make(chan struct{}, 0)
+	allPublishedByHandler := make(chan struct{})
 
 	go func() {
 		var all bool
