@@ -14,10 +14,9 @@ import (
 type SchemaAdapter interface {
 	// AckQuery returns the SQL query that will mark a message as read for a given consumer group.
 	// Subscriber will not return those messages again for this consumer group.
-	AckQuery(topic string, consumerGroup string) string
+	AckQuery(topic string) string
 	// AckArgs transforms the recovered message's offset and consumer group into the arguments put into AckQuery.
-	// todo: there should be probably only one arg, and it's an int, so we could skip the whole AckArgs thing (?)
-	AckArgs(offset int) ([]interface{}, error)
+	AckArgs(offset int, consumerGroup string) ([]interface{}, error)
 
 	// InsertQuery returns the SQL query that will insert the Watermill message into the SQL storage.
 	InsertQuery(topic string) string
@@ -26,9 +25,9 @@ type SchemaAdapter interface {
 
 	// SelectQuery returns the SQL query that returns the next unread message for a given consumer group.
 	// Subscriber will not return those messages again for this consumer group.
-	SelectQuery(topic string, consumerGroup string) string
+	SelectQuery(topic string) string
 	// SelectArgs transforms the topic into the argument put into SelectQuery.
-	SelectArgs(topic string) ([]interface{}, error)
+	SelectArgs(topic string, consumerGroup string) ([]interface{}, error)
 	// UnmarshalMessage transforms the Row obtained from the SQL query into a Watermill message.
 	// It also returns the offset of the last read message, for the purpose of acking.
 	UnmarshalMessage(row *sql.Row) (offset int, msg *message.Message, err error)
@@ -53,9 +52,8 @@ type DefaultSchema struct {
 	ackQ    string
 }
 
-func (s *DefaultSchema) EnsureTableForTopicQuery(topic string) []string {
+func (s *DefaultSchema) EnsureTableForTopicQueries(topic string) []string {
 	messagesQ := strings.Join([]string{
-		// todo: sql injection
 		"CREATE TABLE IF NOT EXISTS `watermill_" + topic + "` (",
 		"`offset` bigint(20) NOT NULL AUTO_INCREMENT PRIMARY KEY,",
 		"`uuid` binary(16) NOT NULL,",
@@ -134,7 +132,7 @@ func (s *DefaultSchema) InsertArgs(topic string, msg *message.Message) (args []i
 	}, nil
 }
 
-func (s *DefaultSchema) AckQuery(topic string, consumerGroup string) string {
+func (s *DefaultSchema) AckQuery(topic string) string {
 	messagesAckedTable := "watermill_acked" + topic
 
 	if s.Logger == nil {
@@ -143,7 +141,7 @@ func (s *DefaultSchema) AckQuery(topic string, consumerGroup string) string {
 
 	ackQ := strings.Join([]string{
 		`INSERT INTO `, messagesAckedTable, ` (offset, consumer_group) `,
-		`VALUES (?, "`, consumerGroup, `") ON DUPLICATE KEY UPDATE offset=VALUES(offset)`,
+		`VALUES (?, ?) ON DUPLICATE KEY UPDATE offset=VALUES(offset)`,
 	}, "")
 
 	s.Logger.Info("Preparing query to ack messages", watermill.LogFields{
@@ -154,11 +152,11 @@ func (s *DefaultSchema) AckQuery(topic string, consumerGroup string) string {
 	return ackQ
 }
 
-func (s *DefaultSchema) AckArgs(offset int) ([]interface{}, error) {
-	return []interface{}{offset}, nil
+func (s *DefaultSchema) AckArgs(offset int, consumerGroup string) ([]interface{}, error) {
+	return []interface{}{offset, consumerGroup}, nil
 }
 
-func (s *DefaultSchema) SelectQuery(topic string, consumerGroup string) string {
+func (s *DefaultSchema) SelectQuery(topic string) string {
 	// todo: ugly
 	messagesTable := "watermill_" + topic
 	messagesAckedTable := "watermill_acked" + topic
@@ -171,7 +169,7 @@ func (s *DefaultSchema) SelectQuery(topic string, consumerGroup string) string {
 		`SELECT offset,uuid,payload,metadata FROM `, messagesTable,
 		` WHERE TOPIC=? AND `, messagesTable, `.offset >`,
 		` (SELECT COALESCE(MAX(`, messagesAckedTable, `.offset), 0) FROM `, messagesAckedTable,
-		` WHERE consumer_group="`, consumerGroup, `")`,
+		` WHERE consumer_group=?)`,
 		` ORDER BY `, messagesTable, `.offset ASC LIMIT 1`,
 	}, "")
 
@@ -183,11 +181,11 @@ func (s *DefaultSchema) SelectQuery(topic string, consumerGroup string) string {
 	return selectQ
 }
 
-func (s *DefaultSchema) SelectArgs(topic string) ([]interface{}, error) {
+func (s *DefaultSchema) SelectArgs(topic string, consumerGroup string) ([]interface{}, error) {
 	if len(topic) > 255 {
 		return nil, errors.New("the topic does not fit into VARCHAR(255)")
 	}
-	return []interface{}{topic}, nil
+	return []interface{}{topic, consumerGroup}, nil
 }
 
 type defaultSchemaRow struct {

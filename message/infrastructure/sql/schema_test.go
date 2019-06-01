@@ -38,7 +38,6 @@ func (s testSchema) messagesOffsetsTable(topic string) string {
 
 func (s *testSchema) EnsureTableForTopicQueries(topic string) []string {
 	createMessagesTable := strings.Join([]string{
-		// todo: sql injection
 		"CREATE TABLE IF NOT EXISTS " + s.messagesTable(topic) + " (",
 		"`offset` BIGINT(20) NOT NULL AUTO_INCREMENT PRIMARY KEY,",
 		"`uuid` VARCHAR(255) NOT NULL,",
@@ -108,10 +107,10 @@ func (s *testSchema) InsertArgs(topic string, msg *message.Message) (args []inte
 	}, nil
 }
 
-func (s *testSchema) AckQuery(topic string, consumerGroup string) string {
+func (s *testSchema) AckQuery(topic string) string {
 	ackQ := strings.Join([]string{
 		`INSERT INTO `, s.messagesOffsetsTable(topic), ` (offset, consumer_group) `,
-		`VALUES (?, "`, consumerGroup, `") ON DUPLICATE KEY UPDATE offset=VALUES(offset)`,
+		`VALUES (?, ?) ON DUPLICATE KEY UPDATE offset=VALUES(offset)`,
 	}, "")
 
 	logger.Info("Preparing query to ack messages", watermill.LogFields{
@@ -122,16 +121,16 @@ func (s *testSchema) AckQuery(topic string, consumerGroup string) string {
 	return ackQ
 }
 
-func (s *testSchema) AckArgs(offset int) ([]interface{}, error) {
-	return []interface{}{offset}, nil
+func (s *testSchema) AckArgs(offset int, consumerGroup string) ([]interface{}, error) {
+	return []interface{}{offset, consumerGroup}, nil
 }
 
-func (s *testSchema) SelectQuery(topic string, consumerGroup string) string {
+func (s *testSchema) SelectQuery(topic string) string {
 	selectQ := strings.Join([]string{
 		`SELECT offset,uuid,payload,metadata FROM `, s.messagesTable(topic),
 		` WHERE TOPIC=? AND `, s.messagesTable(topic), `.offset >`,
 		` (SELECT COALESCE(MAX(`, s.messagesOffsetsTable(topic), `.offset), 0) FROM `, s.messagesOffsetsTable(topic),
-		` WHERE consumer_group="`, consumerGroup, `")`,
+		` WHERE consumer_group=?)`,
 		` ORDER BY `, s.messagesTable(topic), `.offset ASC LIMIT 1`,
 	}, "")
 
@@ -143,11 +142,11 @@ func (s *testSchema) SelectQuery(topic string, consumerGroup string) string {
 	return selectQ
 }
 
-func (s *testSchema) SelectArgs(topic string) ([]interface{}, error) {
+func (s *testSchema) SelectArgs(topic string, consumerGroup string) ([]interface{}, error) {
 	if len(topic) > 255 {
 		return nil, errors.New("the topic does not fit into VARCHAR(255)")
 	}
-	return []interface{}{topic}, nil
+	return []interface{}{topic, consumerGroup}, nil
 }
 
 func (s *testSchema) UnmarshalMessage(row *sql.Row) (offset int, msg *message.Message, err error) {

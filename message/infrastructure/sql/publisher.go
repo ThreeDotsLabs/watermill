@@ -78,6 +78,10 @@ func (p *Publisher) Publish(topic string, messages ...*message.Message) error {
 		return ErrPublisherClosed
 	}
 
+	if err := sanitizeTopicName(topic); err != nil {
+		return err
+	}
+
 	p.publishWg.Add(1)
 	defer p.publishWg.Done()
 

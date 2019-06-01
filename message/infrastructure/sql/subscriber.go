@@ -106,6 +106,10 @@ func (s *Subscriber) Subscribe(ctx context.Context, topic string) (o <-chan *mes
 		return nil, ErrSubscriberClosed
 	}
 
+	if err = sanitizeTopicName(topic); err != nil {
+		return nil, err
+	}
+
 	// the information about closing the subscriber is propagated through ctx
 	ctx, cancel := context.WithCancel(ctx)
 	out := make(chan *message.Message)
@@ -161,18 +165,18 @@ func (s *Subscriber) query(
 	// it is finalized after the ACK is written
 	var tx *sql.Tx
 	tx, err = s.db.BeginTx(ctx, &sql.TxOptions{
-	//Isolation: sql.LevelSerializable,
+		//Isolation: sql.LevelSerializable,
 	})
 	if err != nil {
 		return errors.Wrap(err, "could not begin tx for querying")
 	}
 
-	selectQ := s.config.SchemaAdapter.SelectQuery(topic, s.config.ConsumerGroup)
+	selectQ := s.config.SchemaAdapter.SelectQuery(topic)
 	selectStmt, err := tx.Prepare(selectQ)
 	if err != nil {
 		return errors.Wrap(err, "could not prepare statement to select messages")
 	}
-	ackQ := s.config.SchemaAdapter.AckQuery(topic, s.config.ConsumerGroup)
+	ackQ := s.config.SchemaAdapter.AckQuery(topic)
 	ackStmt, err := tx.Prepare(ackQ)
 	if err != nil {
 		return errors.Wrap(err, "could not prepare statement to ack messages")
@@ -192,7 +196,7 @@ func (s *Subscriber) query(
 		}
 	}()
 
-	selectArgs, err := s.config.SchemaAdapter.SelectArgs(topic)
+	selectArgs, err := s.config.SchemaAdapter.SelectArgs(topic, s.config.ConsumerGroup)
 	if err != nil {
 		return errors.Wrap(err, "could not get args for the select query")
 	}
@@ -201,7 +205,6 @@ func (s *Subscriber) query(
 		"args": fmt.Sprintf("%+v", selectArgs),
 	})
 
-	// todo: there might be some args to pass to the query (?) in what case?
 	row := selectStmt.QueryRowContext(ctx, selectArgs...)
 
 	var offset int
@@ -224,7 +227,7 @@ func (s *Subscriber) query(
 	acked := s.sendMessage(ctx, msg, out, logger)
 	if acked {
 		var ackArgs []interface{}
-		ackArgs, err = s.config.SchemaAdapter.AckArgs(offset)
+		ackArgs, err = s.config.SchemaAdapter.AckArgs(offset, s.config.ConsumerGroup)
 		if err != nil {
 			return errors.Wrap(err, "could not get args for acking the message")
 		}
