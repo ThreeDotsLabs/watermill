@@ -74,11 +74,10 @@ func NewPublisher(config PublisherConfig) (*Publisher, error) {
 		config: config,
 	}
 
-	var err error
-
 	ctx, cancel := context.WithTimeout(context.Background(), config.ConnectTimeout)
 	defer cancel()
 
+	var err error
 	pub.client, err = pubsub.NewClient(ctx, config.ProjectID, config.ClientOptions...)
 	if err != nil {
 		return nil, err

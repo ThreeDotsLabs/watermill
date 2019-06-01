@@ -30,7 +30,9 @@ func newPubSub(t *testing.T, marshaler googlecloud.MarshalerUnmarshaler, subscri
 	)
 	require.NoError(t, err)
 
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
 	subscriber, err := googlecloud.NewSubscriber(
 		ctx,
 		googlecloud.SubscriberConfig{
@@ -72,7 +74,9 @@ func TestPublishSubscribe(t *testing.T) {
 }
 
 func TestSubscriberUnexpectedTopicForSubscription(t *testing.T) {
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
 	rand.Seed(time.Now().Unix())
 	testNumber := rand.Int()
 	logger := watermill.NewStdLogger(true, true)
@@ -96,7 +100,7 @@ func TestSubscriberUnexpectedTopicForSubscription(t *testing.T) {
 
 	howManyMessages := 100
 
-	messagesTopic1, err := sub1.Subscribe(context.Background(), topic1)
+	messagesTopic1, err := sub1.Subscribe(ctx, topic1)
 	require.NoError(t, err)
 
 	allMessagesReceived := make(chan struct{})
@@ -120,7 +124,7 @@ func TestSubscriberUnexpectedTopicForSubscription(t *testing.T) {
 		t.Fatal("Test timed out")
 	}
 
-	_, err = sub2.Subscribe(context.Background(), topic2)
+	_, err = sub2.Subscribe(ctx, topic2)
 	require.Equal(t, googlecloud.ErrUnexpectedTopic, errors.Cause(err))
 }
 
