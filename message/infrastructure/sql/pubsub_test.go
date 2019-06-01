@@ -60,6 +60,7 @@ func newMySQL(t *testing.T) *std_sql.DB {
 		addr = "localhost"
 	}
 	conf := driver.NewConfig()
+	conf.Net = "tcp"
 	conf.User = "root"
 	conf.Addr = addr
 
