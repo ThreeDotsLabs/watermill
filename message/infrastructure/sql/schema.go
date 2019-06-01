@@ -72,11 +72,9 @@ func (s *DefaultSchema) InsertQuery(topic string) string {
 		s.Logger = watermill.NopLogger{}
 	}
 
-	table := "watermill_" + topic
-
 	insertQ := strings.Join([]string{
 		`INSERT INTO`,
-		table,
+		s.messagesTable(topic),
 		`(uuid, payload, metadata, topic) VALUES (?,?,?,?)`,
 	}, " ")
 
@@ -133,14 +131,12 @@ func (s *DefaultSchema) InsertArgs(topic string, msg *message.Message) (args []i
 }
 
 func (s *DefaultSchema) AckQuery(topic string) string {
-	messagesAckedTable := "watermill_acked" + topic
-
 	if s.Logger == nil {
 		s.Logger = watermill.NopLogger{}
 	}
 
 	ackQ := strings.Join([]string{
-		`INSERT INTO `, messagesAckedTable, ` (offset, consumer_group) `,
+		`INSERT INTO `, s.messagesOffsetsTable(topic), ` (offset, consumer_group) `,
 		`VALUES (?, ?) ON DUPLICATE KEY UPDATE offset=VALUES(offset)`,
 	}, "")
 
@@ -157,20 +153,17 @@ func (s *DefaultSchema) AckArgs(offset int, consumerGroup string) ([]interface{}
 }
 
 func (s *DefaultSchema) SelectQuery(topic string) string {
-	// todo: ugly
-	messagesTable := "watermill_" + topic
-	messagesAckedTable := "watermill_acked" + topic
 
 	if s.Logger == nil {
 		s.Logger = watermill.NopLogger{}
 	}
 
 	selectQ := strings.Join([]string{
-		`SELECT offset,uuid,payload,metadata FROM `, messagesTable,
-		` WHERE TOPIC=? AND `, messagesTable, `.offset >`,
-		` (SELECT COALESCE(MAX(`, messagesAckedTable, `.offset), 0) FROM `, messagesAckedTable,
+		`SELECT offset,uuid,payload,metadata FROM `, s.messagesTable(topic),
+		` WHERE TOPIC=? AND `, s.messagesTable(topic), `.offset >`,
+		` (SELECT COALESCE(MAX(`, s.messagesOffsetsTable(topic), `.offset), 0) FROM `, s.messagesOffsetsTable(topic),
 		` WHERE consumer_group=?)`,
-		` ORDER BY `, messagesTable, `.offset ASC LIMIT 1`,
+		` ORDER BY `, s.messagesTable(topic), `.offset ASC LIMIT 1`,
 	}, "")
 
 	s.Logger.Info("Preparing query to select messages", watermill.LogFields{
@@ -220,5 +213,12 @@ func (s *DefaultSchema) UnmarshalMessage(row *sql.Row) (offset int, msg *message
 	}
 
 	return int(r.Offset), msg, nil
+}
 
+func (s DefaultSchema) messagesTable(topic string) string {
+	return "watermill_" + topic
+}
+
+func (s DefaultSchema) messagesOffsetsTable(topic string) string {
+	return "watermill_acked" + topic
 }
