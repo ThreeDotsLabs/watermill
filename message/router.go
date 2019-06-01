@@ -30,7 +30,7 @@ var (
 // (because msg.Ack() was sent in HandlerFunc or Subscriber supports multiple consumers).
 type HandlerFunc func(msg *Message) ([]*Message, error)
 
-// NoPublishHandlerFunc is HandlerFunc alternative, which doesn't produce any message.
+// NoPublishHandlerFunc is HandlerFunc alternative, which doesn't produce any messages.
 type NoPublishHandlerFunc func(msg *Message) error
 
 // HandlerMiddleware allows us to write something like decorators to HandlerFunc.
