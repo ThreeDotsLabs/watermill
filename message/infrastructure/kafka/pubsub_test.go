@@ -106,8 +106,7 @@ func TestPublishSubscribe(t *testing.T) {
 		// Kafka tests are a bit slow, so let's run only basic test
 		// todo - speed up
 		t.Log("Running only TestPublishSubscribe for Kafka with -short flag")
-		pub, sub := createPubSub(t)
-		infrastructure.TestPublishSubscribe(t, pub, sub, features)
+		infrastructure.TestPublishSubscribe(t, createPubSub, features)
 		return
 	}
 

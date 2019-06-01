@@ -66,20 +66,17 @@ func TestPubSub(
 ) {
 	t.Run("TestPublishSubscribe", func(t *testing.T) {
 		t.Parallel()
-		pub, sub := pubSubConstructor(t)
-		TestPublishSubscribe(t, pub, sub, features)
+		TestPublishSubscribe(t, pubSubConstructor, features)
 	})
 
 	t.Run("TestResendOnError", func(t *testing.T) {
 		t.Parallel()
-		pub, sub := pubSubConstructor(t)
-		TestResendOnError(t, pub, sub, features)
+		TestResendOnError(t, pubSubConstructor, features)
 	})
 
 	t.Run("TestNoAck", func(t *testing.T) {
 		t.Parallel()
-		pub, sub := pubSubConstructor(t)
-		TestNoAck(t, pub, sub, features)
+		TestNoAck(t, pubSubConstructor, features)
 	})
 
 	t.Run("TestContinueAfterSubscribeClose", func(t *testing.T) {
@@ -99,8 +96,7 @@ func TestPubSub(
 
 	t.Run("TestPublishSubscribeInOrder", func(t *testing.T) {
 		t.Parallel()
-		pub, sub := pubSubConstructor(t)
-		TestPublishSubscribeInOrder(t, pub, sub, features)
+		TestPublishSubscribeInOrder(t, pubSubConstructor, features)
 	})
 
 	t.Run("TestConsumerGroups", func(t *testing.T) {
@@ -110,26 +106,22 @@ func TestPubSub(
 
 	t.Run("TestPublisherClose", func(t *testing.T) {
 		t.Parallel()
-		pub, sub := pubSubConstructor(t)
-		TestPublisherClose(t, pub, sub, features)
+		TestPublisherClose(t, pubSubConstructor, features)
 	})
 
 	t.Run("TestTopic", func(t *testing.T) {
 		t.Parallel()
-		pub, sub := pubSubConstructor(t)
-		TestTopic(t, pub, sub, features)
+		TestTopic(t, pubSubConstructor, features)
 	})
 
 	t.Run("TestMessageCtx", func(t *testing.T) {
 		t.Parallel()
-		pub, sub := pubSubConstructor(t)
-		TestMessageCtx(t, pub, sub, features)
+		TestMessageCtx(t, pubSubConstructor, features)
 	})
 
 	t.Run("TestSubscribeCtx", func(t *testing.T) {
 		t.Parallel()
-		pub, sub := pubSubConstructor(t)
-		TestSubscribeCtx(t, pub, sub, features)
+		TestSubscribeCtx(t, pubSubConstructor, features)
 	})
 }
 
@@ -149,7 +141,8 @@ func TestPubSubStressTest(
 	}
 }
 
-func TestPublishSubscribe(t *testing.T, pub message.Publisher, sub message.Subscriber, features Features) {
+func TestPublishSubscribe(t *testing.T, pubSubConstructor PubSubConstructor, features Features) {
+	pub, sub := pubSubConstructor(t)
 	topicName := testTopicName()
 
 	if subscribeInitializer, ok := sub.(message.SubscribeInitializer); ok {
@@ -190,11 +183,12 @@ func TestPublishSubscribe(t *testing.T, pub message.Publisher, sub message.Subsc
 	assertMessagesChannelClosed(t, messages)
 }
 
-func TestPublishSubscribeInOrder(t *testing.T, pub message.Publisher, sub message.Subscriber, features Features) {
+func TestPublishSubscribeInOrder(t *testing.T, pubSubConstructor PubSubConstructor, features Features) {
 	if !features.GuaranteedOrder {
 		t.Skipf("order is not guaranteed")
 	}
 
+	pub, sub := pubSubConstructor(t)
 	defer closePubSub(t, pub, sub)
 	topicName := testTopicName()
 
@@ -244,8 +238,10 @@ func TestPublishSubscribeInOrder(t *testing.T, pub message.Publisher, sub messag
 	}
 }
 
-func TestResendOnError(t *testing.T, pub message.Publisher, sub message.Subscriber, features Features) {
+func TestResendOnError(t *testing.T, pubSubConstructor PubSubConstructor, features Features) {
+	pub, sub := pubSubConstructor(t)
 	defer closePubSub(t, pub, sub)
+
 	topicName := testTopicName()
 
 	if subscribeInitializer, ok := sub.(message.SubscribeInitializer); ok {
@@ -285,12 +281,14 @@ NackLoop:
 	tests.AssertAllMessagesReceived(t, publishedMessages, receivedMessages)
 }
 
-func TestNoAck(t *testing.T, pub message.Publisher, sub message.Subscriber, features Features) {
+func TestNoAck(t *testing.T, pubSubConstructor PubSubConstructor, features Features) {
 	if !features.GuaranteedOrder {
 		t.Skip("guaranteed order is required for this test")
 	}
 
+	pub, sub := pubSubConstructor(t)
 	defer closePubSub(t, pub, sub)
+
 	topicName := testTopicName()
 
 	if subscribeInitializer, ok := sub.(message.SubscribeInitializer); ok {
@@ -527,7 +525,10 @@ func TestConsumerGroups(t *testing.T, pubSubConstructor ConsumerGroupPubSubConst
 }
 
 // TestPublisherClose sends big amount of messages and them run close to ensure that messages are not lost during adding.
-func TestPublisherClose(t *testing.T, pub message.Publisher, sub message.Subscriber, features Features) {
+func TestPublisherClose(t *testing.T, pubSubConstructor PubSubConstructor, features Features) {
+	pub, sub := pubSubConstructor(t)
+	defer closePubSub(t, pub, sub)
+
 	topicName := testTopicName()
 	if subscribeInitializer, ok := sub.(message.SubscribeInitializer); ok {
 		require.NoError(t, subscribeInitializer.SubscribeInitialize(topicName))
@@ -545,10 +546,10 @@ func TestPublisherClose(t *testing.T, pub message.Publisher, sub message.Subscri
 	receivedMessages, _ := bulkRead(messages, messagesCount, defaultTimeout*3, features)
 
 	tests.AssertAllMessagesReceived(t, producedMessages, receivedMessages)
-	closePubSub(t, pub, sub)
 }
 
-func TestTopic(t *testing.T, pub message.Publisher, sub message.Subscriber, features Features) {
+func TestTopic(t *testing.T, pubSubConstructor PubSubConstructor, features Features) {
+	pub, sub := pubSubConstructor(t)
 	defer closePubSub(t, pub, sub)
 
 	topic1 := testTopicName()
@@ -583,7 +584,8 @@ func TestTopic(t *testing.T, pub message.Publisher, sub message.Subscriber, feat
 	assert.Equal(t, messagesConsumedTopic2.IDs()[0], topic2Msg.UUID)
 }
 
-func TestMessageCtx(t *testing.T, pub message.Publisher, sub message.Subscriber, features Features) {
+func TestMessageCtx(t *testing.T, pubSubConstructor PubSubConstructor, features Features) {
+	pub, sub := pubSubConstructor(t)
 	defer closePubSub(t, pub, sub)
 
 	topicName := testTopicName()
@@ -652,7 +654,8 @@ func TestMessageCtx(t *testing.T, pub message.Publisher, sub message.Subscriber,
 	}
 }
 
-func TestSubscribeCtx(t *testing.T, pub message.Publisher, sub message.Subscriber, features Features) {
+func TestSubscribeCtx(t *testing.T, pubSubConstructor PubSubConstructor, features Features) {
+	pub, sub := pubSubConstructor(t)
 	defer closePubSub(t, pub, sub)
 
 	const messagesCount = 20

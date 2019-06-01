@@ -4,13 +4,12 @@ import (
 	"testing"
 
 	"github.com/Shopify/sarama"
-
-	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure/kafka"
-
-	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/ThreeDotsLabs/watermill"
+	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ThreeDotsLabs/watermill/message/infrastructure/kafka"
 )
 
 func TestDefaultMarshaler_MarshalUnmarshal(t *testing.T) {
