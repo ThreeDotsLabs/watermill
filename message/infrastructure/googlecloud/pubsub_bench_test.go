@@ -3,6 +3,7 @@ package googlecloud_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
@@ -14,10 +15,15 @@ import (
 
 func BenchmarkSubscriber(b *testing.B) {
 	infrastructure.BenchSubscriber(b, func(n int) message.PubSub {
-		ctx := context.Background()
 		logger := watermill.NopLogger{}
 
-		publisher, err := googlecloud.NewPublisher(ctx, googlecloud.PublisherConfig{})
+		publisher, err := googlecloud.NewPublisher(googlecloud.PublisherConfig{})
+		if err != nil {
+			panic(err)
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+		defer cancel()
 
 		subscriber, err := googlecloud.NewSubscriber(
 			ctx,

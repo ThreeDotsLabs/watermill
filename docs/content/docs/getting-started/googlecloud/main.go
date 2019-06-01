@@ -5,11 +5,9 @@ import (
 	"context"
 	"log"
 
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure/googlecloud"
-
 	"github.com/ThreeDotsLabs/watermill"
-
 	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ThreeDotsLabs/watermill/message/infrastructure/googlecloud"
 )
 
 func main() {
@@ -37,7 +35,7 @@ func main() {
 
 	go process(messages)
 
-	publisher, err := googlecloud.NewPublisher(context.Background(), googlecloud.PublisherConfig{
+	publisher, err := googlecloud.NewPublisher(googlecloud.PublisherConfig{
 		ProjectID: "test-project",
 	})
 	if err != nil {
