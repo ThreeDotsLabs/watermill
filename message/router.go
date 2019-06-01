@@ -30,6 +30,9 @@ var (
 // (because msg.Ack() was sent in HandlerFunc or Subscriber supports multiple consumers).
 type HandlerFunc func(msg *Message) ([]*Message, error)
 
+// NoPublishHandlerFunc is HandlerFunc alternative, which doesn't produce any messages.
+type NoPublishHandlerFunc func(msg *Message) error
+
 // HandlerMiddleware allows us to write something like decorators to HandlerFunc.
 // It can execute something before handler (for example: modify consumed message)
 // or after (modify produced messages, ack/nack on consumed message, handle errors, logging, etc.).
@@ -228,9 +231,13 @@ func (r *Router) AddNoPublisherHandler(
 	handlerName string,
 	subscribeTopic string,
 	subscriber Subscriber,
-	handlerFunc HandlerFunc,
+	handlerFunc NoPublishHandlerFunc,
 ) {
-	r.AddHandler(handlerName, subscribeTopic, subscriber, "", disabledPublisher{}, handlerFunc)
+	handlerFuncAdapter := func(msg *Message) ([]*Message, error) {
+		return nil, handlerFunc(msg)
+	}
+
+	r.AddHandler(handlerName, subscribeTopic, subscriber, "", disabledPublisher{}, handlerFuncAdapter)
 }
 
 // Run runs all plugins and handlers and starts subscribing to provided topics.
