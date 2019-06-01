@@ -255,13 +255,6 @@ func (r *Router) Run(ctx context.Context) (err error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	defer func() {
-		if r := recover(); r != nil {
-			err = errors.Errorf("panic recovered: %#v", r)
-			return
-		}
-	}()
-
 	r.logger.Debug("Loading plugins", nil)
 	for _, plugin := range r.plugins {
 		if err := plugin(r); err != nil {
