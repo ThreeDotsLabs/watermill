@@ -6,15 +6,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ThreeDotsLabs/watermill"
-
-	"github.com/pkg/errors"
-
 	"cloud.google.com/go/pubsub"
+	"github.com/pkg/errors"
+	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/googlecloud"
-	"github.com/spf13/cobra"
 )
 
 var googleCloudTempSubscriptionID string
@@ -42,8 +40,11 @@ For the configuration of consuming/producing of the messages, check the help of 
 				}
 			}
 
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+			defer cancel()
+
 			consumer, err = googlecloud.NewSubscriber(
-				context.Background(),
+				ctx,
 				googlecloud.SubscriberConfig{
 					GenerateSubscriptionName: func(topic string) string {
 						return subName
@@ -59,7 +60,6 @@ For the configuration of consuming/producing of the messages, check the help of 
 
 		if cmd.Use == "produce" {
 			producer, err = googlecloud.NewPublisher(
-				context.Background(),
 				googlecloud.PublisherConfig{
 					ProjectID: projectID(),
 				},
@@ -192,7 +192,8 @@ func addSubscription(
 	retentionDuration time.Duration,
 	labels map[string]string,
 ) error {
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
 
 	client, err := pubsub.NewClient(ctx, projectID())
 	if err != nil {
@@ -237,7 +238,8 @@ func removeTempSubscription() (err error) {
 }
 
 func removeSubscription(id string) error {
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
 
 	client, err := pubsub.NewClient(ctx, projectID())
 	if err != nil {

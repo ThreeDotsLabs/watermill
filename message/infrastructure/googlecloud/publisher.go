@@ -3,13 +3,13 @@ package googlecloud
 import (
 	"context"
 	"sync"
-
-	"github.com/ThreeDotsLabs/watermill"
+	"time"
 
 	"cloud.google.com/go/pubsub"
 	"github.com/pkg/errors"
 	"google.golang.org/api/option"
 
+	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
@@ -21,8 +21,6 @@ var (
 )
 
 type Publisher struct {
-	ctx context.Context
-
 	topics     map[string]*pubsub.Topic
 	topicsLock sync.RWMutex
 	closed     bool
@@ -39,6 +37,11 @@ type PublisherConfig struct {
 	// Otherwise, trying to subscribe to non-existent subscription results in `ErrTopicDoesNotExist`.
 	DoNotCreateTopicIfMissing bool
 
+	// ConnectTimeout defines the timeout for connecting to Pub/Sub
+	ConnectTimeout time.Duration
+	// PublishTimeout defines the timeout for publishing messages.
+	PublishTimeout time.Duration
+
 	// Settings for cloud.google.com/go/pubsub client library.
 	PublishSettings *pubsub.PublishSettings
 	ClientOptions   []option.ClientOption
@@ -52,20 +55,27 @@ func (c *PublisherConfig) setDefaults() {
 	if c.Marshaler == nil {
 		c.Marshaler = DefaultMarshalerUnmarshaler{}
 	}
-
+	if c.ConnectTimeout == 0 {
+		c.ConnectTimeout = time.Second * 10
+	}
+	if c.PublishTimeout == 0 {
+		c.PublishTimeout = time.Second * 5
+	}
 	if c.Logger == nil {
 		c.Logger = watermill.NopLogger{}
 	}
 }
 
-func NewPublisher(ctx context.Context, config PublisherConfig) (*Publisher, error) {
+func NewPublisher(config PublisherConfig) (*Publisher, error) {
 	config.setDefaults()
 
 	pub := &Publisher{
-		ctx:    ctx,
 		topics: map[string]*pubsub.Topic{},
 		config: config,
 	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), config.ConnectTimeout)
+	defer cancel()
 
 	var err error
 	pub.client, err = pubsub.NewClient(ctx, config.ProjectID, config.ClientOptions...)
@@ -88,7 +98,8 @@ func (p *Publisher) Publish(topic string, messages ...*message.Message) error {
 		return ErrPublisherClosed
 	}
 
-	ctx := p.ctx
+	ctx, cancel := context.WithTimeout(context.Background(), p.config.PublishTimeout)
+	defer cancel()
 
 	t, err := p.topic(ctx, topic)
 	if err != nil {

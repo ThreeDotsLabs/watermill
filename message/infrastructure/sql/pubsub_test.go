@@ -19,7 +19,7 @@ var (
 	logger = watermill.NewStdLogger(false, true)
 )
 
-func newPubSub(t *testing.T, db *std_sql.DB, consumerGroup string) message.PubSub {
+func newPubSub(t *testing.T, db *std_sql.DB, consumerGroup string) (message.Publisher, message.Subscriber) {
 	schemaAdapter := &testSchema{
 		sql.DefaultSchema{
 			GenerateMessagesTableName: func(topic string) string {
@@ -50,12 +50,11 @@ func newPubSub(t *testing.T, db *std_sql.DB, consumerGroup string) message.PubSu
 	)
 	require.NoError(t, err)
 
-	return message.NewPubSub(publisher, subscriber)
+	return publisher, subscriber
 }
 
 func newMySQL(t *testing.T) *std_sql.DB {
 	addr := os.Getenv("WATERMILL_TEST_MYSQL_HOST")
-	t.Log("Connecting to sql at " + addr)
 	if addr == "" {
 		addr = "localhost"
 	}
@@ -75,12 +74,12 @@ func newMySQL(t *testing.T) *std_sql.DB {
 	return db
 }
 
-func createPubSubWithConsumerGroup(t *testing.T, consumerGroup string) infrastructure.PubSub {
-	return newPubSub(t, newMySQL(t), consumerGroup).(infrastructure.PubSub)
+func createPubSubWithConsumerGroup(t *testing.T, consumerGroup string) (message.Publisher, message.Subscriber) {
+	return newPubSub(t, newMySQL(t), consumerGroup)
 }
 
-func createPubSub(t *testing.T) infrastructure.PubSub {
-	return createPubSubWithConsumerGroup(t, "test").(infrastructure.PubSub)
+func createPubSub(t *testing.T) (message.Publisher, message.Subscriber) {
+	return createPubSubWithConsumerGroup(t, "test")
 }
 
 func TestPublishSubscribe(t *testing.T) {

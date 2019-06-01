@@ -5,18 +5,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ThreeDotsLabs/watermill/message/subscriber"
-
 	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ThreeDotsLabs/watermill/message/subscriber"
 )
 
-type BenchmarkPubSubConstructor func(n int) message.PubSub
+type BenchmarkPubSubConstructor func(n int) (message.Publisher, message.Subscriber)
 
 func BenchSubscriber(b *testing.B, pubSubConstructor BenchmarkPubSubConstructor) {
-	pubSub := pubSubConstructor(b.N)
+	pub, sub := pubSubConstructor(b.N)
 	topicName := testTopicName()
 
-	messages, err := pubSub.Subscribe(context.Background(), topicName)
+	messages, err := sub.Subscribe(context.Background(), topicName)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -24,7 +23,7 @@ func BenchSubscriber(b *testing.B, pubSubConstructor BenchmarkPubSubConstructor)
 	go func() {
 		for i := 0; i < b.N; i++ {
 			msg := message.NewMessage("1", nil)
-			err := pubSub.Publish(topicName, msg)
+			err := pub.Publish(topicName, msg)
 			if err != nil {
 				panic(err)
 			}

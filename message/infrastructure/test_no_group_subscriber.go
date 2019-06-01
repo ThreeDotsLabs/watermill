@@ -8,11 +8,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/internal/tests"
 	"github.com/ThreeDotsLabs/watermill/message"
-	subscriber2 "github.com/ThreeDotsLabs/watermill/message/subscriber"
-	"github.com/stretchr/testify/require"
+	"github.com/ThreeDotsLabs/watermill/message/subscriber"
 )
 
 type NoGroupSubscriberConstructor func(t *testing.T) message.Subscriber
@@ -55,14 +56,14 @@ func testNoGroupSubscriberConcurrentSubscribers(
 		consumerNum := i
 
 		go func() {
-			subscriber := noGroupSubscriberConstructor(t)
-			ch, err := subscriber.Subscribe(context.Background(), topicName)
+			noGroupSub := noGroupSubscriberConstructor(t)
+			ch, err := noGroupSub.Subscribe(context.Background(), topicName)
 			require.NoError(t, err)
 
 			consumersStarted.Done()
 
 			receivedMessagesMutex.Lock()
-			receivedMessages[consumerNum], _ = subscriber2.BulkRead(ch, 10, time.Second*10)
+			receivedMessages[consumerNum], _ = subscriber.BulkRead(ch, 10, time.Second*10)
 			receivedMessagesMutex.Unlock()
 		}()
 	}
@@ -71,8 +72,8 @@ func testNoGroupSubscriberConcurrentSubscribers(
 
 	var messagesToPublish []*message.Message
 
-	pubSub := pubSubConstructor(t)
-	defer closePubSub(t, pubSub)
+	pub, sub := pubSubConstructor(t)
+	defer closePubSub(t, pub, sub)
 
 	for i := 0; i < 10; i++ {
 		id := watermill.NewUUID()
@@ -80,7 +81,7 @@ func testNoGroupSubscriberConcurrentSubscribers(
 		msg := message.NewMessage(id, []byte(fmt.Sprintf("%d", i)))
 		messagesToPublish = append(messagesToPublish, msg)
 
-		err := pubSub.Publish(topicName, msg)
+		err := pub.Publish(topicName, msg)
 		require.NoError(t, err)
 	}
 
@@ -128,8 +129,8 @@ func testNoGroupSubscriberJoiningSubscribers(
 		}
 	}()
 
-	pubSub := pubSubConstructor(t)
-	defer closePubSub(t, pubSub)
+	pub, sub := pubSubConstructor(t)
+	defer closePubSub(t, pub, sub)
 
 	for i := 0; i < subscribersCount; i++ {
 		createSubscriber <- struct{}{}
@@ -140,7 +141,7 @@ func testNoGroupSubscriberJoiningSubscribers(
 			time.Sleep(time.Millisecond * 500)
 
 			id := watermill.NewUUID()
-			err := pubSub.Publish(topicName, message.NewMessage(id, []byte(fmt.Sprintf("%d", i))))
+			err := pub.Publish(topicName, message.NewMessage(id, []byte(fmt.Sprintf("%d", i))))
 			require.NoError(t, err)
 
 			for consumerNum, msgCh := range consumersMessages {
@@ -180,8 +181,8 @@ func testNoGroupSubscriber_Close(
 
 	var messagesToPublish []*message.Message
 
-	pubSub := pubSubConstructor(t)
-	defer closePubSub(t, pubSub)
+	pub, sub := pubSubConstructor(t)
+	defer closePubSub(t, pub, sub)
 
 	for i := 0; i < 10; i++ {
 		id := watermill.NewUUID()
@@ -189,16 +190,16 @@ func testNoGroupSubscriber_Close(
 		msg := message.NewMessage(id, []byte(fmt.Sprintf("%d", i)))
 		messagesToPublish = append(messagesToPublish, msg)
 
-		err := pubSub.Publish(topicName, msg)
+		err := pub.Publish(topicName, msg)
 		require.NoError(t, err)
 	}
 
-	subscriber := noGroupSubscriberConstructor(t)
-	ch, err := subscriber.Subscribe(context.Background(), topicName)
+	noGroupSub := noGroupSubscriberConstructor(t)
+	ch, err := noGroupSub.Subscribe(context.Background(), topicName)
 	require.NoError(t, err)
 
-	_, all := subscriber2.BulkRead(ch, 10, defaultTimeout)
+	_, all := subscriber.BulkRead(ch, 10, defaultTimeout)
 	require.True(t, all)
 
-	require.NoError(t, subscriber.Close())
+	require.NoError(t, noGroupSub.Close())
 }

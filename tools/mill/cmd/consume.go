@@ -1,17 +1,17 @@
 package cmd
 
 import (
+	"context"
 	"os"
 	"time"
 
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure/io"
-	"github.com/ThreeDotsLabs/watermill/message/router/plugin"
 	"github.com/pkg/errors"
+	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
 	"github.com/ThreeDotsLabs/watermill/message"
-
-	"github.com/spf13/cobra"
+	"github.com/ThreeDotsLabs/watermill/message/infrastructure/io"
+	"github.com/ThreeDotsLabs/watermill/message/router/plugin"
 )
 
 // consumer is initialized by the parent command to the pub/sub provider of choice.
@@ -57,7 +57,10 @@ For the configuration of particular pub/sub providers, see the help for the prov
 				},
 			)
 
-			return router.Run()
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+			defer cancel()
+
+			return router.Run(ctx)
 		},
 	}
 

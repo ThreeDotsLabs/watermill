@@ -14,16 +14,16 @@ import (
 )
 
 func TestValidateTopicName(t *testing.T) {
-	pubsub := newPubSub(t, newMySQL(t), "").(message.PubSub)
+	publisher, subscriber := newPubSub(t, newMySQL(t), "")
 	cleverlyNamedTopic := "some_topic; DROP DATABASE `watermill`"
 
-	err := pubsub.Publish(cleverlyNamedTopic, message.NewMessage("uuid", nil))
+	err := publisher.Publish(cleverlyNamedTopic, message.NewMessage("uuid", nil))
 	require.Error(t, err)
 	assert.Equal(t, sql.ErrInvalidTopicName, errors.Cause(err))
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	_, err = pubsub.Subscribe(ctx, cleverlyNamedTopic)
+	_, err = subscriber.Subscribe(ctx, cleverlyNamedTopic)
 	require.Error(t, err)
 	assert.Equal(t, sql.ErrInvalidTopicName, errors.Cause(err))
 }

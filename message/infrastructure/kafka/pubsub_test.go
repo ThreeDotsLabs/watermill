@@ -23,7 +23,7 @@ func kafkaBrokers() []string {
 	return []string{"localhost:9092"}
 }
 
-func newPubSub(t *testing.T, marshaler kafka.MarshalerUnmarshaler, consumerGroup string) message.PubSub {
+func newPubSub(t *testing.T, marshaler kafka.MarshalerUnmarshaler, consumerGroup string) (message.Publisher, message.Subscriber) {
 	logger := watermill.NewStdLogger(true, true)
 
 	publisher, err := kafka.NewPublisher(kafkaBrokers(), marshaler, nil, logger)
@@ -53,23 +53,23 @@ func newPubSub(t *testing.T, marshaler kafka.MarshalerUnmarshaler, consumerGroup
 	)
 	require.NoError(t, err)
 
-	return message.NewPubSub(publisher, subscriber)
+	return publisher, subscriber
 }
 
 func generatePartitionKey(topic string, msg *message.Message) (string, error) {
 	return msg.Metadata.Get("partition_key"), nil
 }
 
-func createPubSubWithConsumerGrup(t *testing.T, consumerGroup string) infrastructure.PubSub {
-	return newPubSub(t, kafka.DefaultMarshaler{}, consumerGroup).(infrastructure.PubSub)
+func createPubSubWithConsumerGrup(t *testing.T, consumerGroup string) (message.Publisher, message.Subscriber) {
+	return newPubSub(t, kafka.DefaultMarshaler{}, consumerGroup)
 }
 
-func createPubSub(t *testing.T) infrastructure.PubSub {
-	return createPubSubWithConsumerGrup(t, "test").(infrastructure.PubSub)
+func createPubSub(t *testing.T) (message.Publisher, message.Subscriber) {
+	return createPubSubWithConsumerGrup(t, "test")
 }
 
-func createPartitionedPubSub(t *testing.T) infrastructure.PubSub {
-	return newPubSub(t, kafka.NewWithPartitioningMarshaler(generatePartitionKey), "test").(infrastructure.PubSub)
+func createPartitionedPubSub(t *testing.T) (message.Publisher, message.Subscriber) {
+	return newPubSub(t, kafka.NewWithPartitioningMarshaler(generatePartitionKey), "test")
 }
 
 func createNoGroupSubscriberConstructor(t *testing.T) message.Subscriber {
@@ -106,7 +106,7 @@ func TestPublishSubscribe(t *testing.T) {
 		// Kafka tests are a bit slow, so let's run only basic test
 		// todo - speed up
 		t.Log("Running only TestPublishSubscribe for Kafka with -short flag")
-		infrastructure.TestPublishSubscribe(t, createPubSub(t), features)
+		infrastructure.TestPublishSubscribe(t, createPubSub, features)
 		return
 	}
 

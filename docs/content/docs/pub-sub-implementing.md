@@ -10,10 +10,10 @@ toc = true
 
 ### The Pub/Sub interface
 
-To add support for a custom Pub/Sub, you have to implement the `message.PubSub` interface.
+To add support for a custom Pub/Sub, you have to implement both `message.Publisher` and `message.Subscriber` interfaces.
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/pubsub.go" first_line_contains="type publisher interface" last_line_contains="func NewPubSub" padding_after="0" %}}
+{{% load-snippet-partial file="content/src-link/message/pubsub.go" first_line_contains="type Publisher interface" last_line_contains="type SubscribeInitializer" padding_after="0" %}}
 {{% /render-md %}}
 
 ### TODO list

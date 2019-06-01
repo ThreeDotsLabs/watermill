@@ -19,14 +19,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func createPersistentPubSub(t *testing.T) infrastructure.PubSub {
-	return gochannel.NewGoChannel(
+func createPersistentPubSub(t *testing.T) (message.Publisher, message.Subscriber) {
+	pubSub := gochannel.NewGoChannel(
 		gochannel.Config{
 			OutputChannelBuffer: 10000,
 			Persistent:          true,
 		},
 		watermill.NewStdLogger(true, true),
-	).(infrastructure.PubSub)
+	)
+	return pubSub, pubSub
 }
 
 func TestPublishSubscribe_persistent(t *testing.T) {

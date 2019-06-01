@@ -190,7 +190,7 @@ For the beginning, we should start with the configuration of the router. We will
 We also will set up handlers which this router will support. Every handler will independently handle the messages.
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/docs/getting-started/router/main.go" first_line_contains="package" last_line_contains="router.Run()" padding_after="4" %}}
+{{% load-snippet-partial file="content/docs/getting-started/router/main.go" first_line_contains="package" last_line_contains="router.Run(ctx)" padding_after="4" %}}
 {{% /render-md %}}
 
 #### Producing messages
