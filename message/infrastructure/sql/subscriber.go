@@ -47,7 +47,7 @@ func (c *SubscriberConfig) setDefaults() {
 		c.ResendInterval = time.Second
 	}
 	if c.RetryInterval == 0 {
-		c.ResendInterval = time.Second
+		c.RetryInterval = time.Second
 	}
 }
 
@@ -315,6 +315,11 @@ func (s *Subscriber) Close() error {
 }
 
 func (s *Subscriber) SubscribeInitialize(topic string) error {
+	err := validateTopicName(topic)
+	if err != nil {
+		return err
+	}
+
 	initializingQueries := s.config.SchemaAdapter.SchemaInitializingQueries(topic)
 	s.config.Logger.Info("Ensuring schema exists for topic", watermill.LogFields{
 		"q": initializingQueries,

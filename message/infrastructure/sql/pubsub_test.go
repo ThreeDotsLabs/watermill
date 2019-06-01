@@ -20,11 +20,19 @@ var (
 )
 
 func newPubSub(t *testing.T, db *std_sql.DB, consumerGroup string) message.PubSub {
-	schemaAdapter := &testSchema{}
+	schemaAdapter := &testSchema{
+		sql.DefaultSchema{
+			GenerateMessagesTableName: func(topic string) string {
+				return "test_" + topic
+			},
+			GenerateMessagesOffsetsTableName: func(topic string) string {
+				return "test_offsets_" + topic
+			},
+		},
+	}
 	publisher, err := sql.NewPublisher(
 		db,
 		sql.PublisherConfig{
-			MessagesTable: "messages_test",
 			SchemaAdapter: schemaAdapter,
 		})
 	require.NoError(t, err)
@@ -34,9 +42,6 @@ func newPubSub(t *testing.T, db *std_sql.DB, consumerGroup string) message.PubSu
 		sql.SubscriberConfig{
 			Logger:        logger,
 			ConsumerGroup: consumerGroup,
-
-			MessagesTable:       "messages_test",
-			MessageOffsetsTable: "offsets_acked_test",
 
 			PollInterval:   100 * time.Millisecond,
 			ResendInterval: 50 * time.Millisecond,

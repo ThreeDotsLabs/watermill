@@ -6,10 +6,11 @@ import (
 	"strings"
 
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/oklog/ulid"
 	"github.com/pkg/errors"
 )
 
+// SchemaAdapter produces the SQL queries and arguments appropriately for a specific schema and dialect
+// It also transforms sql.Rows into Watermill messages.
 type SchemaAdapter interface {
 	// AckQuery returns the SQL query that will mark a message as read for a given consumer group.
 	// Subscriber will not return those messages again for this consumer group.
@@ -36,33 +37,46 @@ type SchemaAdapter interface {
 	SchemaInitializingQueries(topic string) []string
 }
 
-// DefaultSchema is a default implementation of Inserter, Selecter and Acker that works with the following schema:
+// DefaultSchema is a default implementation of SchemaAdapter that works with the following schema:
 //
-// `offset` bigint(20) NOT NULL AUTO_INCREMENT,
-// `uuid` binary(16) NOT NULL,
-// `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-// `payload` json DEFAULT NULL,
-// `metadata` json DEFAULT NULL,
-type DefaultSchema struct{}
+// `offset` BIGINT NOT NULL AUTO_INCREMENT,
+// `uuid` VARCHAR(32) NOT NULL,
+// `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+// `payload` JSON DEFAULT NULL,
+// `metadata` JSON DEFAULT NULL,
+type DefaultSchema struct {
+	// GenerateMessagesTableName may be used to override how the messages table name is generated.
+	GenerateMessagesTableName func(topic string) string
+	// GenerateMessagesOffsetsTableName may be used to override how the messages/offsets table name is generated.
+	GenerateMessagesOffsetsTableName func(topic string) string
+}
 
 func (s *DefaultSchema) SchemaInitializingQueries(topic string) []string {
-	messagesQ := strings.Join([]string{
-		"CREATE TABLE IF NOT EXISTS `watermill_" + topic + "` (",
-		"`offset` bigint(20) NOT NULL AUTO_INCREMENT PRIMARY KEY,",
-		"`uuid` binary(16) NOT NULL,",
-		"`created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,",
-		"`payload` json DEFAULT NULL,",
-		"`metadata` json DEFAULT NULL",
+	createMessagesTable := strings.Join([]string{
+		"CREATE TABLE IF NOT EXISTS " + s.MessagesTable(topic) + " (",
+		"`offset` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,",
+		"`uuid` VARCHAR(32) NOT NULL,",
+		"`created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,",
+		"`payload` JSON DEFAULT NULL,",
+		"`metadata` JSON DEFAULT NULL",
 		");",
 	}, "\n")
+	createAcksTable := strings.Join([]string{
+		"CREATE TABLE IF NOT EXISTS " + s.MessagesOffsetsTable(topic) + " (",
+		"`offset` BIGINT NOT NULL,",
+		"`consumer_group` VARCHAR(255) NOT NULL,",
+		"PRIMARY KEY(consumer_group),",
+		"FOREIGN KEY (offset) REFERENCES " + s.MessagesTable(topic) + "(offset)",
+		")",
+	}, "\n")
 
-	return []string{messagesQ}
+	return []string{createMessagesTable, createAcksTable}
 }
 
 func (s *DefaultSchema) InsertQuery(topic string) string {
 	insertQuery := strings.Join([]string{
 		`INSERT INTO`,
-		s.messagesTable(topic),
+		s.MessagesTable(topic),
 		`(uuid, payload, metadata) VALUES (?,?,?)`,
 	}, " ")
 
@@ -70,21 +84,6 @@ func (s *DefaultSchema) InsertQuery(topic string) string {
 }
 
 func (s *DefaultSchema) InsertArgs(topic string, msg *message.Message) (args []interface{}, err error) {
-	defer func() {
-	}()
-
-	var uuid ulid.ULID
-	uuid, err = ulid.Parse(msg.UUID)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not parse message UUID as ULID")
-	}
-
-	uuidBytes := make([]byte, 16)
-	err = uuid.MarshalBinaryTo(uuidBytes)
-	if err != nil {
-		return nil, errors.Wrap(err, "could not marshal UUID to ULID bytes")
-	}
-
 	var metadata []byte
 	metadata, err = json.Marshal(msg.Metadata)
 	if err != nil {
@@ -92,16 +91,15 @@ func (s *DefaultSchema) InsertArgs(topic string, msg *message.Message) (args []i
 	}
 
 	return []interface{}{
-		uuidBytes,
+		msg.UUID,
 		msg.Payload,
 		metadata,
-		topic,
 	}, nil
 }
 
 func (s *DefaultSchema) AckQuery(topic string) string {
 	ackQuery := strings.Join([]string{
-		`INSERT INTO `, s.messagesOffsetsTable(topic), ` (offset, consumer_group) `,
+		`INSERT INTO `, s.MessagesOffsetsTable(topic), ` (offset, consumer_group) `,
 		`VALUES (?, ?) ON DUPLICATE KEY UPDATE offset=VALUES(offset)`,
 	}, "")
 
@@ -114,20 +112,17 @@ func (s *DefaultSchema) AckArgs(offset int, consumerGroup string) ([]interface{}
 
 func (s *DefaultSchema) SelectQuery(topic string) string {
 	selectQuery := strings.Join([]string{
-		`SELECT offset,uuid,payload,metadata FROM `, s.messagesTable(topic),
-		` WHERE `, s.messagesTable(topic), `.offset >`,
-		` (SELECT COALESCE(MAX(`, s.messagesOffsetsTable(topic), `.offset), 0) FROM `, s.messagesOffsetsTable(topic),
+		`SELECT offset,uuid,payload,metadata FROM `, s.MessagesTable(topic),
+		` WHERE `, s.MessagesTable(topic), `.offset >`,
+		` (SELECT COALESCE(MAX(`, s.MessagesOffsetsTable(topic), `.offset), 0) FROM `, s.MessagesOffsetsTable(topic),
 		` WHERE consumer_group=?)`,
-		` ORDER BY `, s.messagesTable(topic), `.offset ASC LIMIT 1`,
+		` ORDER BY `, s.MessagesTable(topic), `.offset ASC LIMIT 1`,
 	}, "")
 
 	return selectQuery
 }
 
 func (s *DefaultSchema) SelectArgs(topic string, consumerGroup string) ([]interface{}, error) {
-	if len(topic) > 255 {
-		return nil, errors.New("the topic does not fit into VARCHAR(255)")
-	}
 	return []interface{}{consumerGroup}, nil
 }
 
@@ -144,16 +139,8 @@ func (s *DefaultSchema) UnmarshalMessage(row *sql.Row) (offset int, msg *message
 	if err != nil {
 		return 0, nil, errors.Wrap(err, "could not scan message row")
 	}
-	if len(r.UUID) != 16 {
-		return 0, nil, errors.New("uuid length not suitable for unmarshaling to ULID")
-	}
 
-	uuid := ulid.ULID{}
-	for i := 0; i < 16; i++ {
-		uuid[i] = r.UUID[i]
-	}
-
-	msg = message.NewMessage(uuid.String(), r.Payload)
+	msg = message.NewMessage(string(r.UUID), r.Payload)
 
 	if r.Metadata != nil {
 		err = json.Unmarshal(r.Metadata, &msg.Metadata)
@@ -165,10 +152,16 @@ func (s *DefaultSchema) UnmarshalMessage(row *sql.Row) (offset int, msg *message
 	return int(r.Offset), msg, nil
 }
 
-func (s DefaultSchema) messagesTable(topic string) string {
-	return "watermill_" + topic
+func (s DefaultSchema) MessagesTable(topic string) string {
+	if s.GenerateMessagesTableName != nil {
+		return "`" + s.GenerateMessagesTableName(topic) + "`"
+	}
+	return "`watermill_" + topic + "`"
 }
 
-func (s DefaultSchema) messagesOffsetsTable(topic string) string {
-	return "watermill_acked" + topic
+func (s DefaultSchema) MessagesOffsetsTable(topic string) string {
+	if s.GenerateMessagesOffsetsTableName != nil {
+		return "`" + s.GenerateMessagesOffsetsTableName(topic) + "`"
+	}
+	return "`watermill_acked" + topic + "`"
 }
