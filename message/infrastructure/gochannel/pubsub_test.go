@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/internal/tests"
@@ -16,7 +17,6 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure"
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/gochannel"
 	"github.com/ThreeDotsLabs/watermill/message/subscriber"
-	"github.com/stretchr/testify/require"
 )
 
 func createPersistentPubSub(t *testing.T) (message.Publisher, message.Subscriber) {
@@ -24,8 +24,9 @@ func createPersistentPubSub(t *testing.T) (message.Publisher, message.Subscriber
 		gochannel.Config{
 			OutputChannelBuffer: 10000,
 			Persistent:          true,
+
+			Logger: watermill.NewStdLogger(true, true),
 		},
-		watermill.NewStdLogger(true, true),
 	)
 	return pubSub, pubSub
 }
@@ -47,8 +48,11 @@ func TestPublishSubscribe_persistent(t *testing.T) {
 func TestPublishSubscribe_not_persistent(t *testing.T) {
 	messagesCount := 100
 	pubSub := gochannel.NewGoChannel(
-		gochannel.Config{OutputChannelBuffer: int64(messagesCount)},
-		watermill.NewStdLogger(true, true),
+		gochannel.Config{
+			OutputChannelBuffer: int64(messagesCount),
+
+			Logger: watermill.NewStdLogger(true, true),
+		},
 	)
 	topicName := "test_topic_" + watermill.NewUUID()
 
@@ -65,8 +69,11 @@ func TestPublishSubscribe_not_persistent(t *testing.T) {
 
 func TestPublishSubscribe_block_until_ack(t *testing.T) {
 	pubSub := gochannel.NewGoChannel(
-		gochannel.Config{BlockPublishUntilSubscriberAck: true},
-		watermill.NewStdLogger(true, true),
+		gochannel.Config{
+			BlockPublishUntilSubscriberAck: true,
+
+			Logger: watermill.NewStdLogger(true, true),
+		},
 	)
 	topicName := "test_topic_" + watermill.NewUUID()
 
@@ -135,8 +142,9 @@ func testPublishSubscribeSubRace(t *testing.T) {
 		gochannel.Config{
 			OutputChannelBuffer: int64(messagesCount),
 			Persistent:          true,
+
+			Logger: watermill.NewStdLogger(true, false),
 		},
-		watermill.NewStdLogger(true, false),
 	)
 
 	allSent := sync.WaitGroup{}

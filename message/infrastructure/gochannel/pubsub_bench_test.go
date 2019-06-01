@@ -3,7 +3,6 @@ package gochannel_test
 import (
 	"testing"
 
-	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure"
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/gochannel"
@@ -12,7 +11,7 @@ import (
 func BenchmarkSubscriber(b *testing.B) {
 	infrastructure.BenchSubscriber(b, func(n int) (message.Publisher, message.Subscriber) {
 		pubSub := gochannel.NewGoChannel(
-			gochannel.Config{OutputChannelBuffer: int64(n)}, watermill.NopLogger{},
+			gochannel.Config{OutputChannelBuffer: int64(n)},
 		)
 		return pubSub, pubSub
 	})
@@ -25,7 +24,6 @@ func BenchmarkSubscriberPersistent(b *testing.B) {
 				OutputChannelBuffer: int64(n),
 				Persistent:          true,
 			},
-			watermill.NopLogger{},
 		)
 		return pubSub, pubSub
 	})

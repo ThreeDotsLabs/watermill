@@ -13,8 +13,7 @@ import (
 
 func main() {
 	pubSub := gochannel.NewGoChannel(
-		gochannel.Config{},
-		watermill.NewStdLogger(false, false),
+		gochannel.Config{Logger: watermill.NewStdLogger(false, false)},
 	)
 
 	messages, err := pubSub.Subscribe(context.Background(), "example.topic")

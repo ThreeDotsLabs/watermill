@@ -25,6 +25,8 @@ type Config struct {
 	// When true, Publish will block until subscriber Ack's the message.
 	// If there are no subscribers, Publish will not block (also when Persistent is true).
 	BlockPublishUntilSubscriberAck bool
+
+	Logger watermill.LoggerAdapter
 }
 
 // GoChannel is the simplest Pub/Sub implementation.
@@ -55,13 +57,17 @@ type GoChannel struct {
 //
 // This GoChannel is not persistent.
 // That means if you send a message to a topic to which no subscriber is subscribed, that message will be discarded.
-func NewGoChannel(config Config, logger watermill.LoggerAdapter) *GoChannel {
+func NewGoChannel(config Config) *GoChannel {
+	if config.Logger == nil {
+		config.Logger = watermill.NopLogger{}
+	}
+
 	return &GoChannel{
 		config: config,
 
 		subscribers:            make(map[string][]*subscriber),
 		subscribersByTopicLock: sync.Map{},
-		logger: logger.With(watermill.LogFields{
+		logger: config.Logger.With(watermill.LogFields{
 			"pubsub_uuid": shortuuid.New(),
 		}),
 

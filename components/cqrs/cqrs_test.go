@@ -116,12 +116,10 @@ func NewTestServices() TestServices {
 	return TestServices{
 		Logger: logger,
 		CommandsPubSub: gochannel.NewGoChannel(
-			gochannel.Config{BlockPublishUntilSubscriberAck: true},
-			logger,
+			gochannel.Config{BlockPublishUntilSubscriberAck: true, Logger: logger},
 		),
 		EventsPubSub: gochannel.NewGoChannel(
-			gochannel.Config{BlockPublishUntilSubscriberAck: true},
-			logger,
+			gochannel.Config{BlockPublishUntilSubscriberAck: true, Logger: logger},
 		),
 		Marshaler: cqrs.JSONMarshaler{},
 	}

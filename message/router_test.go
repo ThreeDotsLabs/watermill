@@ -474,8 +474,10 @@ func publishMessagesForHandler(t *testing.T, messagesCount int, pub message.Publ
 
 func createPubSub() (message.Publisher, message.Subscriber) {
 	pubSub := gochannel.NewGoChannel(
-		gochannel.Config{Persistent: true},
-		watermill.NewStdLogger(true, true),
+		gochannel.Config{
+			Persistent: true,
+			Logger:     watermill.NewStdLogger(true, true),
+		},
 	)
 	return pubSub, pubSub
 }
