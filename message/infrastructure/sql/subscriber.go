@@ -79,19 +79,19 @@ type Subscriber struct {
 	closed      bool
 }
 
-func NewSubscriber(db *sql.DB, conf SubscriberConfig) (*Subscriber, error) {
+func NewSubscriber(db *sql.DB, config SubscriberConfig) (*Subscriber, error) {
 	if db == nil {
 		return nil, errors.New("db is nil")
 	}
-	conf.setDefaults()
-	err := conf.validate()
+	config.setDefaults()
+	err := config.validate()
 	if err != nil {
 		return nil, errors.Wrap(err, "invalid config")
 	}
 
 	sub := &Subscriber{
 		db:     db,
-		config: conf,
+		config: config,
 
 		subscribeWg: &sync.WaitGroup{},
 		closing:     make(chan struct{}),
@@ -163,20 +163,25 @@ func (s *Subscriber) query(
 	// start the transaction
 	// it is finalized after the ACK is written
 	var tx *sql.Tx
-	tx, err = s.db.BeginTx(ctx, &sql.TxOptions{
-		//Isolation: sql.LevelSerializable,
-	})
+	tx, err = s.db.BeginTx(ctx, &sql.TxOptions{})
 	if err != nil {
 		return errors.Wrap(err, "could not begin tx for querying")
 	}
 
-	selectQ := s.config.SchemaAdapter.SelectQuery(topic)
-	selectStmt, err := tx.Prepare(selectQ)
+	selectQuery := s.config.SchemaAdapter.SelectQuery(topic)
+	s.config.Logger.Info("Preparing query to select messages", watermill.LogFields{
+		"q": selectQuery,
+	})
+	selectStmt, err := tx.Prepare(selectQuery)
 	if err != nil {
 		return errors.Wrap(err, "could not prepare statement to select messages")
 	}
-	ackQ := s.config.SchemaAdapter.AckQuery(topic)
-	ackStmt, err := tx.Prepare(ackQ)
+
+	ackQuery := s.config.SchemaAdapter.AckQuery(topic)
+	s.config.Logger.Info("Preparing query to ack messages", watermill.LogFields{
+		"q": ackQuery,
+	})
+	ackStmt, err := tx.Prepare(ackQuery)
 	if err != nil {
 		return errors.Wrap(err, "could not prepare statement to ack messages")
 	}
@@ -200,7 +205,7 @@ func (s *Subscriber) query(
 		return errors.Wrap(err, "could not get args for the select query")
 	}
 
-	logger.Trace(selectQ, watermill.LogFields{
+	logger.Trace(selectQuery, watermill.LogFields{
 		"args": fmt.Sprintf("%+v", selectArgs),
 	})
 
@@ -231,7 +236,7 @@ func (s *Subscriber) query(
 			return errors.Wrap(err, "could not get args for acking the message")
 		}
 
-		logger.Trace(ackQ, watermill.LogFields{
+		logger.Trace(ackQuery, watermill.LogFields{
 			"args": fmt.Sprintf("%+v", ackArgs),
 		})
 		_, err = ackStmt.ExecContext(ctx, ackArgs...)
@@ -310,12 +315,12 @@ func (s *Subscriber) Close() error {
 }
 
 func (s *Subscriber) SubscribeInitialize(topic string) error {
-	ensureTableQueries := s.config.SchemaAdapter.EnsureTableForTopicQueries(topic)
-	s.config.Logger.Trace("ensuring table exists", watermill.LogFields{
-		"q": ensureTableQueries,
+	initializingQueries := s.config.SchemaAdapter.SchemaInitializingQueries(topic)
+	s.config.Logger.Info("Ensuring schema exists for topic", watermill.LogFields{
+		"q": initializingQueries,
 	})
 
-	for _, q := range ensureTableQueries {
+	for _, q := range initializingQueries {
 		_, err := s.db.Exec(q)
 		if err != nil {
 			return errors.Wrap(err, "could not ensure table exists for topic")

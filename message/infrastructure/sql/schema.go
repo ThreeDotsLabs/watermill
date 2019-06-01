@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/oklog/ulid"
 	"github.com/pkg/errors"
@@ -32,9 +31,9 @@ type SchemaAdapter interface {
 	// It also returns the offset of the last read message, for the purpose of acking.
 	UnmarshalMessage(row *sql.Row) (offset int, msg *message.Message, err error)
 
-	// EnsureTableForTopicQueries returns SQL query which will make sure (CREATE IF NOT EXISTS)
-	// that the tables exist to write messages to the given topic.
-	EnsureTableForTopicQueries(topic string) []string
+	// SchemaInitializingQueries returns SQL queries which will make sure (CREATE IF NOT EXISTS)
+	// that the appropriate tables exist to write messages to the given topic.
+	SchemaInitializingQueries(topic string) []string
 }
 
 // DefaultSchema is a default implementation of Inserter, Selecter and Acker that works with the following schema:
@@ -44,20 +43,16 @@ type SchemaAdapter interface {
 // `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 // `payload` json DEFAULT NULL,
 // `metadata` json DEFAULT NULL,
-// `topic` varchar(255) NOT NULL,
-type DefaultSchema struct {
-	Logger watermill.LoggerAdapter
-}
+type DefaultSchema struct{}
 
-func (s *DefaultSchema) EnsureTableForTopicQueries(topic string) []string {
+func (s *DefaultSchema) SchemaInitializingQueries(topic string) []string {
 	messagesQ := strings.Join([]string{
 		"CREATE TABLE IF NOT EXISTS `watermill_" + topic + "` (",
 		"`offset` bigint(20) NOT NULL AUTO_INCREMENT PRIMARY KEY,",
 		"`uuid` binary(16) NOT NULL,",
 		"`created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,",
 		"`payload` json DEFAULT NULL,",
-		"`metadata` json DEFAULT NULL,",
-		"`topic` varchar(255) NOT NULL",
+		"`metadata` json DEFAULT NULL",
 		");",
 	}, "\n")
 
@@ -65,33 +60,17 @@ func (s *DefaultSchema) EnsureTableForTopicQueries(topic string) []string {
 }
 
 func (s *DefaultSchema) InsertQuery(topic string) string {
-	if s.Logger == nil {
-		s.Logger = watermill.NopLogger{}
-	}
-
-	insertQ := strings.Join([]string{
+	insertQuery := strings.Join([]string{
 		`INSERT INTO`,
 		s.messagesTable(topic),
-		`(uuid, payload, metadata, topic) VALUES (?,?,?,?)`,
+		`(uuid, payload, metadata) VALUES (?,?,?)`,
 	}, " ")
 
-	s.Logger.Info("Preparing query to insert messages", watermill.LogFields{
-		"q": insertQ,
-	})
-
-	return insertQ
+	return insertQuery
 }
 
 func (s *DefaultSchema) InsertArgs(topic string, msg *message.Message) (args []interface{}, err error) {
-	logger := s.Logger
 	defer func() {
-		if err != nil {
-			logger.Error("Could not marshal message into SQL insert args", err, nil)
-			return
-		}
-		logger.Debug("Marshaled message into insert args", watermill.LogFields{
-			"uuid": msg.UUID,
-		})
 	}()
 
 	var uuid ulid.ULID
@@ -121,20 +100,12 @@ func (s *DefaultSchema) InsertArgs(topic string, msg *message.Message) (args []i
 }
 
 func (s *DefaultSchema) AckQuery(topic string) string {
-	if s.Logger == nil {
-		s.Logger = watermill.NopLogger{}
-	}
-
-	ackQ := strings.Join([]string{
+	ackQuery := strings.Join([]string{
 		`INSERT INTO `, s.messagesOffsetsTable(topic), ` (offset, consumer_group) `,
 		`VALUES (?, ?) ON DUPLICATE KEY UPDATE offset=VALUES(offset)`,
 	}, "")
 
-	s.Logger.Info("Preparing query to ack messages", watermill.LogFields{
-		"q": ackQ,
-	})
-
-	return ackQ
+	return ackQuery
 }
 
 func (s *DefaultSchema) AckArgs(offset int, consumerGroup string) ([]interface{}, error) {
@@ -142,30 +113,22 @@ func (s *DefaultSchema) AckArgs(offset int, consumerGroup string) ([]interface{}
 }
 
 func (s *DefaultSchema) SelectQuery(topic string) string {
-	if s.Logger == nil {
-		s.Logger = watermill.NopLogger{}
-	}
-
-	selectQ := strings.Join([]string{
+	selectQuery := strings.Join([]string{
 		`SELECT offset,uuid,payload,metadata FROM `, s.messagesTable(topic),
-		` WHERE TOPIC=? AND `, s.messagesTable(topic), `.offset >`,
+		` WHERE `, s.messagesTable(topic), `.offset >`,
 		` (SELECT COALESCE(MAX(`, s.messagesOffsetsTable(topic), `.offset), 0) FROM `, s.messagesOffsetsTable(topic),
 		` WHERE consumer_group=?)`,
 		` ORDER BY `, s.messagesTable(topic), `.offset ASC LIMIT 1`,
 	}, "")
 
-	s.Logger.Info("Preparing query to select messages", watermill.LogFields{
-		"q": selectQ,
-	})
-
-	return selectQ
+	return selectQuery
 }
 
 func (s *DefaultSchema) SelectArgs(topic string, consumerGroup string) ([]interface{}, error) {
 	if len(topic) > 255 {
 		return nil, errors.New("the topic does not fit into VARCHAR(255)")
 	}
-	return []interface{}{topic, consumerGroup}, nil
+	return []interface{}{consumerGroup}, nil
 }
 
 type defaultSchemaRow struct {

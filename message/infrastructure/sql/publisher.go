@@ -4,7 +4,9 @@ import (
 	"database/sql"
 	"sync"
 
+	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
+
 	"github.com/pkg/errors"
 )
 
@@ -13,6 +15,8 @@ var (
 )
 
 type PublisherConfig struct {
+	Logger watermill.LoggerAdapter
+
 	// SchemaAdapter provides the schema-dependent queries and arguments for them, based on topic/message etc.
 	SchemaAdapter SchemaAdapter
 
@@ -21,6 +25,10 @@ type PublisherConfig struct {
 }
 
 func (c PublisherConfig) validate() error {
+	if c.Logger == nil {
+		c.Logger = watermill.NopLogger{}
+	}
+
 	if c.SchemaAdapter == nil {
 		return errors.New("schema adapter is nil")
 	}
@@ -41,7 +49,7 @@ type db interface {
 
 // Publisher inserts the Messages as rows into a SQL table..
 type Publisher struct {
-	conf PublisherConfig
+	config PublisherConfig
 
 	db db
 
@@ -50,9 +58,9 @@ type Publisher struct {
 	closed    bool
 }
 
-func NewPublisher(db db, conf PublisherConfig) (*Publisher, error) {
-	conf.setDefaults()
-	if err := conf.validate(); err != nil {
+func NewPublisher(db db, config PublisherConfig) (*Publisher, error) {
+	config.setDefaults()
+	if err := config.validate(); err != nil {
 		return nil, errors.Wrap(err, "invalid config")
 	}
 
@@ -61,8 +69,8 @@ func NewPublisher(db db, conf PublisherConfig) (*Publisher, error) {
 	}
 
 	return &Publisher{
-		conf: conf,
-		db:   db,
+		config: config,
+		db:     db,
 
 		publishWg: new(sync.WaitGroup),
 		closeCh:   make(chan struct{}),
@@ -85,17 +93,24 @@ func (p *Publisher) Publish(topic string, messages ...*message.Message) error {
 	p.publishWg.Add(1)
 	defer p.publishWg.Done()
 
-	insertQ := p.conf.SchemaAdapter.InsertQuery(topic)
-	stmt, err := p.db.Prepare(insertQ)
+	insertQuery := p.config.SchemaAdapter.InsertQuery(topic)
+	p.config.Logger.Info("Preparing query to insert messages", watermill.LogFields{
+		"q": insertQuery,
+	})
+
+	stmt, err := p.db.Prepare(insertQuery)
 	if err != nil {
 		return errors.Wrap(err, "could not prepare stmt for inserting messages")
 	}
 
 	for _, msg := range messages {
-		insertArgs, err := p.conf.SchemaAdapter.InsertArgs(topic, msg)
+		insertArgs, err := p.config.SchemaAdapter.InsertArgs(topic, msg)
 		if err != nil {
 			return errors.Wrap(err, "could not marshal message into insert args")
 		}
+		p.config.Logger.Debug("Marshaled message into insert args", watermill.LogFields{
+			"uuid": msg.UUID,
+		})
 
 		_, err = stmt.Exec(insertArgs...)
 		if err != nil {

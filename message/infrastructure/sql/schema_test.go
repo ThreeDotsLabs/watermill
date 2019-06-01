@@ -16,27 +16,17 @@ import (
 // `uuid` VARCHAR(255) NOT NULL,
 // `payload` VARBINARY(255) DEFAULT NULL,
 // `metadata` JSON DEFAULT NULL,
-// `topic` VARCHAR(255) NOT NULL,
 //
 // testSchema maintains a separate table for each topic, which helps to prevent deadlock in parallel tests.
 type testSchema struct{}
 
-func (s testSchema) messagesTable(topic string) string {
-	return "`test_" + topic + "`"
-}
-
-func (s testSchema) messagesOffsetsTable(topic string) string {
-	return "`test_ack_" + topic + "`"
-}
-
-func (s *testSchema) EnsureTableForTopicQueries(topic string) []string {
+func (s *testSchema) SchemaInitializingQueries(topic string) []string {
 	createMessagesTable := strings.Join([]string{
 		"CREATE TABLE IF NOT EXISTS " + s.messagesTable(topic) + " (",
-		"`offset` BIGINT(20) NOT NULL AUTO_INCREMENT PRIMARY KEY,",
+		"`offset` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,",
 		"`uuid` VARCHAR(255) NOT NULL,",
 		"`payload` VARBINARY(255) DEFAULT NULL,",
-		"`metadata` JSON DEFAULT NULL,",
-		"`topic` VARCHAR(255) NOT NULL",
+		"`metadata` JSON DEFAULT NULL",
 		");",
 	}, "\n")
 	createAcksTable := strings.Join([]string{
@@ -52,17 +42,17 @@ func (s *testSchema) EnsureTableForTopicQueries(topic string) []string {
 }
 
 func (s *testSchema) InsertQuery(topic string) string {
-	insertQ := strings.Join([]string{
+	insertQuery := strings.Join([]string{
 		`INSERT INTO`,
 		s.messagesTable(topic),
-		`(uuid, payload, metadata, topic) VALUES (?,?,?,?)`,
+		`(uuid, payload, metadata) VALUES (?,?,?)`,
 	}, " ")
 
 	logger.Info("Preparing query to insert messages", watermill.LogFields{
-		"q": insertQ,
+		"q": insertQuery,
 	})
 
-	return insertQ
+	return insertQuery
 }
 
 func (s *testSchema) InsertArgs(topic string, msg *message.Message) (args []interface{}, err error) {
@@ -90,21 +80,20 @@ func (s *testSchema) InsertArgs(topic string, msg *message.Message) (args []inte
 		msg.UUID,
 		msg.Payload,
 		metadata,
-		topic,
 	}, nil
 }
 
 func (s *testSchema) AckQuery(topic string) string {
-	ackQ := strings.Join([]string{
+	ackQuery := strings.Join([]string{
 		`INSERT INTO `, s.messagesOffsetsTable(topic), ` (offset, consumer_group) `,
 		`VALUES (?, ?) ON DUPLICATE KEY UPDATE offset=VALUES(offset)`,
 	}, "")
 
 	logger.Info("Preparing query to ack messages", watermill.LogFields{
-		"q": ackQ,
+		"q": ackQuery,
 	})
 
-	return ackQ
+	return ackQuery
 }
 
 func (s *testSchema) AckArgs(offset int, consumerGroup string) ([]interface{}, error) {
@@ -112,26 +101,26 @@ func (s *testSchema) AckArgs(offset int, consumerGroup string) ([]interface{}, e
 }
 
 func (s *testSchema) SelectQuery(topic string) string {
-	selectQ := strings.Join([]string{
+	selectQuery := strings.Join([]string{
 		`SELECT offset,uuid,payload,metadata FROM `, s.messagesTable(topic),
-		` WHERE TOPIC=? AND `, s.messagesTable(topic), `.offset >`,
+		` WHERE `, s.messagesTable(topic), `.offset >`,
 		` (SELECT COALESCE(MAX(`, s.messagesOffsetsTable(topic), `.offset), 0) FROM `, s.messagesOffsetsTable(topic),
 		` WHERE consumer_group=?)`,
 		` ORDER BY `, s.messagesTable(topic), `.offset ASC LIMIT 1`,
 	}, "")
 
 	logger.Info("Preparing query to select messages", watermill.LogFields{
-		"q": selectQ,
+		"q": selectQuery,
 	})
 
-	return selectQ
+	return selectQuery
 }
 
 func (s *testSchema) SelectArgs(topic string, consumerGroup string) ([]interface{}, error) {
 	if len(topic) > 255 {
 		return nil, errors.New("the topic does not fit into VARCHAR(255)")
 	}
-	return []interface{}{topic, consumerGroup}, nil
+	return []interface{}{consumerGroup}, nil
 }
 
 func (s *testSchema) UnmarshalMessage(row *sql.Row) (offset int, msg *message.Message, err error) {
@@ -155,5 +144,12 @@ func (s *testSchema) UnmarshalMessage(row *sql.Row) (offset int, msg *message.Me
 	}
 
 	return offset, msg, nil
+}
 
+func (s testSchema) messagesTable(topic string) string {
+	return "`test_" + topic + "`"
+}
+
+func (s testSchema) messagesOffsetsTable(topic string) string {
+	return "`test_ack_" + topic + "`"
 }
