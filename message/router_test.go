@@ -186,7 +186,7 @@ func TestRouter_stop_when_all_handlers_stopped(t *testing.T) {
 		"foo",
 		sub1,
 		func(msg *message.Message) error {
-			return nil, nil
+			return nil
 		},
 	)
 
@@ -195,7 +195,7 @@ func TestRouter_stop_when_all_handlers_stopped(t *testing.T) {
 		"foo",
 		sub2,
 		func(msg *message.Message) error {
-			return nil, nil
+			return nil
 		},
 	)
 
