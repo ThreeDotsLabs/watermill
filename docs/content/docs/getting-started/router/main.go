@@ -82,7 +82,8 @@ func main() {
 
 	// when everything is ready, let's run router,
 	// this function is blocking since router is running
-	if err := router.Run(context.Background()); err != nil {
+	ctx := context.Background()
+	if err := router.Run(ctx); err != nil {
 		panic(err)
 	}
 }
