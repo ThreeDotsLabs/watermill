@@ -2,6 +2,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"time"
@@ -81,7 +82,8 @@ func main() {
 
 	// when everything is ready, let's run router,
 	// this function is blocking since router is running
-	if err := router.Run(); err != nil {
+	ctx := context.Background()
+	if err := router.Run(ctx); err != nil {
 		panic(err)
 	}
 }

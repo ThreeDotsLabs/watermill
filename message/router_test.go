@@ -45,7 +45,7 @@ func TestRouter_functional(t *testing.T) {
 	publishedByHandlerCh, err := sub.Subscribe(context.Background(), publishedEventsTopic)
 
 	var publishedByHandler message.Messages
-	allPublishedByHandler := make(chan struct{}, 0)
+	allPublishedByHandler := make(chan struct{})
 
 	go func() {
 		var all bool
@@ -82,14 +82,14 @@ func TestRouter_functional(t *testing.T) {
 		"test_subscriber_2",
 		subscribeTopic,
 		sub,
-		func(msg *message.Message) (producedMessages []*message.Message, err error) {
+		func(msg *message.Message) error {
 			receivedMessagesCh2 <- msg
-			return nil, nil
+			return nil
 		},
 	)
 
 	go func() {
-		require.NoError(t, r.Run())
+		require.NoError(t, r.Run(context.Background()))
 	}()
 	<-r.Running()
 
@@ -134,7 +134,7 @@ func TestRouter_functional_nack(t *testing.T) {
 		"test_subscriber_1",
 		"subscribe_topic",
 		sub,
-		func(msg *message.Message) (producedMessages []*message.Message, err error) {
+		func(msg *message.Message) error {
 			messageReceived <- msg
 
 			if !internal.IsChannelClosed(nackSend) {
@@ -142,12 +142,12 @@ func TestRouter_functional_nack(t *testing.T) {
 				close(nackSend)
 			}
 
-			return nil, nil
+			return nil
 		},
 	)
 
 	go func() {
-		require.NoError(t, r.Run())
+		require.NoError(t, r.Run(context.Background()))
 	}()
 	defer func() {
 		assert.NoError(t, r.Close())
@@ -185,7 +185,7 @@ func TestRouter_stop_when_all_handlers_stopped(t *testing.T) {
 		"handler_1",
 		"foo",
 		sub1,
-		func(msg *message.Message) (messages []*message.Message, e error) {
+		func(msg *message.Message) error {
 			return nil, nil
 		},
 	)
@@ -194,14 +194,14 @@ func TestRouter_stop_when_all_handlers_stopped(t *testing.T) {
 		"handler_2",
 		"foo",
 		sub2,
-		func(msg *message.Message) (messages []*message.Message, e error) {
+		func(msg *message.Message) error {
 			return nil, nil
 		},
 	)
 
 	routerStopped := make(chan struct{})
 	go func() {
-		assert.NoError(t, r.Run())
+		assert.NoError(t, r.Run(context.Background()))
 		close(routerStopped)
 	}()
 	<-r.Running()
@@ -284,7 +284,7 @@ func BenchmarkRouterHandler(b *testing.B) {
 	}()
 
 	b.ResetTimer()
-	if err := router.Run(); err != nil {
+	if err := router.Run(context.Background()); err != nil {
 		b.Fatal(err)
 	}
 }
@@ -304,25 +304,22 @@ func TestRouterNoPublisherHandler(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	msgReceived := false
 	wait := make(chan struct{})
 
 	r.AddNoPublisherHandler(
 		"test_no_publisher_handler",
 		"subscribe_topic",
 		sub,
-		func(msg *message.Message) (producedMessages []*message.Message, err error) {
-			if msgReceived {
-				require.True(t, msg.Ack())
-				close(wait)
-				return nil, nil
-			}
-			msgReceived = true
-			return message.Messages{msg}, nil
+		func(msg *message.Message) error {
+			close(wait)
+			return nil
 		},
 	)
 
-	go r.Run()
+	go func() {
+		err = r.Run(context.Background())
+		require.NoError(t, err)
+	}()
 	defer r.Close()
 
 	<-r.Running()
@@ -331,12 +328,13 @@ func TestRouterNoPublisherHandler(t *testing.T) {
 	err = pub.Publish("subscribe_topic", publishedMsg)
 	require.NoError(t, err)
 
-	<-wait
+	select {
+	case <-wait:
+	// ok
+	case <-time.After(time.Second):
+		t.Fatal("no message received")
+	}
 
-	// handler has no publisher, so the router should complain about it
-	// however, it returns no error for now (because of how messages are processed in the router),
-	// so let's just look for the error in the logger.
-	assert.True(t, logger.HasError(message.ErrOutputInNoPublisherHandler))
 	require.NoError(t, r.Close())
 }
 
@@ -357,9 +355,9 @@ func BenchmarkRouterNoPublisherHandler(b *testing.B) {
 		"handler",
 		"benchmark_topic",
 		sub,
-		func(msg *message.Message) (messages []*message.Message, e error) {
+		func(msg *message.Message) (e error) {
 			allProcessedWg.Done()
-			return nil, nil
+			return nil
 		},
 	)
 
@@ -369,7 +367,7 @@ func BenchmarkRouterNoPublisherHandler(b *testing.B) {
 	}()
 
 	b.ResetTimer()
-	if err := router.Run(); err != nil {
+	if err := router.Run(context.Background()); err != nil {
 		b.Fatal(err)
 	}
 }
@@ -412,7 +410,7 @@ func TestRouterDecoratorsOrder(t *testing.T) {
 	)
 
 	go func() {
-		if err := router.Run(); err != nil {
+		if err := router.Run(context.Background()); err != nil {
 			panic(err)
 		}
 	}()

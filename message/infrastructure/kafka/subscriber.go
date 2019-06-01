@@ -5,16 +5,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hashicorp/go-multierror"
-
-	"github.com/renstrom/shortuuid"
-
 	"github.com/Shopify/sarama"
+	"github.com/hashicorp/go-multierror"
+	"github.com/pkg/errors"
+	"github.com/renstrom/shortuuid"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
-
-	"github.com/pkg/errors"
 )
 
 type Subscriber struct {

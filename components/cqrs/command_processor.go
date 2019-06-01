@@ -130,7 +130,7 @@ func (p CommandProcessor) Handlers() []CommandHandler {
 	return p.handlers
 }
 
-func (p CommandProcessor) routerHandlerFunc(handler CommandHandler, logger watermill.LoggerAdapter) (message.HandlerFunc, error) {
+func (p CommandProcessor) routerHandlerFunc(handler CommandHandler, logger watermill.LoggerAdapter) (message.NoPublishHandlerFunc, error) {
 	cmd := handler.NewCommand()
 	cmdName := p.marshaler.Name(cmd)
 
@@ -138,7 +138,7 @@ func (p CommandProcessor) routerHandlerFunc(handler CommandHandler, logger water
 		return nil, err
 	}
 
-	return func(msg *message.Message) ([]*message.Message, error) {
+	return func(msg *message.Message) error {
 		cmd := handler.NewCommand()
 		messageCmdName := p.marshaler.NameFromMessage(msg)
 
@@ -148,7 +148,7 @@ func (p CommandProcessor) routerHandlerFunc(handler CommandHandler, logger water
 				"expected_command_type": cmdName,
 				"received_command_type": messageCmdName,
 			})
-			return nil, nil
+			return nil
 		}
 
 		logger.Debug("Handling command", watermill.LogFields{
@@ -157,15 +157,15 @@ func (p CommandProcessor) routerHandlerFunc(handler CommandHandler, logger water
 		})
 
 		if err := p.marshaler.Unmarshal(msg, cmd); err != nil {
-			return nil, err
+			return err
 		}
 
 		if err := handler.Handle(msg.Context(), cmd); err != nil {
 			logger.Debug("Error when handling command", watermill.LogFields{"err": err})
-			return nil, err
+			return err
 		}
 
-		return nil, nil
+		return nil
 	}, nil
 }
 
