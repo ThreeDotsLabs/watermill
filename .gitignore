@@ -6,3 +6,5 @@ docs/content/src-link
 *.out
 *.log
 .mod-cache
+.terraform
+*.tfstate*
