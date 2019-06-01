@@ -9,11 +9,11 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/go-chi/chi"
 	"github.com/pkg/errors"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/go-chi/chi"
 )
 
 type UnmarshalMessageFunc func(topic string, request *http.Request) (*message.Message, error)
@@ -43,15 +43,19 @@ func DefaultUnmarshalMessageFunc(topic string, req *http.Request) (*message.Mess
 type SubscriberConfig struct {
 	Router               chi.Router
 	UnmarshalMessageFunc UnmarshalMessageFunc
+
+	Logger watermill.LoggerAdapter
 }
 
 func (s *SubscriberConfig) setDefaults() {
 	if s.Router == nil {
 		s.Router = chi.NewRouter()
 	}
-
 	if s.UnmarshalMessageFunc == nil {
 		s.UnmarshalMessageFunc = DefaultUnmarshalMessageFunc
+	}
+	if s.Logger == nil {
+		s.Logger = watermill.NopLogger{}
 	}
 }
 
@@ -64,8 +68,6 @@ type Subscriber struct {
 	address  net.Addr
 	addrLock sync.RWMutex
 
-	logger watermill.LoggerAdapter
-
 	outputChannels     []chan *message.Message
 	outputChannelsLock sync.Locker
 
@@ -77,14 +79,13 @@ type Subscriber struct {
 // addr is TCP address to listen on
 //
 // logger is Watermill's logger.
-func NewSubscriber(addr string, config SubscriberConfig, logger watermill.LoggerAdapter) (*Subscriber, error) {
+func NewSubscriber(addr string, config SubscriberConfig) (*Subscriber, error) {
 	config.setDefaults()
 	s := &http.Server{Addr: addr, Handler: config.Router}
 
 	return &Subscriber{
 		config:             config,
 		server:             s,
-		logger:             logger,
 		outputChannels:     make([]chan *message.Message, 0),
 		outputChannelsLock: &sync.Mutex{},
 	}, nil
@@ -117,30 +118,30 @@ func (s *Subscriber) Subscribe(ctx context.Context, url string) (<-chan *message
 		defer cancelCtx()
 
 		if err != nil {
-			s.logger.Info("Cannot unmarshal message", baseLogFields.Add(watermill.LogFields{"err": err}))
+			s.config.Logger.Info("Cannot unmarshal message", baseLogFields.Add(watermill.LogFields{"err": err}))
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 		if msg == nil {
-			s.logger.Info("No message returned by UnmarshalMessageFunc", baseLogFields)
+			s.config.Logger.Info("No message returned by UnmarshalMessageFunc", baseLogFields)
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 		logFields := baseLogFields.Add(watermill.LogFields{"message_uuid": msg.UUID})
 
-		s.logger.Trace("Sending msg", logFields)
+		s.config.Logger.Trace("Sending msg", logFields)
 		messages <- msg
 
-		s.logger.Trace("Waiting for ACK", logFields)
+		s.config.Logger.Trace("Waiting for ACK", logFields)
 		select {
 		case <-msg.Acked():
-			s.logger.Trace("Message acknowledged", logFields.Add(watermill.LogFields{"err": err}))
+			s.config.Logger.Trace("Message acknowledged", logFields.Add(watermill.LogFields{"err": err}))
 			w.WriteHeader(http.StatusOK)
 		case <-msg.Nacked():
-			s.logger.Trace("Message nacked", logFields.Add(watermill.LogFields{"err": err}))
+			s.config.Logger.Trace("Message nacked", logFields.Add(watermill.LogFields{"err": err}))
 			w.WriteHeader(http.StatusInternalServerError)
 		case <-r.Context().Done():
-			s.logger.Info("Request stopped without ACK received", logFields)
+			s.config.Logger.Info("Request stopped without ACK received", logFields)
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 	})

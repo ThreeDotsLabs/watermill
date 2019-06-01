@@ -45,11 +45,16 @@ type PublisherConfig struct {
 	Client             *http.Client
 	// if false (default), when server responds with error (>=400) to the webhook request, the response body is logged.
 	DoNotLogResponseBodyOnServerError bool
+
+	Logger watermill.LoggerAdapter
 }
 
 func (c *PublisherConfig) setDefaults() {
 	if c.Client == nil {
 		c.Client = http.DefaultClient
+	}
+	if c.Logger == nil {
+		c.Logger = watermill.NopLogger{}
 	}
 }
 
@@ -62,7 +67,6 @@ func (c PublisherConfig) validate() error {
 }
 
 type Publisher struct {
-	logger watermill.LoggerAdapter
 	config PublisherConfig
 
 	closed bool
@@ -71,14 +75,13 @@ type Publisher struct {
 // NewPublisher creates a new Publisher.
 // It publishes the received messages as HTTP requests.
 // The URL, method and payload of the request are determined by the configured MarshalMessageFunc.
-func NewPublisher(config PublisherConfig, logger watermill.LoggerAdapter) (*Publisher, error) {
+func NewPublisher(config PublisherConfig) (*Publisher, error) {
 	config.setDefaults()
 	if err := config.validate(); err != nil {
 		return nil, errors.Wrap(err, "invalid Publisher config")
 	}
 	return &Publisher{
 		config: config,
-		logger: logger,
 	}, nil
 }
 
@@ -100,7 +103,7 @@ func (p *Publisher) Publish(topic string, messages ...*message.Message) error {
 			"provider": ProviderName,
 		}
 
-		p.logger.Trace("Publishing message", logFields)
+		p.config.Logger.Trace("Publishing message", logFields)
 
 		resp, err := p.config.Client.Do(req)
 		if err != nil {
@@ -115,11 +118,7 @@ func (p *Publisher) Publish(topic string, messages ...*message.Message) error {
 			return errors.Wrap(ErrErrorResponse, resp.Status)
 		}
 
-		if err != nil {
-			return errors.Wrapf(err, "could not close response body for message %s", msg.UUID)
-		}
-
-		p.logger.Trace("Message published", logFields)
+		p.config.Logger.Trace("Message published", logFields)
 	}
 
 	return nil
@@ -135,7 +134,12 @@ func (p *Publisher) Close() error {
 }
 
 func (p Publisher) handleResponseBody(resp *http.Response, logFields watermill.LogFields) error {
-	defer resp.Body.Close()
+	defer func() {
+		err := resp.Body.Close()
+		if err != nil {
+			p.config.Logger.Error("could not close response body", err, logFields)
+		}
+	}()
 
 	if resp.StatusCode < http.StatusBadRequest {
 		return nil
@@ -154,7 +158,7 @@ func (p Publisher) handleResponseBody(resp *http.Response, logFields watermill.L
 		"http_status":   resp.StatusCode,
 		"http_response": string(body),
 	})
-	p.logger.Info("Server responded with error", logFields)
+	p.config.Logger.Info("Server responded with error", logFields)
 
 	return nil
 }

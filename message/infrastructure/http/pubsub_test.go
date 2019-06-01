@@ -6,30 +6,29 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ThreeDotsLabs/watermill/message/subscriber"
-
-	"github.com/ThreeDotsLabs/watermill/internal/tests"
-	"github.com/ThreeDotsLabs/watermill/message"
-
 	"github.com/stretchr/testify/require"
 
 	"github.com/ThreeDotsLabs/watermill"
+	"github.com/ThreeDotsLabs/watermill/internal/tests"
+	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure"
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/http"
+	"github.com/ThreeDotsLabs/watermill/message/subscriber"
 )
 
 func createPubSub(t *testing.T) (*http.Publisher, *http.Subscriber) {
 	logger := watermill.NewStdLogger(true, true)
 
 	// use any free port to allow parallel tests
-	sub, err := http.NewSubscriber(":0", http.SubscriberConfig{}, logger)
+	sub, err := http.NewSubscriber(":0", http.SubscriberConfig{Logger: logger})
 	require.NoError(t, err)
 
 	publisherConf := http.PublisherConfig{
 		MarshalMessageFunc: http.DefaultMarshalMessageFunc,
+		Logger:             logger,
 	}
 
-	pub, err := http.NewPublisher(publisherConf, logger)
+	pub, err := http.NewPublisher(publisherConf)
 	require.NoError(t, err)
 
 	return pub, sub
