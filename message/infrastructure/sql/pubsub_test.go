@@ -2,6 +2,7 @@ package sql_test
 
 import (
 	std_sql "database/sql"
+	"os"
 	"testing"
 	"time"
 
@@ -48,11 +49,15 @@ func newPubSub(t *testing.T, db *std_sql.DB, consumerGroup string) message.PubSu
 }
 
 func newMySQL(t *testing.T) *std_sql.DB {
+	addr := os.Getenv("WATERMILL_TEST_MYSQL_HOST")
+	if addr == "" {
+		addr = "localhost"
+	}
 	conf := driver.Config{
 		User:                 "root",
 		Passwd:               "",
 		Net:                  "",
-		Addr:                 "localhost",
+		Addr:                 addr,
 		DBName:               "watermill",
 		AllowNativePasswords: true,
 	}
