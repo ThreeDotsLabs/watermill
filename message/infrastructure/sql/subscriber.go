@@ -148,9 +148,9 @@ func (s *Subscriber) consume(ctx context.Context, topic string, out chan *messag
 		err := s.query(ctx, topic, out, logger)
 		if err != nil {
 			logger.Error("Error querying for message", err, nil)
+			time.Sleep(s.config.RetryInterval)
 			continue
 		}
-
 	}
 }
 
