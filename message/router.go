@@ -233,11 +233,11 @@ func (r *Router) AddNoPublisherHandler(
 	subscriber Subscriber,
 	handlerFunc NoPublishHandlerFunc,
 ) {
-	standardHandlerFunc := func(msg *Message) ([]*Message, error) {
+	handlerFuncAdapter := func(msg *Message) ([]*Message, error) {
 		return nil, handlerFunc(msg)
 	}
 
-	r.AddHandler(handlerName, subscribeTopic, subscriber, "", disabledPublisher{}, standardHandlerFunc)
+	r.AddHandler(handlerName, subscribeTopic, subscriber, "", disabledPublisher{}, handlerFuncAdapter)
 }
 
 // Run runs all plugins and handlers and starts subscribing to provided topics.
