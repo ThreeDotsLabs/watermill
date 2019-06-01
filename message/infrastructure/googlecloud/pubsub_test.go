@@ -19,7 +19,7 @@ import (
 
 // Run `docker-compose up` and set PUBSUB_EMULATOR_HOST=localhost:8085 for this to work
 
-func newPubSub(t *testing.T, marshaler googlecloud.MarshalerUnmarshaler, subscriptionName googlecloud.SubscriptionNameFn) message.PubSub {
+func newPubSub(t *testing.T, marshaler googlecloud.MarshalerUnmarshaler, subscriptionName googlecloud.SubscriptionNameFn) (message.Publisher, message.Subscriber) {
 	logger := watermill.NewStdLogger(true, true)
 
 	publisher, err := googlecloud.NewPublisher(
@@ -46,17 +46,17 @@ func newPubSub(t *testing.T, marshaler googlecloud.MarshalerUnmarshaler, subscri
 	)
 	require.NoError(t, err)
 
-	return message.NewPubSub(publisher, subscriber)
+	return publisher, subscriber
 }
 
-func createPubSubWithSubscriptionName(t *testing.T, subscriptionName string) infrastructure.PubSub {
+func createPubSubWithSubscriptionName(t *testing.T, subscriptionName string) (message.Publisher, message.Subscriber) {
 	return newPubSub(t, googlecloud.DefaultMarshalerUnmarshaler{},
 		googlecloud.TopicSubscriptionNameWithSuffix(subscriptionName),
-	).(infrastructure.PubSub)
+	)
 }
 
-func createPubSub(t *testing.T) infrastructure.PubSub {
-	return newPubSub(t, googlecloud.DefaultMarshalerUnmarshaler{}, googlecloud.TopicSubscriptionName).(infrastructure.PubSub)
+func createPubSub(t *testing.T) (message.Publisher, message.Subscriber) {
+	return newPubSub(t, googlecloud.DefaultMarshalerUnmarshaler{}, googlecloud.TopicSubscriptionName)
 }
 
 func TestPublishSubscribe(t *testing.T) {

@@ -84,19 +84,6 @@ func (b PrometheusMetricsBuilder) DecorateSubscriber(sub message.Subscriber) (me
 	return d, nil
 }
 
-func (b PrometheusMetricsBuilder) DecoratePubSub(pubSub message.PubSub) (message.PubSub, error) {
-	pub, err := b.DecoratePublisher(pubSub)
-	if err != nil {
-		return nil, err
-	}
-	sub, err := b.DecorateSubscriber(pubSub)
-	if err != nil {
-		return nil, err
-	}
-
-	return message.NewPubSub(pub, sub), nil
-}
-
 func (b PrometheusMetricsBuilder) register(c prometheus.Collector) (prometheus.Collector, error) {
 	err := b.PrometheusRegistry.Register(c)
 	if err == nil {

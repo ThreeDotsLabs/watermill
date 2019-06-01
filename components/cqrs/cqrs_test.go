@@ -105,8 +105,8 @@ func createRouterAndFacade(ts TestServices, t *testing.T, commandHandler *Captur
 
 type TestServices struct {
 	Logger         watermill.LoggerAdapter
-	CommandsPubSub message.PubSub
-	EventsPubSub   message.PubSub
+	CommandsPubSub *gochannel.GoChannel
+	EventsPubSub   *gochannel.GoChannel
 	Marshaler      cqrs.CommandEventMarshaler
 }
 

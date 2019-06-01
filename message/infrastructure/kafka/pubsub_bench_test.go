@@ -12,7 +12,7 @@ import (
 )
 
 func BenchmarkSubscriber(b *testing.B) {
-	infrastructure.BenchSubscriber(b, func(n int) message.PubSub {
+	infrastructure.BenchSubscriber(b, func(n int) (message.Publisher, message.Subscriber) {
 		logger := watermill.NopLogger{}
 
 		publisher, err := kafka.NewPublisher(kafkaBrokers(), kafka.DefaultMarshaler{}, nil, logger)
@@ -36,6 +36,6 @@ func BenchmarkSubscriber(b *testing.B) {
 			panic(err)
 		}
 
-		return message.NewPubSub(publisher, subscriber)
+		return publisher, subscriber
 	})
 }

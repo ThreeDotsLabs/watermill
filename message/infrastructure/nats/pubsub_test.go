@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func newPubSub(t *testing.T, clientID string, queueName string) message.PubSub {
+func newPubSub(t *testing.T, clientID string, queueName string) (message.Publisher, message.Subscriber) {
 	logger := watermill.NewStdLogger(true, true)
 
 	natsURL := os.Getenv("WATERMILL_TEST_NATS_URL")
@@ -45,15 +45,15 @@ func newPubSub(t *testing.T, clientID string, queueName string) message.PubSub {
 	}, logger)
 	require.NoError(t, err)
 
-	return message.NewPubSub(pub, sub)
+	return pub, sub
 }
 
-func createPubSub(t *testing.T) infrastructure.PubSub {
-	return newPubSub(t, watermill.NewUUID(), "test-queue").(infrastructure.PubSub)
+func createPubSub(t *testing.T) (message.Publisher, message.Subscriber) {
+	return newPubSub(t, watermill.NewUUID(), "test-queue")
 }
 
-func createPubSubWithDurable(t *testing.T, consumerGroup string) infrastructure.PubSub {
-	return newPubSub(t, consumerGroup, consumerGroup).(infrastructure.PubSub)
+func createPubSubWithDurable(t *testing.T, consumerGroup string) (message.Publisher, message.Subscriber) {
+	return newPubSub(t, consumerGroup, consumerGroup)
 }
 
 func TestPublishSubscribe(t *testing.T) {

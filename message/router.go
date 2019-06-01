@@ -176,10 +176,6 @@ func (d DuplicateHandlerNameError) Error() string {
 // When handler needs to publish to multiple topics,
 // it is recommended to just inject Publisher to Handler or implement middleware
 // which will catch messages and publish to topic based on metadata for example.
-//
-// pubSub is PubSub from which messages will be consumed and to which created messages will be published.
-// If you have separated Publisher and Subscriber object,
-// you can create PubSub object by calling message.NewPubSub(publisher, subscriber).
 func (r *Router) AddHandler(
 	handlerName string,
 	subscribeTopic string,
