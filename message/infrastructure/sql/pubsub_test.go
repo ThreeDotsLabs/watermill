@@ -55,6 +55,7 @@ func newPubSub(t *testing.T, db *std_sql.DB, consumerGroup string) message.PubSu
 
 func newMySQL(t *testing.T) *std_sql.DB {
 	addr := os.Getenv("WATERMILL_TEST_MYSQL_HOST")
+	t.Log("Connecting to sql at " + addr)
 	if addr == "" {
 		addr = "localhost"
 	}

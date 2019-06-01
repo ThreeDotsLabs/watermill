@@ -18,6 +18,9 @@ tests_steps: &tests_steps
         command: docker-compose run watermill ./.circleci/wait-for-services.sh
     - run: "echo Running tests with flags: $TEST_FLAGS"
     - run:
+        name: Print environment variables
+        command: docker-compose run env
+    - run:
         name: Run tests
         command: docker-compose run watermill go test ./... $TEST_FLAGS
         no_output_timeout: 30m
