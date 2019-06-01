@@ -82,9 +82,9 @@ func TestRouter_functional(t *testing.T) {
 		"test_subscriber_2",
 		subscribeTopic,
 		pubSub,
-		func(msg *message.Message) (producedMessages []*message.Message, err error) {
+		func(msg *message.Message) (err error) {
 			receivedMessagesCh2 <- msg
-			return nil, nil
+			return nil
 		},
 	)
 
@@ -133,7 +133,7 @@ func TestRouter_functional_nack(t *testing.T) {
 		"test_subscriber_1",
 		"subscribe_topic",
 		pubSub,
-		func(msg *message.Message) (producedMessages []*message.Message, err error) {
+		func(msg *message.Message) (err error) {
 			messageReceived <- msg
 
 			if !internal.IsChannelClosed(nackSend) {
@@ -141,7 +141,7 @@ func TestRouter_functional_nack(t *testing.T) {
 				close(nackSend)
 			}
 
-			return nil, nil
+			return nil
 		},
 	)
 
@@ -182,8 +182,8 @@ func TestRouter_stop_when_all_handlers_stopped(t *testing.T) {
 		"handler_1",
 		"foo",
 		pubSub1,
-		func(msg *message.Message) (messages []*message.Message, e error) {
-			return nil, nil
+		func(msg *message.Message) (e error) {
+			return nil
 		},
 	)
 
@@ -191,8 +191,8 @@ func TestRouter_stop_when_all_handlers_stopped(t *testing.T) {
 		"handler_2",
 		"foo",
 		pubSub2,
-		func(msg *message.Message) (messages []*message.Message, e error) {
-			return nil, nil
+		func(msg *message.Message) (e error) {
+			return nil
 		},
 	)
 
@@ -298,21 +298,15 @@ func TestRouterNoPublisherHandler(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	msgReceived := false
 	wait := make(chan struct{})
 
 	r.AddNoPublisherHandler(
 		"test_no_publisher_handler",
 		"subscribe_topic",
 		pubSub,
-		func(msg *message.Message) (producedMessages []*message.Message, err error) {
-			if msgReceived {
-				require.True(t, msg.Ack())
-				close(wait)
-				return nil, nil
-			}
-			msgReceived = true
-			return message.Messages{msg}, nil
+		func(msg *message.Message) (err error) {
+			close(wait)
+			return nil
 		},
 	)
 
@@ -325,12 +319,13 @@ func TestRouterNoPublisherHandler(t *testing.T) {
 	err = pubSub.Publish("subscribe_topic", publishedMsg)
 	require.NoError(t, err)
 
-	<-wait
+	select {
+	case <-wait:
+	// ok
+	case <-time.After(time.Second):
+		t.Fatal("no message received")
+	}
 
-	// handler has no publisher, so the router should complain about it
-	// however, it returns no error for now (because of how messages are processed in the router),
-	// so let's just look for the error in the logger.
-	assert.True(t, logger.HasError(message.ErrOutputInNoPublisherHandler))
 	require.NoError(t, r.Close())
 }
 
@@ -351,9 +346,9 @@ func BenchmarkRouterNoPublisherHandler(b *testing.B) {
 		"handler",
 		"benchmark_topic",
 		sub,
-		func(msg *message.Message) (messages []*message.Message, e error) {
+		func(msg *message.Message) (e error) {
 			allProcessedWg.Done()
-			return nil, nil
+			return nil
 		},
 	)
 
