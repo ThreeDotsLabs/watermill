@@ -9,11 +9,11 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/go-chi/chi"
 	"github.com/pkg/errors"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/go-chi/chi"
 )
 
 type UnmarshalMessageFunc func(topic string, request *http.Request) (*message.Message, error)
@@ -80,6 +80,10 @@ type Subscriber struct {
 func NewSubscriber(addr string, config SubscriberConfig, logger watermill.LoggerAdapter) (*Subscriber, error) {
 	config.setDefaults()
 	s := &http.Server{Addr: addr, Handler: config.Router}
+
+	if logger == nil {
+		logger = watermill.NopLogger{}
+	}
 
 	return &Subscriber{
 		config:             config,
