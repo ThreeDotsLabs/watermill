@@ -10,6 +10,8 @@ import (
 
 type OnRetryHook func(retryNum int, delay time.Duration)
 
+// Retry provides a middleware that retries the handler if errors are returned.
+// The retry behaviour is configurable, with exponential backoff and maximum elapsed time.
 type Retry struct {
 	MaxRetries int
 
