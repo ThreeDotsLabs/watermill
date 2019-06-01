@@ -35,37 +35,31 @@ func (r Retry) Middleware(h message.HandlerFunc) message.HandlerFunc {
 			}
 
 			elapsedTime := time.Since(startTime)
-
-			if r.shouldRetry(retries, elapsedTime) {
-				waitTime := r.calculateWaitTime()
-
-				if r.Logger != nil {
-					r.Logger.Error("Error occurred, retrying", err, watermill.LogFields{
-						"retry_no":     retries,
-						"max_retries":  r.MaxRetries,
-						"wait_time":    waitTime,
-						"elapsed_time": elapsedTime,
-					})
-				}
-
-				retries++
-
-				select {
-				case <-time.After(waitTime):
-				// ok
-				case <-message.Context().Done():
-					return events, err
-				}
-
-				if r.OnRetryHook != nil {
-					r.OnRetryHook(retries, r.InitialInterval)
-
-				}
-
-				continue
+			if !r.shouldRetry(retries, elapsedTime) {
+				return events, err
 			}
 
-			return events, err
+			waitTime := r.calculateWaitTime()
+			if r.Logger != nil {
+				r.Logger.Error("Error occurred, retrying", err, watermill.LogFields{
+					"retry_no":     retries,
+					"max_retries":  r.MaxRetries,
+					"wait_time":    waitTime,
+					"elapsed_time": elapsedTime,
+				})
+			}
+			retries++
+
+			select {
+			case <-time.After(waitTime):
+			// ok
+			case <-message.Context().Done():
+				return events, err
+			}
+
+			if r.OnRetryHook != nil {
+				r.OnRetryHook(retries, r.InitialInterval)
+			}
 		}
 	}
 }
