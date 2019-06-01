@@ -12,6 +12,7 @@ services:
       WATERMILL_TEST_NATS_URL: nats://nats-streaming:4222
       WATERMILL_TEST_AMQP_URI: amqp://guest:guest@rabbitmq:5672
       WATERMILL_TEST_KAFKA_BROKERS: kafka:9092
+      WATERMILL_TEST_MYSQL_HOST: mysql:3306
 
   kafka:
     environment:
@@ -19,3 +20,9 @@ services:
 
   googlecloud:
     entrypoint: gcloud --quiet beta emulators pubsub start --host-port=googlecloud:8085 --verbosity=debug --log-http
+
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: watermill
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"

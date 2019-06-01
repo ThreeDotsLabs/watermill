@@ -6,7 +6,7 @@ require (
 	github.com/armon/go-metrics v0.0.0-20190430140413-ec5e00d3c878 // indirect
 	github.com/cenkalti/backoff v2.1.1+incompatible
 	github.com/go-chi/chi v4.0.2+incompatible
-	github.com/go-sql-driver/mysql v1.4.1 // indirect
+	github.com/go-sql-driver/mysql v1.4.1
 	github.com/gogo/protobuf v1.2.1
 	github.com/golang/protobuf v1.3.1
 	github.com/google/uuid v1.1.1
