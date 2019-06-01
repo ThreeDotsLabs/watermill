@@ -5,11 +5,12 @@ import (
 	"sync"
 	"testing"
 
+	stan "github.com/nats-io/stan.go"
+
 	"github.com/stretchr/testify/assert"
 
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/nats"
-	"github.com/nats-io/go-nats-streaming"
-	"github.com/nats-io/go-nats-streaming/pb"
+	"github.com/nats-io/stan.go/pb"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ThreeDotsLabs/watermill/message"
