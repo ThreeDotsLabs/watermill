@@ -58,14 +58,12 @@ func newMySQL(t *testing.T) *std_sql.DB {
 	if addr == "" {
 		addr = "localhost"
 	}
-	conf := driver.Config{
-		User:                 "root",
-		Passwd:               "",
-		Net:                  "",
-		Addr:                 addr,
-		DBName:               "watermill",
-		AllowNativePasswords: true,
-	}
+	conf := driver.NewConfig()
+	conf.User = "root"
+	conf.Addr = addr
+
+	conf.DBName = "watermill"
+
 	db, err := std_sql.Open("mysql", conf.FormatDSN())
 	require.NoError(t, err)
 
