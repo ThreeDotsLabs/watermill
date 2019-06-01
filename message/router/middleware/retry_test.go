@@ -163,7 +163,7 @@ func TestRetry_max_elapsed(t *testing.T) {
 
 	startTime := time.Now()
 	_, _ = h(message.NewMessage("1", nil))
-	timeElapsed := time.Now().Sub(startTime)
+	timeElapsed := time.Since(startTime)
 
 	assert.True(
 		t,

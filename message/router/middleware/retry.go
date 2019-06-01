@@ -34,7 +34,7 @@ func (r Retry) Middleware(h message.HandlerFunc) message.HandlerFunc {
 				return events, nil
 			}
 
-			elapsedTime := time.Now().Sub(startTime)
+			elapsedTime := time.Since(startTime)
 
 			if r.shouldRetry(retries, elapsedTime) {
 				waitTime := r.calculateWaitTime()
