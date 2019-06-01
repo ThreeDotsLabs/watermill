@@ -443,6 +443,7 @@ func TestConcurrentClose(t *testing.T, createPubSub PubSubConstructor, features 
 	assert.True(t, all)
 
 	tests.AssertAllMessagesReceived(t, expectedMessages, receivedMessages)
+	closePubSub(t, pub, sub)
 }
 
 func TestContinueAfterErrors(t *testing.T, createPubSub PubSubConstructor, features Features) {
