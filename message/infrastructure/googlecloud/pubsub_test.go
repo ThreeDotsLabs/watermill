@@ -22,9 +22,7 @@ import (
 func newPubSub(t *testing.T, marshaler googlecloud.MarshalerUnmarshaler, subscriptionName googlecloud.SubscriptionNameFn) message.PubSub {
 	logger := watermill.NewStdLogger(true, true)
 
-	ctx := context.Background()
 	publisher, err := googlecloud.NewPublisher(
-		ctx,
 		googlecloud.PublisherConfig{
 			Marshaler: marshaler,
 			Logger:    logger,
@@ -32,6 +30,7 @@ func newPubSub(t *testing.T, marshaler googlecloud.MarshalerUnmarshaler, subscri
 	)
 	require.NoError(t, err)
 
+	ctx := context.Background()
 	subscriber, err := googlecloud.NewSubscriber(
 		ctx,
 		googlecloud.SubscriberConfig{
@@ -112,7 +111,7 @@ func TestSubscriberUnexpectedTopicForSubscription(t *testing.T) {
 		}
 	}()
 
-	produceMessages(t, ctx, topic1, howManyMessages)
+	produceMessages(t, topic1, howManyMessages)
 
 	select {
 	case <-allMessagesReceived:
@@ -125,8 +124,8 @@ func TestSubscriberUnexpectedTopicForSubscription(t *testing.T) {
 	require.Equal(t, googlecloud.ErrUnexpectedTopic, errors.Cause(err))
 }
 
-func produceMessages(t *testing.T, ctx context.Context, topic string, howMany int) {
-	pub, err := googlecloud.NewPublisher(ctx, googlecloud.PublisherConfig{})
+func produceMessages(t *testing.T, topic string, howMany int) {
+	pub, err := googlecloud.NewPublisher(googlecloud.PublisherConfig{})
 	require.NoError(t, err)
 	defer pub.Close()
 

@@ -4,13 +4,13 @@ import (
 	"context"
 	"fmt"
 	"sync"
-
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
+	"time"
 
 	"cloud.google.com/go/pubsub"
 	"github.com/pkg/errors"
 	"google.golang.org/api/option"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
@@ -65,6 +65,9 @@ type SubscriberConfig struct {
 	// Otherwise, trying to create a subscription on non-existent topic results in `ErrTopicDoesNotExist`.
 	DoNotCreateTopicIfMissing bool
 
+	// InitializeTimeout defines the timeout for initializing topics.
+	InitializeTimeout time.Duration
+
 	// Settings for cloud.google.com/go/pubsub client library.
 	ReceiveSettings    pubsub.ReceiveSettings
 	SubscriptionConfig pubsub.SubscriptionConfig
@@ -92,6 +95,9 @@ func TopicSubscriptionNameWithSuffix(suffix string) SubscriptionNameFn {
 func (c *SubscriberConfig) setDefaults() {
 	if c.GenerateSubscriptionName == nil {
 		c.GenerateSubscriptionName = TopicSubscriptionName
+	}
+	if c.InitializeTimeout == 0 {
+		c.InitializeTimeout = time.Second * 10
 	}
 	if c.Unmarshaler == nil {
 		c.Unmarshaler = DefaultMarshalerUnmarshaler{}
@@ -184,7 +190,7 @@ func (s *Subscriber) Subscribe(ctx context.Context, topic string) (<-chan *messa
 }
 
 func (s *Subscriber) SubscribeInitialize(topic string) (err error) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), s.config.InitializeTimeout)
 	defer cancel()
 
 	subscriptionName := s.config.GenerateSubscriptionName(topic)

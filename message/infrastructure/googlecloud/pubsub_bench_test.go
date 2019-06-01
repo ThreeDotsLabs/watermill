@@ -14,11 +14,11 @@ import (
 
 func BenchmarkSubscriber(b *testing.B) {
 	infrastructure.BenchSubscriber(b, func(n int) message.PubSub {
-		ctx := context.Background()
 		logger := watermill.NopLogger{}
 
-		publisher, err := googlecloud.NewPublisher(ctx, googlecloud.PublisherConfig{})
+		publisher, err := googlecloud.NewPublisher(googlecloud.PublisherConfig{})
 
+		ctx := context.Background()
 		subscriber, err := googlecloud.NewSubscriber(
 			ctx,
 			googlecloud.SubscriberConfig{},
