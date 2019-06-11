@@ -211,10 +211,8 @@ func main() {
 	// cqrs.Facade is facade for Command and Event buses and processors.
 	// You can use facade, or create buses and processors manually (you can inspire with cqrs.NewFacade)
 	cqrsFacade, err := cqrs.NewFacade(cqrs.FacadeConfig{
-		GenerateCommandsTopic: func(commandName string) string {
-			// we are using queue RabbitMQ config, so we need to have topic per command type
-			return commandName
-		},
+		// we are using queue RabbitMQ config, so we need to have topic per command type
+		GenerateCommandsTopic: cqrs.MessageTopic,
 		CommandHandlers: func(cb *cqrs.CommandBus, eb *cqrs.EventBus) []cqrs.CommandHandler {
 			return []cqrs.CommandHandler{
 				BookRoomHandler{eb},
@@ -222,17 +220,12 @@ func main() {
 			}
 		},
 		CommandsPublisher: commandsPublisher,
-		CommandsSubscriberConstructor: func(handlerName string) (message.Subscriber, error) {
-			// we can reuse subscriber, because all commands have separated topics
-			return commandsSubscriber, nil
-		},
-		GenerateEventsTopic: func(eventName string) string {
-			// because we are using PubSub RabbitMQ config, we can use one topic for all events
-			return "events"
 
-			// we can also use topic per event type
-			// return eventName
-		},
+		// we can reuse subscriber, because all commands have separated topics
+		CommandsSubscriberConstructor: cqrs.CommandSubscriber(commandsSubscriber),
+
+		// because we are using PubSub RabbitMQ config, we can use one topic for all events
+		GenerateEventsTopic: cqrs.Topic("events"),
 		EventHandlers: func(cb *cqrs.CommandBus, eb *cqrs.EventBus) []cqrs.EventHandler {
 			return []cqrs.EventHandler{
 				OrderBeerOnRoomBooked{cb},
