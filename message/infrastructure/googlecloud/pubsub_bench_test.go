@@ -1,9 +1,7 @@
 package googlecloud_test
 
 import (
-	"context"
 	"testing"
-	"time"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
@@ -22,11 +20,7 @@ func BenchmarkSubscriber(b *testing.B) {
 			panic(err)
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-		defer cancel()
-
 		subscriber, err := googlecloud.NewSubscriber(
-			ctx,
 			googlecloud.SubscriberConfig{},
 			logger,
 		)
