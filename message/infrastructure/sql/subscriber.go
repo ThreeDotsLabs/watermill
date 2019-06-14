@@ -39,6 +39,7 @@ type SubscriberConfig struct {
 	// OffsetsAdapter provides mechanism for saving acks and offsets of consumers.
 	OffsetsAdapter OffsetsAdapter
 
+	// InitializeSchema option enables initializing schema on making subscription.
 	InitializeSchema bool
 }
 
