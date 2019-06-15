@@ -51,6 +51,10 @@ type Features struct {
 	Persistent          bool
 
 	RestartServiceCommand []string
+
+	// RequireSingleInstance must be true, if PubSub requires single instance to work properly
+	// (for example: channel implementation).
+	RequireSingleInstance bool
 }
 
 type PubSubConstructor func(t *testing.T) (message.Publisher, message.Subscriber)
@@ -217,7 +221,12 @@ func TestConcurrentSubscribe(t *testing.T, pubSubConstructor PubSubConstructor, 
 	err := publishWithRetry(pub, topicName, messagesToPublish...)
 	require.NoError(t, err, "cannot publish message")
 
-	sub := createMultipliedSubscriber(t, pubSubConstructor, subscribersCount)
+	var sub message.Subscriber
+	if features.RequireSingleInstance {
+		sub = initSub
+	} else {
+		sub = createMultipliedSubscriber(t, pubSubConstructor, subscribersCount)
+	}
 
 	messages, err := sub.Subscribe(context.Background(), topicName)
 	require.NoError(t, err)
@@ -227,9 +236,7 @@ func TestConcurrentSubscribe(t *testing.T, pubSubConstructor PubSubConstructor, 
 
 	tests.AssertAllMessagesReceived(t, messagesToPublish, receivedMessages)
 
-	require.NoError(t, sub.Close())
 	closePubSub(t, pub, initSub)
-	assertMessagesChannelClosed(t, messages)
 }
 
 func TestPublishSubscribeInOrder(t *testing.T, pubSubConstructor PubSubConstructor, features Features) {
@@ -270,8 +277,13 @@ func TestPublishSubscribeInOrder(t *testing.T, pubSubConstructor PubSubConstruct
 	err := publishWithRetry(pub, topicName, messagesToPublish...)
 	require.NoError(t, err)
 
-	sub := createMultipliedSubscriber(t, pubSubConstructor, 10)
-	defer require.NoError(t, sub.Close())
+	var sub message.Subscriber
+	if features.RequireSingleInstance {
+		sub = initSub
+	} else {
+		sub = createMultipliedSubscriber(t, pubSubConstructor, 10)
+		defer require.NoError(t, sub.Close())
+	}
 
 	messages, err := sub.Subscribe(context.Background(), topicName)
 	require.NoError(t, err)
@@ -594,7 +606,7 @@ func TestPublisherClose(t *testing.T, pubSubConstructor PubSubConstructor, featu
 
 	messagesCount := 10000
 	if testing.Short() {
-		messagesCount = 1000
+		messagesCount = 100
 	}
 
 	producedMessages := AddSimpleMessagesParallel(t, messagesCount, pub, topicName, 20)
