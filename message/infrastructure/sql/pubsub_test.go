@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	logger = watermill.NewStdLogger(false, true)
+	logger = watermill.NewStdLogger(true, true)
 )
 
 func newPubSub(t *testing.T, db *stdSQL.DB, consumerGroup string) (message.Publisher, message.Subscriber) {
@@ -27,7 +27,7 @@ func newPubSub(t *testing.T, db *stdSQL.DB, consumerGroup string) (message.Publi
 			},
 		},
 	}
-	offsetsAdapter := sql.DefaultOffsetsAdapter{
+	offsetsAdapter := sql.DefaultMySQLOffsetsAdapter{
 		GenerateMessagesOffsetsTableName: func(topic string) string {
 			return "`test_offsets_" + topic + "`"
 		},

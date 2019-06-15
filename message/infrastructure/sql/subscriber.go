@@ -181,10 +181,11 @@ func (s *Subscriber) consume(ctx context.Context, topic string, out chan *messag
 		}
 
 		err := s.query(ctx, topic, out, logger)
-		if err != nil {
+		if err != nil && isDeadlock(err) {
+			logger.Debug("Deadlock during querying message, trying again", watermill.LogFields{"err": err.Error()})
+		} else if err != nil {
 			logger.Error("Error querying for message", err, nil)
 			time.Sleep(s.config.RetryInterval)
-			continue
 		}
 	}
 }
@@ -240,6 +241,7 @@ func (s *Subscriber) query(
 	logger = logger.With(watermill.LogFields{
 		"msg_uuid": msg.UUID,
 	})
+	logger.Trace("Received message", nil)
 
 	consumedQuery, consumedArgs := s.config.OffsetsAdapter.ConsumedMessageQuery(
 		topic,
@@ -253,18 +255,9 @@ func (s *Subscriber) query(
 			"query_args": sqlArgsToLog(consumedArgs),
 		})
 
-		result, err := tx.Exec(consumedQuery, consumedArgs...)
+		_, err := tx.Exec(consumedQuery, consumedArgs...)
 		if err != nil {
 			return errors.Wrap(err, "cannot send consumed query")
-		}
-
-		ra, err := result.RowsAffected()
-		if err != nil {
-			return errors.Wrap(err, "cannot get rows affected for consumed query")
-		}
-		if ra == 0 {
-			// TODO - TEST
-			return errors.New("already consumed") // todo - better support
 		}
 	}
 
@@ -277,10 +270,16 @@ func (s *Subscriber) query(
 			"query_args": sqlArgsToLog(ackArgs),
 		})
 
-		_, err = tx.ExecContext(ctx, ackQuery, ackArgs...)
+		result, err := tx.ExecContext(ctx, ackQuery, ackArgs...)
 		if err != nil {
 			return errors.Wrap(err, "could not get args for acking the message")
 		}
+
+		rowsAffected, _ := result.RowsAffected()
+
+		logger.Trace("Executed ack message query", watermill.LogFields{
+			"rows_affected": rowsAffected,
+		})
 	}
 
 	return nil
@@ -314,7 +313,7 @@ ResendLoop:
 
 		select {
 		case <-msg.Acked():
-			logger.Debug("Message acked", nil)
+			logger.Debug("Message acked by subscriber", nil)
 			return true
 
 		case <-msg.Nacked():

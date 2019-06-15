@@ -12,6 +12,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pkg/errors"
+
+	"github.com/hashicorp/go-multierror"
+
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/internal"
 	"github.com/ThreeDotsLabs/watermill/internal/tests"
@@ -67,6 +71,11 @@ func TestPubSub(
 	t.Run("TestPublishSubscribe", func(t *testing.T) {
 		t.Parallel()
 		TestPublishSubscribe(t, pubSubConstructor, features)
+	})
+
+	t.Run("TestConcurrentSubscribe", func(t *testing.T) {
+		t.Parallel()
+		TestConcurrentSubscribe(t, pubSubConstructor, features)
 	})
 
 	t.Run("TestResendOnError", func(t *testing.T) {
@@ -141,6 +150,68 @@ func TestPubSubStressTest(
 	}
 }
 
+// todo - move to internal
+type subscriberMultiplier struct {
+	subscriberConstructor func() (message.Subscriber, error)
+	subscribersCount      int
+	subscribers           []message.Subscriber
+}
+
+func (s *subscriberMultiplier) Subscribe(ctx context.Context, topic string) (msgs <-chan *message.Message, err error) {
+	defer func() {
+		if err != nil {
+			if closeErr := s.Close(); closeErr != nil {
+				err = multierror.Append(err, closeErr)
+			}
+		}
+	}()
+
+	out := make(chan *message.Message, 0)
+
+	subWg := sync.WaitGroup{}
+	subWg.Add(s.subscribersCount)
+
+	for i := 0; i < s.subscribersCount; i++ {
+		sub, err := s.subscriberConstructor()
+		if err != nil {
+			return nil, errors.Wrap(err, "cannot create subscriber")
+		}
+
+		s.subscribers = append(s.subscribers, sub)
+
+		msgs, err := sub.Subscribe(ctx, topic)
+		if err != nil {
+			return nil, errors.Wrap(err, "cannot subscribe")
+		}
+
+		go func() {
+			for msg := range msgs {
+				out <- msg
+			}
+			subWg.Done()
+		}()
+	}
+
+	go func() {
+		subWg.Wait()
+		close(out)
+	}()
+
+	return out, nil
+}
+
+func (s *subscriberMultiplier) Close() error {
+	var err error
+
+	for _, sub := range s.subscribers {
+		if closeErr := sub.Close(); closeErr != nil {
+			err = multierror.Append(err, closeErr)
+		}
+	}
+
+	return err
+}
+
 func TestPublishSubscribe(t *testing.T, pubSubConstructor PubSubConstructor, features Features) {
 	pub, sub := pubSubConstructor(t)
 	topicName := testTopicName()
@@ -180,6 +251,48 @@ func TestPublishSubscribe(t *testing.T, pubSubConstructor PubSubConstructor, fea
 	tests.AssertMessagesMetadata(t, "test", messagesTestMetadata, receivedMessages)
 
 	closePubSub(t, pub, sub)
+	assertMessagesChannelClosed(t, messages)
+}
+
+func TestConcurrentSubscribe(t *testing.T, pubSubConstructor PubSubConstructor, features Features) {
+	pub, initSub := pubSubConstructor(t)
+	topicName := testTopicName()
+
+	if subscribeInitializer, ok := initSub.(message.SubscribeInitializer); ok {
+		require.NoError(t, subscribeInitializer.SubscribeInitialize(topicName))
+	}
+
+	var messagesToPublish []*message.Message
+
+	for i := 0; i < 100; i++ {
+		id := watermill.NewUUID()
+
+		msg := message.NewMessage(id, nil)
+		messagesToPublish = append(messagesToPublish, msg)
+	}
+	err := publishWithRetry(pub, topicName, messagesToPublish...)
+	require.NoError(t, err, "cannot publish message")
+
+	sub := subscriberMultiplier{
+		subscriberConstructor: func() (message.Subscriber, error) {
+			pub, sub := pubSubConstructor(t)
+			require.NoError(t, pub.Close()) // pub is not needed
+
+			return sub, nil
+		},
+		subscribersCount: 10,
+	}
+
+	messages, err := sub.Subscribe(context.Background(), topicName)
+	require.NoError(t, err)
+
+	receivedMessages, all := bulkRead(messages, len(messagesToPublish), defaultTimeout*3, features)
+	assert.True(t, all)
+
+	tests.AssertAllMessagesReceived(t, messagesToPublish, receivedMessages)
+
+	require.NoError(t, sub.Close())
+	closePubSub(t, pub, initSub)
 	assertMessagesChannelClosed(t, messages)
 }
 

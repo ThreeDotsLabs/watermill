@@ -16,3 +16,12 @@ func (s sqlArgsToLog) String() string {
 
 	return strings.Join(strArgs, ",")
 }
+
+func isDeadlock(err error) bool {
+	// ugly, but should be universal for multiple sql implementations
+	if strings.Contains(strings.ToLower(err.Error()), "deadlock") {
+		return true
+	}
+
+	return false
+}
