@@ -180,9 +180,12 @@ func (s *Subscriber) consume(ctx context.Context, topic string, out chan *messag
 			// go on querying
 		}
 
-		err := s.query(ctx, topic, out, logger)
+		messageUUID, err := s.query(ctx, topic, out, logger)
 		if err != nil && isDeadlock(err) {
-			logger.Debug("Deadlock during querying message, trying again", watermill.LogFields{"err": err.Error()})
+			logger.Debug("Deadlock during querying message, trying again", watermill.LogFields{
+				"err":          err.Error(),
+				"message_uuid": messageUUID,
+			})
 		} else if err != nil {
 			logger.Error("Error querying for message", err, nil)
 			time.Sleep(s.config.RetryInterval)
@@ -195,10 +198,10 @@ func (s *Subscriber) query(
 	topic string,
 	out chan *message.Message,
 	logger watermill.LoggerAdapter,
-) (err error) {
+) (messageUUID string, err error) {
 	tx, err := s.db.BeginTx(ctx, &sql.TxOptions{})
 	if err != nil {
-		return errors.Wrap(err, "could not begin tx for querying")
+		return "", errors.Wrap(err, "could not begin tx for querying")
 	}
 
 	defer func() {
@@ -233,9 +236,9 @@ func (s *Subscriber) query(
 			"wait_time": s.config.PollInterval,
 		})
 		time.Sleep(s.config.PollInterval)
-		return nil
+		return "", nil
 	} else if err != nil {
-		return errors.Wrap(err, "could not unmarshal message from query")
+		return "", errors.Wrap(err, "could not unmarshal message from query")
 	}
 
 	logger = logger.With(watermill.LogFields{
@@ -257,7 +260,7 @@ func (s *Subscriber) query(
 
 		_, err := tx.Exec(consumedQuery, consumedArgs...)
 		if err != nil {
-			return errors.Wrap(err, "cannot send consumed query")
+			return msg.UUID, errors.Wrap(err, "cannot send consumed query")
 		}
 	}
 
@@ -272,7 +275,7 @@ func (s *Subscriber) query(
 
 		result, err := tx.ExecContext(ctx, ackQuery, ackArgs...)
 		if err != nil {
-			return errors.Wrap(err, "could not get args for acking the message")
+			return msg.UUID, errors.Wrap(err, "could not get args for acking the message")
 		}
 
 		rowsAffected, _ := result.RowsAffected()
@@ -282,7 +285,7 @@ func (s *Subscriber) query(
 		})
 	}
 
-	return nil
+	return msg.UUID, nil
 }
 
 // sendMessages sends messages on the output channel.

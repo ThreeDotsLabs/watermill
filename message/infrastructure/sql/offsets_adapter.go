@@ -17,7 +17,15 @@ type OffsetsAdapter interface {
 	SchemaInitializingQueries(topic string) []string
 }
 
-// todo - more docs how it's working
+// DefaultMySQLOffsetsAdapter is adapter for storing offsets for MySQL (or MariaDB) databases.
+//
+// DefaultMySQLOffsetsAdapter is designed to support multiple subscribers with exactly once delivery
+// and guaranteed order.
+//
+// We are using FOR UPDATE in NextOffsetQuery to lock consumer group in offsets table.
+//
+// When another consumer is trying to consume the same message, deadlock should occur in ConsumedMessageQuery.
+// After deadlock, consumer will consume next message.
 type DefaultMySQLOffsetsAdapter struct {
 	// GenerateMessagesOffsetsTableName may be used to override how the messages/offsets table name is generated.
 	GenerateMessagesOffsetsTableName func(topic string) string
@@ -40,8 +48,6 @@ func (s DefaultMySQLOffsetsAdapter) AckMessageQuery(topic string, offset int, co
 }
 
 func (s DefaultMySQLOffsetsAdapter) NextOffsetQuery(topic, consumerGroup string) (string, []interface{}) {
-	// We are using FOR UPDATE to lock consumer group in offsets table.
-	// Tested in in TestConcurrentSubscribe.
 	return `
 		SELECT COALESCE(MAX(offset_acked), 0)
 		FROM ` + s.MessagesOffsetsTable(topic) + `
@@ -61,6 +67,7 @@ func (s DefaultMySQLOffsetsAdapter) ConsumedMessageQuery(
 	consumerGroup string,
 	consumerULID []byte,
 ) (string, []interface{}) {
+	// offset_consumed is not queried anywhere, it's used only to detect race conditions with NextOffsetQuery.
 	ackQuery := `INSERT INTO ` + s.MessagesOffsetsTable(topic) + ` (offset_consumed, consumer_group) 
 		VALUES (?, ?) ON DUPLICATE KEY UPDATE offset_consumed=VALUES(offset_consumed)`
 
