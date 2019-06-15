@@ -33,7 +33,7 @@ func (s *multiplier) Subscribe(ctx context.Context, topic string) (msgs <-chan *
 		}
 	}()
 
-	out := make(chan *message.Message, 0)
+	out := make(chan *message.Message)
 
 	subWg := sync.WaitGroup{}
 	subWg.Add(s.subscribersCount)

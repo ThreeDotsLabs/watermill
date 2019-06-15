@@ -103,6 +103,9 @@ func NewSubscriber(db *sql.DB, config SubscriberConfig) (*Subscriber, error) {
 	}
 
 	idBytes, idStr, err := newSubscriberID()
+	if err != nil {
+		return &Subscriber{}, errors.Wrap(err, "cannot generate subscriber id")
+	}
 	config.Logger = config.Logger.With(watermill.LogFields{"subscriber_id": idStr})
 
 	sub := &Subscriber{

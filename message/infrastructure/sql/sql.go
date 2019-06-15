@@ -19,9 +19,5 @@ func (s sqlArgsToLog) String() string {
 
 func isDeadlock(err error) bool {
 	// ugly, but should be universal for multiple sql implementations
-	if strings.Contains(strings.ToLower(err.Error()), "deadlock") {
-		return true
-	}
-
-	return false
+	return strings.Contains(strings.ToLower(err.Error()), "deadlock")
 }
