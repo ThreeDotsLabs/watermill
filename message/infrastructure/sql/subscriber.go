@@ -21,7 +21,7 @@ type SubscriberConfig struct {
 	Logger        watermill.LoggerAdapter
 	ConsumerGroup string
 
-	// PollInterval is the interval between subsequent SELECT queries, when no more messages was found in the database.
+	// PollInterval is the interval to wait between subsequent SELECT queries, if no more messages were found in the database.
 	// Must be non-negative. Defaults to 1s.
 	PollInterval time.Duration
 
