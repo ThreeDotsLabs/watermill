@@ -1,6 +1,9 @@
 up:
 	docker-compose up
 
+mycli:
+	@mycli -h 127.0.0.1 -u root -p secret
+
 test:
 	go test ./...
 
@@ -30,3 +33,5 @@ generate_gomod:
 	go get -u github.com/golang/protobuf/proto
 	sed -i '\|go |d' go.mod
 	go mod edit -fmt
+
+{{ .Variables.MakefileCustom }}

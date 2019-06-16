@@ -1,0 +1,66 @@
+[[repositories]]
+Name = "watermill-amqp"
+HumanName = "Watermill AMQP Pub/Sub"
+URL = "git@github.com:ThreeDotsLabs/watermill-amqp.git"
+Templates = ["license", "common", "pubsub"]
+
+    [repositories.Variables]
+        RepositoryPath = "ThreeDotsLabs/watermill-amqp"
+
+[[repositories]]
+Name = "watermill-googlecloud"
+HumanName = "Watermill Google Cloud Pub/Sub"
+URL = "git@github.com:ThreeDotsLabs/watermill-googlecloud.git"
+Templates = ["license", "common", "pubsub"]
+
+    [repositories.Variables]
+        RepositoryPath = "ThreeDotsLabs/watermill-googlecloud"
+
+[[repositories]]
+Name = "watermill-http"
+HumanName = "Watermill HTTP Pub/Sub"
+URL = "git@github.com:ThreeDotsLabs/watermill-http.git"
+Templates = ["license", "common", "pubsub"]
+
+    [repositories.Variables]
+        RepositoryPath = "ThreeDotsLabs/watermill-http"
+
+[[repositories]]
+Name = "watermill-io"
+HumanName = "Watermill io.Reader/io.Writer Pub/Sub"
+URL = "git@github.com:ThreeDotsLabs/watermill-io.git"
+Templates = ["license", "common", "pubsub"]
+
+    [repositories.Variables]
+        RepositoryPath = "ThreeDotsLabs/watermill-io"
+
+[[repositories]]
+Name = "watermill-kafka"
+HumanName = "Watermill Kafka Pub/Sub"
+URL = "git@github.com:ThreeDotsLabs/watermill-kafka.git"
+Templates = ["license", "common", "pubsub"]
+
+    [repositories.Variables]
+        RepositoryPath = "ThreeDotsLabs/watermill-kafka"
+
+[[repositories]]
+Name = "watermill-nats"
+HumanName = "Watermill NATS Pub/Sub"
+URL = "git@github.com:ThreeDotsLabs/watermill-nats.git"
+Templates = ["license", "common", "pubsub"]
+
+    [repositories.Variables]
+        RepositoryPath = "ThreeDotsLabs/watermill-nats"
+
+[[repositories]]
+Name = "watermill-sql"
+HumanName = "Watermill SQL Pub/Sub"
+URL = "git@github.com:ThreeDotsLabs/watermill-sql.git"
+Templates = ["license", "common", "pubsub"]
+
+    [repositories.Variables]
+        RepositoryPath = "ThreeDotsLabs/watermill-sql"
+        MakefileCustom = '''
+mycli:
+	@mycli -h 127.0.0.1 -u root -p secret
+'''
