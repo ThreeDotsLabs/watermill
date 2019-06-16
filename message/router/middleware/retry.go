@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"time"
 
 	"github.com/cenkalti/backoff"
@@ -47,19 +48,24 @@ func (r Retry) Middleware(h message.HandlerFunc) message.HandlerFunc {
 		expBackoff.Multiplier = r.Multiplier
 		expBackoff.MaxElapsedTime = r.MaxElapsedTime
 		expBackoff.RandomizationFactor = r.RandomizationFactor
-		ticker := backoff.NewTicker(expBackoff)
-		defer ticker.Stop()
+
+		ctx := msg.Context()
+		if r.MaxElapsedTime > 0 {
+			var cancel func()
+			ctx, cancel = context.WithTimeout(ctx, r.MaxElapsedTime)
+			defer cancel()
+		}
 
 		retryNum := 1
+		expBackoff.Reset()
 	retryLoop:
 		for {
+			waitTime := expBackoff.NextBackOff()
 			select {
-			case <-msg.Context().Done():
+			case <-ctx.Done():
 				return producedMessages, err
-			case _, ok := <-ticker.C:
-				if !ok {
-					break retryLoop
-				}
+			case <-time.After(waitTime):
+				// go on
 			}
 
 			producedMessages, err = h(msg)
@@ -71,12 +77,12 @@ func (r Retry) Middleware(h message.HandlerFunc) message.HandlerFunc {
 				r.Logger.Error("Error occurred, retrying", err, watermill.LogFields{
 					"retry_no":     retryNum,
 					"max_retries":  r.MaxRetries,
-					"wait_time":    expBackoff.NextBackOff(),
+					"wait_time":    waitTime,
 					"elapsed_time": expBackoff.GetElapsedTime(),
 				})
 			}
 			if r.OnRetryHook != nil {
-				r.OnRetryHook(retryNum, expBackoff.NextBackOff())
+				r.OnRetryHook(retryNum, waitTime)
 			}
 
 			retryNum++
