@@ -1,8 +1,8 @@
 # {{ .HumanName }}
 <img align="right" width="200" src="https://threedots.tech/watermill-io/watermill-logo.png">
 
-[![CircleCI](https://circleci.com/gh/{{ .Variables.RepositoryPath }}/tree/master.svg?style=svg)](https://circleci.com/gh/{{ .Variables.RepositoryPath }}/tree/master)
-[![Go Report Card](https://goreportcard.com/badge/github.com/{{ .Variables.RepositoryPath }})](https://goreportcard.com/report/github.com/{{ .Variables.RepositoryPath }}
+[![CircleCI](https://circleci.com/gh/{{ .GithubOrg }}/{{ .Name }}/tree/master.svg?style=svg)](https://circleci.com/gh/{{ .GithubOrg }}/{{ .Name }}/tree/master)
+[![Go Report Card](https://goreportcard.com/badge/github.com/{{ .GithubOrg }}/{{ .Name }})](https://goreportcard.com/report/github.com/{{ .GithubOrg }}/{{ .Name }}
 
 This is Pub/Sub for the [Watermill](https://watermill.io/) project.
 
