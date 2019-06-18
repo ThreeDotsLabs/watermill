@@ -44,6 +44,10 @@ func NewSubscriber(
 		overwriteSaramaConfig = DefaultSaramaSubscriberConfig()
 	}
 
+	if logger == nil {
+		logger = watermill.NopLogger{}
+	}
+
 	logger = logger.With(watermill.LogFields{
 		"subscriber_uuid": shortuuid.New(),
 	})

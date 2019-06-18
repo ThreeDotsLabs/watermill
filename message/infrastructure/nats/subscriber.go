@@ -5,13 +5,12 @@ import (
 	"sync"
 	"time"
 
-	internalSync "github.com/ThreeDotsLabs/watermill/internal/sync"
 	stan "github.com/nats-io/stan.go"
+	"github.com/pkg/errors"
 
 	"github.com/ThreeDotsLabs/watermill"
-
+	internalSync "github.com/ThreeDotsLabs/watermill/internal/sync"
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/pkg/errors"
 )
 
 type StreamingSubscriberConfig struct {
@@ -205,6 +204,11 @@ func NewStreamingSubscriberWithStanConn(conn stan.Conn, config StreamingSubscrib
 	if err := config.Validate(); err != nil {
 		return nil, err
 	}
+
+	if logger == nil {
+		logger = watermill.NopLogger{}
+	}
+
 	return &StreamingSubscriber{
 		conn:    conn,
 		logger:  logger,

@@ -3,12 +3,11 @@ package kafka
 import (
 	"time"
 
-	"github.com/ThreeDotsLabs/watermill"
-
 	"github.com/Shopify/sarama"
-
-	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/pkg/errors"
+
+	"github.com/ThreeDotsLabs/watermill"
+	"github.com/ThreeDotsLabs/watermill/message"
 )
 
 type Publisher struct {
@@ -29,6 +28,10 @@ func NewPublisher(
 ) (message.Publisher, error) {
 	if overwriteSaramaConfig == nil {
 		overwriteSaramaConfig = DefaultSaramaSyncPublisherConfig()
+	}
+
+	if logger == nil {
+		logger = watermill.NopLogger{}
 	}
 
 	producer, err := sarama.NewSyncProducer(brokers, overwriteSaramaConfig)

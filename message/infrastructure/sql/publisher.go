@@ -4,10 +4,10 @@ import (
 	"database/sql"
 	"sync"
 
+	"github.com/pkg/errors"
+
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
-
-	"github.com/pkg/errors"
 )
 
 var (
@@ -15,8 +15,6 @@ var (
 )
 
 type PublisherConfig struct {
-	Logger watermill.LoggerAdapter
-
 	// SchemaAdapter provides the schema-dependent queries and arguments for them, based on topic/message etc.
 	SchemaAdapter SchemaAdapter
 }
@@ -30,9 +28,6 @@ func (c PublisherConfig) validate() error {
 }
 
 func (c *PublisherConfig) setDefaults() {
-	if c.Logger == nil {
-		c.Logger = watermill.NopLogger{}
-	}
 }
 
 // db is implemented both by *sql.DB and *sql.Tx
@@ -49,9 +44,11 @@ type Publisher struct {
 	publishWg *sync.WaitGroup
 	closeCh   chan struct{}
 	closed    bool
+
+	logger watermill.LoggerAdapter
 }
 
-func NewPublisher(db db, config PublisherConfig) (*Publisher, error) {
+func NewPublisher(db db, config PublisherConfig, logger watermill.LoggerAdapter) (*Publisher, error) {
 	config.setDefaults()
 	if err := config.validate(); err != nil {
 		return nil, errors.Wrap(err, "invalid config")
@@ -61,6 +58,10 @@ func NewPublisher(db db, config PublisherConfig) (*Publisher, error) {
 		return nil, errors.New("db is nil")
 	}
 
+	if logger == nil {
+		logger = watermill.NopLogger{}
+	}
+
 	return &Publisher{
 		config: config,
 		db:     db,
@@ -68,6 +69,8 @@ func NewPublisher(db db, config PublisherConfig) (*Publisher, error) {
 		publishWg: new(sync.WaitGroup),
 		closeCh:   make(chan struct{}),
 		closed:    false,
+
+		logger: logger,
 	}, nil
 }
 
@@ -89,7 +92,7 @@ func (p *Publisher) Publish(topic string, messages ...*message.Message) error {
 	defer p.publishWg.Done()
 
 	insertQuery := p.config.SchemaAdapter.InsertQuery(topic)
-	p.config.Logger.Info("Preparing query to insert messages", watermill.LogFields{
+	p.logger.Info("Preparing query to insert messages", watermill.LogFields{
 		"q": insertQuery,
 	})
 
@@ -103,7 +106,7 @@ func (p *Publisher) Publish(topic string, messages ...*message.Message) error {
 		if err != nil {
 			return errors.Wrap(err, "could not marshal message into insert args")
 		}
-		p.config.Logger.Debug("Marshaled message into insert args", watermill.LogFields{
+		p.logger.Debug("Marshaled message into insert args", watermill.LogFields{
 			"uuid": msg.UUID,
 		})
 

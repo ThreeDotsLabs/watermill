@@ -28,7 +28,7 @@ func main() {
 
 	sub, err := io.NewSubscriber(logFile, io.SubscriberConfig{
 		UnmarshalFunc: io.PayloadUnmarshalFunc,
-	})
+	}, nil)
 	if err != nil {
 		panic(err)
 	}

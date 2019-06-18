@@ -15,7 +15,10 @@ func BenchmarkSubscriber(b *testing.B) {
 	infrastructure.BenchSubscriber(b, func(n int) (message.Publisher, message.Subscriber) {
 		logger := watermill.NopLogger{}
 
-		publisher, err := googlecloud.NewPublisher(googlecloud.PublisherConfig{})
+		publisher, err := googlecloud.NewPublisher(
+			googlecloud.PublisherConfig{},
+			logger,
+		)
 		if err != nil {
 			panic(err)
 		}
