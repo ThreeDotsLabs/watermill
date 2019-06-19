@@ -3,7 +3,6 @@ module github.com/ThreeDotsLabs/watermill
 require (
 	cloud.google.com/go v0.39.0
 	github.com/Shopify/sarama v1.22.1
-	github.com/ThreeDotsLabs/watermill/tools/mill v0.0.0-20190618184102-d72475937474 // indirect
 	github.com/cenkalti/backoff v2.2.0+incompatible
 	github.com/go-chi/chi v4.0.2+incompatible
 	github.com/go-sql-driver/mysql v1.4.1
