@@ -1,7 +1,7 @@
 module github.com/ThreeDotsLabs/watermill
 
 require (
-	cloud.google.com/go v0.39.0
+	cloud.google.com/go v0.38.0
 	github.com/Shopify/sarama v1.22.1
 	github.com/cenkalti/backoff v2.2.0+incompatible
 	github.com/go-chi/chi v4.0.2+incompatible
