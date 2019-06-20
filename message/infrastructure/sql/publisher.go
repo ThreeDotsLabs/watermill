@@ -4,10 +4,10 @@ import (
 	"context"
 	"sync"
 
+	"github.com/pkg/errors"
+
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
-
-	"github.com/pkg/errors"
 )
 
 var (
@@ -15,8 +15,6 @@ var (
 )
 
 type PublisherConfig struct {
-	Logger watermill.LoggerAdapter
-
 	// SchemaAdapter provides the schema-dependent queries and arguments for them, based on topic/message etc.
 	SchemaAdapter SchemaAdapter
 
@@ -34,9 +32,6 @@ func (c PublisherConfig) validate() error {
 }
 
 func (c *PublisherConfig) setDefaults() {
-	if c.Logger == nil {
-		c.Logger = watermill.NopLogger{}
-	}
 }
 
 // Publisher inserts the Messages as rows into a SQL table..
@@ -50,9 +45,10 @@ type Publisher struct {
 	closed    bool
 
 	initializedTopics sync.Map
+	logger            watermill.LoggerAdapter
 }
 
-func NewPublisher(db db, config PublisherConfig) (*Publisher, error) {
+func NewPublisher(db db, config PublisherConfig, logger watermill.LoggerAdapter) (*Publisher, error) {
 	config.setDefaults()
 	if err := config.validate(); err != nil {
 		return nil, errors.Wrap(err, "invalid config")
@@ -62,6 +58,10 @@ func NewPublisher(db db, config PublisherConfig) (*Publisher, error) {
 		return nil, errors.New("db is nil")
 	}
 
+	if logger == nil {
+		logger = watermill.NopLogger{}
+	}
+
 	return &Publisher{
 		config: config,
 		db:     db,
@@ -69,6 +69,8 @@ func NewPublisher(db db, config PublisherConfig) (*Publisher, error) {
 		publishWg: new(sync.WaitGroup),
 		closeCh:   make(chan struct{}),
 		closed:    false,
+
+		logger: logger,
 	}, nil
 }
 
@@ -98,7 +100,7 @@ func (p *Publisher) Publish(topic string, messages ...*message.Message) (err err
 		return errors.Wrap(err, "cannot create insert query")
 	}
 
-	p.config.Logger.Trace("Inserting message to SQL", watermill.LogFields{
+	p.logger.Trace("Inserting message to SQL", watermill.LogFields{
 		"query":      insertQuery,
 		"query_args": sqlArgsToLog(insertArgs),
 	})
@@ -123,7 +125,7 @@ func (p *Publisher) initializeSchema(topic string) error {
 	if err := initializeSchema(
 		context.Background(),
 		topic,
-		p.config.Logger,
+		p.logger,
 		p.db,
 		p.config.SchemaAdapter,
 		nil,

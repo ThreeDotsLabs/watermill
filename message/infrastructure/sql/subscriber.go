@@ -7,10 +7,10 @@ import (
 	"time"
 
 	"github.com/oklog/ulid"
+	"github.com/pkg/errors"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/pkg/errors"
 )
 
 var (
@@ -18,7 +18,6 @@ var (
 )
 
 type SubscriberConfig struct {
-	Logger        watermill.LoggerAdapter
 	ConsumerGroup string
 
 	// PollInterval is the interval to wait between subsequent SELECT queries, if no more messages were found in the database.
@@ -44,9 +43,6 @@ type SubscriberConfig struct {
 }
 
 func (c *SubscriberConfig) setDefaults() {
-	if c.Logger == nil {
-		c.Logger = watermill.NopLogger{}
-	}
 	if c.PollInterval == 0 {
 		c.PollInterval = time.Second
 	}
@@ -90,9 +86,11 @@ type Subscriber struct {
 	subscribeWg *sync.WaitGroup
 	closing     chan struct{}
 	closed      bool
+
+	logger watermill.LoggerAdapter
 }
 
-func NewSubscriber(db *sql.DB, config SubscriberConfig) (*Subscriber, error) {
+func NewSubscriber(db *sql.DB, config SubscriberConfig, logger watermill.LoggerAdapter) (*Subscriber, error) {
 	if db == nil {
 		return nil, errors.New("db is nil")
 	}
@@ -102,11 +100,15 @@ func NewSubscriber(db *sql.DB, config SubscriberConfig) (*Subscriber, error) {
 		return nil, errors.Wrap(err, "invalid config")
 	}
 
+	if logger == nil {
+		logger = watermill.NopLogger{}
+	}
+
 	idBytes, idStr, err := newSubscriberID()
 	if err != nil {
 		return &Subscriber{}, errors.Wrap(err, "cannot generate subscriber id")
 	}
-	config.Logger = config.Logger.With(watermill.LogFields{"subscriber_id": idStr})
+	logger = logger.With(watermill.LogFields{"subscriber_id": idStr})
 
 	sub := &Subscriber{
 		consumerIdBytes:  idBytes,
@@ -117,6 +119,8 @@ func NewSubscriber(db *sql.DB, config SubscriberConfig) (*Subscriber, error) {
 
 		subscribeWg: &sync.WaitGroup{},
 		closing:     make(chan struct{}),
+
+		logger: logger,
 	}
 
 	return sub, nil
@@ -164,7 +168,7 @@ func (s *Subscriber) Subscribe(ctx context.Context, topic string) (o <-chan *mes
 func (s *Subscriber) consume(ctx context.Context, topic string, out chan *message.Message) {
 	defer s.subscribeWg.Done()
 
-	logger := s.config.Logger.With(watermill.LogFields{
+	logger := s.logger.With(watermill.LogFields{
 		"topic":          topic,
 		"consumer_group": s.config.ConsumerGroup,
 	})
@@ -361,7 +365,7 @@ func (s *Subscriber) SubscribeInitialize(topic string) error {
 	return initializeSchema(
 		context.Background(),
 		topic,
-		s.config.Logger,
+		s.logger,
 		s.db,
 		s.config.SchemaAdapter,
 		s.config.OffsetsAdapter,

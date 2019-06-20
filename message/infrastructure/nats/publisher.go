@@ -1,10 +1,11 @@
 package nats
 
 import (
-	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill/message"
 	stan "github.com/nats-io/stan.go"
 	"github.com/pkg/errors"
+
+	"github.com/ThreeDotsLabs/watermill"
+	"github.com/ThreeDotsLabs/watermill/message"
 )
 
 type StreamingPublisherConfig struct {
@@ -69,6 +70,10 @@ func NewStreamingPublisher(config StreamingPublisherConfig, logger watermill.Log
 }
 
 func NewStreamingPublisherWithStanConn(conn stan.Conn, config StreamingPublisherPublishConfig, logger watermill.LoggerAdapter) (*StreamingPublisher, error) {
+	if logger == nil {
+		logger = watermill.NopLogger{}
+	}
+
 	return &StreamingPublisher{
 		conn:   conn,
 		config: config,

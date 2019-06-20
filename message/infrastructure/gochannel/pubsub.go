@@ -56,6 +56,10 @@ type GoChannel struct {
 // This GoChannel is not persistent.
 // That means if you send a message to a topic to which no subscriber is subscribed, that message will be discarded.
 func NewGoChannel(config Config, logger watermill.LoggerAdapter) *GoChannel {
+	if logger == nil {
+		logger = watermill.NopLogger{}
+	}
+
 	return &GoChannel{
 		config: config,
 

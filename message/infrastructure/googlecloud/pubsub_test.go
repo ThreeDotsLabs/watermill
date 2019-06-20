@@ -25,16 +25,12 @@ func newPubSub(t *testing.T, marshaler googlecloud.MarshalerUnmarshaler, subscri
 	publisher, err := googlecloud.NewPublisher(
 		googlecloud.PublisherConfig{
 			Marshaler: marshaler,
-			Logger:    logger,
 		},
+		logger,
 	)
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-	defer cancel()
-
 	subscriber, err := googlecloud.NewSubscriber(
-		ctx,
 		googlecloud.SubscriberConfig{
 			GenerateSubscriptionName: subscriptionName,
 			SubscriptionConfig: pubsub.SubscriptionConfig{
@@ -74,9 +70,6 @@ func TestPublishSubscribe(t *testing.T) {
 }
 
 func TestSubscriberUnexpectedTopicForSubscription(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
 	rand.Seed(time.Now().Unix())
 	testNumber := rand.Int()
 	logger := watermill.NewStdLogger(true, true)
@@ -85,20 +78,23 @@ func TestSubscriberUnexpectedTopicForSubscription(t *testing.T) {
 		return fmt.Sprintf("sub_%d", testNumber)
 	}
 
-	sub1, err := googlecloud.NewSubscriber(ctx, googlecloud.SubscriberConfig{
+	sub1, err := googlecloud.NewSubscriber(googlecloud.SubscriberConfig{
 		GenerateSubscriptionName: subNameFn,
 	}, logger)
 	require.NoError(t, err)
 
 	topic1 := fmt.Sprintf("topic1_%d", testNumber)
 
-	sub2, err := googlecloud.NewSubscriber(ctx, googlecloud.SubscriberConfig{
+	sub2, err := googlecloud.NewSubscriber(googlecloud.SubscriberConfig{
 		GenerateSubscriptionName: subNameFn,
 	}, logger)
 	require.NoError(t, err)
 	topic2 := fmt.Sprintf("topic2_%d", testNumber)
 
 	howManyMessages := 100
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
 	messagesTopic1, err := sub1.Subscribe(ctx, topic1)
 	require.NoError(t, err)
@@ -129,7 +125,7 @@ func TestSubscriberUnexpectedTopicForSubscription(t *testing.T) {
 }
 
 func produceMessages(t *testing.T, topic string, howMany int) {
-	pub, err := googlecloud.NewPublisher(googlecloud.PublisherConfig{})
+	pub, err := googlecloud.NewPublisher(googlecloud.PublisherConfig{}, nil)
 	require.NoError(t, err)
 	defer pub.Close()
 

@@ -40,11 +40,7 @@ For the configuration of consuming/producing of the messages, check the help of 
 				}
 			}
 
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-			defer cancel()
-
 			consumer, err = googlecloud.NewSubscriber(
-				ctx,
 				googlecloud.SubscriberConfig{
 					GenerateSubscriptionName: func(topic string) string {
 						return subName
