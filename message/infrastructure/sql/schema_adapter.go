@@ -13,13 +13,14 @@ import (
 // SchemaAdapter produces the SQL queries and arguments appropriately for a specific schema and dialect
 // It also transforms sql.Rows into Watermill messages.
 type SchemaAdapter interface {
-	// InsertQuery returns the SQL query that will insert the Watermill message into the SQL storage.
+	// InsertQuery returns the SQL query and arguments that will insert the Watermill message into the SQL storage.
 	InsertQuery(topic string, msgs message.Messages) (string, []interface{}, error)
 
-	// SelectQuery returns the SQL query that returns the next unread message for a given consumer group.
+	// SelectQuery returns the the SQL query and arguments
+	// that returns the next unread message for a given consumer group.
 	SelectQuery(topic string, consumerGroup string, offsetsAdapter OffsetsAdapter) (string, []interface{})
 
-	// UnmarshalMessage transforms the Row obtained from the SQL query into a Watermill message.
+	// UnmarshalMessage transforms the Row obtained SelectQuery a Watermill message.
 	// It also returns the offset of the last read message, for the purpose of acking.
 	UnmarshalMessage(row *sql.Row) (offset int, msg *message.Message, err error)
 
@@ -28,13 +29,32 @@ type SchemaAdapter interface {
 	SchemaInitializingQueries(topic string) []string
 }
 
-// DefaultSchema is a default implementation of SchemaAdapter that works with the following schema:
+// DefaultSchema is a default implementation of SchemaAdapter.
+// If you need some customization, you can use composition to change schema and method of unmarshaling.
 //
-// `offset` BIGINT NOT NULL AUTO_INCREMENT,
-// `uuid` VARCHAR(36) NOT NULL,
-// `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-// `payload` JSON DEFAULT NULL,
-// `metadata` JSON DEFAULT NULL,
+//	type MyMessagesSchema struct {
+//		DefaultSchema
+//	}
+//
+//	func (m MyMessagesSchema) SchemaInitializingQueries(topic string) []string {
+//		createMessagesTable := strings.Join([]string{
+//			"CREATE TABLE IF NOT EXISTS " + m.MessagesTable(topic) + " (",
+//			"`offset` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,",
+//			"`uuid` BINARY(16) NOT NULL,",
+//			"`created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,",
+//			"`payload` JSON DEFAULT NULL,",
+//			"`metadata` JSON DEFAULT NULL",
+//			");",
+//		}, "\n")
+//
+//		return []string{createMessagesTable}
+//	}
+//
+//	func (m MyMessagesSchema) UnmarshalMessage(row *sql.Row) (offset int, msg *message.Message, err error) {
+//		// ...
+//
+// For debugging your custom schema, we recommend to inject logger with trace logging level
+// which will print all SQL queries.
 type DefaultSchema struct {
 	// GenerateMessagesTableName may be used to override how the messages table name is generated.
 	GenerateMessagesTableName func(topic string) string

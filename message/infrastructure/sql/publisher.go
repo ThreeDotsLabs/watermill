@@ -2,7 +2,6 @@ package sql
 
 import (
 	"context"
-	"database/sql"
 	"sync"
 
 	"github.com/ThreeDotsLabs/watermill"
@@ -38,12 +37,6 @@ func (c *PublisherConfig) setDefaults() {
 	if c.Logger == nil {
 		c.Logger = watermill.NopLogger{}
 	}
-}
-
-// db is implemented both by *sql.DB and *sql.Tx
-type db interface {
-	Prepare(q string) (*sql.Stmt, error)
-	ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
 }
 
 // Publisher inserts the Messages as rows into a SQL table..

@@ -256,7 +256,7 @@ func (s *Subscriber) query(
 		s.consumerIdBytes,
 	)
 	if consumedQuery != "" {
-		logger.Trace("Executing consumed query", watermill.LogFields{
+		logger.Trace("Executing query to confirm message consumed", watermill.LogFields{
 			"query":      consumedQuery,
 			"query_args": sqlArgsToLog(consumedArgs),
 		})
