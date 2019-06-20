@@ -1,0 +1,3 @@
+service:
+  prepare:
+    - export GO111MODULE=on
