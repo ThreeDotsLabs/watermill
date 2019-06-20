@@ -2,6 +2,7 @@ service:
   prepare:
     - GO111MODULE=on go mod vendor
     - cd tools/mill/
+    - pwd
     - GO111MODULE=on go mod vendor
     - cd ../../
-    - cp tools/mill/vendor/* vendor
+    - cp tools/mill/vendor/* vendor -r
