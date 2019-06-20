@@ -1,8 +1,7 @@
 service:
   prepare:
-    - export GO111MODULE=on
-    - go mod vendor
+    - GO111MODULE=on go mod vendor
     - cd tools/mill/cmd
-    - go mod vendor
+    - GO111MODULE=on go mod vendor
     - cd ../../../
     - cp tools/mill/vendor/* vendor
