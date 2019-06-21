@@ -8,7 +8,16 @@ tests_steps: &tests_steps
     - run:
         name: Prepare Docker Compose
         command: |
-          [ -f ./.circleci/docker-compose.override.yml ] && cp ./.circleci/docker-compose.override.yml . || echo "$FILE does not exist"
+          if [ ! -f docker-compose.yml ]; then
+            cp ./.circleci/docker-compose.override.yml docker-compose.yml
+          else
+            if [ -f ./.circleci/docker-compose.override.yml ]; then
+              cp ./.circleci/docker-compose.override.yml .
+            else
+              echo "docker-compose.override.yml does not exist"
+            fi
+          fi
+
           docker-compose pull
     - run:
         name: Run Docker Compose
