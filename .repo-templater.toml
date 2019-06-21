@@ -1,6 +1,24 @@
 [CommonVariables]
 GithubOrg = "ThreeDotsLabs"
 URLTemplate = "git@github.com:{{ .GithubOrg }}/{{ .Name }}.git"
+CircleCIDckerOverride = '''version: '3'
+services:
+  watermill:
+    image: golang:1.12
+    command: /bin/true
+    volumes:
+      - .:/app
+      - .mod-cache:/go/pkg/mod
+    working_dir: /app
+{{ if (.CircleCIDckerOverrideEnvs) ne "" }}
+    environment:
+{{ .CircleCIDckerOverrideEnvs }}
+{{ end -}}
+{{ .CircleCIDckerOverrideServices }}
+'''
+CircleCIDckerOverrideEnvs = ''
+CircleCIDckerOverrideServices = ''
+CircleCIWaitForServices = ''
 
 #[[repositories]]
 #Name = "watermill"
@@ -14,12 +32,27 @@ HumanName = "Watermill AMQP Pub/Sub"
 URL = "{{ .URLTemplate }}"
 Templates = ["license", "common", "pubsub"]
 
+    [repositories.Variables]
+        CircleCIDckerOverrideEnvs = '''
+      WATERMILL_TEST_AMQP_URI: amqp://guest:guest@rabbitmq:5672
+'''
+        CircleCIWaitForServices = 'rabbitmq:5672'
+
 [[repositories]]
 Name = "watermill-googlecloud"
 HumanName = "Watermill Google Cloud Pub/Sub"
 URL = "{{ .URLTemplate }}"
 Templates = ["license", "common", "pubsub"]
 
+    [repositories.Variables]
+        CircleCIDckerOverrideEnvs = '''
+      PUBSUB_EMULATOR_HOST: googlecloud:8085
+'''
+        CircleCIDckerOverrideServices = '''
+  googlecloud:
+    entrypoint: gcloud --quiet beta emulators pubsub start --host-port=googlecloud:8085 --verbosity=debug --log-http
+'''
+        CircleCIWaitForServices = 'googlecloud:8085'
 
 [[repositories]]
 Name = "watermill-http"
@@ -40,6 +73,16 @@ HumanName = "Watermill Kafka Pub/Sub"
 URL = "{{ .URLTemplate }}"
 Templates = ["license", "common", "pubsub"]
 
+    [repositories.Variables]
+        CircleCIDckerOverrideEnvs = '''
+      WATERMILL_TEST_KAFKA_BROKERS: kafka:9092
+'''
+        CircleCIDckerOverrideServices = '''
+  kafka:
+    environment:
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+'''
+        CircleCIWaitForServices = 'zookeeper:2181 kafka:9092'
 
 [[repositories]]
 Name = "watermill-nats"
@@ -47,6 +90,11 @@ HumanName = "Watermill NATS Pub/Sub"
 URL = "{{ .URLTemplate }}"
 Templates = ["license", "common", "pubsub"]
 
+    [repositories.Variables]
+        CircleCIDckerOverrideEnvs = '''
+      WATERMILL_TEST_NATS_URL: nats://nats-streaming:4222
+'''
+        CircleCIWaitForServices = 'nats-streaming:4222'
 
 [[repositories]]
 Name = "watermill-sql"
@@ -55,7 +103,11 @@ URL = "{{ .URLTemplate }}"
 Templates = ["license", "common", "pubsub"]
 
     [repositories.Variables]
+        CircleCIDckerOverrideEnvs = '''
+      WATERMILL_TEST_NATS_URL: nats://nats-streaming:4222
+'''
         MakefileCustom = '''
 mycli:
 	@mycli -h 127.0.0.1 -u root -p secret
 '''
+        CircleCIWaitForServices = "mysql:3306"
