@@ -5,9 +5,9 @@ import (
 	"sync"
 
 	multierror "github.com/hashicorp/go-multierror"
-
 	"github.com/pkg/errors"
 
+	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
@@ -33,13 +33,20 @@ type Publisher struct {
 	publishWg sync.WaitGroup
 
 	closed bool
+
+	logger watermill.LoggerAdapter
 }
 
-func NewPublisher(wc io.WriteCloser, config PublisherConfig) (*Publisher, error) {
+func NewPublisher(wc io.WriteCloser, config PublisherConfig, logger watermill.LoggerAdapter) (*Publisher, error) {
 	if err := config.validate(); err != nil {
 		return nil, errors.Wrap(err, "invalid config")
 	}
-	return &Publisher{wc: wc, config: config}, nil
+
+	if logger == nil {
+		logger = watermill.NopLogger{}
+	}
+
+	return &Publisher{wc: wc, config: config, logger: logger}, nil
 }
 
 // Publish writes the messages to the underlying io.Writer.

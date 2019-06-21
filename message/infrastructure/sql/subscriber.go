@@ -7,9 +7,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pkg/errors"
+
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/pkg/errors"
 )
 
 var (
@@ -17,7 +18,6 @@ var (
 )
 
 type SubscriberConfig struct {
-	Logger        watermill.LoggerAdapter
 	ConsumerGroup string
 
 	// PollInterval is the interval between subsequent SELECT queries.
@@ -37,9 +37,6 @@ type SubscriberConfig struct {
 }
 
 func (c *SubscriberConfig) setDefaults() {
-	if c.Logger == nil {
-		c.Logger = watermill.NopLogger{}
-	}
 	if c.PollInterval == 0 {
 		c.PollInterval = time.Second
 	}
@@ -77,9 +74,11 @@ type Subscriber struct {
 	subscribeWg *sync.WaitGroup
 	closing     chan struct{}
 	closed      bool
+
+	logger watermill.LoggerAdapter
 }
 
-func NewSubscriber(db *sql.DB, config SubscriberConfig) (*Subscriber, error) {
+func NewSubscriber(db *sql.DB, config SubscriberConfig, logger watermill.LoggerAdapter) (*Subscriber, error) {
 	if db == nil {
 		return nil, errors.New("db is nil")
 	}
@@ -89,12 +88,18 @@ func NewSubscriber(db *sql.DB, config SubscriberConfig) (*Subscriber, error) {
 		return nil, errors.Wrap(err, "invalid config")
 	}
 
+	if logger == nil {
+		logger = watermill.NopLogger{}
+	}
+
 	sub := &Subscriber{
 		db:     db,
 		config: config,
 
 		subscribeWg: &sync.WaitGroup{},
 		closing:     make(chan struct{}),
+
+		logger: logger,
 	}
 
 	return sub, nil
@@ -126,7 +131,7 @@ func (s *Subscriber) Subscribe(ctx context.Context, topic string) (o <-chan *mes
 func (s *Subscriber) consume(ctx context.Context, topic string, out chan *message.Message) {
 	defer s.subscribeWg.Done()
 
-	logger := s.config.Logger.With(watermill.LogFields{
+	logger := s.logger.With(watermill.LogFields{
 		"topic":          topic,
 		"consumer_group": s.config.ConsumerGroup,
 	})
@@ -169,7 +174,7 @@ func (s *Subscriber) query(
 	}
 
 	selectQuery := s.config.SchemaAdapter.SelectQuery(topic)
-	s.config.Logger.Info("Preparing query to select messages", watermill.LogFields{
+	s.logger.Info("Preparing query to select messages", watermill.LogFields{
 		"q": selectQuery,
 	})
 	selectStmt, err := tx.Prepare(selectQuery)
@@ -178,7 +183,7 @@ func (s *Subscriber) query(
 	}
 
 	ackQuery := s.config.SchemaAdapter.AckQuery(topic)
-	s.config.Logger.Info("Preparing query to ack messages", watermill.LogFields{
+	s.logger.Info("Preparing query to ack messages", watermill.LogFields{
 		"q": ackQuery,
 	})
 	ackStmt, err := tx.Prepare(ackQuery)
@@ -321,7 +326,7 @@ func (s *Subscriber) SubscribeInitialize(topic string) error {
 	}
 
 	initializingQueries := s.config.SchemaAdapter.SchemaInitializingQueries(topic)
-	s.config.Logger.Info("Ensuring schema exists for topic", watermill.LogFields{
+	s.logger.Info("Ensuring schema exists for topic", watermill.LogFields{
 		"q": initializingQueries,
 	})
 

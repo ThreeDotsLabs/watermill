@@ -2,7 +2,7 @@ package middleware
 
 import (
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/hashicorp/go-multierror"
+	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 )
 
@@ -37,6 +37,7 @@ func PoisonQueue(pub message.Publisher, topic string) (message.HandlerMiddleware
 	return pq.Middleware, nil
 }
 
+// PoisonQueueWithFilter is just like PoisonQueue, but accepts a function that decides which errors qualify for the poison queue.
 func PoisonQueueWithFilter(pub message.Publisher, topic string, shouldGoToPoisonQueue func(err error) bool) (message.HandlerMiddleware, error) {
 	if topic == "" {
 		return nil, ErrInvalidPoisonQueueTopic

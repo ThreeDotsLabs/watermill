@@ -27,6 +27,8 @@ type Publisher struct {
 
 	client *pubsub.Client
 	config PublisherConfig
+
+	logger watermill.LoggerAdapter
 }
 
 type PublisherConfig struct {
@@ -47,8 +49,6 @@ type PublisherConfig struct {
 	ClientOptions   []option.ClientOption
 
 	Marshaler Marshaler
-
-	Logger watermill.LoggerAdapter
 }
 
 func (c *PublisherConfig) setDefaults() {
@@ -61,17 +61,19 @@ func (c *PublisherConfig) setDefaults() {
 	if c.PublishTimeout == 0 {
 		c.PublishTimeout = time.Second * 5
 	}
-	if c.Logger == nil {
-		c.Logger = watermill.NopLogger{}
-	}
 }
 
-func NewPublisher(config PublisherConfig) (*Publisher, error) {
+func NewPublisher(config PublisherConfig, logger watermill.LoggerAdapter) (*Publisher, error) {
 	config.setDefaults()
+
+	if logger == nil {
+		logger = watermill.NopLogger{}
+	}
 
 	pub := &Publisher{
 		topics: map[string]*pubsub.Topic{},
 		config: config,
+		logger: logger,
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), config.ConnectTimeout)
@@ -111,7 +113,7 @@ func (p *Publisher) Publish(topic string, messages ...*message.Message) error {
 
 	for _, msg := range messages {
 		logFields["message_uuid"] = msg.UUID
-		p.config.Logger.Trace("Sending message to Google PubSub", logFields)
+		p.logger.Trace("Sending message to Google PubSub", logFields)
 
 		googlecloudMsg, err := p.config.Marshaler.Marshal(topic, msg)
 		if err != nil {
@@ -126,7 +128,7 @@ func (p *Publisher) Publish(topic string, messages ...*message.Message) error {
 			return errors.Wrapf(err, "publishing message %s failed", msg.UUID)
 		}
 
-		p.config.Logger.Trace("Message published to Google PubSub", logFields)
+		p.logger.Trace("Message published to Google PubSub", logFields)
 	}
 
 	return nil
@@ -134,8 +136,8 @@ func (p *Publisher) Publish(topic string, messages ...*message.Message) error {
 
 // Close notifies the Publisher to stop processing messages, send all the remaining messages and close the connection.
 func (p *Publisher) Close() error {
-	p.config.Logger.Info("Closing Google PubSub publisher", nil)
-	defer p.config.Logger.Info("Google PubSub publisher closed", nil)
+	p.logger.Info("Closing Google PubSub publisher", nil)
+	defer p.logger.Info("Google PubSub publisher closed", nil)
 
 	if p.closed {
 		return nil

@@ -34,19 +34,21 @@ func newPubSub(t *testing.T, db *std_sql.DB, consumerGroup string) (message.Publ
 		db,
 		sql.PublisherConfig{
 			SchemaAdapter: schemaAdapter,
-		})
+		},
+		logger,
+	)
 	require.NoError(t, err)
 
 	subscriber, err := sql.NewSubscriber(
 		db,
 		sql.SubscriberConfig{
-			Logger:        logger,
 			ConsumerGroup: consumerGroup,
 
 			PollInterval:   100 * time.Millisecond,
 			ResendInterval: 50 * time.Millisecond,
 			SchemaAdapter:  schemaAdapter,
 		},
+		logger,
 	)
 	require.NoError(t, err)
 

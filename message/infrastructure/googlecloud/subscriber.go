@@ -123,6 +123,10 @@ func NewSubscriber(
 		return nil, err
 	}
 
+	if logger == nil {
+		logger = watermill.NopLogger{}
+	}
+
 	return &Subscriber{
 		closing: make(chan struct{}, 1),
 		closed:  false,

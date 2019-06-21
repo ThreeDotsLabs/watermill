@@ -1,15 +1,15 @@
 package io_test
 
 import (
+	"github.com/ThreeDotsLabs/watermill"
 	"testing"
 
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/ThreeDotsLabs/watermill/message"
-
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/io"
-	"github.com/pkg/errors"
-	"github.com/stretchr/testify/require"
 )
 
 var errWritingOnClosedWriter = errors.New("mockWriter is closed")
@@ -42,6 +42,7 @@ func TestPublisher_Publish(t *testing.T) {
 		io.PublisherConfig{
 			MarshalFunc: io.PayloadMarshalFunc,
 		},
+		watermill.NopLogger{},
 	)
 	require.NoError(t, err)
 
