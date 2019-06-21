@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	internalSync "github.com/ThreeDotsLabs/watermill/internal/sync"
+	internalSync "github.com/ThreeDotsLabs/watermill/message/infrastructure/sync"
 	stan "github.com/nats-io/stan.go"
 
 	"github.com/ThreeDotsLabs/watermill"

@@ -8,7 +8,6 @@ import (
 
 	"github.com/ThreeDotsLabs/watermill/message/subscriber"
 
-	"github.com/ThreeDotsLabs/watermill/internal/tests"
 	"github.com/ThreeDotsLabs/watermill/message"
 
 	"github.com/stretchr/testify/require"
@@ -75,7 +74,7 @@ func TestHttpPubSub(t *testing.T) {
 
 	publishedMessages := infrastructure.AddSimpleMessages(t, 100, pub, fmt.Sprintf("http://%s/test", sub.Addr()))
 
-	tests.AssertAllMessagesReceived(t, publishedMessages, <-receivedMessages)
+	infrastructure.AssertAllMessagesReceived(t, publishedMessages, <-receivedMessages)
 }
 
 func waitForHTTP(t *testing.T, sub *http.Subscriber, timeoutTime time.Duration) {

@@ -6,12 +6,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ThreeDotsLabs/watermill/message/infrastructure"
+
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill/internal/tests"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/gochannel"
 	"github.com/ThreeDotsLabs/watermill/message/subscriber"
@@ -123,7 +124,7 @@ func TestMessageTransformSubscriberDecorator_Subscribe(t *testing.T) {
 
 	received, all := subscriber.BulkRead(messages, numMessages, time.Second)
 	require.True(t, all)
-	tests.AssertAllMessagesReceived(t, sent, received)
+	infrastructure.AssertAllMessagesReceived(t, sent, received)
 
 	for _, msg := range received {
 		assert.Equal(

@@ -14,7 +14,6 @@ import (
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/internal"
-	"github.com/ThreeDotsLabs/watermill/internal/tests"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/subscriber"
 
@@ -175,9 +174,9 @@ func TestPublishSubscribe(t *testing.T, pubSubConstructor PubSubConstructor, fea
 	receivedMessages, all := bulkRead(messages, len(messagesToPublish), defaultTimeout*3, features)
 	assert.True(t, all)
 
-	tests.AssertAllMessagesReceived(t, messagesToPublish, receivedMessages)
-	tests.AssertMessagesPayloads(t, messagesPayloads, receivedMessages)
-	tests.AssertMessagesMetadata(t, "test", messagesTestMetadata, receivedMessages)
+	AssertAllMessagesReceived(t, messagesToPublish, receivedMessages)
+	AssertMessagesPayloads(t, messagesPayloads, receivedMessages)
+	AssertMessagesMetadata(t, "test", messagesTestMetadata, receivedMessages)
 
 	closePubSub(t, pub, sub)
 	assertMessagesChannelClosed(t, messages)
@@ -278,7 +277,7 @@ NackLoop:
 	receivedMessages, _ := bulkRead(messages, messagesToSend, defaultTimeout, features)
 
 	<-allMessagesSent
-	tests.AssertAllMessagesReceived(t, publishedMessages, receivedMessages)
+	AssertAllMessagesReceived(t, publishedMessages, receivedMessages)
 }
 
 func TestNoAck(t *testing.T, pubSubConstructor PubSubConstructor, features Features) {
@@ -398,7 +397,7 @@ func TestContinueAfterSubscribeClose(t *testing.T, createPubSub PubSubConstructo
 		uniqueReceivedMessages = append(uniqueReceivedMessages, msg)
 	}
 
-	tests.AssertAllMessagesReceived(t, messagesToPublish, uniqueReceivedMessages)
+	AssertAllMessagesReceived(t, messagesToPublish, uniqueReceivedMessages)
 }
 
 func TestConcurrentClose(t *testing.T, createPubSub PubSubConstructor, features Features) {
@@ -442,7 +441,7 @@ func TestConcurrentClose(t *testing.T, createPubSub PubSubConstructor, features 
 	receivedMessages, all := bulkRead(messages, len(expectedMessages), defaultTimeout*3, features)
 	assert.True(t, all)
 
-	tests.AssertAllMessagesReceived(t, expectedMessages, receivedMessages)
+	AssertAllMessagesReceived(t, expectedMessages, receivedMessages)
 	closePubSub(t, pub, sub)
 }
 
@@ -499,7 +498,7 @@ func TestContinueAfterErrors(t *testing.T, createPubSub PubSubConstructor, featu
 
 	// only nacks was sent, so all messages should be consumed
 	receivedMessages, _ := bulkRead(messages, totalMessagesCount, defaultTimeout*6, features)
-	tests.AssertAllMessagesReceived(t, messagesToPublish, receivedMessages)
+	AssertAllMessagesReceived(t, messagesToPublish, receivedMessages)
 }
 
 func TestConsumerGroups(t *testing.T, pubSubConstructor ConsumerGroupPubSubConstructor, features Features) {
@@ -546,7 +545,7 @@ func TestPublisherClose(t *testing.T, pubSubConstructor PubSubConstructor, featu
 	require.NoError(t, err)
 	receivedMessages, _ := bulkRead(messages, messagesCount, defaultTimeout*3, features)
 
-	tests.AssertAllMessagesReceived(t, producedMessages, receivedMessages)
+	AssertAllMessagesReceived(t, producedMessages, receivedMessages)
 }
 
 func TestTopic(t *testing.T, pubSubConstructor PubSubConstructor, features Features) {
@@ -696,7 +695,7 @@ ClosedLoop:
 	require.NoError(t, err)
 
 	receivedMessages, _ := bulkRead(msgs, messagesCount, defaultTimeout, features)
-	tests.AssertAllMessagesReceived(t, publishedMessages, receivedMessages)
+	AssertAllMessagesReceived(t, publishedMessages, receivedMessages)
 
 	for _, msg := range receivedMessages {
 		assert.EqualValues(t, "bar", msg.Context().Value("foo"))
@@ -775,7 +774,7 @@ func TestReconnect(t *testing.T, pub message.Publisher, sub message.Subscriber, 
 	receivedMessages, allMessages := bulkRead(messages, messagesCount, time.Second*60, features)
 	assert.True(t, allMessages, "not all messages received (has %d of %d)", len(receivedMessages), messagesCount)
 
-	tests.AssertAllMessagesReceived(t, publishedMessages, receivedMessages)
+	AssertAllMessagesReceived(t, publishedMessages, receivedMessages)
 
 	closePubSub(t, pub, sub)
 }
@@ -809,7 +808,7 @@ func assertConsumerGroupReceivedMessages(
 	receivedMessages, all := subscriber.BulkRead(messages, len(expectedMessages), defaultTimeout)
 	assert.True(t, all)
 
-	tests.AssertAllMessagesReceived(t, expectedMessages, receivedMessages)
+	AssertAllMessagesReceived(t, expectedMessages, receivedMessages)
 }
 
 func testTopicName() string {

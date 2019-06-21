@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill/internal/tests"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/subscriber"
 )
@@ -86,7 +85,7 @@ func testNoGroupSubscriberConcurrentSubscribers(
 	}
 
 	for _, messages := range receivedMessages {
-		tests.AssertAllMessagesReceived(t, messagesToPublish, messages)
+		AssertAllMessagesReceived(t, messagesToPublish, messages)
 	}
 }
 
