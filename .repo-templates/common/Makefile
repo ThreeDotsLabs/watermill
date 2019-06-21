@@ -25,7 +25,7 @@ validate_examples:
 
 generate_gomod:
 	rm go.mod go.sum || true
-	go mod init github.com/ThreeDotsLabs/watermill
+	go mod init github.com/ThreeDotsLabs/{{ .Name }}
 	go install ./...
 	sed -i '\|go |d' go.mod
 	go mod edit -fmt

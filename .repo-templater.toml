@@ -22,7 +22,7 @@ CircleCIWaitForServices = ''
 
 #[[repositories]]
 #Name = "watermill"
-#HumanName = "Watermill AMQP Pub/Sub"
+#HumanName = "Watermill"
 #URL = "{{ .URLTemplate }}"
 #Templates = ["license", "common"]
 
@@ -31,6 +31,9 @@ Name = "watermill-amqp"
 HumanName = "Watermill AMQP Pub/Sub"
 URL = "{{ .URLTemplate }}"
 Templates = ["license", "common", "pubsub"]
+RunCmds = [
+    ["make", "generate_gomod"]
+]
 
     [repositories.Variables]
         CircleCIDckerOverrideEnvs = '''
@@ -43,6 +46,9 @@ Name = "watermill-googlecloud"
 HumanName = "Watermill Google Cloud Pub/Sub"
 URL = "{{ .URLTemplate }}"
 Templates = ["license", "common", "pubsub"]
+RunCmds = [
+    ["make", "generate_gomod"]
+]
 
     [repositories.Variables]
         CircleCIDckerOverrideEnvs = '''
@@ -59,19 +65,27 @@ Name = "watermill-http"
 HumanName = "Watermill HTTP Pub/Sub"
 URL = "{{ .URLTemplate }}"
 Templates = ["license", "common", "pubsub"]
+RunCmds = [
+    ["make", "generate_gomod"]
+]
 
 [[repositories]]
 Name = "watermill-io"
 HumanName = "Watermill io.Reader/io.Writer Pub/Sub"
 URL = "{{ .URLTemplate }}"
 Templates = ["license", "common", "pubsub"]
-
+RunCmds = [
+    ["make", "generate_gomod"]
+]
 
 [[repositories]]
 Name = "watermill-kafka"
 HumanName = "Watermill Kafka Pub/Sub"
 URL = "{{ .URLTemplate }}"
 Templates = ["license", "common", "pubsub"]
+RunCmds = [
+    ["make", "generate_gomod"]
+]
 
     [repositories.Variables]
         CircleCIDckerOverrideEnvs = '''
@@ -89,6 +103,9 @@ Name = "watermill-nats"
 HumanName = "Watermill NATS Pub/Sub"
 URL = "{{ .URLTemplate }}"
 Templates = ["license", "common", "pubsub"]
+RunCmds = [
+    ["make", "generate_gomod"]
+]
 
     [repositories.Variables]
         CircleCIDckerOverrideEnvs = '''
@@ -96,18 +113,18 @@ Templates = ["license", "common", "pubsub"]
 '''
         CircleCIWaitForServices = 'nats-streaming:4222'
 
-[[repositories]]
-Name = "watermill-sql"
-HumanName = "Watermill SQL Pub/Sub"
-URL = "{{ .URLTemplate }}"
-Templates = ["license", "common", "pubsub"]
-
-    [repositories.Variables]
-        CircleCIDckerOverrideEnvs = '''
-      WATERMILL_TEST_NATS_URL: nats://nats-streaming:4222
-'''
-        MakefileCustom = '''
-mycli:
-	@mycli -h 127.0.0.1 -u root -p secret
-'''
-        CircleCIWaitForServices = "mysql:3306"
+#[[repositories]]
+#Name = "watermill-sql"
+#HumanName = "Watermill SQL Pub/Sub"
+#URL = "{{ .URLTemplate }}"
+#Templates = ["license", "common", "pubsub"]
+#
+#    [repositories.Variables]
+#        CircleCIDckerOverrideEnvs = '''
+#      WATERMILL_TEST_NATS_URL: nats://nats-streaming:4222
+#'''
+#        MakefileCustom = '''
+#mycli:
+#	@mycli -h 127.0.0.1 -u root -p secret
+#'''
+#        CircleCIWaitForServices = "mysql:3306"
