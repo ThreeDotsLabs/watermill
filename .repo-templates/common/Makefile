@@ -25,9 +25,11 @@ validate_examples:
 
 generate_gomod:
 	rm go.mod go.sum || true
-	go mod init github.com/ThreeDotsLabs/{{ .Name }}
+	go mod init {{ .GoPackage }}
+{{ if ne .Name "watermill" -}}
 	# todo - change to last release
 	go get github.com/ThreeDotsLabs/watermill@master
+{{ end }}
 	go install ./...
 	sed -i '\|go |d' go.mod
 	go mod edit -fmt

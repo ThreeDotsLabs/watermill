@@ -1,6 +1,7 @@
 [CommonVariables]
 GithubOrg = "ThreeDotsLabs"
 URLTemplate = "git@github.com:{{ .GithubOrg }}/{{ .Name }}.git"
+GoPackageTemplate = "github.com/{{ .GithubOrg }}/{{ .Name }}"
 CircleCIDckerOverride = '''version: '3'
 services:
   watermill:
@@ -20,15 +21,18 @@ CircleCIDckerOverrideEnvs = ''
 CircleCIDckerOverrideServices = ''
 CircleCIWaitForServices = ''
 
-#[[repositories]]
-#Name = "watermill"
-#HumanName = "Watermill"
-#URL = "{{ .URLTemplate }}"
-#Templates = ["license", "common"]
+[[repositories]]
+Name = "watermill"
+HumanName = "Watermill"
+URL = "{{ .URLTemplate }}"
+Templates = ["license", "common", "watermill"]
+
+    [repositories.Variables]
+        GoPackage = "{{ .GoPackageTemplate }}"
 
 [[repositories]]
 Name = "watermill-amqp"
-HumanName = "Watermill AMQP Pub/Sub"
+HumanName = "AMQP Pub/Sub"
 URL = "{{ .URLTemplate }}"
 Templates = ["license", "common", "pubsub"]
 RunCmds = [
@@ -36,6 +40,7 @@ RunCmds = [
 ]
 
     [repositories.Variables]
+        GoPackage = "{{ .GoPackageTemplate }}"
         CircleCIDckerOverrideEnvs = '''
       WATERMILL_TEST_AMQP_URI: amqp://guest:guest@rabbitmq:5672
 '''
@@ -43,7 +48,7 @@ RunCmds = [
 
 [[repositories]]
 Name = "watermill-googlecloud"
-HumanName = "Watermill Google Cloud Pub/Sub"
+HumanName = "Google Cloud Pub/Sub"
 URL = "{{ .URLTemplate }}"
 Templates = ["license", "common", "pubsub"]
 RunCmds = [
@@ -51,6 +56,7 @@ RunCmds = [
 ]
 
     [repositories.Variables]
+        GoPackage = "{{ .GoPackageTemplate }}"
         CircleCIDckerOverrideEnvs = '''
       PUBSUB_EMULATOR_HOST: googlecloud:8085
 '''
@@ -62,25 +68,7 @@ RunCmds = [
 
 [[repositories]]
 Name = "watermill-http"
-HumanName = "Watermill HTTP Pub/Sub"
-URL = "{{ .URLTemplate }}"
-Templates = ["license", "common", "pubsub"]
-RunCmds = [
-    ["make", "generate_gomod"]
-]
-
-[[repositories]]
-Name = "watermill-io"
-HumanName = "Watermill io.Reader/io.Writer Pub/Sub"
-URL = "{{ .URLTemplate }}"
-Templates = ["license", "common", "pubsub"]
-RunCmds = [
-    ["make", "generate_gomod"]
-]
-
-[[repositories]]
-Name = "watermill-kafka"
-HumanName = "Watermill Kafka Pub/Sub"
+HumanName = "HTTP Pub/Sub"
 URL = "{{ .URLTemplate }}"
 Templates = ["license", "common", "pubsub"]
 RunCmds = [
@@ -88,6 +76,31 @@ RunCmds = [
 ]
 
     [repositories.Variables]
+        GoPackage = "{{ .GoPackageTemplate }}"
+
+[[repositories]]
+Name = "watermill-io"
+HumanName = "io.Reader/io.Writer Pub/Sub"
+URL = "{{ .URLTemplate }}"
+Templates = ["license", "common", "pubsub"]
+RunCmds = [
+    ["make", "generate_gomod"]
+]
+
+    [repositories.Variables]
+        GoPackage = "{{ .GoPackageTemplate }}"
+
+[[repositories]]
+Name = "watermill-kafka"
+HumanName = "Kafka Pub/Sub"
+URL = "{{ .URLTemplate }}"
+Templates = ["license", "common", "pubsub"]
+RunCmds = [
+    ["make", "generate_gomod"]
+]
+
+    [repositories.Variables]
+        GoPackage = "{{ .GoPackageTemplate }}"
         CircleCIDckerOverrideEnvs = '''
       WATERMILL_TEST_KAFKA_BROKERS: kafka:9092
 '''
@@ -100,7 +113,7 @@ RunCmds = [
 
 [[repositories]]
 Name = "watermill-nats"
-HumanName = "Watermill NATS Pub/Sub"
+HumanName = "NATS Pub/Sub"
 URL = "{{ .URLTemplate }}"
 Templates = ["license", "common", "pubsub"]
 RunCmds = [
@@ -108,6 +121,7 @@ RunCmds = [
 ]
 
     [repositories.Variables]
+        GoPackage = "{{ .GoPackageTemplate }}"
         CircleCIDckerOverrideEnvs = '''
       WATERMILL_TEST_NATS_URL: nats://nats-streaming:4222
 '''
@@ -115,7 +129,7 @@ RunCmds = [
 
 #[[repositories]]
 #Name = "watermill-sql"
-#HumanName = "Watermill SQL Pub/Sub"
+#HumanName = "SQL Pub/Sub"
 #URL = "{{ .URLTemplate }}"
 #Templates = ["license", "common", "pubsub"]
 #
