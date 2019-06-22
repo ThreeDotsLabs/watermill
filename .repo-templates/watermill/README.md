@@ -66,7 +66,7 @@ Supported Pub/Subs:
     {{ $repoConfig := . -}}
     {{ range .Templates -}}
         {{ if eq (.) "pubsub" -}}
-- {{ $repoConfig.HumanName }}
+- {{ $repoConfig.HumanName }} [(`{{ $repoConfig.Variables.GoPackage }}`)](https://{{ $repoConfig.Variables.GoPackage }}/)
         {{ end -}}
     {{ end }}
 {{ end  }}

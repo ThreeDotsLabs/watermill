@@ -21,14 +21,14 @@ CircleCIDckerOverrideEnvs = ''
 CircleCIDckerOverrideServices = ''
 CircleCIWaitForServices = ''
 
-[[repositories]]
-Name = "watermill"
-HumanName = "Watermill"
-URL = "{{ .URLTemplate }}"
-Templates = ["license", "common", "watermill"]
-
-    [repositories.Variables]
-        GoPackage = "{{ .GoPackageTemplate }}"
+#[[repositories]]
+#Name = "watermill"
+#HumanName = "Watermill"
+#URL = "{{ .URLTemplate }}"
+#Templates = ["license", "common", "watermill"]
+#
+#    [repositories.Variables]
+#        GoPackage = "{{ .GoPackageTemplate }}"
 
 [[repositories]]
 Name = "watermill-amqp"
@@ -127,18 +127,22 @@ RunCmds = [
 '''
         CircleCIWaitForServices = 'nats-streaming:4222'
 
-#[[repositories]]
-#Name = "watermill-sql"
-#HumanName = "SQL Pub/Sub"
-#URL = "{{ .URLTemplate }}"
-#Templates = ["license", "common", "pubsub"]
-#
-#    [repositories.Variables]
-#        CircleCIDckerOverrideEnvs = '''
-#      WATERMILL_TEST_NATS_URL: nats://nats-streaming:4222
-#'''
-#        MakefileCustom = '''
-#mycli:
-#	@mycli -h 127.0.0.1 -u root -p secret
-#'''
-#        CircleCIWaitForServices = "mysql:3306"
+[[repositories]]
+Name = "watermill-sql"
+HumanName = "SQL Pub/Sub"
+URL = "{{ .URLTemplate }}"
+Templates = ["license", "common", "pubsub"]
+RunCmds = [
+    ["make", "generate_gomod"]
+]
+
+    [repositories.Variables]
+        GoPackage = "{{ .GoPackageTemplate }}"
+        CircleCIDckerOverrideEnvs = '''
+      WATERMILL_TEST_MYSQL_HOST: mysql:3306
+'''
+        MakefileCustom = '''
+mycli:
+	@mycli -h 127.0.0.1 -u root -p secret
+'''
+        CircleCIWaitForServices = "mysql:3306"
