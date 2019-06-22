@@ -95,7 +95,7 @@ The router can handle this case and spawn multiple `HandlerFunc` in parallel.
 {{% load-snippet-partial file="content/src-link/message/router.go" first_line_contains="// HandlerMiddleware" last_line_contains="type HandlerMiddleware" padding_after="1" %}}
 {{% /render-md %}}
 
-A full list of the standard middlewares can be found in [Middleware page]({{< ref "/docs/middlewares" >}}).
+A full list of the standard middlewares can be found in [Middlewares]({{< ref "/docs/middlewares" >}}).
 
 ### Plugin
 
