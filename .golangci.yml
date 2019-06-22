@@ -4,7 +4,6 @@ service:
     - cd tools/mill/ && pwd && GO111MODULE=on go mod vendor
     - cp tools/mill/vendor/* vendor -r
     - rm vendor/github.com/ThreeDotsLabs/watermill/ -rf
-    -
 run:
   skip-dirs:
     - docs
