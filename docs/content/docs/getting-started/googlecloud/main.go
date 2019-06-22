@@ -4,6 +4,7 @@ package main
 import (
 	"context"
 	"log"
+	"time"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
@@ -52,6 +53,8 @@ func publishMessages(publisher message.Publisher) {
 		if err := publisher.Publish("example.topic", msg); err != nil {
 			panic(err)
 		}
+
+		time.Sleep(time.Second)
 	}
 }
 
