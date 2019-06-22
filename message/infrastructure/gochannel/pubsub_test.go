@@ -33,10 +33,11 @@ func TestPublishSubscribe_persistent(t *testing.T) {
 	infrastructure.TestPubSub(
 		t,
 		infrastructure.Features{
-			ConsumerGroups:      false,
-			ExactlyOnceDelivery: true,
-			GuaranteedOrder:     false,
-			Persistent:          false,
+			ConsumerGroups:        false,
+			ExactlyOnceDelivery:   true,
+			GuaranteedOrder:       false,
+			Persistent:            false,
+			RequireSingleInstance: true,
 		},
 		createPersistentPubSub,
 		nil,

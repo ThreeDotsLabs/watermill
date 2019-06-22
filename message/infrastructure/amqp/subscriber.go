@@ -47,7 +47,7 @@ func (s *Subscriber) Subscribe(ctx context.Context, topic string) (<-chan *messa
 
 	logFields := watermill.LogFields{"topic": topic}
 
-	out := make(chan *message.Message, 0)
+	out := make(chan *message.Message)
 
 	queueName := s.config.Queue.GenerateName(topic)
 	logFields["amqp_queue_name"] = queueName

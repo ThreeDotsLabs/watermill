@@ -3,10 +3,10 @@ package sql
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"sync"
 	"time"
 
+	"github.com/oklog/ulid"
 	"github.com/pkg/errors"
 
 	"github.com/ThreeDotsLabs/watermill"
@@ -20,7 +20,7 @@ var (
 type SubscriberConfig struct {
 	ConsumerGroup string
 
-	// PollInterval is the interval between subsequent SELECT queries.
+	// PollInterval is the interval to wait between subsequent SELECT queries, if no more messages were found in the database.
 	// Must be non-negative. Defaults to 1s.
 	PollInterval time.Duration
 
@@ -34,6 +34,12 @@ type SubscriberConfig struct {
 
 	// SchemaAdapter provides the schema-dependent queries and arguments for them, based on topic/message etc.
 	SchemaAdapter SchemaAdapter
+
+	// OffsetsAdapter provides mechanism for saving acks and offsets of consumers.
+	OffsetsAdapter OffsetsAdapter
+
+	// InitializeSchema option enables initializing schema on making subscription.
+	InitializeSchema bool
 }
 
 func (c *SubscriberConfig) setDefaults() {
@@ -61,6 +67,9 @@ func (c SubscriberConfig) validate() error {
 	if c.SchemaAdapter == nil {
 		return errors.New("schema adapter is nil")
 	}
+	if c.OffsetsAdapter == nil {
+		return errors.New("offsets adapter is nil")
+	}
 
 	return nil
 }
@@ -68,6 +77,9 @@ func (c SubscriberConfig) validate() error {
 // Subscriber makes SELECT queries on the chosen table with the interval defined in the config.
 // The rows are unmarshaled into Watermill messages.
 type Subscriber struct {
+	consumerIdBytes  []byte
+	consumerIdString string
+
 	db     *sql.DB
 	config SubscriberConfig
 
@@ -92,7 +104,16 @@ func NewSubscriber(db *sql.DB, config SubscriberConfig, logger watermill.LoggerA
 		logger = watermill.NopLogger{}
 	}
 
+	idBytes, idStr, err := newSubscriberID()
+	if err != nil {
+		return &Subscriber{}, errors.Wrap(err, "cannot generate subscriber id")
+	}
+	logger = logger.With(watermill.LogFields{"subscriber_id": idStr})
+
 	sub := &Subscriber{
+		consumerIdBytes:  idBytes,
+		consumerIdString: idStr,
+
 		db:     db,
 		config: config,
 
@@ -105,6 +126,16 @@ func NewSubscriber(db *sql.DB, config SubscriberConfig, logger watermill.LoggerA
 	return sub, nil
 }
 
+func newSubscriberID() ([]byte, string, error) {
+	id := watermill.NewULID()
+	idBytes, err := ulid.MustParseStrict(id).MarshalBinary()
+	if err != nil {
+		return nil, "", errors.Wrap(err, "cannot marshal subscriber id")
+	}
+
+	return idBytes, id, nil
+}
+
 func (s *Subscriber) Subscribe(ctx context.Context, topic string) (o <-chan *message.Message, err error) {
 	if s.closed {
 		return nil, ErrSubscriberClosed
@@ -112,6 +143,12 @@ func (s *Subscriber) Subscribe(ctx context.Context, topic string) (o <-chan *mes
 
 	if err = validateTopicName(topic); err != nil {
 		return nil, err
+	}
+
+	if s.config.InitializeSchema {
+		if err := s.SubscribeInitialize(topic); err != nil {
+			return nil, err
+		}
 	}
 
 	// the information about closing the subscriber is propagated through ctx
@@ -150,11 +187,15 @@ func (s *Subscriber) consume(ctx context.Context, topic string, out chan *messag
 			// go on querying
 		}
 
-		err := s.query(ctx, topic, out, logger)
-		if err != nil {
+		messageUUID, err := s.query(ctx, topic, out, logger)
+		if err != nil && isDeadlock(err) {
+			logger.Debug("Deadlock during querying message, trying again", watermill.LogFields{
+				"err":          err.Error(),
+				"message_uuid": messageUUID,
+			})
+		} else if err != nil {
 			logger.Error("Error querying for message", err, nil)
 			time.Sleep(s.config.RetryInterval)
-			continue
 		}
 	}
 }
@@ -164,31 +205,10 @@ func (s *Subscriber) query(
 	topic string,
 	out chan *message.Message,
 	logger watermill.LoggerAdapter,
-) (err error) {
-	// start the transaction
-	// it is finalized after the ACK is written
-	var tx *sql.Tx
-	tx, err = s.db.BeginTx(ctx, &sql.TxOptions{})
+) (messageUUID string, err error) {
+	tx, err := s.db.BeginTx(ctx, &sql.TxOptions{})
 	if err != nil {
-		return errors.Wrap(err, "could not begin tx for querying")
-	}
-
-	selectQuery := s.config.SchemaAdapter.SelectQuery(topic)
-	s.logger.Info("Preparing query to select messages", watermill.LogFields{
-		"q": selectQuery,
-	})
-	selectStmt, err := tx.Prepare(selectQuery)
-	if err != nil {
-		return errors.Wrap(err, "could not prepare statement to select messages")
-	}
-
-	ackQuery := s.config.SchemaAdapter.AckQuery(topic)
-	s.logger.Info("Preparing query to ack messages", watermill.LogFields{
-		"q": ackQuery,
-	})
-	ackStmt, err := tx.Prepare(ackQuery)
-	if err != nil {
-		return errors.Wrap(err, "could not prepare statement to ack messages")
+		return "", errors.Wrap(err, "could not begin tx for querying")
 	}
 
 	defer func() {
@@ -205,52 +225,74 @@ func (s *Subscriber) query(
 		}
 	}()
 
-	selectArgs, err := s.config.SchemaAdapter.SelectArgs(topic, s.config.ConsumerGroup)
-	if err != nil {
-		return errors.Wrap(err, "could not get args for the select query")
-	}
-
-	logger.Trace(selectQuery, watermill.LogFields{
-		"args": fmt.Sprintf("%+v", selectArgs),
+	selectQuery, selectQueryArgs := s.config.SchemaAdapter.SelectQuery(
+		topic,
+		s.config.ConsumerGroup,
+		s.config.OffsetsAdapter,
+	)
+	logger.Trace("Querying message", watermill.LogFields{
+		"query":      selectQuery,
+		"query_args": sqlArgsToLog(selectQueryArgs),
 	})
+	row := tx.QueryRowContext(ctx, selectQuery, selectQueryArgs...)
 
-	row := selectStmt.QueryRowContext(ctx, selectArgs...)
-
-	var offset int
-	var msg *message.Message
-	offset, msg, err = s.config.SchemaAdapter.UnmarshalMessage(row)
+	offset, msg, err := s.config.SchemaAdapter.UnmarshalMessage(row)
 	if errors.Cause(err) == sql.ErrNoRows {
 		// wait until polling for the next message
+		logger.Debug("No more messages, waiting until next query", watermill.LogFields{
+			"wait_time": s.config.PollInterval,
+		})
 		time.Sleep(s.config.PollInterval)
-		return nil
-	}
-	if err != nil {
-		return errors.Wrap(err, "could not unmarshal message from query")
+		return "", nil
+	} else if err != nil {
+		return "", errors.Wrap(err, "could not unmarshal message from query")
 	}
 
 	logger = logger.With(watermill.LogFields{
 		"msg_uuid": msg.UUID,
 	})
+	logger.Trace("Received message", nil)
 
-	// todo: different acking strategies?
-	acked := s.sendMessage(ctx, msg, out, logger)
-	if acked {
-		var ackArgs []interface{}
-		ackArgs, err = s.config.SchemaAdapter.AckArgs(offset, s.config.ConsumerGroup)
-		if err != nil {
-			return errors.Wrap(err, "could not get args for acking the message")
-		}
-
-		logger.Trace(ackQuery, watermill.LogFields{
-			"args": fmt.Sprintf("%+v", ackArgs),
+	consumedQuery, consumedArgs := s.config.OffsetsAdapter.ConsumedMessageQuery(
+		topic,
+		offset,
+		s.config.ConsumerGroup,
+		s.consumerIdBytes,
+	)
+	if consumedQuery != "" {
+		logger.Trace("Executing query to confirm message consumed", watermill.LogFields{
+			"query":      consumedQuery,
+			"query_args": sqlArgsToLog(consumedArgs),
 		})
-		_, err = ackStmt.ExecContext(ctx, ackArgs...)
+
+		_, err := tx.Exec(consumedQuery, consumedArgs...)
 		if err != nil {
-			return errors.Wrap(err, "could not get args for acking the message")
+			return msg.UUID, errors.Wrap(err, "cannot send consumed query")
 		}
 	}
 
-	return nil
+	acked := s.sendMessage(ctx, msg, out, logger)
+	if acked {
+		ackQuery, ackArgs := s.config.OffsetsAdapter.AckMessageQuery(topic, offset, s.config.ConsumerGroup)
+
+		logger.Trace("Executing ack message query", watermill.LogFields{
+			"query":      ackQuery,
+			"query_args": sqlArgsToLog(ackArgs),
+		})
+
+		result, err := tx.ExecContext(ctx, ackQuery, ackArgs...)
+		if err != nil {
+			return msg.UUID, errors.Wrap(err, "could not get args for acking the message")
+		}
+
+		rowsAffected, _ := result.RowsAffected()
+
+		logger.Trace("Executed ack message query", watermill.LogFields{
+			"rows_affected": rowsAffected,
+		})
+	}
+
+	return msg.UUID, nil
 }
 
 // sendMessages sends messages on the output channel.
@@ -281,7 +323,7 @@ ResendLoop:
 
 		select {
 		case <-msg.Acked():
-			logger.Debug("Message acked", nil)
+			logger.Debug("Message acked by subscriber", nil)
 			return true
 
 		case <-msg.Nacked():
@@ -320,22 +362,12 @@ func (s *Subscriber) Close() error {
 }
 
 func (s *Subscriber) SubscribeInitialize(topic string) error {
-	err := validateTopicName(topic)
-	if err != nil {
-		return err
-	}
-
-	initializingQueries := s.config.SchemaAdapter.SchemaInitializingQueries(topic)
-	s.logger.Info("Ensuring schema exists for topic", watermill.LogFields{
-		"q": initializingQueries,
-	})
-
-	for _, q := range initializingQueries {
-		_, err := s.db.Exec(q)
-		if err != nil {
-			return errors.Wrap(err, "could not ensure table exists for topic")
-		}
-	}
-
-	return nil
+	return initializeSchema(
+		context.Background(),
+		topic,
+		s.logger,
+		s.db,
+		s.config.SchemaAdapter,
+		s.config.OffsetsAdapter,
+	)
 }

@@ -1,7 +1,7 @@
 package sql_test
 
 import (
-	std_sql "database/sql"
+	stdSQL "database/sql"
 	"os"
 	"testing"
 	"time"
@@ -16,20 +16,23 @@ import (
 )
 
 var (
-	logger = watermill.NewStdLogger(false, true)
+	logger = watermill.NewStdLogger(true, true)
 )
 
-func newPubSub(t *testing.T, db *std_sql.DB, consumerGroup string) (message.Publisher, message.Subscriber) {
+func newPubSub(t *testing.T, db *stdSQL.DB, consumerGroup string) (message.Publisher, message.Subscriber) {
 	schemaAdapter := &testSchema{
 		sql.DefaultSchema{
 			GenerateMessagesTableName: func(topic string) string {
-				return "test_" + topic
-			},
-			GenerateMessagesOffsetsTableName: func(topic string) string {
-				return "test_offsets_" + topic
+				return "`test_" + topic + "`"
 			},
 		},
 	}
+	offsetsAdapter := sql.DefaultMySQLOffsetsAdapter{
+		GenerateMessagesOffsetsTableName: func(topic string) string {
+			return "`test_offsets_" + topic + "`"
+		},
+	}
+
 	publisher, err := sql.NewPublisher(
 		db,
 		sql.PublisherConfig{
@@ -47,6 +50,7 @@ func newPubSub(t *testing.T, db *std_sql.DB, consumerGroup string) (message.Publ
 			PollInterval:   100 * time.Millisecond,
 			ResendInterval: 50 * time.Millisecond,
 			SchemaAdapter:  schemaAdapter,
+			OffsetsAdapter: offsetsAdapter,
 		},
 		logger,
 	)
@@ -55,7 +59,7 @@ func newPubSub(t *testing.T, db *std_sql.DB, consumerGroup string) (message.Publ
 	return publisher, subscriber
 }
 
-func newMySQL(t *testing.T) *std_sql.DB {
+func newMySQL(t *testing.T) *stdSQL.DB {
 	addr := os.Getenv("WATERMILL_TEST_MYSQL_HOST")
 	if addr == "" {
 		addr = "localhost"
@@ -67,7 +71,7 @@ func newMySQL(t *testing.T) *std_sql.DB {
 
 	conf.DBName = "watermill"
 
-	db, err := std_sql.Open("mysql", conf.FormatDSN())
+	db, err := stdSQL.Open("mysql", conf.FormatDSN())
 	require.NoError(t, err)
 
 	err = db.Ping()

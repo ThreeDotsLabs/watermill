@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	internalSubscriber "github.com/ThreeDotsLabs/watermill/internal/subscriber"
+
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/internal"
 	"github.com/ThreeDotsLabs/watermill/message"
@@ -48,6 +50,10 @@ type Features struct {
 	Persistent          bool
 
 	RestartServiceCommand []string
+
+	// RequireSingleInstance must be true, if PubSub requires single instance to work properly
+	// (for example: channel implementation).
+	RequireSingleInstance bool
 }
 
 type PubSubConstructor func(t *testing.T) (message.Publisher, message.Subscriber)
@@ -66,6 +72,11 @@ func TestPubSub(
 	t.Run("TestPublishSubscribe", func(t *testing.T) {
 		t.Parallel()
 		TestPublishSubscribe(t, pubSubConstructor, features)
+	})
+
+	t.Run("TestConcurrentSubscribe", func(t *testing.T) {
+		t.Parallel()
+		TestConcurrentSubscribe(t, pubSubConstructor, features)
 	})
 
 	t.Run("TestResendOnError", func(t *testing.T) {
@@ -182,23 +193,73 @@ func TestPublishSubscribe(t *testing.T, pubSubConstructor PubSubConstructor, fea
 	assertMessagesChannelClosed(t, messages)
 }
 
+func TestConcurrentSubscribe(t *testing.T, pubSubConstructor PubSubConstructor, features Features) {
+	pub, initSub := pubSubConstructor(t)
+	topicName := testTopicName()
+
+	messagesCount := 5000
+	subscribersCount := 50
+
+	if testing.Short() {
+		messagesCount = 100
+		subscribersCount = 10
+	}
+
+	if subscribeInitializer, ok := initSub.(message.SubscribeInitializer); ok {
+		require.NoError(t, subscribeInitializer.SubscribeInitialize(topicName))
+	}
+
+	var messagesToPublish []*message.Message
+
+	for i := 0; i < messagesCount; i++ {
+		id := watermill.NewUUID()
+
+		msg := message.NewMessage(id, nil)
+		messagesToPublish = append(messagesToPublish, msg)
+	}
+	err := publishWithRetry(pub, topicName, messagesToPublish...)
+	require.NoError(t, err, "cannot publish message")
+
+	var sub message.Subscriber
+	if features.RequireSingleInstance {
+		sub = initSub
+	} else {
+		sub = createMultipliedSubscriber(t, pubSubConstructor, subscribersCount)
+	}
+
+	messages, err := sub.Subscribe(context.Background(), topicName)
+	require.NoError(t, err)
+
+	receivedMessages, all := bulkRead(messages, len(messagesToPublish), defaultTimeout*3, features)
+	assert.True(t, all)
+
+	tests.AssertAllMessagesReceived(t, messagesToPublish, receivedMessages)
+
+	closePubSub(t, pub, initSub)
+}
+
 func TestPublishSubscribeInOrder(t *testing.T, pubSubConstructor PubSubConstructor, features Features) {
 	if !features.GuaranteedOrder {
 		t.Skipf("order is not guaranteed")
 	}
 
-	pub, sub := pubSubConstructor(t)
-	defer closePubSub(t, pub, sub)
+	messagesCount := 1000
+	if testing.Short() {
+		messagesCount = 100
+	}
+
+	pub, initSub := pubSubConstructor(t)
+	defer closePubSub(t, pub, initSub)
 	topicName := testTopicName()
 
-	if subscribeInitializer, ok := sub.(message.SubscribeInitializer); ok {
+	if subscribeInitializer, ok := initSub.(message.SubscribeInitializer); ok {
 		require.NoError(t, subscribeInitializer.SubscribeInitialize(topicName))
 	}
 
 	var messagesToPublish []*message.Message
 	expectedMessages := map[string][]string{}
 
-	for i := 0; i < 100; i++ {
+	for i := 0; i < messagesCount; i++ {
 		id := watermill.NewUUID()
 		msgType := string(i % 16)
 
@@ -214,6 +275,14 @@ func TestPublishSubscribeInOrder(t *testing.T, pubSubConstructor PubSubConstruct
 
 	err := publishWithRetry(pub, topicName, messagesToPublish...)
 	require.NoError(t, err)
+
+	var sub message.Subscriber
+	if features.RequireSingleInstance {
+		sub = initSub
+	} else {
+		sub = createMultipliedSubscriber(t, pubSubConstructor, 10)
+		defer require.NoError(t, sub.Close())
+	}
 
 	messages, err := sub.Subscribe(context.Background(), topicName)
 	require.NoError(t, err)
@@ -536,7 +605,7 @@ func TestPublisherClose(t *testing.T, pubSubConstructor PubSubConstructor, featu
 
 	messagesCount := 10000
 	if testing.Short() {
-		messagesCount = 1000
+		messagesCount = 100
 	}
 
 	producedMessages := AddSimpleMessagesParallel(t, messagesCount, pub, topicName, 20)
@@ -918,4 +987,16 @@ func bulkRead(messagesCh <-chan *message.Message, limit int, timeout time.Durati
 	}
 
 	return subscriber.BulkRead(messagesCh, limit, timeout)
+}
+
+func createMultipliedSubscriber(t *testing.T, pubSubConstructor PubSubConstructor, subscribersCount int) message.Subscriber {
+	return internalSubscriber.NewMultiplier(
+		func() (message.Subscriber, error) {
+			pub, sub := pubSubConstructor(t)
+			require.NoError(t, pub.Close()) // pub is not needed
+
+			return sub, nil
+		},
+		subscribersCount,
+	)
 }
