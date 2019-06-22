@@ -34,6 +34,6 @@ generate_gomod:
 	sed -i '\|go |d' go.mod
 	go mod edit -fmt
 
-{{ if index . "MakefileCustom" }}
+{{ if index . "MakefileCustom" -}}
     {{ .MakefileCustom }}
 {{ end }}
