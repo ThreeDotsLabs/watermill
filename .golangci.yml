@@ -7,3 +7,4 @@ service:
 run:
   skip-dirs:
     - docs
+    - tools/mill
