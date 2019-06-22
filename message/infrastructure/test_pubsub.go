@@ -233,7 +233,7 @@ func TestConcurrentSubscribe(t *testing.T, pubSubConstructor PubSubConstructor, 
 	receivedMessages, all := bulkRead(messages, len(messagesToPublish), defaultTimeout*3, features)
 	assert.True(t, all)
 
-	tests.AssertAllMessagesReceived(t, messagesToPublish, receivedMessages)
+	AssertAllMessagesReceived(t, messagesToPublish, receivedMessages)
 
 	closePubSub(t, pub, initSub)
 }
