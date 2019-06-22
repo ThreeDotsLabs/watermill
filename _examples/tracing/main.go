@@ -35,7 +35,7 @@ func handler(msg *message.Message) ([]*message.Message, error) {
 	time.Sleep(time.Millisecond * 600)
 	s2.End()
 
-	numOutgoing := random.Intn(4)
+	numOutgoing := random.Intn(3) + 1
 	outgoing := make([]*message.Message, numOutgoing)
 
 	for i := 0; i < numOutgoing; i++ {
@@ -44,31 +44,15 @@ func handler(msg *message.Message) ([]*message.Message, error) {
 	return outgoing, nil
 }
 
-// consumeMessages consumes the messages exiting the handler.
-func consumeMessages(subscriber message.Subscriber) {
-	messages, err := subscriber.Subscribe(context.Background(), "pub_topic")
-	if err != nil {
-		panic(err)
-	}
-
-	for msg := range messages {
-		msg.Ack()
-	}
-}
-
 // produceMessages produces the incoming messages in delays of 50-100 milliseconds.
-func produceMessages(routerClosed chan struct{}, publisher message.Publisher) {
+func produceMessages(publisher message.Publisher) {
 	for {
-		select {
-		case <-routerClosed:
-			return
-		default:
-			// go on
-		}
-
-		time.Sleep(50*time.Millisecond + time.Duration(random.Intn(50))*time.Millisecond)
 		msg := message.NewMessage(watermill.NewUUID(), []byte{})
-		_ = publisher.Publish("sub_topic", msg)
+		err := publisher.Publish("sub_topic", msg)
+		if err != nil {
+			panic(err)
+		}
+		time.Sleep(time.Second * 5)
 	}
 }
 
@@ -134,9 +118,7 @@ func main() {
 
 	// separate the publisher from pubSub to decorate it separately
 
-	routerClosed := make(chan struct{})
-	go produceMessages(routerClosed, pubSub)
-	go consumeMessages(pubSub)
+	go produceMessages(pubSub)
 
 	if err := router.Run(context.Background()); err != nil {
 		panic(err)
