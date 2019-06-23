@@ -1,11 +1,10 @@
 module main.go
 
 require (
-	github.com/ThreeDotsLabs/watermill v0.4.0
-	github.com/beorn7/perks v1.0.0 // indirect
-	github.com/prometheus/client_model v0.0.0-20190129233127-fd36f4220a90 // indirect
-	github.com/prometheus/common v0.4.0 // indirect
-	github.com/prometheus/procfs v0.0.0-20190507164030-5867b95ac084 // indirect
+	github.com/ThreeDotsLabs/watermill v0.4.1-0.20190623184805-b9ecbe61b15b
+	github.com/cenkalti/backoff v2.2.0+incompatible // indirect
+	github.com/prometheus/common v0.6.0 // indirect
+	golang.org/x/sys v0.0.0-20190621203818-d432491b9138 // indirect
 )
 
 // uncomment to use local sources
