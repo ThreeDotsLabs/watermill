@@ -9,8 +9,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	"github.com/ThreeDotsLabs/watermill-io/pkg/io"
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure/io"
 	"github.com/ThreeDotsLabs/watermill/message/router/plugin"
 )
 
@@ -41,11 +41,13 @@ For the configuration of particular pub/sub providers, see the help for the prov
 
 			router.AddPlugin(plugin.SignalsHandler)
 
-			in, err := io.NewSubscriber(os.Stdin, io.SubscriberConfig{
-				PollInterval:  time.Second,
-				UnmarshalFunc: io.PayloadUnmarshalFunc,
-				Logger:        logger,
-			})
+			in, err := io.NewSubscriber(
+				os.Stdin, io.SubscriberConfig{
+					PollInterval:  time.Second,
+					UnmarshalFunc: io.PayloadUnmarshalFunc,
+				},
+				logger,
+			)
 			if err != nil {
 				return errors.Wrap(err, "could not create console subscriber")
 			}

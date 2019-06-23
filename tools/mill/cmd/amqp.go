@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure/amqp"
+	"github.com/ThreeDotsLabs/watermill-amqp/pkg/amqp"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )

@@ -9,8 +9,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	"github.com/ThreeDotsLabs/watermill-io/pkg/io"
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure/io"
 	"github.com/ThreeDotsLabs/watermill/message/router/plugin"
 )
 
@@ -40,7 +40,7 @@ For the configuration of particular pub/sub providers, see the help for the prov
 
 			out, err := io.NewPublisher(os.Stdout, io.PublisherConfig{
 				MarshalFunc: io.PayloadMarshalFunc,
-			})
+			}, logger)
 			if err != nil {
 				return errors.Wrap(err, "could not create console producer")
 			}

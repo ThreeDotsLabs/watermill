@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/ThreeDotsLabs/watermill-io/pkg/io"
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure/io"
 )
 
 // this will `tail -f` a log file and publish an alert if a line fulfils some criterion

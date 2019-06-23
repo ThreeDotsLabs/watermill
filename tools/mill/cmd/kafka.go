@@ -4,7 +4,7 @@ import (
 	"github.com/Shopify/sarama"
 	"github.com/spf13/viper"
 
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure/kafka"
+	"github.com/ThreeDotsLabs/watermill-kafka/pkg/kafka"
 	"github.com/spf13/cobra"
 )
 

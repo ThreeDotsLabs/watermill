@@ -12,7 +12,7 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure/googlecloud"
+	"github.com/ThreeDotsLabs/watermill-googlecloud/pkg/googlecloud"
 )
 
 var googleCloudTempSubscriptionID string
@@ -59,6 +59,7 @@ For the configuration of consuming/producing of the messages, check the help of 
 				googlecloud.PublisherConfig{
 					ProjectID: projectID(),
 				},
+				logger,
 			)
 
 			if err != nil {

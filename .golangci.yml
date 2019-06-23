@@ -4,6 +4,7 @@ service:
     - GO111MODULE=on go mod vendor
     - rm vendor/github.com/ThreeDotsLabs/watermill/ -rf
     - rm -rf docs/ # todo - reenable
+    - rm -rf tools/ # todo - reenable
 
 run:
   concurrency: 8
