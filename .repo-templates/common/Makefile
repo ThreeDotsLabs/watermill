@@ -23,6 +23,11 @@ validate_examples:
 	go run dev/update-examples-deps/main.go
 	bash dev/validate_examples.sh
 
+
+fmt:
+	go fmt ./...
+	goimports -l -w .
+
 generate_gomod:
 	rm go.mod go.sum || true
 	go mod init {{ .GoPackage }}
