@@ -21,14 +21,15 @@ CircleCIDckerOverrideEnvs = ''
 CircleCIDckerOverrideServices = ''
 CircleCIWaitForServices = ''
 
-#[[repositories]]
-#Name = "watermill"
-#HumanName = "Watermill"
-#URL = "{{ .URLTemplate }}"
-#Templates = ["license", "common", "watermill"]
-#
-#    [repositories.Variables]
-#        GoPackage = "{{ .GoPackageTemplate }}"
+[[repositories]]
+Name = "watermill"
+HumanName = "Watermill"
+URL = "{{ .URLTemplate }}"
+Templates = ["license", "common", "watermill"]
+
+    [repositories.Variables]
+        GoPackage = "{{ .GoPackageTemplate }}"
+        LastRelease = "v0.4.0"
 
 [[repositories]]
 Name = "watermill-amqp"
@@ -140,6 +141,11 @@ RunCmds = [
         GoPackage = "{{ .GoPackageTemplate }}"
         CircleCIDckerOverrideEnvs = '''
       WATERMILL_TEST_MYSQL_HOST: mysql:3306
+'''
+        CircleCIDckerOverrideServices = '''
+  kafka:
+    environment:
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
 '''
         MakefileCustom = '''
 mycli:
