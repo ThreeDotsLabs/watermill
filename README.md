@@ -10,7 +10,7 @@ for building event driven applications, enabling event sourcing, RPC over messag
 sagas and basically whatever else comes to your mind. You can use conventional pub/sub
 implementations like Kafka or RabbitMQ, but also HTTP or MySQL binlog if that fits your use case.
 
-**Note:** This is documentation for `master`. You may want to check documentation [for release v0.4.0.](https://github.com/ThreeDotsLabs/watermill/tree/v0.4.0#watermill)
+**Note:** This is README file is created for `master`. You may want to check README [for release v0.4.0.](https://github.com/ThreeDotsLabs/watermill/tree/v0.4.0#watermill)
 
 Documentation: https://watermill.io/
 
