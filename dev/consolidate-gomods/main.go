@@ -49,6 +49,12 @@ func main() {
 		}
 
 		_ = file.Close()
+
+		// gomod is stupid, and go vendor removes all deps that are not needed
+		// (and they are not needed if they are already meet in sub go.mods)
+		if err := os.Remove(fileName); err != nil {
+			panic(err)
+		}
 	}
 
 	fmt.Println(bigFatGomod)

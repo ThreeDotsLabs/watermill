@@ -1,12 +1,8 @@
 service:
-#  prepare:
-#    - go run dev/consolidate-gomods/main.go >> go.mod
-#    - GO111MODULE=on go mod vendor
-#    - rm vendor/github.com/ThreeDotsLabs/watermill/ -rf
-#    - rm -rf docs/ # todo - reenable
-#    - rm -rf tools/ # todo - reenable
+  prepare:
+    - go run dev/consolidate-gomods/main.go >> go.mod
+    - GO111MODULE=on go mod vendor
+    - rm vendor/github.com/ThreeDotsLabs/watermill/ -rf
 
 run:
   concurrency: 8
-#  skip-dirs:
-#    - vendor$
