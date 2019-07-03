@@ -38,9 +38,13 @@ For the configuration of particular pub/sub providers, see the help for the prov
 
 			router.AddPlugin(plugin.SignalsHandler)
 
-			out, err := io.NewPublisher(os.Stdout, io.PublisherConfig{
-				MarshalFunc: io.PayloadMarshalFunc,
-			})
+			out, err := io.NewPublisher(
+				os.Stdout,
+				io.PublisherConfig{
+					MarshalFunc: io.PayloadMarshalFunc,
+				},
+				logger,
+			)
 			if err != nil {
 				return errors.Wrap(err, "could not create console producer")
 			}
@@ -57,10 +61,7 @@ For the configuration of particular pub/sub providers, see the help for the prov
 				},
 			)
 
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-			defer cancel()
-
-			return router.Run(ctx)
+			return router.Run(context.Background())
 		},
 	}
 
