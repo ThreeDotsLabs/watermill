@@ -3,9 +3,11 @@
 {{ define "main"}}
 <div id="main">
   <div id="hero">
-    <h1>Supported Pub/Subs</h1>
+    <h1> {{ .Title}} </h1>
+    <p class="hero-lead">
+      {{ .Params.bref }}
+    </p>
   </div>
-  <h3>Watermill supports the following Pub/Sub implementations out of the box:</h3>
   <div id="components">
     <div class="row gutters">
       {{ range .Data.Pages.ByWeight }}
