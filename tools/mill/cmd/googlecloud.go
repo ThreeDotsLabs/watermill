@@ -59,6 +59,7 @@ For the configuration of consuming/producing of the messages, check the help of 
 				googlecloud.PublisherConfig{
 					ProjectID: projectID(),
 				},
+				logger,
 			)
 
 			if err != nil {
