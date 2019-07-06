@@ -88,7 +88,7 @@ For development, you can use a Docker image with the emulator and the `PUBSUB_EM
 
 #### Marshaler
 
-Watermill's messages cannot be directly sent to Kafka - they need to be marshaled. You can implement your marshaler or use default implementation.
+Watermill's messages cannot be directly sent to Google Cloud Pub/Sub - they need to be marshaled. You can implement your marshaler or use the default implementation.
 
 {{% render-md %}}
 {{% load-snippet-partial file="src-link/watermill-googlecloud/pkg/googlecloud/marshaler.go" first_line_contains="// Marshaler" last_line_contains="type DefaultMarshalerUnmarshaler " padding_after="0" %}}

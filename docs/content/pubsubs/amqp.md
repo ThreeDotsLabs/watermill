@@ -35,7 +35,7 @@ Our AMQP is shipped with some pre-created configurations:
 {{% load-snippet-partial file="src-link/watermill-amqp/pkg/amqp/config.go" first_line_contains="// NewDurablePubSubConfig" last_line_contains="type Config struct {" %}}
 {{% /render-md %}}
 
-For detailed configuration description, please check [message/infrastructure/amqp/pubsub_config.go](https://github.com/ThreeDotsLabs/watermill/tree/master/message/infrastructure/amqp/pubsub_config.go)
+For detailed configuration description, please check [watermill-amqp/pkg/amqp/config.go](https://github.com/ThreeDotsLabs/watermill-amqp/tree/master/pkg/amqp/config.go)
 
 ##### TLS Config
 
