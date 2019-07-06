@@ -12,13 +12,13 @@ if [[ ! -d themes/kube ]]; then
     popd
 fi
 
-git clone --single-branch --branch master git@github.com:ThreeDotsLabs/watermill-amqp.git content/src-link
-git clone --single-branch --branch master git@github.com:ThreeDotsLabs/watermill-googlecloud.git content/src-link
-git clone --single-branch --branch master git@github.com:ThreeDotsLabs/watermill-http.git content/src-link
-git clone --single-branch --branch master git@github.com:ThreeDotsLabs/watermill-io.git content/src-link
-git clone --single-branch --branch master git@github.com:ThreeDotsLabs/watermill-kafka.git content/src-link
-git clone --single-branch --branch master git@github.com:ThreeDotsLabs/watermill-nats.git content/src-link
-git clone --single-branch --branch master git@github.com:ThreeDotsLabs/watermill-sql.git content/src-link
+git clone --single-branch --branch master git@github.com:ThreeDotsLabs/watermill-amqp.git content/src-link/watermill-amqp
+git clone --single-branch --branch master git@github.com:ThreeDotsLabs/watermill-googlecloud.git content/src-link/watermill-googlecloud
+git clone --single-branch --branch master git@github.com:ThreeDotsLabs/watermill-http.git content/src-link/watermill-http
+git clone --single-branch --branch master git@github.com:ThreeDotsLabs/watermill-io.git content/src-link/watermill-io
+git clone --single-branch --branch master git@github.com:ThreeDotsLabs/watermill-kafka.git content/src-link/watermill-kafka
+git clone --single-branch --branch master git@github.com:ThreeDotsLabs/watermill-nats.git content/src-link/watermill-nats
+git clone --single-branch --branch master git@github.com:ThreeDotsLabs/watermill-sql.git content/src-link/watermill-sql
 
 
 
