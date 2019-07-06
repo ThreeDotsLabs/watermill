@@ -42,7 +42,8 @@ For the configuration of particular pub/sub providers, see the help for the prov
 			router.AddPlugin(plugin.SignalsHandler)
 
 			in, err := io.NewSubscriber(
-				os.Stdin, io.SubscriberConfig{
+				os.Stdin,
+				io.SubscriberConfig{
 					PollInterval:  time.Second,
 					UnmarshalFunc: io.PayloadUnmarshalFunc,
 				},
@@ -68,10 +69,7 @@ For the configuration of particular pub/sub providers, see the help for the prov
 				},
 			)
 
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-			defer cancel()
-
-			return router.Run(ctx)
+			return router.Run(context.Background())
 		},
 	}
 
