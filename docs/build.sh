@@ -23,6 +23,46 @@ function cloneOrPull() {
     fi
 }
 
+if [[ "$1" == "--copy" ]]; then
+    rm content/src-link -r || true
+    mkdir content/src-link/
+    cp ../message/ content/src-link/ -r
+    cp ../_examples/ content/src-link/ -r
+    cp ../components/ content/src-link/ -r
+else
+    declare -a files_to_link=(
+        "message/decorator.go"
+        "message/message.go"
+        "message/pubsub.go"
+        "message/router.go"
+        "message/infrastructure/gochannel/pubsub.go"
+
+        "_examples/cqrs-protobuf/main.go"
+        "components/cqrs/command_bus.go"
+        "components/cqrs/command_processor.go"
+        "components/cqrs/event_bus.go"
+        "components/cqrs/event_processor.go"
+        "components/cqrs/marshaler.go"
+        "components/cqrs/cqrs.go"
+        "components/cqrs/marshaler.go"
+
+        "components/metrics/builder.go"
+        "components/metrics/http.go"
+        "_examples/metrics/main.go"
+    )
+
+    pushd ../
+    for i in "${files_to_link[@]}"
+    do
+        DIR=$(dirname "${i}")
+        DEST_DIR="docs/content/src-link/${DIR}"
+
+        mkdir -p "${DEST_DIR}"
+        ln -rsf "./${i}" "./${DEST_DIR}"
+    done
+    popd
+fi
+
 cloneOrPull "https://github.com/ThreeDotsLabs/watermill-amqp.git" content/src-link/watermill-amqp
 cloneOrPull "https://github.com/ThreeDotsLabs/watermill-googlecloud.git" content/src-link/watermill-googlecloud
 cloneOrPull "https://github.com/ThreeDotsLabs/watermill-http.git" content/src-link/watermill-http
@@ -31,38 +71,6 @@ cloneOrPull "https://github.com/ThreeDotsLabs/watermill-kafka.git" content/src-l
 cloneOrPull "https://github.com/ThreeDotsLabs/watermill-nats.git" content/src-link/watermill-nats
 cloneOrPull "https://github.com/ThreeDotsLabs/watermill-sql.git" content/src-link/watermill-sql
 
-
-declare -a files_to_link=(
-    "message/decorator.go"
-    "message/message.go"
-    "message/pubsub.go"
-    "message/router.go"
-    "message/infrastructure/gochannel/pubsub.go"
-
-    "_examples/cqrs-protobuf/main.go"
-    "components/cqrs/command_bus.go"
-    "components/cqrs/command_processor.go"
-    "components/cqrs/event_bus.go"
-    "components/cqrs/event_processor.go"
-    "components/cqrs/marshaler.go"
-    "components/cqrs/cqrs.go"
-    "components/cqrs/marshaler.go"
-
-    "components/metrics/builder.go"
-    "components/metrics/http.go"
-    "_examples/metrics/main.go"
-)
-
-pushd ../
-for i in "${files_to_link[@]}"
-do
-    DIR=$(dirname "${i}")
-    DEST_DIR="docs/content/src-link/${DIR}"
-
-    mkdir -p "${DEST_DIR}"
-    ln -rsf "./${i}" "./${DEST_DIR}"
-done
-popd
 
 python3 ./extract_middleware_godocs.py > content/src-link/middleware-defs.md
 
