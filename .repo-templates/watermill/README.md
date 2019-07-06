@@ -10,7 +10,7 @@ for building event driven applications, enabling event sourcing, RPC over messag
 sagas and basically whatever else comes to your mind. You can use conventional pub/sub
 implementations like Kafka or RabbitMQ, but also HTTP or MySQL binlog if that fits your use case.
 
-**Note:** This is README file is created for `master`. You may want to check README [for release {{ .LastRelease }}.](https://github.com/ThreeDotsLabs/watermill/tree/{{ .LastRelease }}#watermill)
+**Note:** This README file is created for `master`. You may want to check README [for release {{ .LastRelease }}.](https://github.com/ThreeDotsLabs/watermill/tree/{{ .LastRelease }}#watermill)
 
 Documentation: https://watermill.io/
 
@@ -72,7 +72,7 @@ Supported Pub/Subs:
 {{- end -}}
 {{- end }}
 
-All Pub/Subs implementation documentation can be found in the [documentation](https://watermill.io/docs/pub-sub-implementations/).
+All Pub/Subs implementation details can be found in the [documentation](https://watermill.io/pubsubs).
 
 ## Examples
 * [Your first app](_examples/your-first-app) - start here!
