@@ -66,7 +66,7 @@ These tests can be found in `message/infrastructure/test_pubsub.go`.
 
 ### Built-in implementations
 
-To check available Pub/Sub implementations, see [Pub/Sub's implementations]({{< ref "/docs/pub-sub-implementations" >}}).
+To check available Pub/Sub implementations, see [Supported Pub/Subs]({{< ref "/pubsubs" >}}).
 
 ### Implementing custom Pub/Sub
 
