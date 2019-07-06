@@ -26,7 +26,7 @@ function cloneOrPull() {
 {{ range .Config.Repositories -}}{{ $repoConfig := . }}
 {{- range .Templates -}}
 {{- if eq (.) "pubsub" -}}
-cloneOrPull {{ $repoConfig.URL }} content/src-link/{{ $repoConfig.Name }}
+cloneOrPull "https://github.com/ThreeDotsLabs/{{ $repoConfig.Name }}.git" content/src-link/{{ $repoConfig.Name }}
 {{ end }}
 {{- end -}}
 {{- end }}
