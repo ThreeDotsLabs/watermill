@@ -6,8 +6,6 @@ weight = -800
 draft = true 
 bref = "Golang channel, Kafka, Google Cloud Pub/Sub, RabbitMQ and more!"
 toc = false
-
-comment = "The descriptions for each pub/sub were moved to pubsubs/"
 +++
 
 | Name | Publisher | Subscriber | Status |
