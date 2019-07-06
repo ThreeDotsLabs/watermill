@@ -23,6 +23,46 @@ function cloneOrPull() {
     fi
 }
 
+if [[ "$1" == "--copy" ]]; then
+    rm content/src-link -r || true
+    mkdir content/src-link/
+    cp ../message/ content/src-link/ -r
+    cp ../_examples/ content/src-link/ -r
+    cp ../components/ content/src-link/ -r
+else
+    declare -a files_to_link=(
+        "message/decorator.go"
+        "message/message.go"
+        "message/pubsub.go"
+        "message/router.go"
+        "message/infrastructure/gochannel/pubsub.go"
+
+        "_examples/cqrs-protobuf/main.go"
+        "components/cqrs/command_bus.go"
+        "components/cqrs/command_processor.go"
+        "components/cqrs/event_bus.go"
+        "components/cqrs/event_processor.go"
+        "components/cqrs/marshaler.go"
+        "components/cqrs/cqrs.go"
+        "components/cqrs/marshaler.go"
+
+        "components/metrics/builder.go"
+        "components/metrics/http.go"
+        "_examples/metrics/main.go"
+    )
+
+    pushd ../
+    for i in "${files_to_link[@]}"
+    do
+        DIR=$(dirname "${i}")
+        DEST_DIR="docs/content/src-link/${DIR}"
+
+        mkdir -p "${DEST_DIR}"
+        ln -rsf "./${i}" "./${DEST_DIR}"
+    done
+    popd
+fi
+
 {{ range .Config.Repositories -}}{{ $repoConfig := . }}
 {{- range .Templates -}}
 {{- if eq (.) "pubsub" -}}
@@ -30,38 +70,6 @@ cloneOrPull "https://github.com/ThreeDotsLabs/{{ $repoConfig.Name }}.git" conten
 {{ end }}
 {{- end -}}
 {{- end }}
-
-declare -a files_to_link=(
-    "message/decorator.go"
-    "message/message.go"
-    "message/pubsub.go"
-    "message/router.go"
-    "message/infrastructure/gochannel/pubsub.go"
-
-    "_examples/cqrs-protobuf/main.go"
-    "components/cqrs/command_bus.go"
-    "components/cqrs/command_processor.go"
-    "components/cqrs/event_bus.go"
-    "components/cqrs/event_processor.go"
-    "components/cqrs/marshaler.go"
-    "components/cqrs/cqrs.go"
-    "components/cqrs/marshaler.go"
-
-    "components/metrics/builder.go"
-    "components/metrics/http.go"
-    "_examples/metrics/main.go"
-)
-
-pushd ../
-for i in "${files_to_link[@]}"
-do
-    DIR=$(dirname "${i}")
-    DEST_DIR="docs/content/src-link/${DIR}"
-
-    mkdir -p "${DEST_DIR}"
-    ln -rsf "./${i}" "./${DEST_DIR}"
-done
-popd
 
 python3 ./extract_middleware_godocs.py > content/src-link/middleware-defs.md
 
