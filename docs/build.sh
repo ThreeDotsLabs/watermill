@@ -23,13 +23,14 @@ function cloneOrPull() {
     fi
 }
 
-cloneOrPull git@github.com:ThreeDotsLabs/watermill-amqp.git content/src-link/watermill-amqp
-cloneOrPull git@github.com:ThreeDotsLabs/watermill-googlecloud.git content/src-link/watermill-googlecloud
-cloneOrPull git@github.com:ThreeDotsLabs/watermill-http.git content/src-link/watermill-http
-cloneOrPull git@github.com:ThreeDotsLabs/watermill-io.git content/src-link/watermill-io
-cloneOrPull git@github.com:ThreeDotsLabs/watermill-kafka.git content/src-link/watermill-kafka
-cloneOrPull git@github.com:ThreeDotsLabs/watermill-nats.git content/src-link/watermill-nats
-cloneOrPull git@github.com:ThreeDotsLabs/watermill-sql.git content/src-link/watermill-sql
+cloneOrPull "https://github.com/ThreeDotsLabs/watermill-amqp.git" content/src-link/watermill-amqp
+cloneOrPull "https://github.com/ThreeDotsLabs/watermill-googlecloud.git" content/src-link/watermill-googlecloud
+cloneOrPull "https://github.com/ThreeDotsLabs/watermill-http.git" content/src-link/watermill-http
+cloneOrPull "https://github.com/ThreeDotsLabs/watermill-io.git" content/src-link/watermill-io
+cloneOrPull "https://github.com/ThreeDotsLabs/watermill-kafka.git" content/src-link/watermill-kafka
+cloneOrPull "https://github.com/ThreeDotsLabs/watermill-nats.git" content/src-link/watermill-nats
+cloneOrPull "https://github.com/ThreeDotsLabs/watermill-sql.git" content/src-link/watermill-sql
+
 
 declare -a files_to_link=(
     "message/decorator.go"
@@ -53,7 +54,6 @@ declare -a files_to_link=(
 )
 
 pushd ../
-
 for i in "${files_to_link[@]}"
 do
     DIR=$(dirname "${i}")
@@ -62,7 +62,6 @@ do
     mkdir -p "${DEST_DIR}"
     ln -rsf "./${i}" "./${DEST_DIR}"
 done
-
 popd
 
 python3 ./extract_middleware_godocs.py > content/src-link/middleware-defs.md
