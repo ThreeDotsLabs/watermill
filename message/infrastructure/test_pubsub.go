@@ -46,8 +46,12 @@ func RunOnlyFastTests() bool {
 type Features struct {
 	ConsumerGroups      bool
 	ExactlyOnceDelivery bool
-	GuaranteedOrder     bool
-	Persistent          bool
+
+	GuaranteedOrder bool
+	// Some Pub/Subs guarantees order only when one subscriber is subscribing.
+	GuaranteedOrderWithSingleSubscriber bool
+
+	Persistent bool
 
 	RestartServiceCommand []string
 
@@ -280,7 +284,12 @@ func TestPublishSubscribeInOrder(t *testing.T, pubSubConstructor PubSubConstruct
 	if features.RequireSingleInstance {
 		sub = initSub
 	} else {
-		sub = createMultipliedSubscriber(t, pubSubConstructor, 10)
+		subscribersCount := 10
+		if features.GuaranteedOrderWithSingleSubscriber {
+			subscribersCount = 1
+		}
+
+		sub = createMultipliedSubscriber(t, pubSubConstructor, subscribersCount)
 		defer require.NoError(t, sub.Close())
 	}
 

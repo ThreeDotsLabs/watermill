@@ -10,7 +10,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure/amqp"
+	"github.com/ThreeDotsLabs/watermill-amqp/pkg/amqp"
 	"github.com/golang/protobuf/ptypes"
 
 	"github.com/ThreeDotsLabs/watermill"

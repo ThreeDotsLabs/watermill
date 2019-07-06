@@ -10,7 +10,7 @@ for building event driven applications, enabling event sourcing, RPC over messag
 sagas and basically whatever else comes to your mind. You can use conventional pub/sub
 implementations like Kafka or RabbitMQ, but also HTTP or MySQL binlog if that fits your use case.
 
-**Note:** Watermill should run reliably in a production environment, but it is still under heavy development and the public API may change before the 1.0.0 release.
+**Note:** This is README file is created for `master`. You may want to check README [for release v0.4.0.](https://github.com/ThreeDotsLabs/watermill/tree/v0.4.0#watermill)
 
 Documentation: https://watermill.io/
 
@@ -61,7 +61,19 @@ type Subscriber interface {
 }
 ```
 
-All Pub/Subs implementation can be found in the [documentation](https://watermill.io/docs/pub-sub-implementations/).
+Supported Pub/Subs:
+
+
+- AMQP Pub/Sub [(`github.com/ThreeDotsLabs/watermill-amqp`)](https://github.com/ThreeDotsLabs/watermill-amqp/)
+- Google Cloud Pub/Sub [(`github.com/ThreeDotsLabs/watermill-googlecloud`)](https://github.com/ThreeDotsLabs/watermill-googlecloud/)
+- HTTP Pub/Sub [(`github.com/ThreeDotsLabs/watermill-http`)](https://github.com/ThreeDotsLabs/watermill-http/)
+- io.Reader/io.Writer Pub/Sub [(`github.com/ThreeDotsLabs/watermill-io`)](https://github.com/ThreeDotsLabs/watermill-io/)
+- Kafka Pub/Sub [(`github.com/ThreeDotsLabs/watermill-kafka`)](https://github.com/ThreeDotsLabs/watermill-kafka/)
+- NATS Pub/Sub [(`github.com/ThreeDotsLabs/watermill-nats`)](https://github.com/ThreeDotsLabs/watermill-nats/)
+- SQL Pub/Sub [(`github.com/ThreeDotsLabs/watermill-sql`)](https://github.com/ThreeDotsLabs/watermill-sql/)
+
+
+All Pub/Subs implementation documentation can be found in the [documentation](https://watermill.io/docs/pub-sub-implementations/).
 
 ## Examples
 * [Your first app](_examples/your-first-app) - start here!
