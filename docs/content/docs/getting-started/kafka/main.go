@@ -10,8 +10,8 @@ import (
 
 	"github.com/ThreeDotsLabs/watermill"
 
+	"github.com/ThreeDotsLabs/watermill-kafka/pkg/kafka"
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure/kafka"
 )
 
 func main() {

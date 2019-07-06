@@ -12,7 +12,7 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure/googlecloud"
+	"github.com/ThreeDotsLabs/watermill-googlecloud/pkg/googlecloud"
 )
 
 var googleCloudTempSubscriptionID string

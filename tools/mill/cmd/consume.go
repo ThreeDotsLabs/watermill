@@ -9,8 +9,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	"github.com/ThreeDotsLabs/watermill-io/pkg/io"
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure/io"
 	"github.com/ThreeDotsLabs/watermill/message/router/plugin"
 )
 
