@@ -24,7 +24,7 @@ All built-in implementations can be found in [message/infrastructure](https://gi
 ### Golang Channel
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/infrastructure/gochannel/pubsub.go" first_line_contains="// GoChannel" last_line_contains="type GoChannel struct {" %}}
+{{% load-snippet-partial file="src-link/message/infrastructure/gochannel/pubsub.go" first_line_contains="// GoChannel" last_line_contains="type GoChannel struct {" %}}
 {{% /render-md %}}
 
 #### Characteristics
@@ -41,19 +41,19 @@ All built-in implementations can be found in [message/infrastructure](https://gi
 You can inject configuration via the constructor.
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/infrastructure/gochannel/pubsub.go" first_line_contains="func NewGoChannel" last_line_contains="logger:" %}}
+{{% load-snippet-partial file="src-link/message/infrastructure/gochannel/pubsub.go" first_line_contains="func NewGoChannel" last_line_contains="logger:" %}}
 {{% /render-md %}}
 
 #### Publishing
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/infrastructure/gochannel/pubsub.go" first_line_contains="// Publish" last_line_contains="func (g *GoChannel) Publish" %}}
+{{% load-snippet-partial file="src-link/message/infrastructure/gochannel/pubsub.go" first_line_contains="// Publish" last_line_contains="func (g *GoChannel) Publish" %}}
 {{% /render-md %}}
 
 #### Subscribing
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/infrastructure/gochannel/pubsub.go" first_line_contains="// Subscribe" last_line_contains="func (g *GoChannel) Subscribe" %}}
+{{% load-snippet-partial file="src-link/message/infrastructure/gochannel/pubsub.go" first_line_contains="// Subscribe" last_line_contains="func (g *GoChannel) Subscribe" %}}
 {{% /render-md %}}
 
 #### Marshaler
@@ -76,7 +76,7 @@ Kafka is one of the most popular Pub/Subs. We are providing Pub/Sub implementati
 #### Configuration
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/infrastructure/kafka/subscriber.go" first_line_contains="type SubscriberConfig struct" last_line_contains="// Subscribe" %}}
+{{% load-snippet-partial file="src-link/watermill-kafka/pkg/kafka/subscriber.go" first_line_contains="type SubscriberConfig struct" last_line_contains="// Subscribe" %}}
 {{% /render-md %}}
 
 ##### Passing custom `Sarama` config
@@ -85,14 +85,14 @@ You can pass [custom config](https://github.com/Shopify/sarama/blob/master/confi
 When `nil` is passed, default config is used (`DefaultSaramaSubscriberConfig`).
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/infrastructure/kafka/config.go" first_line_contains="// DefaultSaramaSubscriberConfig" last_line_contains="return config" padding_after="1" %}}
+{{% load-snippet-partial file="src-link/watermill-kafka/pkg/kafka/config.go" first_line_contains="// DefaultSaramaSubscriberConfig" last_line_contains="return config" padding_after="1" %}}
 {{% /render-md %}}
 
 #### Connecting
 
 ##### Publisher
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/infrastructure/kafka/publisher.go" first_line_contains="// NewPublisher" last_line_contains="(message.Publisher, error)" padding_after="0" %}}
+{{% load-snippet-partial file="src-link/watermill-kafka/pkg/kafka/publisher.go" first_line_contains="// NewPublisher" last_line_contains="(message.Publisher, error)" padding_after="0" %}}
 
 Example:
 {{% load-snippet-partial file="content/docs/getting-started/kafka/main.go" first_line_contains="saramaSubscriberConfig :=" last_line_contains="panic(err)" padding_after="1" %}}
@@ -101,7 +101,7 @@ Example:
 
 ##### Subscriber
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/infrastructure/kafka/subscriber.go" first_line_contains="// NewSubscriber" last_line_contains="(message.Subscriber, error)" padding_after="0" %}}
+{{% load-snippet-partial file="src-link/watermill-kafka/pkg/kafka/subscriber.go" first_line_contains="// NewSubscriber" last_line_contains="(message.Subscriber, error)" padding_after="0" %}}
 
 Example:
 {{% load-snippet-partial file="content/docs/getting-started/kafka/main.go" first_line_contains="publisher, err := kafka.NewPublisher" last_line_contains="panic(err)" padding_after="1" %}}
@@ -110,13 +110,13 @@ Example:
 #### Publishing
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/infrastructure/kafka/publisher.go" first_line_contains="// Publish" last_line_contains="func (p *Publisher) Publish" %}}
+{{% load-snippet-partial file="src-link/watermill-kafka/pkg/kafka/publisher.go" first_line_contains="// Publish" last_line_contains="func (p *Publisher) Publish" %}}
 {{% /render-md %}}
 
 #### Subscribing
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/infrastructure/kafka/subscriber.go" first_line_contains="// Subscribe" last_line_contains="func (s *Subscriber) Subscribe" %}}
+{{% load-snippet-partial file="src-link/watermill-kafka/pkg/kafka/subscriber.go" first_line_contains="// Subscribe" last_line_contains="func (s *Subscriber) Subscribe" %}}
 {{% /render-md %}}
 
 #### Marshaler
@@ -124,7 +124,7 @@ Example:
 Watermill's messages cannot be directly sent to Kafka - they need to be marshaled. You can implement your marshaler or use default implementation.
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/infrastructure/kafka/marshaler.go" first_line_contains="// Marshaler" last_line_contains="func (DefaultMarshaler)" padding_after="0" %}}
+{{% load-snippet-partial file="src-link/watermill-kafka/pkg/kafka/marshaler.go" first_line_contains="// Marshaler" last_line_contains="func (DefaultMarshaler)" padding_after="0" %}}
 {{% /render-md %}}
 
 #### Partitioning
@@ -134,7 +134,7 @@ Our Publisher has support for the partitioning mechanism.
 It can be done with special Marshaler implementation:
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/infrastructure/kafka/marshaler.go" first_line_contains="type kafkaJsonWithPartitioning" last_line_contains="func (j kafkaJsonWithPartitioning) Marshal" padding_after="0" %}}
+{{% load-snippet-partial file="src-link/watermill-kafka/pkg/kafka/marshaler.go" first_line_contains="type kafkaJsonWithPartitioning" last_line_contains="func (j kafkaJsonWithPartitioning) Marshal" padding_after="0" %}}
 {{% /render-md %}}
 
 When using, you need to pass your function to generate partition key.
@@ -167,7 +167,7 @@ The HTTP publisher sends HTTP requests as specified in its configuration. Here i
 Subscriber configuration is done via the config struct passed to the constructor:
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/infrastructure/http/subscriber.go" first_line_contains="type SubscriberConfig struct" last_line_contains="}" %}}
+{{% load-snippet-partial file="src-link/watermill-http/pkg/http/subscriber.go" first_line_contains="type SubscriberConfig struct" last_line_contains="}" %}}
 {{% /render-md %}}
 
 You can use the `Router` config option to `SubscriberConfig` to pass your own `chi.Router` (see [chi](https://github.com/go-chi/chi)).
@@ -178,14 +178,14 @@ This may be helpful if you'd like to add your own HTTP handlers (e.g. a health c
 Publisher configuration is done via the config struct passed to the constructor:
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/infrastructure/http/publisher.go" first_line_contains="type PublisherConfig struct" last_line_contains="}" %}}
+{{% load-snippet-partial file="src-link/watermill-http/pkg/http/publisher.go" first_line_contains="type PublisherConfig struct" last_line_contains="}" %}}
 {{% /render-md %}}
 
 How the message topic and body translate into the URL, method, headers, and payload of the HTTP request is highly configurable through the use of `MarshalMessageFunc`. 
 Use the provided `DefaultMarshalMessageFunc` to send POST requests to a specific url:
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/infrastructure/http/publisher.go" first_line_contains="// MarshalMessageFunc" last_line_contains="return req, nil" padding_after="2" %}}
+{{% load-snippet-partial file="src-link/watermill-http/pkg/http/publisher.go" first_line_contains="// MarshalMessageFunc" last_line_contains="return req, nil" padding_after="2" %}}
 {{% /render-md %}}
 
 You can pass your own `http.Client` to execute the requests or use Golang's default client. 
@@ -204,7 +204,7 @@ httpSubscriber.StartHTTPServer()
 #### Subscribing
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/infrastructure/http/subscriber.go" first_line_contains="// Subscribe adds" last_line_contains="func (s *Subscriber) Subscribe" %}}
+{{% load-snippet-partial file="src-link/watermill-http/pkg/http/subscriber.go" first_line_contains="// Subscribe adds" last_line_contains="func (s *Subscriber) Subscribe" %}}
 {{% /render-md %}}
 
 ### Google Cloud Pub/Sub
@@ -234,11 +234,11 @@ Documentation: [https://cloud.google.com/pubsub/docs/](https://cloud.google.com/
 #### Configuration
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/infrastructure/googlecloud/publisher.go" first_line_contains="type PublisherConfig struct " last_line_contains="func NewPublisher" %}}
+{{% load-snippet-partial file="src-link/watermill-googlecloud/pkg/googlecloud/publisher.go" first_line_contains="type PublisherConfig struct " last_line_contains="func NewPublisher" %}}
 {{% /render-md %}}
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/infrastructure/googlecloud/subscriber.go" first_line_contains="type SubscriberConfig struct {" last_line_contains="func NewSubscriber(" %}}
+{{% load-snippet-partial file="src-link/watermill-googlecloud/pkg/googlecloud/subscriber.go" first_line_contains="type SubscriberConfig struct {" last_line_contains="func NewSubscriber(" %}}
 {{% /render-md %}}
 
 ##### Subscription name
@@ -276,13 +276,13 @@ For development, you can use a Docker image with the emulator and the `PUBSUB_EM
 #### Publishing
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/infrastructure/googlecloud/publisher.go" first_line_contains="// Publish" last_line_contains="func (p *Publisher) Publish" %}}
+{{% load-snippet-partial file="src-link/watermill-googlecloud/pkg/googlecloud/publisher.go" first_line_contains="// Publish" last_line_contains="func (p *Publisher) Publish" %}}
 {{% /render-md %}}
 
 #### Subscribing
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/infrastructure/googlecloud/subscriber.go" first_line_contains="// Subscribe " last_line_contains="func (s *Subscriber) Subscribe" %}}
+{{% load-snippet-partial file="src-link/watermill-googlecloud/pkg/googlecloud/subscriber.go" first_line_contains="// Subscribe " last_line_contains="func (s *Subscriber) Subscribe" %}}
 {{% /render-md %}}
 
 #### Marshaler
@@ -290,7 +290,7 @@ For development, you can use a Docker image with the emulator and the `PUBSUB_EM
 Watermill's messages cannot be directly sent to Kafka - they need to be marshaled. You can implement your marshaler or use default implementation.
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/infrastructure/googlecloud/marshaler.go" first_line_contains="// Marshaler" last_line_contains="type DefaultMarshalerUnmarshaler " padding_after="0" %}}
+{{% load-snippet-partial file="src-link/watermill-googlecloud/pkg/googlecloud/marshaler.go" first_line_contains="// Marshaler" last_line_contains="type DefaultMarshalerUnmarshaler " padding_after="0" %}}
 {{% /render-md %}}
 
 ### NATS Streaming
@@ -309,11 +309,11 @@ NATS Streaming is a data streaming system powered by NATS, and written in the Go
 #### Configuration
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/infrastructure/nats/publisher.go" first_line_contains="type StreamingPublisherConfig struct" last_line_contains="type StreamingPublisher struct {" %}}
+{{% load-snippet-partial file="src-link/watermill-nats/pkg/nats/publisher.go" first_line_contains="type StreamingPublisherConfig struct" last_line_contains="type StreamingPublisher struct {" %}}
 {{% /render-md %}}
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/infrastructure/nats/subscriber.go" first_line_contains="type StreamingSubscriberConfig struct" last_line_contains="type StreamingSubscriber struct" %}}
+{{% load-snippet-partial file="src-link/watermill-nats/pkg/nats/subscriber.go" first_line_contains="type StreamingSubscriberConfig struct" last_line_contains="type StreamingSubscriber struct" %}}
 {{% /render-md %}}
 
 #### Connecting
@@ -321,14 +321,14 @@ NATS Streaming is a data streaming system powered by NATS, and written in the Go
 By default NATS client will try to connect to `localhost:4222`. If you are using different hostname or port you should pass custom `stan.Option`: `stan.NatsURL("nats://your-nats-hostname:4222")` to `StreamingSubscriberConfig` and `StreamingPublisherConfig`.
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/infrastructure/nats/publisher.go" first_line_contains="// NewStreamingPublisher" last_line_contains="func NewStreamingPublisher" %}}
+{{% load-snippet-partial file="src-link/watermill-nats/pkg/nats/publisher.go" first_line_contains="// NewStreamingPublisher" last_line_contains="func NewStreamingPublisher" %}}
 
 Example:
 {{% load-snippet-partial file="content/docs/getting-started/nats-streaming/main.go" first_line_contains="publisher, err :=" last_line_contains="panic(err)" padding_after="1" %}}
 {{% /render-md %}}
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/infrastructure/nats/subscriber.go" first_line_contains="// NewStreamingSubscriber" last_line_contains="func NewStreamingSubscriber" %}}
+{{% load-snippet-partial file="src-link/watermill-nats/pkg/nats/subscriber.go" first_line_contains="// NewStreamingSubscriber" last_line_contains="func NewStreamingSubscriber" %}}
 
 Example:
 {{% load-snippet-partial file="content/docs/getting-started/nats-streaming/main.go" first_line_contains="subscriber, err :=" last_line_contains="panic(err)" padding_after="1" %}}
@@ -339,13 +339,13 @@ You can also use `NewStreamingSubscriberWithStanConn` and `NewStreamingPublisher
 #### Publishing
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/infrastructure/nats/publisher.go" first_line_contains="// Publish" last_line_contains="func (p StreamingPublisher) Publish" %}}
+{{% load-snippet-partial file="src-link/watermill-nats/pkg/nats/publisher.go" first_line_contains="// Publish" last_line_contains="func (p StreamingPublisher) Publish" %}}
 {{% /render-md %}}
 
 #### Subscribing
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/infrastructure/nats/subscriber.go" first_line_contains="// Subscribe " last_line_contains="func (s *StreamingSubscriber) Subscribe" %}}
+{{% load-snippet-partial file="src-link/watermill-nats/pkg/nats/subscriber.go" first_line_contains="// Subscribe " last_line_contains="func (s *StreamingSubscriber) Subscribe" %}}
 {{% /render-md %}}
 
 #### Marshaler
@@ -355,7 +355,7 @@ NATS doesn't implement any mechanism like metadata or headers of the message. Fo
 The default implementation is based on Golang's [`gob`](https://golang.org/pkg/encoding/gob/).
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/infrastructure/nats/marshaler.go" first_line_contains="type Marshaler " last_line_contains="type GobMarshaler struct" padding_after="0" %}}
+{{% load-snippet-partial file="src-link/watermill-nats/pkg/nats/marshaler.go" first_line_contains="type Marshaler " last_line_contains="type GobMarshaler struct" padding_after="0" %}}
 {{% /render-md %}}
 
 When you have your own format of the messages, you can implement your own Marshaler, which will serialize messages in your format.
@@ -370,7 +370,7 @@ but some standard [middlewares]({{< ref "messages-router#middleware" >}}) may be
 We are providing Pub/Sub implementation based on [github.com/streadway/amqp](https://github.com/streadway/amqp).
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/infrastructure/amqp/doc.go" first_line_contains="// AMQP" last_line_contains="package amqp" padding_after="0" %}}
+{{% load-snippet-partial file="src-link/watermill-amqp/pkg/amqp/doc.go" first_line_contains="// AMQP" last_line_contains="package amqp" padding_after="0" %}}
 {{% /render-md %}}
 
 #### Characteristics
@@ -387,7 +387,7 @@ We are providing Pub/Sub implementation based on [github.com/streadway/amqp](htt
 Our AMQP is shipped with some pre-created configurations:
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/infrastructure/amqp/config.go" first_line_contains="// NewDurablePubSubConfig" last_line_contains="type Config struct {" %}}
+{{% load-snippet-partial file="src-link/watermill-amqp/pkg/amqp/config.go" first_line_contains="// NewDurablePubSubConfig" last_line_contains="type Config struct {" %}}
 {{% /render-md %}}
 
 For detailed configuration description, please check [message/infrastructure/amqp/pubsub_config.go](https://github.com/ThreeDotsLabs/watermill/tree/master/message/infrastructure/amqp/pubsub_config.go)
@@ -409,13 +409,13 @@ TLS config can be passed to `Config.TLSConfig`.
 #### Publishing
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/infrastructure/amqp/publisher.go" first_line_contains="// Publish" last_line_contains="func (p *Publisher) Publish" %}}
+{{% load-snippet-partial file="src-link/watermill-amqp/pkg/amqp/publisher.go" first_line_contains="// Publish" last_line_contains="func (p *Publisher) Publish" %}}
 {{% /render-md %}}
 
 #### Subscribing
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/infrastructure/amqp/subscriber.go" first_line_contains="// Subscribe" last_line_contains="func (s *Subscriber) Subscribe" %}}
+{{% load-snippet-partial file="src-link/watermill-amqp/pkg/amqp/subscriber.go" first_line_contains="// Subscribe" last_line_contains="func (s *Subscriber) Subscribe" %}}
 {{% /render-md %}}
 
 #### Marshaler
@@ -426,7 +426,7 @@ Marshaller can be changed via the Configuration.
 If you need to customize thing in `amqp.Delivery`, you can do it `PostprocessPublishing` function.
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/infrastructure/amqp/marshaler.go" first_line_contains="// Marshaler" last_line_contains="func (DefaultMarshaler)" padding_after="0" %}}
+{{% load-snippet-partial file="src-link/watermill-amqp/pkg/amqp/marshaler.go" first_line_contains="// Marshaler" last_line_contains="func (DefaultMarshaler)" padding_after="0" %}}
 {{% /render-md %}}
 
 #### AMQP "Consumer Groups"
@@ -442,7 +442,7 @@ In this example both `pubSub1` and `pubSub2` will receive some messages independ
 #### AMQP `TopologyBuilder`
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/infrastructure/amqp/topology_builder.go" first_line_contains="// TopologyBuilder" last_line_contains="}" padding_after="0" %}}
+{{% load-snippet-partial file="content/src-link/watermill-amqp/pkg/amqp/topology_builder.go" first_line_contains="// TopologyBuilder" last_line_contains="}" padding_after="0" %}}
 {{% /render-md %}}
 
 ### io.Writer/io.Reader
@@ -471,7 +471,7 @@ This is a very bare-bones implementation for now, so no extra features are suppo
 The publisher configuration is relatively simple.
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/infrastructure/io/publisher.go" first_line_contains="type PublisherConfig struct" last_line_contains="// Publisher" %}}
+{{% load-snippet-partial file="src-link/watermill-io/pkg/io/publisher.go" first_line_contains="type PublisherConfig struct" last_line_contains="// Publisher" %}}
 {{% /render-md %}}
 
 The subscriber may work in two modes – either perform buffered reads of constant size from the io.Reader, or split the byte stream into messages using a delimiter byte.
@@ -479,7 +479,7 @@ The subscriber may work in two modes – either perform buffered reads of consta
 The reading will continue even if the reads come up empty, but they will not be sent out as messages. The time to wait after an empty read is configured through the `PollInterval` parameter. As soon as a non-empty input is read, it will be packaged as a message and sent out.
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/infrastructure/io/subscriber.go" first_line_contains="type SubscriberConfig struct" last_line_contains="// Subscriber" %}}
+{{% load-snippet-partial file="src-link/watermill-io/pkg/io/subscriber.go" first_line_contains="type SubscriberConfig struct" last_line_contains="// Subscriber" %}}
 {{% /render-md %}}
 
 The continuous reading may be used, for example, to emulate the behaviour of a `tail -f` command, like in this snippet:
@@ -495,11 +495,11 @@ The MarshalFunc is an important part of `io.Publisher`, because it fully control
 Correspondingly, the UnmarshalFunc regulates how the bytes read by the `io.Reader` will be interpreted as Watermill messages.
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/infrastructure/io/marshal.go" first_line_contains="// MarshalMessageFunc" last_line_contains="// PayloadMarshalFunc" %}}
+{{% load-snippet-partial file="src-link/watermill-io/pkg/io/marshal.go" first_line_contains="// MarshalMessageFunc" last_line_contains="// PayloadMarshalFunc" %}}
 {{% /render-md %}}
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/infrastructure/io/marshal.go" first_line_contains="// UnmarshalMessageFunc" last_line_contains="// PayloadUnmarshalFunc" %}}
+{{% load-snippet-partial file="src-link/watermill-io/pkg/io/marshal.go" first_line_contains="// UnmarshalMessageFunc" last_line_contains="// PayloadUnmarshalFunc" %}}
 {{% /render-md %}}
 
 The package comes with some predefined marshal and unmarshal functions, but you might want to write your own marshaler/unmarshaler to work with the specific implementation of `io.Writer/io.Reader` that you are working with.
