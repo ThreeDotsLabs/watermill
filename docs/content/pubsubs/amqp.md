@@ -87,6 +87,6 @@ In this example both `pubSub1` and `pubSub2` will receive some messages independ
 #### AMQP `TopologyBuilder`
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/watermill-amqp/pkg/amqp/topology_builder.go" first_line_contains="// TopologyBuilder" last_line_contains="}" padding_after="0" %}}
+{{% load-snippet-partial file="src-link/watermill-amqp/pkg/amqp/topology_builder.go" first_line_contains="// TopologyBuilder" last_line_contains="}" padding_after="0" %}}
 {{% /render-md %}}
 
