@@ -7,15 +7,16 @@ import (
 	"github.com/pkg/errors"
 )
 
-func shouldFail(errorRatio float32) bool {
+func shouldFail(probability float32) bool {
 	r := rand.Float32()
-	return r <= errorRatio
+	return r <= probability
 }
 
-func RandomFail(errorRatio float32) message.HandlerMiddleware {
+// RandomFail makes the handler fail with an error based on random chance. Error probability should be in the range (0,1).
+func RandomFail(errorProbability float32) message.HandlerMiddleware {
 	return func(h message.HandlerFunc) message.HandlerFunc {
 		return func(message *message.Message) ([]*message.Message, error) {
-			if shouldFail(errorRatio) {
+			if shouldFail(errorProbability) {
 				return nil, errors.New("random fail occurred")
 			}
 
@@ -24,10 +25,11 @@ func RandomFail(errorRatio float32) message.HandlerMiddleware {
 	}
 }
 
-func RandomPanic(panicRatio float32) message.HandlerMiddleware {
+// RandomPanic makes the handler panic based on random chance. Panic probability should be in the range (0,1).
+func RandomPanic(panicProbability float32) message.HandlerMiddleware {
 	return func(h message.HandlerFunc) message.HandlerFunc {
 		return func(message *message.Message) ([]*message.Message, error) {
-			if shouldFail(panicRatio) {
+			if shouldFail(panicProbability) {
 				panic("random panic occurred")
 			}
 

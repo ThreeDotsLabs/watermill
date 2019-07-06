@@ -25,8 +25,8 @@ func newPubSub(t *testing.T, marshaler googlecloud.MarshalerUnmarshaler, subscri
 	publisher, err := googlecloud.NewPublisher(
 		googlecloud.PublisherConfig{
 			Marshaler: marshaler,
-			Logger:    logger,
 		},
+		logger,
 	)
 	require.NoError(t, err)
 
@@ -125,7 +125,7 @@ func TestSubscriberUnexpectedTopicForSubscription(t *testing.T) {
 }
 
 func produceMessages(t *testing.T, topic string, howMany int) {
-	pub, err := googlecloud.NewPublisher(googlecloud.PublisherConfig{})
+	pub, err := googlecloud.NewPublisher(googlecloud.PublisherConfig{}, nil)
 	require.NoError(t, err)
 	defer pub.Close()
 

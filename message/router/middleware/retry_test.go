@@ -42,6 +42,7 @@ func TestRetry_retry(t *testing.T) {
 func TestRetry_max_retries(t *testing.T) {
 	retry := middleware.Retry{
 		MaxRetries: 1,
+		Logger:     watermill.NewStdLogger(true, true),
 	}
 
 	runCount := 0
@@ -172,4 +173,30 @@ func TestRetry_max_elapsed(t *testing.T) {
 		runTimeWithoutMaxElapsedTime,
 		timeElapsed,
 	)
+}
+
+func TestRetry_max_interval(t *testing.T) {
+	maxRetries := 10
+	backoffTimes := make([]time.Duration, maxRetries)
+	maxInterval := time.Millisecond * 30
+
+	retry := middleware.Retry{
+		MaxRetries:          maxRetries,
+		InitialInterval:     time.Millisecond * 10,
+		MaxInterval:         maxInterval,
+		Multiplier:          2.0,
+		RandomizationFactor: 0,
+		OnRetryHook: func(retryNum int, delay time.Duration) {
+			backoffTimes[retryNum-1] = delay
+		},
+	}
+
+	h := retry.Middleware(func(msg *message.Message) (messages []*message.Message, e error) {
+		return nil, errors.New("bar")
+	})
+	_, _ = h(message.NewMessage("2", nil))
+
+	for i, delay := range backoffTimes {
+		assert.True(t, delay <= maxInterval, "wait interval %d (%s) exceeds maxInterval (%s)", i, delay, maxInterval)
+	}
 }

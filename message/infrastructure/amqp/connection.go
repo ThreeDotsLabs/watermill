@@ -3,10 +3,11 @@ package amqp
 import (
 	"sync"
 
-	"github.com/ThreeDotsLabs/watermill"
 	"github.com/cenkalti/backoff"
 	"github.com/pkg/errors"
 	"github.com/streadway/amqp"
+
+	"github.com/ThreeDotsLabs/watermill"
 )
 
 type connectionWrapper struct {
@@ -32,6 +33,10 @@ func newConnection(
 	config Config,
 	logger watermill.LoggerAdapter,
 ) (*connectionWrapper, error) {
+	if logger == nil {
+		logger = watermill.NopLogger{}
+	}
+
 	pubSub := &connectionWrapper{
 		config:    config,
 		logger:    logger,

@@ -26,8 +26,6 @@ type SubscriberConfig struct {
 
 	// UnmarshalFunc transforms the raw bytes into a Watermill message. Its behavior may be dependent on the topic.
 	UnmarshalFunc UnmarshalMessageFunc
-
-	Logger watermill.LoggerAdapter
 }
 
 func (c SubscriberConfig) validate() error {
@@ -54,10 +52,6 @@ func (c *SubscriberConfig) setDefaults() {
 	if c.PollInterval == 0 {
 		c.PollInterval = time.Second
 	}
-
-	if c.Logger == nil {
-		c.Logger = watermill.NopLogger{}
-	}
 }
 
 // Subscriber reads bytes from its underlying io.Reader and interprets them as Watermill messages.
@@ -71,18 +65,25 @@ type Subscriber struct {
 
 	closed  bool
 	closing chan struct{}
+
+	logger watermill.LoggerAdapter
 }
 
-func NewSubscriber(rc io.ReadCloser, config SubscriberConfig) (*Subscriber, error) {
+func NewSubscriber(rc io.ReadCloser, config SubscriberConfig, logger watermill.LoggerAdapter) (*Subscriber, error) {
 	if err := config.validate(); err != nil {
 		return nil, errors.Wrap(err, "invalid subscriber config")
 	}
 	config.setDefaults()
 
+	if logger == nil {
+		logger = watermill.NopLogger{}
+	}
+
 	return &Subscriber{
 		rc:      rc,
 		config:  config,
 		closing: make(chan struct{}),
+		logger:  logger,
 	}, nil
 }
 
@@ -130,11 +131,11 @@ func (s *Subscriber) consume(ctx context.Context, topic string, output chan *mes
 		select {
 		case chunk, alive = <-readCh:
 			if !alive {
-				s.config.Logger.Debug("Read channel closed, breaking read loop", nil)
+				s.logger.Debug("Read channel closed, breaking read loop", nil)
 				return
 			}
 		case <-s.closing:
-			s.config.Logger.Debug("Subscriber closing, breaking read loop", nil)
+			s.logger.Debug("Subscriber closing, breaking read loop", nil)
 			return
 		}
 
@@ -145,10 +146,10 @@ func (s *Subscriber) consume(ctx context.Context, topic string, output chan *mes
 
 		msg, err := s.config.UnmarshalFunc(topic, chunk)
 		if err != nil {
-			s.config.Logger.Error("Could not unmarshal message", err, nil)
+			s.logger.Error("Could not unmarshal message", err, nil)
 			continue
 		}
-		logger := s.config.Logger.With(watermill.LogFields{
+		logger := s.logger.With(watermill.LogFields{
 			"uuid":  msg.UUID,
 			"topic": topic,
 		})
@@ -210,7 +211,7 @@ func (s *Subscriber) read(reader *bufio.Reader) chan []byte {
 			}
 
 			if err != nil && errors.Cause(err) != io.EOF {
-				s.config.Logger.Error("Could not read from buffer, closing read()", err, nil)
+				s.logger.Error("Could not read from buffer, closing read()", err, nil)
 				return
 			}
 

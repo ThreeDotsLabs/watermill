@@ -49,7 +49,7 @@ services:
 
   mysql:
     image: mysql:8.0
-    restart: on-failure
+    restart: unless-stopped
     ports:
       - 3306:3306
     environment:

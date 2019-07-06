@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill/internal/tests"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure"
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/gochannel"
@@ -34,10 +33,11 @@ func TestPublishSubscribe_persistent(t *testing.T) {
 	infrastructure.TestPubSub(
 		t,
 		infrastructure.Features{
-			ConsumerGroups:      false,
-			ExactlyOnceDelivery: true,
-			GuaranteedOrder:     false,
-			Persistent:          false,
+			ConsumerGroups:        false,
+			ExactlyOnceDelivery:   true,
+			GuaranteedOrder:       false,
+			Persistent:            false,
+			RequireSingleInstance: true,
 		},
 		createPersistentPubSub,
 		nil,
@@ -58,7 +58,7 @@ func TestPublishSubscribe_not_persistent(t *testing.T) {
 	sendMessages := infrastructure.AddSimpleMessages(t, messagesCount, pubSub, topicName)
 	receivedMsgs, _ := subscriber.BulkRead(msgs, messagesCount, time.Second)
 
-	tests.AssertAllMessagesReceived(t, sendMessages, receivedMsgs)
+	infrastructure.AssertAllMessagesReceived(t, sendMessages, receivedMsgs)
 
 	assert.NoError(t, pubSub.Close())
 }
@@ -182,6 +182,6 @@ func testPublishSubscribeSubRace(t *testing.T) {
 	log.Println("asserting")
 
 	for subMsgs := range subscriberReceivedCh {
-		tests.AssertAllMessagesReceived(t, sentMessages, subMsgs)
+		infrastructure.AssertAllMessagesReceived(t, sentMessages, subMsgs)
 	}
 }

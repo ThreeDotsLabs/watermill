@@ -20,9 +20,3 @@ services:
 
   googlecloud:
     entrypoint: gcloud --quiet beta emulators pubsub start --host-port=googlecloud:8085 --verbosity=debug --log-http
-
-  mysql:
-    image: mysql:8.0
-    environment:
-      MYSQL_DATABASE: watermill
-      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"

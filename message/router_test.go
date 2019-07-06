@@ -7,12 +7,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ThreeDotsLabs/watermill/message/infrastructure"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/internal"
-	"github.com/ThreeDotsLabs/watermill/internal/tests"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/infrastructure/gochannel"
 	"github.com/ThreeDotsLabs/watermill/message/subscriber"
@@ -104,14 +105,14 @@ func TestRouter_functional(t *testing.T) {
 
 	receivedMessages1, all := subscriber.BulkRead(receivedMessagesCh1, len(expectedReceivedMessages), time.Second*10)
 	assert.True(t, all)
-	tests.AssertAllMessagesReceived(t, expectedReceivedMessages, receivedMessages1)
+	infrastructure.AssertAllMessagesReceived(t, expectedReceivedMessages, receivedMessages1)
 
 	receivedMessages2, all := subscriber.BulkRead(receivedMessagesCh2, len(expectedReceivedMessages), time.Second*10)
 	assert.True(t, all)
-	tests.AssertAllMessagesReceived(t, expectedReceivedMessages, receivedMessages2)
+	infrastructure.AssertAllMessagesReceived(t, expectedReceivedMessages, receivedMessages2)
 
 	<-allPublishedByHandler
-	tests.AssertAllMessagesReceived(t, expectedSentByHandler, publishedByHandler)
+	infrastructure.AssertAllMessagesReceived(t, expectedSentByHandler, publishedByHandler)
 }
 
 func TestRouter_functional_nack(t *testing.T) {
@@ -161,7 +162,7 @@ func TestRouter_functional_nack(t *testing.T) {
 	messages, all := subscriber.BulkRead(messageReceived, 2, time.Second)
 	assert.True(t, all, "not all messages received, probably not ack received, received %d", len(messages))
 
-	tests.AssertAllMessagesReceived(t, []*message.Message{publishedMsg, publishedMsg}, messages)
+	infrastructure.AssertAllMessagesReceived(t, []*message.Message{publishedMsg, publishedMsg}, messages)
 }
 
 func TestRouter_stop_when_all_handlers_stopped(t *testing.T) {

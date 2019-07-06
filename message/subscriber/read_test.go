@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill/internal/tests"
+	"github.com/ThreeDotsLabs/watermill/message/infrastructure"
 
+	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/subscriber"
 	"github.com/stretchr/testify/assert"
@@ -46,7 +46,7 @@ func TestBulkRead(t *testing.T) {
 			readMessages, all := subscriber.BulkRead(messagesCh, messagesCount, time.Second)
 			assert.True(t, all)
 
-			tests.AssertAllMessagesReceived(t, messages, readMessages)
+			infrastructure.AssertAllMessagesReceived(t, messages, readMessages)
 		})
 	}
 }

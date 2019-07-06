@@ -76,6 +76,11 @@ func NewPublisher(config PublisherConfig, logger watermill.LoggerAdapter) (*Publ
 	if err := config.validate(); err != nil {
 		return nil, errors.Wrap(err, "invalid Publisher config")
 	}
+
+	if logger == nil {
+		logger = watermill.NopLogger{}
+	}
+
 	return &Publisher{
 		config: config,
 		logger: logger,
