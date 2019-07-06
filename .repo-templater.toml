@@ -36,9 +36,7 @@ Name = "watermill-amqp"
 HumanName = "AMQP Pub/Sub"
 URL = "{{ .URLTemplate }}"
 Templates = ["license", "common", "pubsub"]
-RunCmds = [
-    ["make", "generate_gomod"]
-]
+RunCmds = []
 
     [repositories.Variables]
         GoPackage = "{{ .GoPackageTemplate }}"
@@ -52,9 +50,7 @@ Name = "watermill-googlecloud"
 HumanName = "Google Cloud Pub/Sub"
 URL = "{{ .URLTemplate }}"
 Templates = ["license", "common", "pubsub"]
-RunCmds = [
-    ["make", "generate_gomod"]
-]
+RunCmds = []
 
     [repositories.Variables]
         GoPackage = "{{ .GoPackageTemplate }}"
@@ -72,9 +68,7 @@ Name = "watermill-http"
 HumanName = "HTTP Pub/Sub"
 URL = "{{ .URLTemplate }}"
 Templates = ["license", "common", "pubsub"]
-RunCmds = [
-    ["make", "generate_gomod"]
-]
+RunCmds = []
 
     [repositories.Variables]
         GoPackage = "{{ .GoPackageTemplate }}"
@@ -84,9 +78,7 @@ Name = "watermill-io"
 HumanName = "io.Reader/io.Writer Pub/Sub"
 URL = "{{ .URLTemplate }}"
 Templates = ["license", "common", "pubsub"]
-RunCmds = [
-    ["make", "generate_gomod"]
-]
+RunCmds = []
 
     [repositories.Variables]
         GoPackage = "{{ .GoPackageTemplate }}"
@@ -96,9 +88,7 @@ Name = "watermill-kafka"
 HumanName = "Kafka Pub/Sub"
 URL = "{{ .URLTemplate }}"
 Templates = ["license", "common", "pubsub"]
-RunCmds = [
-    ["make", "generate_gomod"]
-]
+RunCmds = []
 
     [repositories.Variables]
         GoPackage = "{{ .GoPackageTemplate }}"
@@ -117,9 +107,7 @@ Name = "watermill-nats"
 HumanName = "NATS Pub/Sub"
 URL = "{{ .URLTemplate }}"
 Templates = ["license", "common", "pubsub"]
-RunCmds = [
-    ["make", "generate_gomod"]
-]
+RunCmds = []
 
     [repositories.Variables]
         GoPackage = "{{ .GoPackageTemplate }}"
@@ -133,9 +121,7 @@ Name = "watermill-sql"
 HumanName = "SQL Pub/Sub"
 URL = "{{ .URLTemplate }}"
 Templates = ["license", "common", "pubsub"]
-RunCmds = [
-    ["make", "generate_gomod"]
-]
+RunCmds = []
 
     [repositories.Variables]
         GoPackage = "{{ .GoPackageTemplate }}"
