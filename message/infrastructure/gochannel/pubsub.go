@@ -337,7 +337,7 @@ SendToSubscriber:
 		case s.outputChannel <- msgToSend:
 			s.logger.Trace("Sent message to subscriber", logFields)
 		case <-s.closing:
-			s.logger.Trace("Closing, message discarded", logFields)
+			s.logger.Trace("Closing, msg not sent to subscriber, message discarded", logFields)
 			return
 		}
 
@@ -349,7 +349,7 @@ SendToSubscriber:
 			s.logger.Trace("Nack received, resending message", logFields)
 			continue SendToSubscriber
 		case <-s.closing:
-			s.logger.Trace("Closing, message discarded", logFields)
+			s.logger.Trace("Closing, message not acked, message discarded", logFields)
 			return
 		}
 	}
