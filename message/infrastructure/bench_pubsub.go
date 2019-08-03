@@ -13,7 +13,7 @@ type BenchmarkPubSubConstructor func(n int) (message.Publisher, message.Subscrib
 
 func BenchSubscriber(b *testing.B, pubSubConstructor BenchmarkPubSubConstructor) {
 	pub, sub := pubSubConstructor(b.N)
-	topicName := testTopicName()
+	topicName := testTopicName(NewTestID())
 
 	messages, err := sub.Subscribe(context.Background(), topicName)
 	if err != nil {
