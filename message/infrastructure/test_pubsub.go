@@ -235,7 +235,7 @@ func TestConcurrentSubscribe(
 	topicName := testTopicName(tCtx.TestID)
 
 	messagesCount := 5000
-	subscribersCount := 20
+	subscribersCount := 50
 
 	if testing.Short() {
 		messagesCount = 100
