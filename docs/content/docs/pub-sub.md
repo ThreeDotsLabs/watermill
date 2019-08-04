@@ -62,7 +62,7 @@ Every Pub/Sub is similar in most aspects.
 To avoid implementing separate tests for every Pub/Sub, we've created a test suite which should be passed by any Pub/Sub
 implementation.
 
-These tests can be found in `message/infrastructure/test_pubsub.go`.
+These tests can be found in `pubsub/tests/test_pubsub.go`.
 
 ### Built-in implementations
 

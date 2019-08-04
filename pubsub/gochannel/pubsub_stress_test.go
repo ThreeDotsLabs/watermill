@@ -5,13 +5,13 @@ package gochannel_test
 import (
 	"testing"
 
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure"
+	"github.com/ThreeDotsLabs/watermill/pubsub/tests"
 )
 
 func TestPublishSubscribe_stress(t *testing.T) {
-	infrastructure.TestPubSubStressTest(
+	tests.TestPubSubStressTest(
 		t,
-		infrastructure.Features{
+		tests.Features{
 			ConsumerGroups:        false,
 			ExactlyOnceDelivery:   true,
 			GuaranteedOrder:       false,
