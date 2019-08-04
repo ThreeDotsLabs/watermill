@@ -100,7 +100,7 @@ Templates = ["license", "common", "pubsub"]
       WATERMILL_TEST_KAFKA_BROKERS: localhost:9091,localhost:9092,localhost:9093,localhost:9094,localhost:9095
 '''
         CircleCIWaitForServices = 'localhost:9091 localhost:9092 localhost:9093 localhost:9094 localhost:9095'
-        CircleCIDckerExtraOptions = 'network_mode: "host"'
+        CircleCIDckerExtraOptions = '''    network_mode: "host"'''
 
 [[repositories]]
 Name = "watermill-nats"
@@ -125,11 +125,6 @@ Templates = ["license", "common", "pubsub"]
         GoPackage = "{{ .GoPackageTemplate }}"
         CircleCIDockerOverrideEnvs = '''
       WATERMILL_TEST_MYSQL_HOST: mysql:3306
-'''
-        CircleCIDockerOverrideServices = '''
-  kafka:
-    environment:
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
 '''
         MakefileCustom = '''
 mycli:

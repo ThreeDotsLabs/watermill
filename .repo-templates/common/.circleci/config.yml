@@ -25,10 +25,10 @@ tests_steps: &tests_steps
     - run:
         name: Wait for services
         command: docker-compose run watermill ./.circleci/wait-for-services.sh
-    - run: "echo Running tests with flags: $TEST_FLAGS"
+    - run: "echo Running tests command: $TEST_COMMAND"
     - run:
         name: Run tests
-        command: docker-compose run watermill go test ./... $TEST_FLAGS
+        command: docker-compose run watermill $TEST_COMMAND
         no_output_timeout: 30m
 
 version: 2
@@ -46,21 +46,23 @@ jobs:
             - /tmp/mod-cache
   tests_full:
     <<: *tests_steps
+    environment:
+      TEST_COMMAND: "make test"
 
   tests_stress:
     <<: *tests_steps
     environment:
-      TEST_FLAGS: "-tags=stress -timeout=30m"
+      TEST_COMMAND: "make test_stress"
 
   tests_short:
     <<: *tests_steps
     environment:
-      TEST_FLAGS: "-short"
+      TEST_COMMAND: "make test_short"
 
   tests_race:
     <<: *tests_steps
     environment:
-      TEST_FLAGS: "-short -race"
+      TEST_COMMAND: "make test_race"
 
 workflows:
   version: 2
@@ -68,10 +70,6 @@ workflows:
     jobs:
       - build
       - tests_full:
-          filters:
-            branches:
-              only:
-                - master
           requires:
             - build
       - tests_stress:
