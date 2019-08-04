@@ -139,7 +139,7 @@ You can find the entire implementation in the [example source code](https://gith
 
 We have all the blocks to build our CQRS application. We now need to use some kind of glue to wire it up.
 
-We will use the simplest in-memory messaging infrastructure: [GoChannel]({{< ref "pub-sub-implementations#golang-channel" >}}).
+We will use the simplest in-memory messaging infrastructure: [GoChannel]({{< ref "/pubsubs/gochannel" >}}).
 
 Under the hood, CQRS is using Watermill's message router. If you are not familiar with it and want to learn how it works, you should check [Getting Started guide]({{< ref "getting-started" >}}).
 It will also show you how to use some standard messaging patterns, like metrics, poison queue, throttling, correlation and other tools used by every message-driven application. Those come built-in with Watermill.

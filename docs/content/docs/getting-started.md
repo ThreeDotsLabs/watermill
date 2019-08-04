@@ -2,7 +2,7 @@
 title = "Getting started"
 description = "Watermill up and running"
 weight = -9999
-draft = false
+draft = false 
 toc = true
 bref = "Watermill up and running"
 type = "docs"
@@ -28,7 +28,7 @@ One of the most important parts of Watermill is the [*Message*]({{< ref "/docs/m
 Almost every part of Watermill uses this type in some part.
 
 When you are building reactive/event-driven application/[insert your buzzword here] you always want to listen for incoming messages to react on them.
-Watermill is supporting multiple [publishers and subscribers implementations]({{< ref "/docs/pub-sub-implementations" >}}) with compatible interfaces and abstractions, which provide a similar behaviour.
+Watermill is supporting multiple [publishers and subscribers implementations]({{< ref "/pubsubs" >}}) with compatible interfaces and abstractions, which provide a similar behaviour.
 
 Let's start with subscribing for messages.
 

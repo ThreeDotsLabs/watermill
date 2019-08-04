@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
-	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -129,14 +128,13 @@ func (o OrderBeerHandler) Handle(ctx context.Context, c interface{}) error {
 // Like OrderBeerOnRoomBooked, it listens for RoomBooked event.
 //
 // This implementation is just writing to the memory. In production, you will probably will use some persistent storage.
-type BookingsFinancialReport struct {
-	handledBookings map[string]struct{}
-	totalCharge     int64
-	lock            sync.Mutex
+
+type readModelBuilder interface {
+	buildBookingsReadModel(guestName string) error
 }
 
-func NewBookingsFinancialReport() *BookingsFinancialReport {
-	return &BookingsFinancialReport{handledBookings: map[string]struct{}{}}
+type BookingsFinancialReport struct {
+	readModelBuilder readModelBuilder
 }
 
 func (b BookingsFinancialReport) HandlerName() string {
@@ -149,24 +147,27 @@ func (BookingsFinancialReport) NewEvent() interface{} {
 }
 
 func (b *BookingsFinancialReport) Handle(ctx context.Context, e interface{}) error {
-	// Handle may be called concurrently, so it need to be thread safe.
-	b.lock.Lock()
-	defer b.lock.Unlock()
-
 	event := e.(*RoomBooked)
 
-	// When we are using Pub/Sub which doesn't provide exactly-once delivery semantics, we need to deduplicate messages.
-	// GoChannel Pub/Sub provides exactly-once delivery,
-	// but let's make this example ready for other Pub/Sub implementations.
-	if _, ok := b.handledBookings[event.ReservationId]; ok {
-		return nil
-	}
-	b.handledBookings[event.ReservationId] = struct{}{}
+	return b.readModelBuilder.buildBookingsReadModel(event.GuestName)
+}
 
-	b.totalCharge += event.Price
+type SpecialBookingsFinancialReport struct {
+	readModelBuilder readModelBuilder
+}
 
-	fmt.Printf(">>> Already booked rooms for $%d\n", b.totalCharge)
-	return nil
+func (b SpecialBookingsFinancialReport) HandlerName() string {
+	return "SpecialBookingsFinancialReport"
+}
+
+func (SpecialBookingsFinancialReport) NewEvent() interface{} {
+	return &SpecialRoomBooked{}
+}
+
+func (b *SpecialBookingsFinancialReport) Handle(ctx context.Context, e interface{}) error {
+	event := e.(*SpecialRoomBooked)
+
+	return b.readModelBuilder.buildBookingsReadModel(event.VIPGuestName)
 }
 
 var amqpAddress = "amqp://guest:guest@rabbitmq:5672/"
