@@ -64,14 +64,10 @@ func TestPubSub(
 		runTest(
 			t,
 			getTestName(testFunc.Func),
-			func(t *testing.T, testID TestID) {
-				testCtx := TestContext{
-					TestID:   testID,
-					Features: features,
-				}
-
+			func(t *testing.T, testCtx TestContext) {
 				testFunc.Func(t, testCtx, pubSubConstructor)
 			},
+			features,
 			!testFunc.NotParallel,
 		)
 	}
@@ -79,26 +75,20 @@ func TestPubSub(
 	runTest(
 		t,
 		getTestName(TestConsumerGroups),
-		func(t *testing.T, testID TestID) {
+		func(t *testing.T, testCtx TestContext) {
 			TestConsumerGroups(
 				t,
-				TestContext{
-					TestID:   testID,
-					Features: features,
-				},
+				testCtx,
 				consumerGroupPubSubConstructor,
 			)
 		},
+		features,
 		true,
 	)
 }
 
-// RunOnlyFastTests returns true if -short flag was provided -race was not provided.
-// Useful for excluding some slow tests.
-func RunOnlyFastTests() bool {
-	return testing.Short() && !internal.RaceEnabled
-}
-
+// Features are used to configure Pub/Subs implementations behaviour.
+// Different features set decides also which, and how tests should be run.
 type Features struct {
 	ConsumerGroups      bool
 	ExactlyOnceDelivery bool
@@ -116,6 +106,12 @@ type Features struct {
 	RequireSingleInstance bool
 
 	NewSubscriberReceivesOldMessages bool
+}
+
+// RunOnlyFastTests returns true if -short flag was provided -race was not provided.
+// Useful for excluding some slow tests.
+func RunOnlyFastTests() bool {
+	return testing.Short() && !internal.RaceEnabled
 }
 
 type PubSubConstructor func(t *testing.T) (message.Publisher, message.Subscriber)
@@ -139,14 +135,18 @@ func NewTestID() TestID {
 }
 
 type TestContext struct {
-	TestID   TestID
+	// Unique ID of the test
+	TestID TestID
+
+	// PubSub features
 	Features Features
 }
 
 func runTest(
 	t *testing.T,
 	name string,
-	fn func(t *testing.T, testID TestID),
+	fn func(t *testing.T, testCtx TestContext),
+	features Features,
 	parallel bool,
 ) {
 	t.Run(name, func(t *testing.T) {
@@ -156,7 +156,12 @@ func runTest(
 		testID := NewTestID()
 
 		t.Run(string(testID), func(t *testing.T) {
-			fn(t, testID)
+			tCtx := TestContext{
+				TestID:   testID,
+				Features: features,
+			}
+
+			fn(t, tCtx)
 		})
 	})
 }
