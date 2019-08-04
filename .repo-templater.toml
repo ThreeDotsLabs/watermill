@@ -2,7 +2,7 @@
 GithubOrg = "ThreeDotsLabs"
 URLTemplate = "git@github.com:{{ .GithubOrg }}/{{ .Name }}.git"
 GoPackageTemplate = "github.com/{{ .GithubOrg }}/{{ .Name }}"
-CircleCIDckerOverride = '''version: '3'
+CircleCIDockerOverride = '''version: '3'
 services:
   watermill:
     image: golang:1.12
@@ -14,14 +14,14 @@ services:
 {{ if (.CircleCIDckerExtraOptions) ne "" }}
 {{ .CircleCIDckerExtraOptions }}
 {{ end -}}
-{{ if (.CircleCIDckerOverrideEnvs) ne "" }}
+{{ if (.CircleCIDockerOverrideEnvs) ne "" }}
     environment:
-{{ .CircleCIDckerOverrideEnvs }}
+{{ .CircleCIDockerOverrideEnvs }}
 {{ end -}}
-{{ .CircleCIDckerOverrideServices }}
+{{ .CircleCIDockerOverrideServices }}
 '''
-CircleCIDckerOverrideEnvs = ''
-CircleCIDckerOverrideServices = ''
+CircleCIDockerOverrideEnvs = ''
+CircleCIDockerOverrideServices = ''
 CircleCIWaitForServices = ''
 CircleCIDckerExtraOptions = ''
 
@@ -48,7 +48,7 @@ Templates = ["license", "common", "pubsub"]
 
     [repositories.Variables]
         GoPackage = "{{ .GoPackageTemplate }}"
-        CircleCIDckerOverrideEnvs = '''
+        CircleCIDockerOverrideEnvs = '''
       WATERMILL_TEST_AMQP_URI: amqp://guest:guest@rabbitmq:5672
 '''
         CircleCIWaitForServices = 'rabbitmq:5672'
@@ -61,10 +61,10 @@ Templates = ["license", "common", "pubsub"]
 
     [repositories.Variables]
         GoPackage = "{{ .GoPackageTemplate }}"
-        CircleCIDckerOverrideEnvs = '''
+        CircleCIDockerOverrideEnvs = '''
       PUBSUB_EMULATOR_HOST: googlecloud:8085
 '''
-        CircleCIDckerOverrideServices = '''
+        CircleCIDockerOverrideServices = '''
   googlecloud:
     entrypoint: gcloud --quiet beta emulators pubsub start --host-port=googlecloud:8085 --verbosity=debug --log-http
 '''
@@ -96,7 +96,7 @@ Templates = ["license", "common", "pubsub"]
 
     [repositories.Variables]
         GoPackage = "{{ .GoPackageTemplate }}"
-        CircleCIDckerOverrideEnvs = '''
+        CircleCIDockerOverrideEnvs = '''
       WATERMILL_TEST_KAFKA_BROKERS: localhost:9091,localhost:9092,localhost:9093,localhost:9094,localhost:9095
 '''
         CircleCIWaitForServices = 'localhost:9091 localhost:9092 localhost:9093 localhost:9094 localhost:9095'
@@ -110,7 +110,7 @@ Templates = ["license", "common", "pubsub"]
 
     [repositories.Variables]
         GoPackage = "{{ .GoPackageTemplate }}"
-        CircleCIDckerOverrideEnvs = '''
+        CircleCIDockerOverrideEnvs = '''
       WATERMILL_TEST_NATS_URL: nats://nats-streaming:4222
 '''
         CircleCIWaitForServices = 'nats-streaming:4222'
@@ -123,10 +123,10 @@ Templates = ["license", "common", "pubsub"]
 
     [repositories.Variables]
         GoPackage = "{{ .GoPackageTemplate }}"
-        CircleCIDckerOverrideEnvs = '''
+        CircleCIDockerOverrideEnvs = '''
       WATERMILL_TEST_MYSQL_HOST: mysql:3306
 '''
-        CircleCIDckerOverrideServices = '''
+        CircleCIDockerOverrideServices = '''
   kafka:
     environment:
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
