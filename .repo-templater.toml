@@ -11,6 +11,9 @@ services:
       - .:/app
       - .mod-cache:/go/pkg/mod
     working_dir: /app
+{{ if (.CircleCIDckerExtraOptions) ne "" }}
+{{ .CircleCIDckerExtraOptions }}
+{{ end -}}
 {{ if (.CircleCIDckerOverrideEnvs) ne "" }}
     environment:
 {{ .CircleCIDckerOverrideEnvs }}
@@ -20,6 +23,7 @@ services:
 CircleCIDckerOverrideEnvs = ''
 CircleCIDckerOverrideServices = ''
 CircleCIWaitForServices = ''
+CircleCIDckerExtraOptions = ''
 
 [[repositories]]
 Name = "watermill"
@@ -30,15 +34,17 @@ Templates = ["license", "common", "watermill"]
     [repositories.Variables]
         GoPackage = "{{ .GoPackageTemplate }}"
         LastRelease = "v0.4.0"
+        MakefileCustom = '''
+validate_examples:
+	go run dev/update-examples-deps/main.go
+	bash dev/validate_examples.sh
+'''
 
 [[repositories]]
 Name = "watermill-amqp"
 HumanName = "AMQP Pub/Sub"
 URL = "{{ .URLTemplate }}"
 Templates = ["license", "common", "pubsub"]
-RunCmds = [
-    ["make", "generate_gomod"]
-]
 
     [repositories.Variables]
         GoPackage = "{{ .GoPackageTemplate }}"
@@ -52,9 +58,6 @@ Name = "watermill-googlecloud"
 HumanName = "Google Cloud Pub/Sub"
 URL = "{{ .URLTemplate }}"
 Templates = ["license", "common", "pubsub"]
-RunCmds = [
-    ["make", "generate_gomod"]
-]
 
     [repositories.Variables]
         GoPackage = "{{ .GoPackageTemplate }}"
@@ -72,9 +75,6 @@ Name = "watermill-http"
 HumanName = "HTTP Pub/Sub"
 URL = "{{ .URLTemplate }}"
 Templates = ["license", "common", "pubsub"]
-RunCmds = [
-    ["make", "generate_gomod"]
-]
 
     [repositories.Variables]
         GoPackage = "{{ .GoPackageTemplate }}"
@@ -84,9 +84,6 @@ Name = "watermill-io"
 HumanName = "io.Reader/io.Writer Pub/Sub"
 URL = "{{ .URLTemplate }}"
 Templates = ["license", "common", "pubsub"]
-RunCmds = [
-    ["make", "generate_gomod"]
-]
 
     [repositories.Variables]
         GoPackage = "{{ .GoPackageTemplate }}"
@@ -96,30 +93,20 @@ Name = "watermill-kafka"
 HumanName = "Kafka Pub/Sub"
 URL = "{{ .URLTemplate }}"
 Templates = ["license", "common", "pubsub"]
-RunCmds = [
-    ["make", "generate_gomod"]
-]
 
     [repositories.Variables]
         GoPackage = "{{ .GoPackageTemplate }}"
         CircleCIDckerOverrideEnvs = '''
-      WATERMILL_TEST_KAFKA_BROKERS: kafka:9092
+      WATERMILL_TEST_KAFKA_BROKERS: localhost:9091,localhost:9092,localhost:9093,localhost:9094,localhost:9095
 '''
-        CircleCIDckerOverrideServices = '''
-  kafka:
-    environment:
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
-'''
-        CircleCIWaitForServices = 'zookeeper:2181 kafka:9092'
+        CircleCIWaitForServices = 'localhost:9091 localhost:9092 localhost:9093 localhost:9094 localhost:9095'
+        CircleCIDckerExtraOptions = 'network_mode: "host"'
 
 [[repositories]]
 Name = "watermill-nats"
 HumanName = "NATS Pub/Sub"
 URL = "{{ .URLTemplate }}"
 Templates = ["license", "common", "pubsub"]
-RunCmds = [
-    ["make", "generate_gomod"]
-]
 
     [repositories.Variables]
         GoPackage = "{{ .GoPackageTemplate }}"
@@ -133,9 +120,6 @@ Name = "watermill-sql"
 HumanName = "SQL Pub/Sub"
 URL = "{{ .URLTemplate }}"
 Templates = ["license", "common", "pubsub"]
-RunCmds = [
-    ["make", "generate_gomod"]
-]
 
     [repositories.Variables]
         GoPackage = "{{ .GoPackageTemplate }}"
