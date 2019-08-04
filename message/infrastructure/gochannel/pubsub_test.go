@@ -55,7 +55,7 @@ func TestPublishSubscribe_not_persistent(t *testing.T) {
 	msgs, err := pubSub.Subscribe(context.Background(), topicName)
 	require.NoError(t, err)
 
-	sendMessages := infrastructure.AddSimpleMessages(t, messagesCount, pubSub, topicName)
+	sendMessages := infrastructure.PublishSimpleMessages(t, messagesCount, pubSub, topicName)
 	receivedMsgs, _ := subscriber.BulkRead(msgs, messagesCount, time.Second)
 
 	infrastructure.AssertAllMessagesReceived(t, sendMessages, receivedMsgs)
