@@ -1023,7 +1023,7 @@ func restartServer(t *testing.T, features Features) {
 	cmd.Stdout = os.Stdout
 
 	if err := cmd.Run(); err != nil {
-		t.Fatal(err)
+		t.Error(err)
 	}
 
 	fmt.Println("server restarted")
