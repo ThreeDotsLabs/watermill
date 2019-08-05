@@ -36,7 +36,7 @@ func (c *Config) LoadFrom(path string) error {
 
 func main() {
 	walkErr := filepath.Walk(".", func(exampleConfig string, f os.FileInfo, err error) error {
-		matches, err := filepath.Match(".validate_example*.yml", f.Name())
+		matches, _ := filepath.Match(".validate_example*.yml", f.Name())
 		if matches {
 			exampleDirectory := filepath.Dir(exampleConfig)
 			ok, err := validate(exampleConfig)
@@ -52,7 +52,6 @@ func main() {
 		}
 		return nil
 	})
-
 	if walkErr != nil {
 		panic(walkErr)
 	}
