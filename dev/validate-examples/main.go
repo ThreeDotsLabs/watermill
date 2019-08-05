@@ -35,7 +35,7 @@ func (c *Config) LoadFrom(path string) error {
 }
 
 func main() {
-	walkErr := filepath.Walk(".", func(exampleConfig string, f os.FileInfo, err error) error {
+	walkErr := filepath.Walk(".", func(exampleConfig string, f os.FileInfo, _ error) error {
 		matches, _ := filepath.Match(".validate_example*.yml", f.Name())
 		if !matches {
 			return nil
