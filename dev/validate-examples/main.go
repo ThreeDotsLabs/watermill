@@ -41,7 +41,7 @@ func main() {
 			exampleDirectory := filepath.Dir(exampleConfig)
 			ok, err := validate(exampleConfig)
 			if err != nil {
-				fmt.Printf("validation for %s failed, walkErr: %v\n", exampleDirectory, err)
+				fmt.Printf("validation for %s failed, err: %v\n", exampleDirectory, err)
 			} else {
 				if ok {
 					fmt.Printf("validation for %s succeeded\n", exampleDirectory)
