@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -34,26 +35,26 @@ func (c *Config) LoadFrom(path string) error {
 }
 
 func main() {
-	err := filepath.Walk(".", func(path string, f os.FileInfo, err error) error {
+	err := filepath.Walk(".", func(exampleConfig string, f os.FileInfo, err error) error {
 		matches, err := filepath.Match(".validate_example*.yml", f.Name())
 		if matches {
-			ok, err := validate(path)
+			exampleDirectory := filepath.Dir(exampleConfig)
+			ok, err := validate(exampleConfig)
 			if err != nil {
-				fmt.Printf("could not validate %s, err: %v\n", path, err)
+				fmt.Printf("validation for %s failed, err: %v\n", exampleDirectory, err)
 			} else {
 				if ok {
-					fmt.Println("validation succeeded")
+					fmt.Printf("validation for %s succeeded\n", exampleDirectory)
 				} else {
-					fmt.Println("validation failed")
+					fmt.Printf("validation for %s failed\n", exampleDirectory)
 				}
 			}
-
 		}
 		return nil
 	})
 
 	if err != nil {
-		panic("could not Walk path")
+		panic(err)
 	}
 
 }
@@ -69,6 +70,9 @@ func validate(path string) (bool, error) {
 	validationCmd := exec.Command(cmdAndArgs[0], cmdAndArgs[1:]...)
 	validationCmd.Dir = filepath.Dir(path)
 	defer func() {
+		if config.TeardownCmd == "" {
+			return
+		}
 		cmdAndArgs := strings.Fields(config.TeardownCmd)
 		teardownCmd := exec.Command(cmdAndArgs[0], cmdAndArgs[1:]...)
 		teardownCmd.Dir = filepath.Dir(path)
@@ -88,16 +92,18 @@ func validate(path string) (bool, error) {
 	success := make(chan bool)
 
 	go func() {
-		outputLines := bufio.NewReader(stdout)
+		output := bufio.NewReader(stdout)
 		for {
-			line, _, err := outputLines.ReadLine()
+			line, _, err := output.ReadLine()
 			if err != nil {
 				if err == io.EOF {
 					break
 				}
 			}
-			if strings.Contains(string(line), config.ExpectedOutput) {
+			ok, _ := regexp.Match(config.ExpectedOutput, line)
+			if ok {
 				success <- true
+				return
 			}
 		}
 		success <- false

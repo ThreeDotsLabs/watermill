@@ -1,0 +1,3 @@
+validation_cmd: "go run main.go"
+timeout: 3
+expected_output: "structHandler received message [0-9a-f\\-]+"
