@@ -1,4 +1,4 @@
 validation_cmd: "docker-compose up"
 teardown_cmd: "docker-compose down"
-timeout: 200
+timeout: 60
 expected_output: "msg=\"Starting handler\""
