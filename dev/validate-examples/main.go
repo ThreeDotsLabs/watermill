@@ -37,19 +37,24 @@ func (c *Config) LoadFrom(path string) error {
 func main() {
 	walkErr := filepath.Walk(".", func(exampleConfig string, f os.FileInfo, err error) error {
 		matches, _ := filepath.Match(".validate_example*.yml", f.Name())
-		if matches {
-			exampleDirectory := filepath.Dir(exampleConfig)
-			ok, err := validate(exampleConfig)
-			if err != nil {
-				fmt.Printf("validation for %s failed, err: %v\n", exampleDirectory, err)
-			} else {
-				if ok {
-					fmt.Printf("validation for %s succeeded\n", exampleDirectory)
-				} else {
-					fmt.Printf("validation for %s failed\n", exampleDirectory)
-				}
-			}
+		if !matches {
+			return nil
 		}
+
+		exampleDirectory := filepath.Dir(exampleConfig)
+		ok, err := validate(exampleConfig)
+
+		if err != nil {
+			fmt.Printf("validation for %s failed, err: %v\n", exampleDirectory, err)
+			return nil
+		}
+
+		if ok {
+			fmt.Printf("validation for %s succeeded\n", exampleDirectory)
+			return nil
+		}
+
+		fmt.Printf("validation for %s failed\n", exampleDirectory)
 		return nil
 	})
 	if walkErr != nil {
