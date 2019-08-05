@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -36,7 +37,17 @@ func main() {
 	err := filepath.Walk(".", func(path string, f os.FileInfo, err error) error {
 		matches, err := filepath.Match(".validate_example*.yml", f.Name())
 		if matches {
-			validate(path)
+			ok, err := validate(path)
+			if err != nil {
+				fmt.Printf("could not validate %s, err: %v\n", path, err)
+			} else {
+				if ok {
+					fmt.Println("validation succeeded")
+				} else {
+					fmt.Println("validation failed")
+				}
+			}
+
 		}
 		return nil
 	})
@@ -51,22 +62,27 @@ func validate(path string) (bool, error) {
 	config := &Config{}
 	err := config.LoadFrom(path)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("could not load config, err: %v", err)
 	}
 
 	cmdAndArgs := strings.Fields(config.ValidationCmd)
+	validationCmd := exec.Command(cmdAndArgs[0], cmdAndArgs[1:]...)
+	validationCmd.Dir = filepath.Dir(path)
+	defer func() {
+		cmdAndArgs := strings.Fields(config.TeardownCmd)
+		teardownCmd := exec.Command(cmdAndArgs[0], cmdAndArgs[1:]...)
+		teardownCmd.Dir = filepath.Dir(path)
+		teardownCmd.Run()
+	}()
 
-	cmd := exec.Command(cmdAndArgs[0], cmdAndArgs[1:]...)
-	cmd.Dir = filepath.Dir(path)
-
-	stdout, err := cmd.StdoutPipe()
+	stdout, err := validationCmd.StdoutPipe()
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("could not attach to stdout, err: %v", err)
 	}
 
-	err = cmd.Start()
+	err = validationCmd.Start()
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("could not start validation, err: %v", err)
 	}
 
 	success := make(chan bool)
@@ -83,27 +99,14 @@ func validate(path string) (bool, error) {
 			if strings.Contains(string(line), config.ExpectedOutput) {
 				success <- true
 			}
-
 		}
 		success <- false
 	}()
 
-	var validationResult bool
 	select {
-	case validationResult = <-success:
+	case success := <-success:
+		return success, nil
 	case <-time.After(time.Duration(config.Timeout) * time.Second):
-		validationResult = false
+		return false, fmt.Errorf("validation command timed out")
 	}
-
-	cmdAndArgs = strings.Fields(config.ValidationCmd)
-	down := exec.Command(cmdAndArgs[0], cmdAndArgs[1:]...)
-	down.Dir = filepath.Dir(path)
-
-	err = down.Run()
-	if err != nil {
-		return false, err
-	}
-
-	return validationResult, nil
-
 }
