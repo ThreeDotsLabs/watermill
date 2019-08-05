@@ -35,13 +35,13 @@ func (c *Config) LoadFrom(path string) error {
 }
 
 func main() {
-	err := filepath.Walk(".", func(exampleConfig string, f os.FileInfo, err error) error {
+	walkErr := filepath.Walk(".", func(exampleConfig string, f os.FileInfo, err error) error {
 		matches, err := filepath.Match(".validate_example*.yml", f.Name())
 		if matches {
 			exampleDirectory := filepath.Dir(exampleConfig)
 			ok, err := validate(exampleConfig)
 			if err != nil {
-				fmt.Printf("validation for %s failed, err: %v\n", exampleDirectory, err)
+				fmt.Printf("validation for %s failed, walkErr: %v\n", exampleDirectory, err)
 			} else {
 				if ok {
 					fmt.Printf("validation for %s succeeded\n", exampleDirectory)
@@ -53,8 +53,8 @@ func main() {
 		return nil
 	})
 
-	if err != nil {
-		panic(err)
+	if walkErr != nil {
+		panic(walkErr)
 	}
 
 }
@@ -76,7 +76,7 @@ func validate(path string) (bool, error) {
 		cmdAndArgs := strings.Fields(config.TeardownCmd)
 		teardownCmd := exec.Command(cmdAndArgs[0], cmdAndArgs[1:]...)
 		teardownCmd.Dir = filepath.Dir(path)
-		teardownCmd.Run()
+		_ = teardownCmd.Run()
 	}()
 
 	stdout, err := validationCmd.StdoutPipe()
