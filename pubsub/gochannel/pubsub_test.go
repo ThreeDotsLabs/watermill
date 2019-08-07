@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ThreeDotsLabs/watermill/pubsub/gochannel"
-
 	"github.com/ThreeDotsLabs/watermill/pubsub/tests"
+
+	"github.com/ThreeDotsLabs/watermill/pubsub/gochannel"
 
 	"github.com/stretchr/testify/assert"
 
