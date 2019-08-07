@@ -1,6 +1,6 @@
 // +build stress
 
-package infrastructure
+package tests
 
 func init() {
 	// stress tests may work a bit slower

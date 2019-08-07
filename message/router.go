@@ -10,7 +10,7 @@ import (
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/internal"
-	sync_internal "github.com/ThreeDotsLabs/watermill/message/infrastructure/sync"
+	sync_internal "github.com/ThreeDotsLabs/watermill/pubsub/sync"
 )
 
 var (

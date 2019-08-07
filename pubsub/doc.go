@@ -3,4 +3,4 @@
 // Detailed Pub/Subs docs: https://watermill.io/docs/pub-sub-implementations/
 // Getting started guide: https://watermill.io/docs/getting-started/
 
-package infrastructure
+package pubsub

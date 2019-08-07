@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure"
+	"github.com/ThreeDotsLabs/watermill/pubsub/tests"
 
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
@@ -14,8 +14,8 @@ import (
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure/gochannel"
 	"github.com/ThreeDotsLabs/watermill/message/subscriber"
+	"github.com/ThreeDotsLabs/watermill/pubsub/gochannel"
 )
 
 var noop = func(*message.Message) {}
@@ -124,7 +124,7 @@ func TestMessageTransformSubscriberDecorator_Subscribe(t *testing.T) {
 
 	received, all := subscriber.BulkRead(messages, numMessages, time.Second)
 	require.True(t, all)
-	infrastructure.AssertAllMessagesReceived(t, sent, received)
+	tests.AssertAllMessagesReceived(t, sent, received)
 
 	for _, msg := range received {
 		assert.Equal(
