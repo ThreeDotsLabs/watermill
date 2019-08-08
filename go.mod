@@ -1,7 +1,7 @@
 module github.com/ThreeDotsLabs/watermill
 
 require (
-	github.com/cenkalti/backoff v2.2.0+incompatible
+	github.com/cenkalti/backoff/v3 v3.0.0
 	github.com/go-chi/chi v4.0.2+incompatible
 	github.com/gogo/protobuf v1.2.1
 	github.com/google/uuid v1.1.1
