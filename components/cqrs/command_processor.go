@@ -33,6 +33,13 @@ type CommandHandler interface {
 // It allows you to create a separate customized Subscriber for every command handler.
 type CommandsSubscriberConstructor func(handlerName string) (message.Subscriber, error)
 
+// CommandSubscriber provides a CommandsSubscriberConstructor for a single subscriber.
+func CommandsSubscriber(subscriber message.Subscriber) CommandsSubscriberConstructor {
+	return func(handlerName string) (message.Subscriber, error) {
+		return subscriber, nil
+	}
+}
+
 // CommandProcessor determines which CommandHandler should handle the command received from the command bus.
 type CommandProcessor struct {
 	handlers      []CommandHandler
