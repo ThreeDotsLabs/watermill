@@ -44,8 +44,7 @@ See an example usage from [Getting Started]({{< ref "/docs/getting-started#using
 
 ### No publisher handler
 
-Not every handler needs to publish messages.
-You can add this kind of handler by using `Router.AddNoPublisherHandler`:
+Not every handler will produce new messages. You can add this kind of handler by using `Router.AddNoPublisherHandler`:
 
 {{% render-md %}}
 {{% load-snippet-partial file="content/src-link/message/router.go" first_line_contains="// AddNoPublisherHandler" last_line_contains=") {" padding_after="0" %}}
@@ -53,17 +52,14 @@ You can add this kind of handler by using `Router.AddNoPublisherHandler`:
 
 ### Ack
 
-You don't have to call `msg.Ack()` or `msg.Nack()` after a message is processed (you can if you want, of course).
-`msg.Ack()` is called when `HanderFunc` doesn't return an error. If an error is returned, `msg.Nack()` will be called.
+By default, `msg.Ack()` is called when `HanderFunc` doesn't return an error. If an error is returned, `msg.Nack()` will be called.
+Because of this, you don't have to call `msg.Ack()` or `msg.Nack()` after a message is processed (you can if you want, of course).
 
 ### Producing messages
 
-When returning multiple messages in the router,
-you should be aware that most of Publisher's implementations don't support [atomic publishing of the messages]({{< ref "/docs/pub-sub#publishing-multiple-messages" >}}).
+When returning multiple messages from a handler, be aware that most Publisher implementations don't support [atomic publishing of messages]({{< ref "/docs/pub-sub#publishing-multiple-messages" >}}). It may end up producing only some of messages and sending `msg.Nack()` if the broker or the storage are not available.
 
-It may lead to producing only some of the messages and sending `msg.Nack()` when the broker or the storage are not available.
-
-If it is an issue, you should consider publishing a maximum of one message with one handler.
+If it is an issue, consider publishing just one message with each handler.
 
 ### Running the Router
 
@@ -75,7 +71,7 @@ To run the Router, you need to call `Run()`.
 
 #### Ensuring that the Router is running
 
-You might sometimes want to do something after the router starts. You can use the `Running()` method for this.
+It can be useful to know if the router is running. You can use the `Running()` method for this.
 
 {{% render-md %}}
 {{% load-snippet-partial file="content/src-link/message/router.go" first_line_contains="// Running" last_line_contains="func (r *Router) Running()" padding_after="0" %}}
@@ -83,11 +79,12 @@ You might sometimes want to do something after the router starts. You can use th
 
 ### Execution model
 
-Some *Consumers* may support only a single stream of messages - this means that until a `msg.Ack()` is sent, you will not receive any more messages.
+*Subscribers* can consume either one message at a time or multiple messages in parallel. Single stream of messages is the simplest approach
+and it means that until a `msg.Ack()` is called, the subscriber will not receive any more messages.
 
-However, some *Consumers* support multiple streams. For example, by subscribing to multiple partitions in parallel,
-multiple messages will be sent, even previous that were not Acked (e.g. the Kafka Consumer works like this).
-The router can handle this case and spawn multiple `HandlerFunc` in parallel.
+However, there are *Subscribers* that support multiple message streams. By subscribing to multiple topic partitions, multiple messages
+can be consumed in parallel, even previous messages that were not acked (for example, kafka subscriber works like this).
+Router handles this by executing multiple `HandlerFunc`s in parallel.
 
 ### Middleware
 
@@ -95,7 +92,7 @@ The router can handle this case and spawn multiple `HandlerFunc` in parallel.
 {{% load-snippet-partial file="content/src-link/message/router.go" first_line_contains="// HandlerMiddleware" last_line_contains="type HandlerMiddleware" padding_after="1" %}}
 {{% /render-md %}}
 
-A full list of the standard middlewares can be found in [Middlewares]({{< ref "/docs/middlewares" >}}).
+A full list of standard middlewares can be found in [Middlewares]({{< ref "/docs/middlewares" >}}).
 
 ### Plugin
 
@@ -103,4 +100,4 @@ A full list of the standard middlewares can be found in [Middlewares]({{< ref "/
 {{% load-snippet-partial file="content/src-link/message/router.go" first_line_contains="// RouterPlugin" last_line_contains="type RouterPlugin" padding_after="1" %}}
 {{% /render-md %}}
 
-A full list of the standard plugins can be found in [message/router/plugin](https://github.com/ThreeDotsLabs/watermill/tree/master/message/router/plugin).
+A full list of standard plugins can be found in [message/router/plugin](https://github.com/ThreeDotsLabs/watermill/tree/master/message/router/plugin).

@@ -10,11 +10,20 @@ type = "docs"
 
 ### What is Watermill?
 
-Watermill is a Golang library for working efficiently with message streams. It is intended for building event-driven applications, enabling event sourcing, RPC over messages, sagas and basically whatever else comes to your mind. You can use conventional pub/sub implementations like Kafka or RabbitMQ, but also HTTP or MySQL binlog if that fits your use case.
+Watermill is a Golang library for working efficiently with message streams. It is intended for building event-driven
+applications. It can be used for event sourcing, RPC over messages, sagas and whatever else comes to your mind.
+You can use conventional pub/sub implementations like Kafka or RabbitMQ, but also HTTP or MySQL binlog, if that fits your use case.
 
-It comes with a set of Pub/Sub implementations, which can be easily extended by your own implementations.
+It comes with a set of Pub/Sub implementations and can be easily extended by your own.
 
-Watermill is also shipped with a set of standard tools (middlewares) like instrumentation, poison queue, throttling, correlation and other tools used by every message-driven application.
+Watermill also ships with standard middlewares like instrumentation, poison queue, throttling, correlation
+and other tools used by every message-driven application.
+
+### Why use Watermill?
+
+* Standard messaging library
+* Provides all you need for messaging
+* Messaging as a standard communication way
 
 ### Install
 
@@ -24,11 +33,12 @@ go get -u github.com/ThreeDotsLabs/watermill/
 
 ### Subscribing for messages
 
-One of the most important parts of Watermill is the [*Message*]({{< ref "/docs/message" >}}). It is as important as `http.Request` is for `http` package.
-Almost every part of Watermill uses this type in some part.
+One of the core parts of Watermill is the [*Message*]({{< ref "/docs/message" >}}). It is as important as `http.Request` is for `http` package.
+Almost every part of Watermill uses this struct in some way.
 
-When you are building reactive/event-driven application/[insert your buzzword here] you always want to listen for incoming messages to react on them.
-Watermill is supporting multiple [publishers and subscribers implementations]({{< ref "/pubsubs" >}}) with compatible interfaces and abstractions, which provide a similar behaviour.
+The basic idea behind reactive/event-driven applications stays always the same: listen for incoming messages and react to them.
+Watermill is supporting multiple [publishers and subscribers implementations]({{< ref "/pubsubs" >}}) with compatible interfaces
+and abstractions, which provide a similar behaviour.
 
 Let's start with subscribing for messages.
 
@@ -165,12 +175,12 @@ A more detailed explanation of how it is running (and how to add live code reloa
 
 ##### Message format
 
-We don't enforce any message format. You can use strings, JSON, protobuf, Avro, gob or anything else that serializes to `[]byte`.
+Watermill doesn't enforce any message format. You can use strings, JSON, protobuf, Avro, gob or anything else that serializes to `[]byte`.
 
 ### Using *Messages Router*
 
 [*Publishers and subscribers*]({{< ref "/docs/pub-sub" >}}) are rather low-level parts of Watermill.
-In production use, you'd usually want to use a high-level interface and features like [correlation, metrics, poison queue, retrying, throttling, etc.]({{< ref "/docs/messages-router#middleware" >}}).
+In most cases, you'd usually want to use a high-level interface and features like [correlation, metrics, poison queue, retrying, throttling, etc.]({{< ref "/docs/messages-router#middleware" >}}).
 
 You also might not want to send an Ack when processing was successful. Sometimes, you'd like to send a message after processing of another message finishes.
 
@@ -178,16 +188,15 @@ To handle these requirements, there is a component named [*Router*]({{< ref "/do
 
 The flow of our application looks like this:
 
-1. We are producing a message to the topic `example.topic_1` every second.
-2. `struct_handler` handler is listening to `example.topic_1`. When a message is received, the UUID is printed and a new message is produced to `example.topic_2`.
-3. `print_events_topic_1` handler is listening to `example.topic_1` and printing message UUID, payload and metadata. Correlation ID should be the same as in message in `example.topic_1`.
-4. `print_events_topic_2` handler is listening to `example.topic_2` and printing message UUID, payload and metadata. Correlation ID should be the same as in message in `example.topic_2`.
+1. A message is produced on topic `example.topic_1` every second.
+2. `struct_handler` handler listens on `example.topic_1`. When a message is received, the UUID is printed and a new message is produced on `example.topic_2`.
+3. `print_events_topic_1` handler listens on `example.topic_1` and prints message UUID, payload and metadata. Correlation ID should be the same as in the message on `example.topic_1`.
+4. `print_events_topic_2` handler listens on `example.topic_2` and prints message UUID, payload and metadata. Correlation ID should be the same as in the message on `example.topic_2`.
 
 #### Router configuration
 
-For the beginning, we should start with the configuration of the router. We will configure which plugins and middlewares we want to use.
-
-We also will set up handlers which this router will support. Every handler will independently handle the messages.
+Start with configuring the router, adding plugins and middlewares.
+Then set up handlers that the router will use. Each handler will independently handle messages.
 
 {{% render-md %}}
 {{% load-snippet-partial file="content/docs/getting-started/router/main.go" first_line_contains="package" last_line_contains="router.Run(ctx)" padding_after="4" %}}
@@ -195,8 +204,8 @@ We also will set up handlers which this router will support. Every handler will 
 
 #### Producing messages
 
-Producing messages works just like before. We have only added `middleware.SetCorrelationID` to set the correlation ID.
-Correlation ID will be added to all messages produced by the router (`middleware.CorrelationID`).
+Producing messages works the same like when using publisher directly. Notice that we've added `SetCorrelationID` middleware.
+Correlation ID will be added to all messages produced by the router (it will be stored in metadata).
 
 {{% render-md %}}
 {{% load-snippet-partial file="content/docs/getting-started/router/main.go" first_line_contains="func publishMessages" last_line_contains="time.Sleep(time.Second)" padding_after="2" %}}
@@ -204,13 +213,13 @@ Correlation ID will be added to all messages produced by the router (`middleware
 
 #### Handlers
 
-You may notice that we have two types of *handler functions*:
+You may have noticed that there are two types of *handler functions*:
 
 1. function `func(msg *message.Message) ([]*message.Message, error)`
 2. method `func (c structHandler) Handler(msg *message.Message) ([]*message.Message, error)`
 
-The second option is useful when your function requires some dependencies like database, logger, etc.
-If you use a simple function without dependencies, it's fine to use the second option.
+If your handler is a function without any dependencies, it's fine to use the first one.
+The second option is useful when your handler requires some dependencies like database handle, a logger, etc.
 
 {{% render-md %}}
 {{% load-snippet-partial file="content/docs/getting-started/router/main.go" first_line_contains="func printMessages" last_line_contains="return message.Messages{msg}, nil" padding_after="3" %}}
@@ -239,7 +248,7 @@ After that, you can check the [Simple app](https://github.com/ThreeDotsLabs/wate
 
 The [third example](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/http-to-kafka)  showcases the use of a different Subscriber implementation, namely **HTTP**. It is a very simple application, which can save GitLab webhooks to Kafka.
 
-You may also find some useful informations in our [README](https://github.com/ThreeDotsLabs/watermill#readme) .
+Most recent information can be found in the project's [README](https://github.com/ThreeDotsLabs/watermill#readme).
 
 #### Support
 

@@ -22,3 +22,6 @@ Middlewares wrap the handler function like this:
 {{% /render-md %}}
 
 {{% readfile file="/content/src-link/middleware-defs.md" markdown="true" %}}
+
+While there are some middlewares provided by Watermill and ready to use, you can easily implement your own. For example,
+if you'd like to store every received message in some kind of log, it's the best way to do it.
