@@ -231,6 +231,17 @@ You can run this example by `go run main.go`.
 
 You've just created your first application with Watermill. You can find the full source in [/docs/content/docs/getting-started/router/main.go](https://github.com/ThreeDotsLabs/watermill/blob/master/docs/content/docs/getting-started/router/main.go).
 
+### Logging
+
+To see Watermill's logs, you have to pass any logger that implements the [LoggerAdapter](https://github.com/ThreeDotsLabs/watermill/blob/master/log.go).
+For experimental development, you can use `NewStdLogger`.
+
+### Testing
+
+Watermill provides [a set of test scenarios](https://github.com/ThreeDotsLabs/watermill/blob/master/pubsub/tests/test_pubsub.go)
+that any Pub/Sub implementation can use. Each test suite needs to declare what features it supports and how to construct a new Pub/Sub.
+These scenarios check both basic usage and more uncommon use cases. Stress tests are also included.
+
 ### Deployment
 
 Watermill is not a framework. We don't enforce any type of deployment and it's totally up to you.

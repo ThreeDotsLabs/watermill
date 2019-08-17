@@ -35,7 +35,7 @@ else
         "message/message.go"
         "message/pubsub.go"
         "message/router.go"
-        "message/infrastructure/gochannel/pubsub.go"
+        "pubsub/gochannel/pubsub.go"
 
         "_examples/cqrs-protobuf/main.go"
         "components/cqrs/command_bus.go"
