@@ -35,16 +35,47 @@ After looking at examples, you should be able to quickly integrate Watermill wit
 go get -u github.com/ThreeDotsLabs/watermill/
 ```
 
+### One Minute Background
+
+The basic idea behind event-driven applications stays always the same: listen for incoming messages and react to them.
+Watermill supports this behavior for multiple [publishers and subscribers]({{< ref "/pubsubs" >}}).
+
+The core part of Watermill is the [*Message*]({{< ref "/docs/message" >}}). It is as important as the `http.Request` is for the `http` package.
+Most Watermill features use this struct in some way.
+
+Even though PubSub libraries come with complex features, for Watermill it's enough to implement two interfaces to start
+working with them: the `Publisher` and `Subscriber`.
+
+```go
+type Publisher interface {
+	Publish(topic string, messages ...*Message) error
+	Close() error
+}
+
+type Subscriber interface {
+	Subscribe(ctx context.Context, topic string) (<-chan *Message, error)
+	Close() error
+}
+```
+
 ### Subscribing for messages
 
-One of the core parts of Watermill is the [*Message*]({{< ref "/docs/message" >}}). It is as important as `http.Request` is for `http` package.
-Almost every part of Watermill uses this struct in some way.
+Let's start with subscribing. `Subscribe` expects a topic name and returns a channel of incoming messages.
+What topic exactly means depends on the PubSub implementation.
 
-The basic idea behind reactive/event-driven applications stays always the same: listen for incoming messages and react to them.
-Watermill is supporting multiple [publishers and subscribers implementations]({{< ref "/pubsubs" >}}) with compatible interfaces
-and abstractions, which provide a similar behaviour.
+```go
+messages, err := subscriber.Subscribe(ctx, "example.topic")
+if err != nil {
+	panic(err)
+}
 
-Let's start with subscribing for messages.
+for msg := range messages {
+	fmt.Printf("received message: %s, payload: %s\n", msg.UUID, string(msg.Payload))
+	msg.Ack()
+}
+```
+
+See detailed examples below for supported PubSubs.
 
 {{% tabs id="subscribing" tabs="go-channel,kafka,nats-streaming,gcloud,amqp,sql" labels="Go Channel,Kafka,NATS Streaming,Google Cloud Pub/Sub,RabbitMQ (AMQP),SQL" %}}
 
@@ -175,6 +206,17 @@ A more detailed explanation of how it is working (and how to add live code reloa
 
 ### Publishing messages
 
+Similarly, `Publish` expects a topic and a `Message` to be published.
+
+```go
+msg := message.NewMessage(watermill.NewUUID(), []byte("Hello, world!"))
+
+err := publisher.Publish("example.topic", msg)
+if err != nil {
+    panic(err)
+}
+```
+
 {{% tabs id="publishing" tabs="go-channel,kafka,nats-streaming,gcloud,amqp,sql" labels="Go Channel,Kafka,NATS Streaming,Google Cloud Pub/Sub,RabbitMQ (AMQP),SQL" %}}
 
 {{% tabs-tab id="go-channel"%}}
@@ -203,9 +245,10 @@ A more detailed explanation of how it is working (and how to add live code reloa
 
 {{% /tabs %}}
 
-##### Message format
+#### Message Payload
 
-Watermill doesn't enforce any message format. You can use strings, JSON, protobuf, Avro, gob or anything else that serializes to `[]byte`.
+Watermill doesn't enforce any message format. You can use strings, JSON, protobuf, Avro, gob or anything else that
+serializes to `[]byte`.
 
 ### Using *Messages Router*
 
