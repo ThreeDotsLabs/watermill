@@ -1,6 +1,6 @@
 # Event log
 
-This example shows how to use the SQL Subscriber from [SQL Pub/Sub](https://github.com/ThreeDotsLabs/watermill-sql).
+This example shows how to use the SQL Publisher from [SQL Pub/Sub](https://github.com/ThreeDotsLabs/watermill-sql).
 
 Gochannel subscriber consumes events that are then appended to a MySQL table. While this example is trivial,
 the idea can be used for storing all events in one persistent storage.
