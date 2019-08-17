@@ -21,9 +21,13 @@ and other tools used by every message-driven application.
 
 ### Why use Watermill?
 
-* Standard messaging library
-* Provides all you need for messaging
-* Messaging as a standard communication way
+With increasing popularity of the microservices pattern over recent years, messaging becomes a standard way to communicate.
+But while there's a lot of existing tooling for more common integration patterns (e.g. HTTP), correctly setting up a message-oriented
+project can still be a challenge.
+
+Watermill aims to be the standard messaging library for Go, providing all you might need for building an application
+based on events or other asynchronous patterns. It's built to be easy to understand and extensible at the same time.
+After looking at examples, you should be able to quickly integrate Watermill with your project.
 
 ### Install
 
@@ -42,7 +46,7 @@ and abstractions, which provide a similar behaviour.
 
 Let's start with subscribing for messages.
 
-{{% tabs id="subscribing" tabs="go-channel,kafka,nats-streaming,gcloud,amqp" labels="Go Channel,Kafka,NATS Streaming,Google Cloud Pub/Sub,RabbitMQ (AMQP)" %}}
+{{% tabs id="subscribing" tabs="go-channel,kafka,nats-streaming,gcloud,amqp,sql" labels="Go Channel,Kafka,NATS Streaming,Google Cloud Pub/Sub,RabbitMQ (AMQP),SQL" %}}
 
 {{% tabs-tab id="go-channel"%}}
 {{% load-snippet-partial file="content/docs/getting-started/go-channel/main.go" first_line_contains="package main" last_line_contains="process(messages)" %}}
@@ -65,7 +69,7 @@ The source should go to `main.go`.
 
 To run, please execute `docker-compose up` command.
 
-A more detailed explanation of how it is running (and how to add live code reload) can be found in [*Go Docker dev environment* article](https://threedots.tech/post/go-docker-dev-environment-with-go-modules-and-live-code-reloading/).
+A more detailed explanation of how it is working (and how to add live code reload) can be found in [*Go Docker dev environment* article](https://threedots.tech/post/go-docker-dev-environment-with-go-modules-and-live-code-reloading/).
 
 {{% /collapse-box %}}
 {{< /collapse >}}
@@ -90,7 +94,7 @@ The source should go to `main.go`.
 
 To run please execute `docker-compose up` command.
 
-A more detailed explanation of how it is running (and how to add live code reload) can be found in [*Go Docker dev environment* article](https://threedots.tech/post/go-docker-dev-environment-with-go-modules-and-live-code-reloading/).
+A more detailed explanation of how it is working (and how to add live code reload) can be found in [*Go Docker dev environment* article](https://threedots.tech/post/go-docker-dev-environment-with-go-modules-and-live-code-reloading/).
 {{% /collapse-box %}}
 {{< /collapse >}}
 
@@ -115,7 +119,7 @@ The source should go to `main.go`.
 
 To run, please execute `docker-compose up`.
 
-A more detailed explanation of how it is running (and how to add live code reload) can be found in [*Go Docker dev environment* article](https://threedots.tech/post/go-docker-dev-environment-with-go-modules-and-live-code-reloading/).
+A more detailed explanation of how it is working (and how to add live code reload) can be found in [*Go Docker dev environment* article](https://threedots.tech/post/go-docker-dev-environment-with-go-modules-and-live-code-reloading/).
 {{% /collapse-box %}}
 {{< /collapse >}}
 
@@ -137,7 +141,7 @@ The source should go to `main.go`.
 
 To run, please execute `docker-compose up`.
 
-A more detailed explanation of how it is running (and how to add live code reload) can be found in [*Go Docker dev environment* article](https://threedots.tech/post/go-docker-dev-environment-with-go-modules-and-live-code-reloading/).
+A more detailed explanation of how it is working (and how to add live code reload) can be found in [*Go Docker dev environment* article](https://threedots.tech/post/go-docker-dev-environment-with-go-modules-and-live-code-reloading/).
 {{% /collapse-box %}}
 {{< /collapse >}}
 
@@ -145,11 +149,33 @@ A more detailed explanation of how it is running (and how to add live code reloa
 {{% load-snippet-partial file="content/docs/getting-started/amqp/main.go" first_line_contains="func process" %}}
 {{% /tabs-tab %}}
 
+{{% tabs-tab id="sql"%}}
+
+{{< collapse id="running_sql" >}}
+
+{{< collapse-toggle box_id="sql-docker" >}}
+Running in Docker
+{{% /collapse-toggle %}}
+{{% collapse-box id="sql-docker" %}}
+{{% load-snippet file="content/docs/getting-started/sql/docker-compose.yml" type="yaml" %}}
+
+The source should go to `main.go`.
+
+To run, please execute `docker-compose up`.
+
+A more detailed explanation of how it is working (and how to add live code reload) can be found in [*Go Docker dev environment* article](https://threedots.tech/post/go-docker-dev-environment-with-go-modules-and-live-code-reloading/).
+{{% /collapse-box %}}
+{{< /collapse >}}
+
+{{% load-snippet-partial file="content/docs/getting-started/sql/main.go" first_line_contains="package main" last_line_contains="process(messages)" %}}
+{{% load-snippet-partial file="content/docs/getting-started/sql/main.go" first_line_contains="func process" %}}
+{{% /tabs-tab %}}
+
 {{% /tabs %}}
 
 ### Publishing messages
 
-{{% tabs id="publishing" tabs="go-channel,kafka,nats-streaming,gcloud,amqp" labels="Go Channel,Kafka,NATS Streaming,Google Cloud Pub/Sub,RabbitMQ (AMQP)" %}}
+{{% tabs id="publishing" tabs="go-channel,kafka,nats-streaming,gcloud,amqp,sql" labels="Go Channel,Kafka,NATS Streaming,Google Cloud Pub/Sub,RabbitMQ (AMQP),SQL" %}}
 
 {{% tabs-tab id="go-channel"%}}
 {{% load-snippet-partial file="content/docs/getting-started/go-channel/main.go" first_line_contains="go process(messages)" last_line_contains="publisher.Publish" padding_after="4" %}}
@@ -169,6 +195,10 @@ A more detailed explanation of how it is running (and how to add live code reloa
 
 {{% tabs-tab id="amqp" %}}
 {{% load-snippet-partial file="content/docs/getting-started/amqp/main.go" first_line_contains="go process(messages)" last_line_contains="publisher.Publish" padding_after="4" %}}
+{{% /tabs-tab %}}
+
+{{% tabs-tab id="sql" %}}
+{{% load-snippet-partial file="content/docs/getting-started/sql/main.go" first_line_contains="go process(messages)" last_line_contains="publisher.Publish" padding_after="4" %}}
 {{% /tabs-tab %}}
 
 {{% /tabs %}}
