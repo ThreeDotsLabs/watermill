@@ -10,17 +10,18 @@ import (
 	driver "github.com/go-sql-driver/mysql"
 
 	"github.com/ThreeDotsLabs/watermill"
+	"github.com/ThreeDotsLabs/watermill-kafka/pkg/kafka"
 	"github.com/ThreeDotsLabs/watermill-sql/pkg/sql"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
 	"github.com/ThreeDotsLabs/watermill/message/router/plugin"
-	"github.com/ThreeDotsLabs/watermill/pubsub/gochannel"
 )
 
 var (
-	logger       = watermill.NewStdLogger(true, false)
+	kafkaBrokers = []string{"kafka:9092"}
+	logger       = watermill.NewStdLogger(false, false)
 	consumeTopic = "events"
-	publishTopic = "topic"
+	publishTopic = "events"
 )
 
 func createDB() *stdSQL.DB {
@@ -60,14 +61,32 @@ func createSubscriber(db *stdSQL.DB) message.Subscriber {
 	return pub
 }
 
+func createPublisher() message.Publisher {
+	pub, err := kafka.NewPublisher(
+		kafkaBrokers,
+		kafka.DefaultMarshaler{},
+		nil,
+		logger,
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	return pub
+}
+
 type event struct {
-	Num int `json:"num"`
+	Name       string `json:"name"`
+	OccurredAt string `json:"occurred_at"`
 }
 
 func publishEvents(db *stdSQL.DB) {
-	i := 0
 	for {
-		payload, err := json.Marshal(event{Num: int(time.Now().Unix())})
+		e := event{
+			Name:       "UserSignedUp",
+			OccurredAt: time.Now().UTC().Format(time.RFC3339),
+		}
+		payload, err := json.Marshal(e)
 		if err != nil {
 			panic(err)
 		}
@@ -78,7 +97,6 @@ func publishEvents(db *stdSQL.DB) {
 			panic(err)
 		}
 
-		i++
 		time.Sleep(time.Second)
 	}
 }
@@ -94,15 +112,15 @@ func main() {
 
 	db := createDB()
 
-	goChannel := gochannel.NewGoChannel(gochannel.Config{}, logger)
 	subscriber := createSubscriber(db)
+	publisher := createPublisher()
 
 	router.AddHandler(
-		"mysql-to-gochannel",
+		"mysql-to-kafka",
 		consumeTopic,
 		subscriber,
 		publishTopic,
-		goChannel,
+		publisher,
 		func(msg *message.Message) ([]*message.Message, error) {
 			consumedPayload := event{}
 			err := json.Unmarshal(msg.Payload, &consumedPayload)
@@ -110,19 +128,18 @@ func main() {
 				return nil, err
 			}
 
-			log.Printf("received event %d with UUID %s", consumedPayload.Num, msg.UUID)
+			log.Printf("received event %+v with UUID %s", consumedPayload, msg.UUID)
 
 			return []*message.Message{msg}, nil
 		},
 	)
 
 	go func() {
-		ctx := context.Background()
-		if err := router.Run(ctx); err != nil {
-			panic(err)
-		}
+		<-router.Running()
+		publishEvents(db)
 	}()
 
-	<-router.Running()
-	publishEvents(db)
+	if err := router.Run(context.Background()); err != nil {
+		panic(err)
+	}
 }
