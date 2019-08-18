@@ -21,18 +21,21 @@ and other tools used by every message-driven application.
 
 ### Why use Watermill?
 
-With increasing popularity of the microservices pattern over recent years, messaging becomes a standard way to communicate.
-But while there's a lot of existing tooling for more common integration patterns (e.g. HTTP), correctly setting up a message-oriented
-project can still be a challenge.
+With more projects adopting the microservices pattern over recent years, we realized that synchronous communication
+is not always the right choice. Asynchronous methods started to grow as a new standard way to communicate.
 
-Watermill aims to be the standard messaging library for Go, providing all you might need for building an application
-based on events or other asynchronous patterns. It's built to be easy to understand and extensible at the same time.
-After looking at examples, you should be able to quickly integrate Watermill with your project.
+But while there's a lot of existing tooling for synchronous integration patterns (e.g. HTTP), correctly setting up
+a message-oriented project can be a challenge. There's a lot of different message queues and streaming systems,
+each with different features and client library API.
+
+Watermill aims to be the standard messaging library for Go, hiding all that complexity behind an API that is easy to
+understand. It provides all you might need for building an application based on events or other asynchronous patterns.
+After looking at the examples, you should be able to quickly integrate Watermill with your project.
 
 ### Install
 
 ```bash
-go get -u github.com/ThreeDotsLabs/watermill/
+go get -u github.com/ThreeDotsLabs/watermill
 ```
 
 ### One Minute Background
@@ -40,8 +43,8 @@ go get -u github.com/ThreeDotsLabs/watermill/
 The basic idea behind event-driven applications stays always the same: listen for incoming messages and react to them.
 Watermill supports this behavior for multiple [publishers and subscribers]({{< ref "/pubsubs" >}}).
 
-The core part of Watermill is the [*Message*]({{< ref "/docs/message" >}}). It is as important as the `http.Request` is for the `http` package.
-Most Watermill features use this struct in some way.
+The core part of Watermill is the [*Message*]({{< ref "/docs/message" >}}). It is as important as the `http.Request`
+is for the `http` package. Most Watermill features use this struct in some way.
 
 Even though PubSub libraries come with complex features, for Watermill it's enough to implement two interfaces to start
 working with them: the `Publisher` and `Subscriber`.
@@ -58,7 +61,7 @@ type Subscriber interface {
 }
 ```
 
-### Subscribing for messages
+### Subscribing for Messages
 
 Let's start with subscribing. `Subscribe` expects a topic name and returns a channel of incoming messages.
 What topic exactly means depends on the PubSub implementation.
@@ -98,7 +101,7 @@ The easiest way to run Watermill locally with Kafka is using Docker.
 
 The source should go to `main.go`.
 
-To run, please execute `docker-compose up` command.
+To run, execute `docker-compose up` command.
 
 A more detailed explanation of how it is working (and how to add live code reload) can be found in [*Go Docker dev environment* article](https://threedots.tech/post/go-docker-dev-environment-with-go-modules-and-live-code-reloading/).
 
@@ -123,7 +126,7 @@ The easiest way to run Watermill locally with NATS is using Docker.
 
 The source should go to `main.go`.
 
-To run please execute `docker-compose up` command.
+To run execute `docker-compose up` command.
 
 A more detailed explanation of how it is working (and how to add live code reload) can be found in [*Go Docker dev environment* article](https://threedots.tech/post/go-docker-dev-environment-with-go-modules-and-live-code-reloading/).
 {{% /collapse-box %}}
@@ -148,7 +151,7 @@ You can run Google Cloud Pub/Sub emulator locally for development.
 
 The source should go to `main.go`.
 
-To run, please execute `docker-compose up`.
+To run, execute `docker-compose up`.
 
 A more detailed explanation of how it is working (and how to add live code reload) can be found in [*Go Docker dev environment* article](https://threedots.tech/post/go-docker-dev-environment-with-go-modules-and-live-code-reloading/).
 {{% /collapse-box %}}
@@ -170,7 +173,7 @@ Running in Docker
 
 The source should go to `main.go`.
 
-To run, please execute `docker-compose up`.
+To run, execute `docker-compose up`.
 
 A more detailed explanation of how it is working (and how to add live code reload) can be found in [*Go Docker dev environment* article](https://threedots.tech/post/go-docker-dev-environment-with-go-modules-and-live-code-reloading/).
 {{% /collapse-box %}}
@@ -192,7 +195,7 @@ Running in Docker
 
 The source should go to `main.go`.
 
-To run, please execute `docker-compose up`.
+To run, execute `docker-compose up`.
 
 A more detailed explanation of how it is working (and how to add live code reload) can be found in [*Go Docker dev environment* article](https://threedots.tech/post/go-docker-dev-environment-with-go-modules-and-live-code-reloading/).
 {{% /collapse-box %}}
@@ -204,13 +207,22 @@ A more detailed explanation of how it is working (and how to add live code reloa
 
 {{% /tabs %}}
 
-### Publishing messages
+### Creating Messages
 
-Similarly, `Publish` expects a topic and a `Message` to be published.
+Watermill doesn't enforce any message format. `NewMessage` expectes a slice of bytes as the payload. You can use
+strings, JSON, protobuf, Avro, gob or anything else that serializes to `[]byte`.
+
+The message UUID is optional, but recommended, as it helps with debugging.
 
 ```go
 msg := message.NewMessage(watermill.NewUUID(), []byte("Hello, world!"))
+```
 
+### Publishing Messages
+
+`Publish` expects a topic and a `Message` to be published.
+
+```go
 err := publisher.Publish("example.topic", msg)
 if err != nil {
     panic(err)
@@ -244,11 +256,6 @@ if err != nil {
 {{% /tabs-tab %}}
 
 {{% /tabs %}}
-
-#### Message Payload
-
-Watermill doesn't enforce any message format. You can use strings, JSON, protobuf, Avro, gob or anything else that
-serializes to `[]byte`.
 
 ### Using *Messages Router*
 
