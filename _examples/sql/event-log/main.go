@@ -10,18 +10,63 @@ import (
 	driver "github.com/go-sql-driver/mysql"
 
 	"github.com/ThreeDotsLabs/watermill"
+	"github.com/ThreeDotsLabs/watermill-googlecloud/pkg/googlecloud"
 	"github.com/ThreeDotsLabs/watermill-sql/pkg/sql"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
 	"github.com/ThreeDotsLabs/watermill/message/router/plugin"
-	"github.com/ThreeDotsLabs/watermill/pubsub/gochannel"
 )
 
 var (
-	logger       = watermill.NewStdLogger(true, false)
-	consumeTopic = "topic"
-	publishTopic = "events"
+	logger           = watermill.NewStdLogger(false, false)
+	googleCloudTopic = "events"
+	mysqlTable       = "events"
 )
+
+type event struct {
+	Name       string `json:"name"`
+	OccurredAt string `json:"occurred_at"`
+}
+
+func main() {
+	router, err := message.NewRouter(message.RouterConfig{}, logger)
+	if err != nil {
+		panic(err)
+	}
+
+	router.AddPlugin(plugin.SignalsHandler)
+	router.AddMiddleware(middleware.Recoverer)
+
+	db := createDB()
+
+	subscriber := createSubscriber()
+	publisher := createPublisher(db)
+
+	go simulateEvents()
+
+	router.AddHandler(
+		"googlecloud-to-mysql",
+		googleCloudTopic,
+		subscriber,
+		mysqlTable,
+		publisher,
+		func(msg *message.Message) ([]*message.Message, error) {
+			consumedEvent := event{}
+			err := json.Unmarshal(msg.Payload, &consumedEvent)
+			if err != nil {
+				return nil, err
+			}
+
+			log.Printf("received event %+v with UUID %s", consumedEvent, msg.UUID)
+
+			return []*message.Message{msg}, nil
+		},
+	)
+
+	if err := router.Run(context.Background()); err != nil {
+		panic(err)
+	}
+}
 
 func createDB() *stdSQL.DB {
 	conf := driver.NewConfig()
@@ -43,6 +88,18 @@ func createDB() *stdSQL.DB {
 	return db
 }
 
+func createSubscriber() message.Subscriber {
+	sub, err := googlecloud.NewSubscriber(
+		googlecloud.SubscriberConfig{},
+		logger,
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	return sub
+}
+
 func createPublisher(db *stdSQL.DB) message.Publisher {
 	pub, err := sql.NewPublisher(
 		db,
@@ -59,19 +116,23 @@ func createPublisher(db *stdSQL.DB) message.Publisher {
 	return pub
 }
 
-type event struct {
-	Num int `json:"num"`
-}
+func simulateEvents() {
+	pub, err := googlecloud.NewPublisher(googlecloud.PublisherConfig{}, logger)
+	if err != nil {
+		panic(err)
+	}
 
-func publishEvents(publisher message.Publisher) {
-	i := 0
 	for {
-		payload, err := json.Marshal(event{Num: int(time.Now().Unix())})
+		e := event{
+			Name:       "UserSignedUp",
+			OccurredAt: time.Now().UTC().Format(time.RFC3339),
+		}
+		payload, err := json.Marshal(e)
 		if err != nil {
 			panic(err)
 		}
 
-		err = publisher.Publish(consumeTopic, message.NewMessage(
+		err = pub.Publish(googleCloudTopic, message.NewMessage(
 			watermill.NewUUID(),
 			payload,
 		))
@@ -79,48 +140,6 @@ func publishEvents(publisher message.Publisher) {
 			panic(err)
 		}
 
-		i++
 		time.Sleep(time.Second)
-	}
-}
-
-func main() {
-	router, err := message.NewRouter(message.RouterConfig{}, logger)
-	if err != nil {
-		panic(err)
-	}
-
-	router.AddPlugin(plugin.SignalsHandler)
-	router.AddMiddleware(middleware.Recoverer)
-
-	db := createDB()
-
-	goChannel := gochannel.NewGoChannel(gochannel.Config{}, logger)
-	publisher := createPublisher(db)
-
-	go publishEvents(goChannel)
-
-	router.AddHandler(
-		"gochannel-to-mysql",
-		consumeTopic,
-		goChannel,
-		publishTopic,
-		publisher,
-		func(msg *message.Message) ([]*message.Message, error) {
-			consumedPayload := event{}
-			err := json.Unmarshal(msg.Payload, &consumedPayload)
-			if err != nil {
-				return nil, err
-			}
-
-			log.Printf("received event %d with UUID %s", consumedPayload.Num, msg.UUID)
-
-			return []*message.Message{msg}, nil
-		},
-	)
-
-	ctx := context.Background()
-	if err := router.Run(ctx); err != nil {
-		panic(err)
 	}
 }

@@ -72,3 +72,5 @@ Example:
 SQL Pub/Sub uses user-defined schema to handle select and insert queries. You need to implement [SchemaAdapter](https://github.com/ThreeDotsLabs/watermill-sql/blob/master/pkg/sql/schema_adapter.go)
 and pass it to `SubscriberConfig` or `PublisherConfig`. There is `DefaultSchema` defined for most common use case
 (storing events in a table).
+
+#### Offsets Schema

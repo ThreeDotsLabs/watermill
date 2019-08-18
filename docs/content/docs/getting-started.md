@@ -328,7 +328,7 @@ Watermill is not a framework. We don't enforce any type of deployment and it's t
 
 ### What's next?
 
-For more detailed documentation you should check [documentation topics list]({{< ref "/docs" >}}).
+For more detailed documentation check [documentation topics]({{< ref "/docs" >}}).
 
 #### Examples
 

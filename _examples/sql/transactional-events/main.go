@@ -18,11 +18,53 @@ import (
 )
 
 var (
-	kafkaBrokers = []string{"kafka:9092"}
-	logger       = watermill.NewStdLogger(false, false)
-	consumeTopic = "events"
-	publishTopic = "events"
+	logger     = watermill.NewStdLogger(false, false)
+	kafkaTopic = "events"
+	mysqlTable = "events"
 )
+
+func main() {
+	router, err := message.NewRouter(message.RouterConfig{}, logger)
+	if err != nil {
+		panic(err)
+	}
+
+	router.AddPlugin(plugin.SignalsHandler)
+	router.AddMiddleware(middleware.Recoverer)
+
+	db := createDB()
+
+	subscriber := createSubscriber(db)
+	publisher := createPublisher()
+
+	router.AddHandler(
+		"mysql-to-kafka",
+		mysqlTable,
+		subscriber,
+		kafkaTopic,
+		publisher,
+		func(msg *message.Message) ([]*message.Message, error) {
+			consumedEvent := event{}
+			err := json.Unmarshal(msg.Payload, &consumedEvent)
+			if err != nil {
+				return nil, err
+			}
+
+			log.Printf("received event %+v with UUID %s", consumedEvent, msg.UUID)
+
+			return []*message.Message{msg}, nil
+		},
+	)
+
+	go func() {
+		<-router.Running()
+		simulateEvents(db)
+	}()
+
+	if err := router.Run(context.Background()); err != nil {
+		panic(err)
+	}
+}
 
 func createDB() *stdSQL.DB {
 	conf := driver.NewConfig()
@@ -63,7 +105,7 @@ func createSubscriber(db *stdSQL.DB) message.Subscriber {
 
 func createPublisher() message.Publisher {
 	pub, err := kafka.NewPublisher(
-		kafkaBrokers,
+		[]string{"kafka:9092"},
 		kafka.DefaultMarshaler{},
 		nil,
 		logger,
@@ -80,7 +122,14 @@ type event struct {
 	OccurredAt string `json:"occurred_at"`
 }
 
-func publishEvents(db *stdSQL.DB) {
+func simulateEvents(db *stdSQL.DB) {
+	pub, err := sql.NewPublisher(db, sql.PublisherConfig{
+		SchemaAdapter: sql.DefaultSchema{},
+	}, logger)
+	if err != nil {
+		panic(err)
+	}
+
 	for {
 		e := event{
 			Name:       "UserSignedUp",
@@ -91,55 +140,14 @@ func publishEvents(db *stdSQL.DB) {
 			panic(err)
 		}
 
-		_, err = db.Exec("INSERT INTO watermill_events (payload, uuid) VALUES (?, ?)",
-			payload, watermill.NewUUID())
+		err = pub.Publish(mysqlTable, message.NewMessage(
+			watermill.NewUUID(),
+			payload,
+		))
 		if err != nil {
 			panic(err)
 		}
 
 		time.Sleep(time.Second)
-	}
-}
-
-func main() {
-	router, err := message.NewRouter(message.RouterConfig{}, logger)
-	if err != nil {
-		panic(err)
-	}
-
-	router.AddPlugin(plugin.SignalsHandler)
-	router.AddMiddleware(middleware.Recoverer)
-
-	db := createDB()
-
-	subscriber := createSubscriber(db)
-	publisher := createPublisher()
-
-	router.AddHandler(
-		"mysql-to-kafka",
-		consumeTopic,
-		subscriber,
-		publishTopic,
-		publisher,
-		func(msg *message.Message) ([]*message.Message, error) {
-			consumedPayload := event{}
-			err := json.Unmarshal(msg.Payload, &consumedPayload)
-			if err != nil {
-				return nil, err
-			}
-
-			log.Printf("received event %+v with UUID %s", consumedPayload, msg.UUID)
-
-			return []*message.Message{msg}, nil
-		},
-	)
-
-	go func() {
-		<-router.Running()
-		publishEvents(db)
-	}()
-
-	if err := router.Run(context.Background()); err != nil {
-		panic(err)
 	}
 }

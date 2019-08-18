@@ -2,10 +2,20 @@
 
 This example shows how to use the SQL Publisher from [SQL Pub/Sub](https://github.com/ThreeDotsLabs/watermill-sql).
 
-Gochannel subscriber consumes events that are then appended to a MySQL table. While this example is trivial,
-the idea can be used for storing all events in one persistent storage.
+## Background
 
-Note that gochannel is used to keep the example simple and any other subscriber can be used instead.
+Some PubSubs (e.g. Kafka) come with support for storing processed messages, possibly even with no expiration date.
+This can be useful for audit purposes or to reply selected messages again in the future. But what if you'd like to use
+a PubSub that offers no storage and an event log is needed?
+
+## Solution
+
+Plugging a pair of a publisher and a subscriber into Watermill's `Router` can work as a proxy from one PubSub to another.
+To ensure that events are written to a persistent storage, you can use the SQL publisher.
+
+Google Cloud Pub/Sub subscriber consumes events from a topic and inserts them into a MySQL table. While this particular 
+PubSub doesn't guarantee proper order of messages, you can use `OccurredAt` field of the payload for sorting.
+Google Cloud Pub/Sub is used just as an example and any other subscriber can be used instead.
 
 The example uses `DefaultSchema`, but you can define your own table definition and queries.
 See [SQL Pub/Sub documentation](https://watermill.io/pubsub/sql) for details.

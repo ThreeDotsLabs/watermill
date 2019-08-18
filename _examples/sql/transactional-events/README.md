@@ -8,6 +8,8 @@ When producing domain events, you may stumble on a dilemma: should you first per
 then publish a domain event or the other way around? Whatever order you choose, one of the operations can fail and
 you will end up with inconsistent state.
 
+## Solution
+
 This example presents a solution to this problem: saving domain events in transaction with the aggregate in the same
 database and publishing it asynchronously.
 
