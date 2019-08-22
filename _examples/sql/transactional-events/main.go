@@ -123,31 +123,49 @@ type event struct {
 }
 
 func simulateEvents(db *stdSQL.DB) {
-	pub, err := sql.NewPublisher(db, sql.PublisherConfig{
-		SchemaAdapter: sql.DefaultSchema{},
-	}, logger)
-	if err != nil {
-		panic(err)
-	}
-
 	for {
-		e := event{
-			Name:       "UserSignedUp",
-			OccurredAt: time.Now().UTC().Format(time.RFC3339),
-		}
-		payload, err := json.Marshal(e)
+		tx, err := db.Begin()
 		if err != nil {
 			panic(err)
 		}
 
-		err = pub.Publish(mysqlTable, message.NewMessage(
-			watermill.NewUUID(),
-			payload,
-		))
+		err = publishEvent(tx)
+		if err != nil {
+			rollbackErr := tx.Rollback()
+			if rollbackErr != nil {
+				panic(rollbackErr)
+			}
+			panic(err)
+		}
+
+		err = tx.Commit()
 		if err != nil {
 			panic(err)
 		}
 
 		time.Sleep(time.Second)
 	}
+}
+
+func publishEvent(tx *stdSQL.Tx) error {
+	pub, err := sql.NewPublisher(tx, sql.PublisherConfig{
+		SchemaAdapter: sql.DefaultSchema{},
+	}, logger)
+	if err != nil {
+		return err
+	}
+
+	e := event{
+		Name:       "UserSignedUp",
+		OccurredAt: time.Now().UTC().Format(time.RFC3339),
+	}
+	payload, err := json.Marshal(e)
+	if err != nil {
+		return err
+	}
+
+	return pub.Publish(mysqlTable, message.NewMessage(
+		watermill.NewUUID(),
+		payload,
+	))
 }

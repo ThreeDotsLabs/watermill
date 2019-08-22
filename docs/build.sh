@@ -49,6 +49,8 @@ else
         "components/metrics/builder.go"
         "components/metrics/http.go"
         "_examples/metrics/main.go"
+
+        "_examples/sql/transactional-events/main.go"
     )
 
     pushd ../
