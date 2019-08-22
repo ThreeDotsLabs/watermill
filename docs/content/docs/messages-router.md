@@ -77,14 +77,17 @@ It can be useful to know if the router is running. You can use the `Running()` m
 {{% load-snippet-partial file="content/src-link/message/router.go" first_line_contains="// Running" last_line_contains="func (r *Router) Running()" padding_after="0" %}}
 {{% /render-md %}}
 
-### Execution model
+### Execution models
 
-*Subscribers* can consume either one message at a time or multiple messages in parallel. Single stream of messages is the simplest approach
-and it means that until a `msg.Ack()` is called, the subscriber will not receive any more messages.
+*Subscribers* can consume either one message at a time or multiple messages in parallel.
 
-However, there are *Subscribers* that support multiple message streams. By subscribing to multiple topic partitions, multiple messages
-can be consumed in parallel, even previous messages that were not acked (for example, kafka subscriber works like this).
-Router handles this by executing multiple `HandlerFunc`s in parallel.
+* **Single stream of messages** is the simplest approach and it means that until a `msg.Ack()` is called, the subscriber
+  will not receive any new messages.
+* **Multiple message streams** are supported only by some subscribers. By subscribing to multiple topic partitions at once,
+  several messages can be consumed in parallel, even previous messages that were not acked (for example, the Kafka subscriber
+  works like this). Router handles this model by running concurrent `HandlerFunc`s, one for each partition.
+  
+See the chosen Pub/Sub documentation for supported execution models.
 
 ### Middleware
 
