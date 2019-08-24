@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"io/ioutil"
@@ -95,5 +96,5 @@ func main() {
 		_ = httpSubscriber.StartHTTPServer()
 	}()
 
-	_ = r.Run()
+	_ = r.Run(context.Background())
 }
