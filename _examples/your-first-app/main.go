@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"time"
@@ -135,7 +136,7 @@ func main() {
 		},
 	)
 
-	if err := router.Run(); err != nil {
+	if err := router.Run(context.Background()); err != nil {
 		panic(err)
 	}
 }
