@@ -80,7 +80,7 @@ func NewGoChannel(config Config, logger watermill.LoggerAdapter) *GoChannel {
 //
 // Messages may be persisted or not, depending of persistent attribute.
 func (g *GoChannel) Publish(topic string, messages ...*message.Message) error {
-	if g.closed {
+	if g.isClosed() {
 		return errors.New("Pub/Sub closed")
 	}
 
@@ -160,7 +160,7 @@ func (g *GoChannel) sendMessage(topic string, message *message.Message) (<-chan 
 //
 // There are no consumer groups support etc. Every consumer will receive every produced message.
 func (g *GoChannel) Subscribe(ctx context.Context, topic string) (<-chan *message.Message, error) {
-	if g.closed {
+	if g.isClosed() {
 		return nil, errors.New("Pub/Sub closed")
 	}
 
@@ -261,6 +261,13 @@ func (g *GoChannel) topicSubscribers(topic string) []*subscriber {
 	return subscribers
 }
 
+func (g *GoChannel) isClosed() bool {
+	g.closedLock.Lock()
+	defer g.closedLock.Unlock()
+
+	return g.closed
+}
+
 func (g *GoChannel) Close() error {
 	g.closedLock.Lock()
 	defer g.closedLock.Unlock()
@@ -273,6 +280,7 @@ func (g *GoChannel) Close() error {
 	close(g.closing)
 
 	g.logger.Debug("Closing Pub/Sub, waiting for subscribers", nil)
+
 	g.subscribersWg.Wait()
 
 	g.logger.Info("Pub/Sub closed", nil)
