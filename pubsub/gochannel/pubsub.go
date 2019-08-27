@@ -279,7 +279,6 @@ func (g *GoChannel) Close() error {
 	close(g.closing)
 
 	g.logger.Debug("Closing Pub/Sub, waiting for subscribers", nil)
-
 	g.subscribersWg.Wait()
 
 	g.logger.Info("Pub/Sub closed", nil)
