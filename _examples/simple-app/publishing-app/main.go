@@ -6,11 +6,12 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/renstrom/shortuuid"
+
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill-kafka/pkg/kafka"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
-	"github.com/renstrom/shortuuid"
 )
 
 var (
