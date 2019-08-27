@@ -12,8 +12,8 @@ import (
 )
 
 func main() {
+	logger := watermill.NewStdLogger(false, false)
 	subscriber, err := googlecloud.NewSubscriber(
-		context.Background(),
 		googlecloud.SubscriberConfig{
 			// custom function to generate Subscription Name,
 			// there are also predefined TopicSubscriptionName and TopicSubscriptionNameWithSuffix available.
@@ -22,7 +22,7 @@ func main() {
 			},
 			ProjectID: "test-project",
 		},
-		watermill.NewStdLogger(false, false),
+		logger,
 	)
 	if err != nil {
 		panic(err)
@@ -38,7 +38,7 @@ func main() {
 
 	publisher, err := googlecloud.NewPublisher(googlecloud.PublisherConfig{
 		ProjectID: "test-project",
-	})
+	}, logger)
 	if err != nil {
 		panic(err)
 	}
