@@ -188,9 +188,6 @@ func (g *GoChannel) Subscribe(ctx context.Context, topic string) (<-chan *messag
 
 		s.Close()
 
-		g.subscribersLock.Lock()
-		defer g.subscribersLock.Unlock()
-
 		subLock, _ := g.subscribersByTopicLock.Load(topic)
 		subLock.(*sync.Mutex).Lock()
 		defer subLock.(*sync.Mutex).Unlock()
@@ -280,6 +277,9 @@ func (g *GoChannel) Close() error {
 	close(g.closing)
 
 	g.logger.Debug("Closing Pub/Sub, waiting for subscribers", nil)
+
+	g.subscribersLock.Lock()
+	defer g.subscribersLock.Unlock()
 
 	g.subscribersWg.Wait()
 
