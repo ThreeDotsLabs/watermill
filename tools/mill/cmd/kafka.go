@@ -2,10 +2,10 @@ package cmd
 
 import (
 	"github.com/Shopify/sarama"
+	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
 	"github.com/ThreeDotsLabs/watermill-kafka/pkg/kafka"
-	"github.com/spf13/cobra"
 )
 
 var kafkaCmd = &cobra.Command{
