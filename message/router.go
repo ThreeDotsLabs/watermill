@@ -3,6 +3,7 @@ package message
 import (
 	"context"
 	"fmt"
+	"runtime/debug"
 	"sync"
 	"time"
 
@@ -498,7 +499,11 @@ func (h *handler) handleMessage(msg *Message, handler HandlerFunc) {
 
 	defer func() {
 		if recovered := recover(); recovered != nil {
-			h.logger.Error("Panic recovered in handler", errors.Errorf("%s", recovered), nil)
+			h.logger.Error(
+				"Panic recovered in handler. Stack: " + string(debug.Stack()),
+				errors.Errorf("%s", recovered),
+				nil,
+			)
 			msg.Nack()
 			return
 		}
