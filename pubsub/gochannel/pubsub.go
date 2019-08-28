@@ -80,11 +80,9 @@ func NewGoChannel(config Config, logger watermill.LoggerAdapter) *GoChannel {
 //
 // Messages may be persisted or not, depending of persistent attribute.
 func (g *GoChannel) Publish(topic string, messages ...*message.Message) error {
-	g.closedLock.Lock()
-	if g.closed {
+	if g.isClosed() {
 		return errors.New("Pub/Sub closed")
 	}
-	g.closedLock.Unlock()
 
 	for i, msg := range messages {
 		messages[i] = msg.Copy()
@@ -265,6 +263,13 @@ func (g *GoChannel) topicSubscribers(topic string) []*subscriber {
 	}
 
 	return subscribers
+}
+
+func (g *GoChannel) isClosed() bool {
+	g.closedLock.Lock()
+	defer g.closedLock.Unlock()
+
+	return g.closed
 }
 
 func (g *GoChannel) Close() error {
