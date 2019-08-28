@@ -111,9 +111,10 @@ type Router struct {
 	handlersWg        *sync.WaitGroup
 	runningHandlersWg *sync.WaitGroup
 
-	closeCh  chan struct{}
-	closedCh chan struct{}
-	closed   bool
+	closeCh    chan struct{}
+	closedCh   chan struct{}
+	closed     bool
+	closedLock sync.Mutex
 
 	logger watermill.LoggerAdapter
 
@@ -325,7 +326,7 @@ func (r *Router) Run(ctx context.Context) (err error) {
 // because for example all subscriptions are closed.
 func (r *Router) closeWhenAllHandlersStopped() {
 	r.handlersWg.Wait()
-	if r.closed {
+	if r.isClosed() {
 		// already closed
 		return
 	}
@@ -348,6 +349,9 @@ func (r *Router) Running() chan struct{} {
 }
 
 func (r *Router) Close() error {
+	r.closedLock.Lock()
+	defer r.closedLock.Unlock()
+
 	if r.closed {
 		return nil
 	}
@@ -365,6 +369,13 @@ func (r *Router) Close() error {
 	}
 
 	return nil
+}
+
+func (r *Router) isClosed() bool {
+	r.closedLock.Lock()
+	defer r.closedLock.Unlock()
+
+	return r.closed
 }
 
 type handler struct {
