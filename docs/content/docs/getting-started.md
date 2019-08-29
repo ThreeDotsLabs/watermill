@@ -210,7 +210,7 @@ You may notice that we have two types of *handler functions*:
 2. method `func (c structHandler) Handler(msg *message.Message) ([]*message.Message, error)`
 
 The second option is useful when your function requires some dependencies like database, logger, etc.
-If you use a simple function without dependencies, it's fine to use the second option.
+If you use a simple function without dependencies, it's fine to use first option.
 
 {{% render-md %}}
 {{% load-snippet-partial file="content/docs/getting-started/router/main.go" first_line_contains="func printMessages" last_line_contains="return message.Messages{msg}, nil" padding_after="3" %}}
