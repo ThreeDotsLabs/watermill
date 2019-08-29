@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill-io/pkg/io"
 	"github.com/ThreeDotsLabs/watermill/message"
 )
@@ -28,7 +29,7 @@ func main() {
 
 	sub, err := io.NewSubscriber(logFile, io.SubscriberConfig{
 		UnmarshalFunc: io.PayloadUnmarshalFunc,
-	})
+	}, watermill.NewStdLogger(true, false))
 	if err != nil {
 		panic(err)
 	}

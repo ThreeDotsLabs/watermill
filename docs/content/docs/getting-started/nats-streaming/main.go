@@ -10,7 +10,6 @@ import (
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill-nats/pkg/nats"
-
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
