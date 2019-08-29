@@ -42,6 +42,9 @@ func main() {
 		}
 
 		exampleDirectory := filepath.Dir(exampleConfig)
+
+		fmt.Printf("validating %s\n", exampleDirectory)
+
 		ok, err := validate(exampleConfig)
 
 		if err != nil {
@@ -87,6 +90,8 @@ func validate(path string) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("could not attach to stdout, err: %v", err)
 	}
+
+	fmt.Printf("running: %v\n", validationCmd.Args)
 
 	err = validationCmd.Start()
 	if err != nil {
