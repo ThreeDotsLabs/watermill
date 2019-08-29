@@ -4,17 +4,16 @@ package main
 import (
 	"context"
 	"log"
-
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure/googlecloud"
+	"time"
 
 	"github.com/ThreeDotsLabs/watermill"
-
+	"github.com/ThreeDotsLabs/watermill-googlecloud/pkg/googlecloud"
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
 func main() {
+	logger := watermill.NewStdLogger(false, false)
 	subscriber, err := googlecloud.NewSubscriber(
-		context.Background(),
 		googlecloud.SubscriberConfig{
 			// custom function to generate Subscription Name,
 			// there are also predefined TopicSubscriptionName and TopicSubscriptionNameWithSuffix available.
@@ -23,7 +22,7 @@ func main() {
 			},
 			ProjectID: "test-project",
 		},
-		watermill.NewStdLogger(false, false),
+		logger,
 	)
 	if err != nil {
 		panic(err)
@@ -37,9 +36,9 @@ func main() {
 
 	go process(messages)
 
-	publisher, err := googlecloud.NewPublisher(context.Background(), googlecloud.PublisherConfig{
+	publisher, err := googlecloud.NewPublisher(googlecloud.PublisherConfig{
 		ProjectID: "test-project",
-	})
+	}, logger)
 	if err != nil {
 		panic(err)
 	}
@@ -54,6 +53,8 @@ func publishMessages(publisher message.Publisher) {
 		if err := publisher.Publish("example.topic", msg); err != nil {
 			panic(err)
 		}
+
+		time.Sleep(time.Second)
 	}
 }
 

@@ -9,7 +9,7 @@ Pub/Subs:
 2. Google Cloud Pub/Sub
 3. RabbitMQ
 
-See Watermill's [Pub/Sub implementations](https://watermill.io/docs/pub-sub-implementations) for more details on how this works.
+See Watermill's [Supported Pub/Subs](https://watermill.io/pubsubs) for more details on how this works.
 
 ## Installation
 

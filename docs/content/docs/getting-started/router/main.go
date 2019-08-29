@@ -2,15 +2,16 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"time"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure/gochannel"
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
 	"github.com/ThreeDotsLabs/watermill/message/router/plugin"
+	"github.com/ThreeDotsLabs/watermill/pubsub/gochannel"
 )
 
 var (
@@ -36,10 +37,9 @@ func main() {
 		// when error occurred, function will be retried,
 		// after max retries (or if no Retry middleware is added) Nack is send and message will be resent
 		middleware.Retry{
-			MaxRetries: 3,
-			WaitTime:   time.Millisecond * 100,
-			Backoff:    3,
-			Logger:     logger,
+			MaxRetries:      3,
+			InitialInterval: time.Millisecond * 100,
+			Logger:          logger,
 		}.Middleware,
 
 		// this middleware will handle panics from handlers
@@ -81,7 +81,8 @@ func main() {
 
 	// when everything is ready, let's run router,
 	// this function is blocking since router is running
-	if err := router.Run(); err != nil {
+	ctx := context.Background()
+	if err := router.Run(ctx); err != nil {
 		panic(err)
 	}
 }
@@ -101,12 +102,12 @@ func publishMessages(publisher message.Publisher) {
 	}
 }
 
-func printMessages(msg *message.Message) ([]*message.Message, error) {
+func printMessages(msg *message.Message) error {
 	fmt.Printf(
 		"\n> Received message: %s\n> %s\n> metadata: %v\n\n",
 		msg.UUID, string(msg.Payload), msg.Metadata,
 	)
-	return nil, nil
+	return nil
 }
 
 type structHandler struct {

@@ -1,4 +1,7 @@
+#!/bin/bash
 set -e -x
+
+cd "$(dirname "$0")"
 
 if [[ ! -d themes/kube ]]; then
     mkdir -p themes/kube && pushd themes/kube
@@ -9,6 +12,16 @@ if [[ ! -d themes/kube ]]; then
     popd
 fi
 
+function cloneOrPull() {
+    if [[ -d "$2" ]]
+    then
+        pushd $2
+        git pull
+        popd
+    else
+        git clone --single-branch --branch master $1 $2
+    fi
+}
 
 if [[ "$1" == "--copy" ]]; then
     rm content/src-link -r || true
@@ -18,33 +31,12 @@ if [[ "$1" == "--copy" ]]; then
     cp ../components/ content/src-link/ -r
 else
     declare -a files_to_link=(
-        "message/infrastructure/kafka/publisher.go"
-        "message/infrastructure/kafka/subscriber.go"
-        "message/infrastructure/kafka/marshaler.go"
-        "message/infrastructure/kafka/config.go"
-        "message/infrastructure/nats/publisher.go"
-        "message/infrastructure/nats/subscriber.go"
-        "message/infrastructure/nats/marshaler.go"
-        "message/infrastructure/googlecloud/publisher.go"
-        "message/infrastructure/googlecloud/subscriber.go"
-        "message/infrastructure/googlecloud/marshaler.go"
-        "message/infrastructure/gochannel/pubsub.go"
-        "message/infrastructure/http/subscriber.go"
-        "message/infrastructure/http/publisher.go"
-        "message/infrastructure/amqp/doc.go"
-        "message/infrastructure/amqp/publisher.go"
-        "message/infrastructure/amqp/subscriber.go"
-        "message/infrastructure/amqp/config.go"
-        "message/infrastructure/amqp/marshaler.go"
-        "message/infrastructure/amqp/topology_builder.go"
-        "message/infrastructure/io/publisher.go"
-        "message/infrastructure/io/subscriber.go"
-        "message/infrastructure/io/marshal.go"
         "message/decorator.go"
         "message/message.go"
         "message/pubsub.go"
         "message/router.go"
-        
+        "message/infrastructure/gochannel/pubsub.go"
+
         "_examples/cqrs-protobuf/main.go"
         "components/cqrs/command_bus.go"
         "components/cqrs/command_processor.go"
@@ -60,7 +52,6 @@ else
     )
 
     pushd ../
-
     for i in "${files_to_link[@]}"
     do
         DIR=$(dirname "${i}")
@@ -69,8 +60,18 @@ else
         mkdir -p "${DEST_DIR}"
         ln -rsf "./${i}" "./${DEST_DIR}"
     done
-
     popd
 fi
+
+cloneOrPull "https://github.com/ThreeDotsLabs/watermill-amqp.git" content/src-link/watermill-amqp
+cloneOrPull "https://github.com/ThreeDotsLabs/watermill-googlecloud.git" content/src-link/watermill-googlecloud
+cloneOrPull "https://github.com/ThreeDotsLabs/watermill-http.git" content/src-link/watermill-http
+cloneOrPull "https://github.com/ThreeDotsLabs/watermill-io.git" content/src-link/watermill-io
+cloneOrPull "https://github.com/ThreeDotsLabs/watermill-kafka.git" content/src-link/watermill-kafka
+cloneOrPull "https://github.com/ThreeDotsLabs/watermill-nats.git" content/src-link/watermill-nats
+cloneOrPull "https://github.com/ThreeDotsLabs/watermill-sql.git" content/src-link/watermill-sql
+
+
+python3 ./extract_middleware_godocs.py > content/src-link/middleware-defs.md
 
 hugo --gc --minify

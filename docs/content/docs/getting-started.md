@@ -2,7 +2,7 @@
 title = "Getting started"
 description = "Watermill up and running"
 weight = -9999
-draft = false
+draft = false 
 toc = true
 bref = "Watermill up and running"
 type = "docs"
@@ -28,7 +28,7 @@ One of the most important parts of Watermill is the [*Message*]({{< ref "/docs/m
 Almost every part of Watermill uses this type in some part.
 
 When you are building reactive/event-driven application/[insert your buzzword here] you always want to listen for incoming messages to react on them.
-Watermill is supporting multiple [publishers and subscribers implementations]({{< ref "/docs/pub-sub-implementations" >}}) with compatible interfaces and abstractions, which provide a similar behaviour.
+Watermill is supporting multiple [publishers and subscribers implementations]({{< ref "/pubsubs" >}}) with compatible interfaces and abstractions, which provide a similar behaviour.
 
 Let's start with subscribing for messages.
 
@@ -190,7 +190,7 @@ For the beginning, we should start with the configuration of the router. We will
 We also will set up handlers which this router will support. Every handler will independently handle the messages.
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/docs/getting-started/router/main.go" first_line_contains="package" last_line_contains="router.Run()" padding_after="4" %}}
+{{% load-snippet-partial file="content/docs/getting-started/router/main.go" first_line_contains="package" last_line_contains="router.Run(ctx)" padding_after="4" %}}
 {{% /render-md %}}
 
 #### Producing messages

@@ -115,7 +115,7 @@ func (p EventProcessor) Handlers() []EventHandler {
 	return p.handlers
 }
 
-func (p EventProcessor) routerHandlerFunc(handler EventHandler, logger watermill.LoggerAdapter) (message.HandlerFunc, error) {
+func (p EventProcessor) routerHandlerFunc(handler EventHandler, logger watermill.LoggerAdapter) (message.NoPublishHandlerFunc, error) {
 	initEvent := handler.NewEvent()
 	expectedEventName := p.marshaler.Name(initEvent)
 
@@ -123,7 +123,7 @@ func (p EventProcessor) routerHandlerFunc(handler EventHandler, logger watermill
 		return nil, err
 	}
 
-	return func(msg *message.Message) ([]*message.Message, error) {
+	return func(msg *message.Message) error {
 		event := handler.NewEvent()
 		messageEventName := p.marshaler.NameFromMessage(msg)
 
@@ -133,7 +133,7 @@ func (p EventProcessor) routerHandlerFunc(handler EventHandler, logger watermill
 				"expected_event_type": expectedEventName,
 				"received_event_type": messageEventName,
 			})
-			return nil, nil
+			return nil
 		}
 
 		logger.Debug("Handling event", watermill.LogFields{
@@ -142,15 +142,15 @@ func (p EventProcessor) routerHandlerFunc(handler EventHandler, logger watermill
 		})
 
 		if err := p.marshaler.Unmarshal(msg, event); err != nil {
-			return nil, err
+			return err
 		}
 
 		if err := handler.Handle(msg.Context(), event); err != nil {
 			logger.Debug("Error when handling event", watermill.LogFields{"err": err})
-			return nil, err
+			return err
 		}
 
-		return nil, nil
+		return nil
 	}, nil
 }
 

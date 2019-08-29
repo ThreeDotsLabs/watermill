@@ -10,10 +10,10 @@ toc = true
 
 ### The Pub/Sub interface
 
-To add support for a custom Pub/Sub, you have to implement the `message.PubSub` interface.
+To add support for a custom Pub/Sub, you have to implement both `message.Publisher` and `message.Subscriber` interfaces.
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/pubsub.go" first_line_contains="type publisher interface" last_line_contains="func NewPubSub" padding_after="0" %}}
+{{% load-snippet-partial file="content/src-link/message/pubsub.go" first_line_contains="type Publisher interface" last_line_contains="type SubscribeInitializer" padding_after="0" %}}
 {{% /render-md %}}
 
 ### TODO list
@@ -30,7 +30,7 @@ Here are a few things you shouldn't forget about:
 5. Redelivery on `Nack()` for a consumed message.
 6. Use [Universal Pub/Sub tests]({{< ref "/docs/pub-sub#universal-tests" >}})
 7. Performance optimizations.
-8. GoDocs, [Markdown docs]({{< ref "/docs/pub-sub-implementations" >}}) and [Getting Started examples](/docs/getting-started).
+8. GoDocs, [Markdown docs]({{< ref "/pubsubs" >}}) and [Getting Started examples](/docs/getting-started).
 
 We will also be thankful for submitting a [pull requests](https://github.com/ThreeDotsLabs/watermill/pulls) with the new Pub/Sub implementation.
 

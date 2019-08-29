@@ -6,17 +6,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ThreeDotsLabs/watermill/internal/tests"
+	"github.com/ThreeDotsLabs/watermill/pubsub/tests"
+
 	"github.com/pkg/errors"
-
-	"github.com/ThreeDotsLabs/watermill/message/subscriber"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure/gochannel"
+	"github.com/ThreeDotsLabs/watermill/message/subscriber"
+	"github.com/ThreeDotsLabs/watermill/pubsub/gochannel"
 )
 
 var noop = func(*message.Message) {}
@@ -98,14 +97,14 @@ func TestMessageTransformSubscriberDecorator_Close(t *testing.T) {
 
 func TestMessageTransformSubscriberDecorator_Subscribe(t *testing.T) {
 	numMessages := 1000
-	pubsub := gochannel.NewGoChannel(gochannel.Config{}, watermill.NewStdLogger(true, true))
+	pubSub := gochannel.NewGoChannel(gochannel.Config{}, watermill.NewStdLogger(true, true))
 
 	onMessage := func(msg *message.Message) {
 		msg.Metadata.Set("key", "value")
 	}
 	decorator := message.MessageTransformSubscriberDecorator(onMessage)
 
-	decoratedSub, err := decorator(pubsub.(message.Subscriber))
+	decoratedSub, err := decorator(pubSub)
 	require.NoError(t, err)
 
 	messages, err := decoratedSub.Subscribe(context.Background(), "topic")
@@ -118,7 +117,7 @@ func TestMessageTransformSubscriberDecorator_Subscribe(t *testing.T) {
 			msg := message.NewMessage(strconv.Itoa(i), []byte{})
 			sent = append(sent, msg)
 
-			err = pubsub.Publish("topic", msg)
+			err = pubSub.Publish("topic", msg)
 			require.NoError(t, err)
 		}
 	}()

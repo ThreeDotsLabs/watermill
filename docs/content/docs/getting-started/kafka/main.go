@@ -4,13 +4,13 @@ package main
 import (
 	"context"
 	"log"
+	"time"
 
 	"github.com/Shopify/sarama"
 
 	"github.com/ThreeDotsLabs/watermill"
-
+	"github.com/ThreeDotsLabs/watermill-kafka/pkg/kafka"
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure/kafka"
 )
 
 func main() {
@@ -58,6 +58,8 @@ func publishMessages(publisher message.Publisher) {
 		if err := publisher.Publish("example.topic", msg); err != nil {
 			panic(err)
 		}
+
+		time.Sleep(time.Second)
 	}
 }
 
@@ -66,7 +68,7 @@ func process(messages <-chan *message.Message) {
 		log.Printf("received message: %s, payload: %s", msg.UUID, string(msg.Payload))
 
 		// we need to Acknowledge that we received and processed the message,
-		// otherwise we will not receive next message
+		// otherwise, it will be resent over and over again.
 		msg.Ack()
 	}
 }

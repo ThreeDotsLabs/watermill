@@ -11,9 +11,9 @@ import (
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/components/metrics"
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure/gochannel"
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
 	"github.com/ThreeDotsLabs/watermill/message/router/plugin"
+	"github.com/ThreeDotsLabs/watermill/pubsub/gochannel"
 )
 
 var (
@@ -110,15 +110,13 @@ func main() {
 		handler,
 	)
 
-	// separate the publisher from pubSub to decorate it separately
-	sub := pubSub.(message.Subscriber)
 	pub := randomFailPublisherDecorator{pubSub, 0.1}
 
 	// The handler's publisher and subscriber will be decorated by `AddPrometheusRouterMetrics`.
 	// We are using the same pub/sub to generate messages incoming to the handler
 	// and consume the outgoing messages.
 	// They will have `handler_name=<no handler>` label in Prometheus.
-	subWithMetrics, err := metricsBuilder.DecorateSubscriber(sub)
+	subWithMetrics, err := metricsBuilder.DecorateSubscriber(pubSub)
 	if err != nil {
 		panic(err)
 	}
@@ -131,7 +129,7 @@ func main() {
 	go produceMessages(routerClosed, pubWithMetrics)
 	go consumeMessages(subWithMetrics)
 
-	_ = router.Run()
+	_ = router.Run(context.Background())
 	close(routerClosed)
 }
 

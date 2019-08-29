@@ -26,6 +26,10 @@ googleAnalytics = "UA-128588911-2"
     weight = -200
     url = "/docs/"
 [[menu.main]]
+    name = "Supported Pub/Subs"
+    weight = -200
+    url = "/pubsubs/"
+[[menu.main]]
     name = "Examples"
     weight = 100
     url = "https://github.com/ThreeDotsLabs/watermill/tree/master/_examples"

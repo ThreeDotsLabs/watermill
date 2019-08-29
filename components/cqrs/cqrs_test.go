@@ -12,7 +12,7 @@ import (
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/components/cqrs"
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure/gochannel"
+	"github.com/ThreeDotsLabs/watermill/pubsub/gochannel"
 )
 
 // TestCQRS is functional test of CQRS command handler and event handler.
@@ -95,7 +95,7 @@ func createRouterAndFacade(ts TestServices, t *testing.T, commandHandler *Captur
 	require.NoError(t, err)
 
 	go func() {
-		require.NoError(t, router.Run())
+		require.NoError(t, router.Run(context.Background()))
 	}()
 
 	<-router.Running()
@@ -105,8 +105,8 @@ func createRouterAndFacade(ts TestServices, t *testing.T, commandHandler *Captur
 
 type TestServices struct {
 	Logger         watermill.LoggerAdapter
-	CommandsPubSub message.PubSub
-	EventsPubSub   message.PubSub
+	CommandsPubSub *gochannel.GoChannel
+	EventsPubSub   *gochannel.GoChannel
 	Marshaler      cqrs.CommandEventMarshaler
 }
 

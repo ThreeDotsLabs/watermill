@@ -1,9 +1,6 @@
 up:
 	docker-compose up
 
-mycli:
-	@mycli -h 127.0.0.1 -u root -p secret
-
 test:
 	go test ./...
 
@@ -24,12 +21,18 @@ test_reconnect:
 
 validate_examples:
 	go run dev/update-examples-deps/main.go
-	bash dev/validate_examples.sh
+	go run dev/validate-examples/main.go
+
+
+fmt:
+	go fmt ./...
+	goimports -l -w .
 
 generate_gomod:
 	rm go.mod go.sum || true
 	go mod init github.com/ThreeDotsLabs/watermill
+
 	go install ./...
-	go get -u github.com/golang/protobuf/proto
 	sed -i '\|go |d' go.mod
 	go mod edit -fmt
+

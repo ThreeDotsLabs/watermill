@@ -4,10 +4,11 @@ package main
 import (
 	"context"
 	"log"
+	"time"
 
 	"github.com/ThreeDotsLabs/watermill"
+	"github.com/ThreeDotsLabs/watermill-amqp/pkg/amqp"
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure/amqp"
 )
 
 var amqpURI = "amqp://guest:guest@rabbitmq:5672/"
@@ -50,6 +51,8 @@ func publishMessages(publisher message.Publisher) {
 		if err := publisher.Publish("example.topic", msg); err != nil {
 			panic(err)
 		}
+
+		time.Sleep(time.Second)
 	}
 }
 
@@ -58,7 +61,7 @@ func process(messages <-chan *message.Message) {
 		log.Printf("received message: %s, payload: %s", msg.UUID, string(msg.Payload))
 
 		// we need to Acknowledge that we received and processed the message,
-		// otherwise we will not receive the next message
+		// otherwise, it will be resent over and over again.
 		msg.Ack()
 	}
 }

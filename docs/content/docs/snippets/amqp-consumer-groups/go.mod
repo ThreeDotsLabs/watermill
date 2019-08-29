@@ -1,3 +1,6 @@
 module main.go
 
-require github.com/ThreeDotsLabs/watermill v0.2.2-0.20190509215427-f56712e7284c
+require (
+	github.com/ThreeDotsLabs/watermill v1.0.0-rc.2
+	github.com/ThreeDotsLabs/watermill-amqp v1.0.1
+)

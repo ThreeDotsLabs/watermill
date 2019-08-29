@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"sync/atomic"
@@ -9,8 +10,8 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/ThreeDotsLabs/watermill"
+	"github.com/ThreeDotsLabs/watermill-kafka/pkg/kafka"
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure/kafka"
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
 	"github.com/ThreeDotsLabs/watermill/message/router/plugin"
 )
@@ -37,7 +38,7 @@ func main() {
 
 	retryMiddleware := middleware.Retry{}
 	retryMiddleware.MaxRetries = 1
-	retryMiddleware.WaitTime = time.Millisecond * 10
+	retryMiddleware.InitialInterval = time.Millisecond * 10
 
 	poisonQueue, err := middleware.PoisonQueue(pub, "poison_queue")
 	if err != nil {
@@ -90,10 +91,9 @@ func main() {
 		FeedGenerator{printFeedStorage{}}.UpdateFeed,
 	)
 
-	if err = r.Run(); err != nil {
+	if err = r.Run(context.Background()); err != nil {
 		panic(err)
 	}
-
 }
 
 func createSubscriber(consumerGroup string, logger watermill.LoggerAdapter) message.Subscriber {
@@ -177,16 +177,16 @@ type FeedGenerator struct {
 	feedStorage feedStorage
 }
 
-func (f FeedGenerator) UpdateFeed(message *message.Message) ([]*message.Message, error) {
+func (f FeedGenerator) UpdateFeed(message *message.Message) error {
 	event := postAdded{}
 	if err := json.Unmarshal(message.Payload, &event); err != nil {
-		return nil, err
+		return err
 	}
 
 	err := f.feedStorage.AddToFeed(event.Title, event.Author, event.OccurredOn)
 	if err != nil {
-		return nil, errors.Wrap(err, "cannot update feed")
+		return errors.Wrap(err, "cannot update feed")
 	}
 
-	return nil, nil
+	return nil
 }

@@ -1,17 +1,17 @@
 package cmd
 
 import (
+	"context"
 	"os"
 	"time"
 
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure/io"
-	"github.com/ThreeDotsLabs/watermill/message/router/plugin"
 	"github.com/pkg/errors"
+	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	"github.com/ThreeDotsLabs/watermill-io/pkg/io"
 	"github.com/ThreeDotsLabs/watermill/message"
-
-	"github.com/spf13/cobra"
+	"github.com/ThreeDotsLabs/watermill/message/router/plugin"
 )
 
 // consumer is initialized by the parent command to the pub/sub provider of choice.
@@ -38,9 +38,13 @@ For the configuration of particular pub/sub providers, see the help for the prov
 
 			router.AddPlugin(plugin.SignalsHandler)
 
-			out, err := io.NewPublisher(os.Stdout, io.PublisherConfig{
-				MarshalFunc: io.PayloadMarshalFunc,
-			})
+			out, err := io.NewPublisher(
+				os.Stdout,
+				io.PublisherConfig{
+					MarshalFunc: io.PayloadMarshalFunc,
+				},
+				logger,
+			)
 			if err != nil {
 				return errors.Wrap(err, "could not create console producer")
 			}
@@ -57,7 +61,7 @@ For the configuration of particular pub/sub providers, see the help for the prov
 				},
 			)
 
-			return router.Run()
+			return router.Run(context.Background())
 		},
 	}
 

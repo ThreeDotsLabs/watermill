@@ -70,7 +70,7 @@ If it is an issue, you should consider publishing a maximum of one message with 
 To run the Router, you need to call `Run()`.
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/router.go" first_line_contains="// Run" last_line_contains="func (r *Router) Run() (err error) {" padding_after="0" %}}
+{{% load-snippet-partial file="content/src-link/message/router.go" first_line_contains="// Run" last_line_contains="func (r *Router) Run(ctx context.Context) (err error) {" padding_after="0" %}}
 {{% /render-md %}}
 
 #### Ensuring that the Router is running
@@ -95,7 +95,7 @@ The router can handle this case and spawn multiple `HandlerFunc` in parallel.
 {{% load-snippet-partial file="content/src-link/message/router.go" first_line_contains="// HandlerMiddleware" last_line_contains="type HandlerMiddleware" padding_after="1" %}}
 {{% /render-md %}}
 
-A full list of the standard middlewares can be found in [message/router/middleware](https://github.com/ThreeDotsLabs/watermill/tree/master/message/router/middleware).
+A full list of the standard middlewares can be found in [Middlewares]({{< ref "/docs/middlewares" >}}).
 
 ### Plugin
 

@@ -28,6 +28,12 @@ func TestIgnoreErrors_Middleware(t *testing.T) {
 			TestError:       errors.New("not_ignored"),
 			ShouldBeIgnored: false,
 		},
+		{
+			Name:            "wrapped_error_should_ignore",
+			IgnoredErrors:   []error{errors.New("test")},
+			TestError:       errors.Wrap(errors.New("test"), "wrapped"),
+			ShouldBeIgnored: true,
+		},
 	}
 
 	for _, c := range testCases {

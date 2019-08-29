@@ -16,7 +16,13 @@
 {{ $last_line_num := 0 }}
 
 {{ $linkFile := $file }}
-{{ if in $file "content/src-link/" }}
+{{ $repo := "watermill" }}
+
+{{ if in $file "src-link/watermill-" }}
+    {{ $repo = index (findRE "watermill-[a-z]+" $linkFile) 0 }}
+    {{ $linkFile = replace $linkFile $repo "" }}
+    {{ $linkFile = replace $linkFile "src-link//" "" }}
+{{ else if in $file "content/src-link/" }}
     {{ $linkFile = replace $linkFile "content/src-link/" "" }}
 {{ else }}
     {{ $linkFile = print "docs/" $linkFile }}
@@ -56,7 +62,7 @@
     {{ end }}
 {{ end }}
 
-<small class="smaller">Full source: [{{ $linkFile }}](https://github.com/ThreeDotsLabs/watermill/tree/master/{{ $linkFile }}{{ if ne $first_line_num 0 }}#L{{ $first_line_num }}{{ end }})</small>
+<small class="smaller">Full source: [github.com/ThreeDotsLabs/{{ $repo }}/{{ $linkFile }}](https://github.com/ThreeDotsLabs/{{ $repo }}/tree/master/{{ $linkFile }}{{ if ne $first_line_num 0 }}#L{{ $first_line_num }}{{ end }})</small>
 
 {{ highlight (delimit $lines "\n") (.Get "type" | default "go") "" }}
 

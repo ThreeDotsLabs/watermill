@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
+
 	"github.com/ThreeDotsLabs/watermill"
+	watermill_http "github.com/ThreeDotsLabs/watermill-http/pkg/http"
+	"github.com/ThreeDotsLabs/watermill-kafka/pkg/kafka"
 	"github.com/ThreeDotsLabs/watermill/message"
-	watermill_http "github.com/ThreeDotsLabs/watermill/message/infrastructure/http"
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure/kafka"
 	"github.com/ThreeDotsLabs/watermill/message/router/plugin"
 )
 
@@ -20,7 +22,7 @@ func filterMessages(acceptedTypes ...string) message.HandlerFunc {
 		msgEventType := msg.Metadata.Get("event_type")
 
 		for _, typ := range acceptedTypes {
-			if string(typ) == msgEventType {
+			if typ == msgEventType {
 				return message.Messages{msg}, nil
 			}
 		}
@@ -57,7 +59,7 @@ func main() {
 	router.AddHandler("all", topic, subscriber, url+"all", publisher, filterMessages("Foo", "Bar", "Baz"))
 	router.AddPlugin(plugin.SignalsHandler)
 
-	err = router.Run()
+	err = router.Run(context.Background())
 	if err != nil {
 		panic(err)
 	}

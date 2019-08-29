@@ -8,12 +8,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/golang/protobuf/ptypes"
 	"github.com/pkg/errors"
 
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure/amqp"
-	"github.com/golang/protobuf/ptypes"
-
 	"github.com/ThreeDotsLabs/watermill"
+	"github.com/ThreeDotsLabs/watermill-amqp/pkg/amqp"
 	"github.com/ThreeDotsLabs/watermill/components/cqrs"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
@@ -260,7 +259,7 @@ func main() {
 	go publishCommands(cqrsFacade.CommandBus())
 
 	// processors are based on router, so they will work when router will start
-	if err := router.Run(); err != nil {
+	if err := router.Run(context.Background()); err != nil {
 		panic(err)
 	}
 }
