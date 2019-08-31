@@ -165,9 +165,12 @@ func main() {
 	var m metrics.Meter
 
 	// it is required to create sub before for some pubsubs
-	_, sub := pubsub.Constructor()
+	pub, sub := pubsub.Constructor()
 
 	if _, err := sub.Subscribe(context.Background(), topic); err != nil {
+		panic(err)
+	}
+	if err := pub.Close(); err != nil {
 		panic(err)
 	}
 	if err := sub.Close(); err != nil {
