@@ -27,4 +27,4 @@ fi
 docker-compose $compose_flags -f ./compose/watermill.yml run \
     -v "$(pwd):/benchmark" \
     -w /benchmark \
-    watermill go run -mod=vendor main.go -pubsub "$pubsub"
+    watermill go run -mod=vendor ./cmd/main.go -pubsub "$pubsub"
