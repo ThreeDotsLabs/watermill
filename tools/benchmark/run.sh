@@ -8,11 +8,23 @@ if [ -z "$pubsub" ]; then
     exit 1
 fi
 
-docker-compose -f "./compose/$pubsub.yml" up -d
+compose_flags=
+if [ -f "./compose/$pubsub.yml" ]; then
+    compose_flags="-f ./compose/$pubsub.yml"
+    docker-compose $compose_flags up -d
 
-sleep 20
+    # TODO replace with waiting for port
+    sleep 20
+fi
 
-docker-compose -f "./compose/$pubsub.yml" -f ./compose/watermill.yml run \
+if [ ! -d ./vendor ]; then
+    docker-compose -f ./compose/watermill.yml run \
+        -v "$(pwd):/benchmark" \
+        -w /benchmark \
+        watermill go mod vendor
+fi
+
+docker-compose $compose_flags -f ./compose/watermill.yml run \
     -v "$(pwd):/benchmark" \
     -w /benchmark \
-    watermill go run main.go -pubsub "$pubsub"
+    watermill go run -mod=vendor main.go -pubsub "$pubsub"

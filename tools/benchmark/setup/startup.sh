@@ -5,3 +5,4 @@ echo alias docker-compose="'"'docker run --rm \
     -w="$PWD" \
     docker/compose:1.24.0'"'" >> /home/benchmark/.bashrc
 echo export GOPATH=~/go >> /home/benchmark/.bashrc
+git clone https://github.com/ThreeDotsLabs/watermill /home/benchmark/watermill
