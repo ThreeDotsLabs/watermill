@@ -16,7 +16,7 @@ To understand the background and internals, see [getting started guide](https://
 
 ## Requirements
 
-To run this example you will need Docker and docker-compose installed. See installation guide at https://docs.docker.com/compose/install/
+To run this example you will need Docker and docker-compose installed. See the [installation guide](https://docs.docker.com/compose/install/).
 
 ## Running
 
