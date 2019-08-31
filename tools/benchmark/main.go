@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"math/rand"
 	"os"
 	"sync"
 	"time"
@@ -245,12 +246,20 @@ func publishMessages(ps pubSub) {
 
 	start := time.Now()
 
+	rand.Seed(time.Now().UnixNano())
+
+	// 1KB message
+	msgPayload := make([]byte, 1024)
+	_, err := rand.Read(msgPayload)
+	if err != nil {
+		panic(err)
+	}
+
 	for num := 0; num < workers; num++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 
-			msgPayload := []byte("foo bar baz")
 			var msg *message.Message
 
 			for range addMsg {
