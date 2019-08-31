@@ -20,7 +20,7 @@ To run this example you will need Docker and docker-compose installed. See the [
 docker-compose up
 ```
 
-You should see the live feed of produces posts on the standard output.
+You should see the live feed of posts on the standard output.
 
 ## Exercises
 
