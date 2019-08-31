@@ -45,6 +45,17 @@ it to `SubscriberConfig` or `PublisherConfig`.
 There is `DefaultSchema` defined for most common use case (storing events in a table). You can base your schema on this
 one, extending only chosen methods.
 
+##### Extending schema
+
+Consider an example project, where you're fine with using the default schema, but would like to use `BINARY(16)` for storing
+the `uuid` column, instead of `VARCHAR(36)`. In that case, you have to define two methods:
+
+* `SchemaInitializingQueries` that creates the table.
+* `UnmarshalMessage` method that produces a `Message` from the database record.
+
+Note that you don't have to use the initialization queries provided by Watermill. They will be run only if you set the
+`InitializeSchema` field to `true` in the config. Otherwise, you can use your own solution for database migrations.
+
 {{% render-md %}}
 {{% load-snippet-partial file="src-link/watermill-sql/pkg/sql/schema_adapter.go" first_line_contains="// DefaultSchema" last_line_contains="type DefaultSchema" %}}
 {{% /render-md %}}

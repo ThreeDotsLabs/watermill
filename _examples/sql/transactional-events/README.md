@@ -1,4 +1,4 @@
-# Transactional Events
+# Transactional Events (MySQL to Kafka)
 
 This example shows how to use the SQL Subscriber from the [SQL Pub/Sub](https://github.com/ThreeDotsLabs/watermill-sql). 
 

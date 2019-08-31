@@ -1,4 +1,4 @@
-# Event log
+# Event log (Kafka to MySQL)
 
 This example shows how to use the SQL Publisher from [SQL Pub/Sub](https://github.com/ThreeDotsLabs/watermill-sql).
 
