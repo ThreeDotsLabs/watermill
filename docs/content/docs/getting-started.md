@@ -209,7 +209,7 @@ A more detailed explanation of how it is working (and how to add live code reloa
 
 ### Creating Messages
 
-Watermill doesn't enforce any message format. `NewMessage` expectes a slice of bytes as the payload. You can use
+Watermill doesn't enforce any message format. `NewMessage` expects a slice of bytes as the payload. You can use
 strings, JSON, protobuf, Avro, gob or anything else that serializes to `[]byte`.
 
 The message UUID is optional, but recommended, as it helps with debugging.
@@ -220,7 +220,7 @@ msg := message.NewMessage(watermill.NewUUID(), []byte("Hello, world!"))
 
 ### Publishing Messages
 
-`Publish` expects a topic and a `Message` to be published.
+`Publish` expects a topic and one or more `Message`s to be published.
 
 ```go
 err := publisher.Publish("example.topic", msg)

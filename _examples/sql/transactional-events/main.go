@@ -147,6 +147,9 @@ func simulateEvents(db *stdSQL.DB) {
 	}
 }
 
+// publishEvent publishes a new event.
+// To publish the event in a separate transaction, a new SQL Publisher
+// has to be created each time, passing the proper transaction handle.
 func publishEvent(tx *stdSQL.Tx) error {
 	pub, err := sql.NewPublisher(tx, sql.PublisherConfig{
 		SchemaAdapter: sql.DefaultSchema{},
