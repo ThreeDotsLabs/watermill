@@ -4,20 +4,19 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/ThreeDotsLabs/watermill/pubsub/tests"
-
-	"github.com/ThreeDotsLabs/watermill/pubsub/gochannel"
-
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/subscriber"
-	"github.com/stretchr/testify/require"
+	"github.com/ThreeDotsLabs/watermill/pubsub/gochannel"
+	"github.com/ThreeDotsLabs/watermill/pubsub/tests"
 )
 
 func createPersistentPubSub(t *testing.T) (message.Publisher, message.Subscriber) {
@@ -119,6 +118,52 @@ func TestPublishSubscribe_race_condition_on_subscribe(t *testing.T) {
 		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
 			t.Parallel()
 			testPublishSubscribeSubRace(t)
+		})
+	}
+}
+
+func TestSubscribe_race_condition_when_closing(t *testing.T) {
+	testsCount := 15
+	if testing.Short() {
+		testsCount = 3
+	}
+
+	for i := 0; i < testsCount; i++ {
+		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
+			t.Parallel()
+			pubSub := gochannel.NewGoChannel(
+				gochannel.Config{},
+				watermill.NewStdLogger(true, false),
+			)
+			go func() {
+				err := pubSub.Close()
+				require.NoError(t, err)
+			}()
+			_, err := pubSub.Subscribe(context.Background(), "topic")
+			require.NoError(t, err)
+		})
+	}
+}
+
+func TestPublish_race_condition_when_closing(t *testing.T) {
+	testsCount := 15
+	if testing.Short() {
+		testsCount = 3
+	}
+
+	for i := 0; i < testsCount; i++ {
+		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
+			t.Parallel()
+			pubSub := gochannel.NewGoChannel(
+				gochannel.Config{},
+				watermill.NewStdLogger(true, false),
+			)
+			go func() {
+				err := pubSub.Close()
+				require.NoError(t, err)
+			}()
+			err := pubSub.Publish("topic", message.NewMessage(strconv.Itoa(i), nil))
+			require.NoError(t, err)
 		})
 	}
 }

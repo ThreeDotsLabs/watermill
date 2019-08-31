@@ -37,10 +37,9 @@ func main() {
 		// when error occurred, function will be retried,
 		// after max retries (or if no Retry middleware is added) Nack is send and message will be resent
 		middleware.Retry{
-			MaxRetries: 3,
-			WaitTime:   time.Millisecond * 100,
-			Backoff:    3,
-			Logger:     logger,
+			MaxRetries:      3,
+			InitialInterval: time.Millisecond * 100,
+			Logger:          logger,
 		}.Middleware,
 
 		// this middleware will handle panics from handlers
@@ -103,12 +102,12 @@ func publishMessages(publisher message.Publisher) {
 	}
 }
 
-func printMessages(msg *message.Message) ([]*message.Message, error) {
+func printMessages(msg *message.Message) error {
 	fmt.Printf(
 		"\n> Received message: %s\n> %s\n> metadata: %v\n\n",
 		msg.UUID, string(msg.Payload), msg.Metadata,
 	)
-	return nil, nil
+	return nil
 }
 
 type structHandler struct {
