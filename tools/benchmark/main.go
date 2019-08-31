@@ -9,16 +9,17 @@ import (
 	"time"
 
 	"github.com/Shopify/sarama"
+	"github.com/hashicorp/go-multierror"
+	"github.com/pkg/errors"
 	"github.com/rcrowley/go-metrics"
 
 	"github.com/ThreeDotsLabs/watermill"
+	"github.com/ThreeDotsLabs/watermill-googlecloud/pkg/googlecloud"
+	"github.com/ThreeDotsLabs/watermill-kafka/pkg/kafka"
+	"github.com/ThreeDotsLabs/watermill-nats/pkg/nats"
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure/gochannel"
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure/googlecloud"
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure/kafka"
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure/nats"
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
-	"github.com/ThreeDotsLabs/watermill/message/subscriber"
+	"github.com/ThreeDotsLabs/watermill/pubsub/gochannel"
 )
 
 var pubsubFlag = flag.String("pubsub", "", "")
@@ -30,20 +31,21 @@ const defaultMessagesCount = 1000000
 var topic = "benchmark_" + watermill.NewShortUUID()
 
 type pubSub struct {
-	Constructor              func() message.PubSub
+	Constructor              func() (message.Publisher, message.Subscriber)
 	RequireConcurrentProduce bool
 	MessagesCount            int
 }
 
 var pubSubs = map[string]pubSub{
 	"gochannel": {
-		Constructor: func() message.PubSub {
-			return gochannel.NewGoChannel(gochannel.Config{}, logger)
+		Constructor: func() (message.Publisher, message.Subscriber) {
+			pubsub := gochannel.NewGoChannel(gochannel.Config{}, logger)
+			return pubsub, pubsub
 		},
 		RequireConcurrentProduce: true,
 	},
 	"kafka": {
-		Constructor: func() message.PubSub {
+		Constructor: func() (message.Publisher, message.Subscriber) {
 			broker := os.Getenv("WATERMILL_KAFKA_BROKER")
 			if broker == "" {
 				broker = "localhost:9092"
@@ -75,11 +77,11 @@ var pubSubs = map[string]pubSub{
 				panic(err)
 			}
 
-			return message.NewPubSub(publisher, subscriber)
+			return publisher, subscriber
 		},
 	},
 	"nats": {
-		Constructor: func() message.PubSub {
+		Constructor: func() (message.Publisher, message.Subscriber) {
 			pub, err := nats.NewStreamingPublisher(nats.StreamingPublisherConfig{
 				ClusterID: "test-cluster",
 				ClientID:  "benchmark_pub",
@@ -102,29 +104,25 @@ var pubSubs = map[string]pubSub{
 				panic(err)
 			}
 
-			return message.NewPubSub(pub, sub)
+			return pub, sub
 		},
 	},
 	"gcloud": {
-		Constructor: func() message.PubSub {
-			ctx := context.Background()
-
+		Constructor: func() (message.Publisher, message.Subscriber) {
 			// todo - doc hostname
-			publisher, err := googlecloud.NewPublisher(
-				ctx,
+			pub, err := googlecloud.NewPublisher(
 				googlecloud.PublisherConfig{
 					ProjectID: os.Getenv("GOOGLE_CLOUD_PROJECT"),
 					Marshaler: googlecloud.DefaultMarshalerUnmarshaler{},
-				},
+				}, logger,
 			)
 			if err != nil {
 				panic(err)
 			}
 
-			sub := &subscriber.Multiplier{
-				Constructor: func() message.Subscriber {
+			sub := NewMultiplier(
+				func() (message.Subscriber, error) {
 					subscriber, err := googlecloud.NewSubscriber(
-						ctx,
 						googlecloud.SubscriberConfig{
 							ProjectID: os.Getenv("GOOGLE_CLOUD_PROJECT"),
 							GenerateSubscriptionName: func(topic string) string {
@@ -135,15 +133,14 @@ var pubSubs = map[string]pubSub{
 						logger,
 					)
 					if err != nil {
-						panic(err)
+						return nil, err
 					}
 
-					return subscriber
-				},
-				Count: 100,
-			}
+					return subscriber, nil
+				}, 100,
+			)
 
-			return message.NewPubSub(publisher, sub)
+			return pub, sub
 		},
 	},
 }
@@ -168,12 +165,12 @@ func main() {
 	var m metrics.Meter
 
 	// it is required to create sub before for some pubsubs
-	ps := pubsub.Constructor()
+	_, sub := pubsub.Constructor()
 
-	if _, err := ps.Subscribe(context.Background(), topic); err != nil {
+	if _, err := sub.Subscribe(context.Background(), topic); err != nil {
 		panic(err)
 	}
-	if err := ps.Close(); err != nil {
+	if err := sub.Close(); err != nil {
 		panic(err)
 	}
 
@@ -193,20 +190,21 @@ func main() {
 	wg.Add(pubsub.MessagesCount)
 
 	go func() {
+		_, sub := pubsub.Constructor()
 		router.AddNoPublisherHandler(
 			"benchmark_read",
 			topic,
-			pubsub.Constructor(),
-			func(msg *message.Message) (messages []*message.Message, e error) {
+			sub,
+			func(msg *message.Message) error {
 				defer wg.Done()
 				defer m.Mark(1)
 
 				msg.Ack()
-				return nil, nil
+				return nil
 			},
 		)
 
-		if err := router.Run(); err != nil {
+		if err := router.Run(context.Background()); err != nil {
 			panic(err)
 		}
 	}()
@@ -222,7 +220,7 @@ func main() {
 }
 
 func publishMessages(ps pubSub) {
-	publisher := ps.Constructor()
+	pub, _ := ps.Constructor()
 
 	messagesLeft := ps.MessagesCount
 	workers := 200
@@ -246,7 +244,7 @@ func publishMessages(ps pubSub) {
 				// using function from middleware to set correlation id, useful for debugging
 				middleware.SetCorrelationID(watermill.NewShortUUID(), msg)
 
-				if err := publisher.Publish(topic, msg); err != nil {
+				if err := pub.Publish(topic, msg); err != nil {
 					panic(err)
 				}
 			}
@@ -260,10 +258,80 @@ func publishMessages(ps pubSub) {
 
 	wg.Wait()
 
-	if err := publisher.Close(); err != nil {
+	if err := pub.Close(); err != nil {
 		panic(err)
 	}
 
 	elapsed := time.Now().Sub(start)
 	fmt.Printf("added %d messages in %s, %f msg/s\n", ps.MessagesCount, elapsed, float64(ps.MessagesCount)/elapsed.Seconds())
+}
+
+type Constructor func() (message.Subscriber, error)
+
+type multiplier struct {
+	subscriberConstructor func() (message.Subscriber, error)
+	subscribersCount      int
+	subscribers           []message.Subscriber
+}
+
+func NewMultiplier(constructor Constructor, subscribersCount int) message.Subscriber {
+	return &multiplier{
+		subscriberConstructor: constructor,
+		subscribersCount:      subscribersCount,
+	}
+}
+
+func (s *multiplier) Subscribe(ctx context.Context, topic string) (msgs <-chan *message.Message, err error) {
+	defer func() {
+		if err != nil {
+			if closeErr := s.Close(); closeErr != nil {
+				err = multierror.Append(err, closeErr)
+			}
+		}
+	}()
+
+	out := make(chan *message.Message)
+
+	subWg := sync.WaitGroup{}
+	subWg.Add(s.subscribersCount)
+
+	for i := 0; i < s.subscribersCount; i++ {
+		sub, err := s.subscriberConstructor()
+		if err != nil {
+			return nil, errors.Wrap(err, "cannot create subscriber")
+		}
+
+		s.subscribers = append(s.subscribers, sub)
+
+		msgs, err := sub.Subscribe(ctx, topic)
+		if err != nil {
+			return nil, errors.Wrap(err, "cannot subscribe")
+		}
+
+		go func() {
+			for msg := range msgs {
+				out <- msg
+			}
+			subWg.Done()
+		}()
+	}
+
+	go func() {
+		subWg.Wait()
+		close(out)
+	}()
+
+	return out, nil
+}
+
+func (s *multiplier) Close() error {
+	var err error
+
+	for _, sub := range s.subscribers {
+		if closeErr := sub.Close(); closeErr != nil {
+			err = multierror.Append(err, closeErr)
+		}
+	}
+
+	return err
 }
