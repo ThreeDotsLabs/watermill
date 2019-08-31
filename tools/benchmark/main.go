@@ -48,7 +48,7 @@ var pubSubs = map[string]pubSub{
 		Constructor: func() (message.Publisher, message.Subscriber) {
 			broker := os.Getenv("WATERMILL_KAFKA_BROKER")
 			if broker == "" {
-				broker = "localhost:9092"
+				broker = "kafka:9092"
 			}
 
 			publisher, err := kafka.NewPublisher(

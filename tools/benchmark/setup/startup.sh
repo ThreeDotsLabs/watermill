@@ -4,3 +4,4 @@ echo alias docker-compose="'"'docker run --rm \
     -v "$PWD:$PWD" \
     -w="$PWD" \
     docker/compose:1.24.0'"'" >> /home/benchmark/.bashrc
+echo export GOPATH=~/go >> /home/benchmark/.bashrc
