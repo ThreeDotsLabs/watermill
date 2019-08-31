@@ -11,7 +11,7 @@ fi
 compose_flags=
 if [ -f "./compose/$pubsub.yml" ]; then
     compose_flags="-f ./compose/$pubsub.yml"
-    docker-compose $compose_flags up -d
+    docker-compose $compose_flags up -d --remove-orphans
 
     # TODO replace with waiting for port
     sleep 20

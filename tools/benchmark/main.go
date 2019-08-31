@@ -10,6 +10,7 @@ import (
 
 	"github.com/Shopify/sarama"
 	"github.com/hashicorp/go-multierror"
+	"github.com/nats-io/stan.go"
 	"github.com/pkg/errors"
 	"github.com/rcrowley/go-metrics"
 
@@ -82,9 +83,17 @@ var pubSubs = map[string]pubSub{
 	},
 	"nats": {
 		Constructor: func() (message.Publisher, message.Subscriber) {
+			natsURL := os.Getenv("WATERMILL_NATS_URL")
+			if natsURL == "" {
+				natsURL = "nats://nats-streaming:4222"
+			}
+
 			pub, err := nats.NewStreamingPublisher(nats.StreamingPublisherConfig{
 				ClusterID: "test-cluster",
-				ClientID:  "benchmark_pub",
+				ClientID:  "benchmark_pub_" + watermill.NewShortUUID(),
+				StanOptions: []stan.Option{
+					stan.NatsURL(natsURL),
+				},
 				Marshaler: nats.GobMarshaler{},
 			}, logger)
 			if err != nil {
@@ -93,12 +102,15 @@ var pubSubs = map[string]pubSub{
 
 			sub, err := nats.NewStreamingSubscriber(nats.StreamingSubscriberConfig{
 				ClusterID:        "test-cluster",
-				ClientID:         "benchmark_sub",
+				ClientID:         "benchmark_sub_" + watermill.NewShortUUID(),
 				QueueGroup:       "test-queue",
 				DurableName:      "durable-name",
 				SubscribersCount: 8, // todo - experiment
 				Unmarshaler:      nats.GobMarshaler{},
 				AckWaitTimeout:   time.Second,
+				StanOptions: []stan.Option{
+					stan.NatsURL(natsURL),
+				},
 			}, logger)
 			if err != nil {
 				panic(err)

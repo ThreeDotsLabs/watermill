@@ -9,6 +9,7 @@ require (
 	github.com/ThreeDotsLabs/watermill-kafka v1.0.1
 	github.com/ThreeDotsLabs/watermill-nats v1.0.1
 	github.com/hashicorp/go-multierror v1.0.0
+	github.com/nats-io/stan.go v0.5.0
 	github.com/pkg/errors v0.8.1
 	github.com/rcrowley/go-metrics v0.0.0-20190706150252-9beb055b7962
 )
