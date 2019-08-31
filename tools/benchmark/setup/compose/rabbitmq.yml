@@ -1,0 +1,7 @@
+version: '3'
+services:
+  rabbitmq:
+    image: rabbitmq:3.7-management
+    restart: unless-stopped
+    ports:
+      - 5672:5672

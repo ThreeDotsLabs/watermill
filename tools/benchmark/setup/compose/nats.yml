@@ -1,0 +1,8 @@
+version: 'v'
+services:
+  nats-streaming:
+    image: nats-streaming:0.11.2
+    ports:
+      - 4222:4222
+    restart: unless-stopped
+    entrypoint: ["/nats-streaming-server", "--max_channels=0"]
