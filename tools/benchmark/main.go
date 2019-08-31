@@ -119,7 +119,7 @@ var pubSubs = map[string]pubSub{
 			return pub, sub
 		},
 	},
-	"gcloud": {
+	"googlecloud": {
 		Constructor: func() (message.Publisher, message.Subscriber) {
 			// todo - doc hostname
 			pub, err := googlecloud.NewPublisher(

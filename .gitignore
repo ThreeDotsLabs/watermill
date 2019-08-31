@@ -8,3 +8,4 @@ docs/content/src-link
 .mod-cache
 .terraform
 *.tfstate*
+tools/benchmark/compose/.env
