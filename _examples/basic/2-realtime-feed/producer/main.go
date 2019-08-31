@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"math/rand"
 	"time"
 
@@ -24,62 +25,75 @@ func main() {
 	logger := watermill.NewStdLogger(false, false)
 	logger.Info("Starting the producer", watermill.LogFields{})
 
+	rand.Seed(time.Now().Unix())
+
 	publisher, err := kafka.NewPublisher(brokers, kafka.DefaultMarshaler{}, nil, logger)
 	if err != nil {
 		panic(err)
 	}
 	defer publisher.Close()
 
-	msgPublished := make(chan struct{})
+	messagePublished := make(chan struct{})
 	allMessagesPublished := make(chan struct{})
 
 	go func() {
-		for range msgPublished {
-			messagesToPublish--
+		publishedMessages := 0
+		for range messagePublished {
+			publishedMessages++
 
-			if messagesToPublish%1000 == 0 {
-				logger.Info("messages left", watermill.LogFields{"count": messagesToPublish})
+			if publishedMessages%1000 == 0 {
+				logger.Info("messages left", watermill.LogFields{"count": messagesToPublish - publishedMessages})
 			}
-			if messagesToPublish == 0 {
+			if publishedMessages >= messagesToPublish {
 				allMessagesPublished <- struct{}{}
+				break
 			}
 		}
 	}()
 
+	workerMessages := make(chan struct{})
+
 	for num := 0; num < workers; num++ {
-		go func() {
-			for messagesToPublish > 0 {
-				msgPayload := postAdded{
-					OccurredOn: time.Now(),
-					Author:     gofakeit.Username(),
-					Title:      gofakeit.Sentence(rand.Intn(5) + 1),
-					Content:    gofakeit.Sentence(rand.Intn(10) + 5),
-				}
+		go worker(publisher, workerMessages, messagePublished)
+	}
 
-				payload, err := json.Marshal(msgPayload)
-				if err != nil {
-					panic(err)
-				}
-
-				msg := message.NewMessage(watermill.NewUUID(), payload)
-
-				// Use a middleware to set the correlation ID, it's useful for debugging
-				middleware.SetCorrelationID(watermill.NewShortUUID(), msg)
-
-				err = publisher.Publish("posts_published", msg)
-				if err != nil {
-					logger.Error("cannot publish message:", err, watermill.LogFields{})
-					continue
-				}
-				msgPublished <- struct{}{}
-			}
-		}()
+	for i := 0; i < messagesToPublish; i++ {
+		workerMessages <- struct{}{}
 	}
 
 	// Waiting for all messages to be published
 	<-allMessagesPublished
 
 	logger.Info("All messages published", watermill.LogFields{})
+}
+
+func worker(publisher message.Publisher, incomingMessage <-chan struct{}, messagePublished chan<- struct{}) {
+	for range incomingMessage {
+		msgPayload := postAdded{
+			OccurredOn: time.Now(),
+			Author:     gofakeit.Username(),
+			Title:      gofakeit.Sentence(rand.Intn(5) + 1),
+			Content:    gofakeit.Sentence(rand.Intn(10) + 5),
+		}
+
+		payload, err := json.Marshal(msgPayload)
+		if err != nil {
+			panic(err)
+		}
+
+		msg := message.NewMessage(watermill.NewUUID(), payload)
+
+		// Use a middleware to set the correlation ID, it's useful for debugging
+		middleware.SetCorrelationID(watermill.NewShortUUID(), msg)
+
+		err = publisher.Publish("posts_published", msg)
+		if err != nil {
+			fmt.Println("cannot publish message:", err)
+			continue
+		}
+
+		messagePublished <- struct{}{}
+	}
 }
 
 type postAdded struct {
