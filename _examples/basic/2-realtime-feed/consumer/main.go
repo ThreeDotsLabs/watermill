@@ -46,20 +46,21 @@ func main() {
 	}
 
 	r.AddMiddleware(
+		// Recoverer middleware recovers panic from handlers
+		middleware.Recoverer,
+
 		// Limit incoming messages to 10 per second
 		middleware.NewThrottle(10, time.Second).Middleware,
+
+		// If the retries limit is exceeded (see retryMiddleware below), the message is sent
+		// to the poison queue (published to poison_queue topic)
+		poisonQueue,
 
 		// Retry middleware retries message processing if an error occurred in the handler
 		retryMiddleware.Middleware,
 
-		// If the retries limit is exceeded, the message is sent to the poison queue (poison_queue topic)
-		poisonQueue,
-
-		// Recoverer middleware recovers panic from handlers
-		middleware.Recoverer,
-
-		// Correlation ID middleware adds the correlation ID of the consumed message to each produced message,
-		// it's useful for debugging.
+		// Correlation ID middleware adds the correlation ID of the consumed message to each produced message.
+		// It's useful for debugging.
 		middleware.CorrelationID,
 
 		// Simulate errors or panics from handler
