@@ -23,7 +23,7 @@ var (
 
 func main() {
 	logger := watermill.NewStdLogger(false, false)
-	logger.Info("Starting the consumer", watermill.LogFields{})
+	logger.Info("Starting the consumer", nil)
 
 	pub, err := kafka.NewPublisher(brokers, marshaler, nil, logger)
 	if err != nil {
