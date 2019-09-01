@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
+	"sync"
 	"time"
 
 	"github.com/brianvoe/gofakeit"
@@ -33,42 +34,14 @@ func main() {
 	}
 	defer publisher.Close()
 
-	messagePublished := make(chan struct{})
-	allMessagesPublished := make(chan struct{})
+	messageStream := make(chan *message.Message, workers)
+	workersGroup := &sync.WaitGroup{}
 
-	go func() {
-		publishedMessages := 0
-		for range messagePublished {
-			publishedMessages++
-
-			if publishedMessages%1000 == 0 {
-				logger.Info("messages left", watermill.LogFields{"count": messagesToPublish - publishedMessages})
-			}
-			if publishedMessages >= messagesToPublish {
-				allMessagesPublished <- struct{}{}
-				break
-			}
-		}
-	}()
-
-	workerMessages := make(chan struct{})
-
-	for num := 0; num < workers; num++ {
-		go worker(publisher, workerMessages, messagePublished)
+	for i := 0; i < workers; i++ {
+		go worker(publisher, workersGroup, messageStream)
 	}
 
 	for i := 0; i < messagesToPublish; i++ {
-		workerMessages <- struct{}{}
-	}
-
-	// Waiting for all messages to be published
-	<-allMessagesPublished
-
-	logger.Info("All messages published", watermill.LogFields{})
-}
-
-func worker(publisher message.Publisher, incomingMessage <-chan struct{}, messagePublished chan<- struct{}) {
-	for range incomingMessage {
 		msgPayload := postAdded{
 			OccurredOn: time.Now(),
 			Author:     gofakeit.Username(),
@@ -86,14 +59,26 @@ func worker(publisher message.Publisher, incomingMessage <-chan struct{}, messag
 		// Use a middleware to set the correlation ID, it's useful for debugging
 		middleware.SetCorrelationID(watermill.NewShortUUID(), msg)
 
-		err = publisher.Publish("posts_published", msg)
+		messageStream <- msg
+	}
+	close(messageStream)
+
+	// Waiting for all messages to be published
+	workersGroup.Wait()
+
+	logger.Info("All messages published", watermill.LogFields{})
+}
+
+func worker(publisher message.Publisher, wg *sync.WaitGroup, messages <-chan *message.Message) {
+	wg.Add(1)
+	for msg := range messages {
+		err := publisher.Publish("posts_published", msg)
 		if err != nil {
 			fmt.Println("cannot publish message:", err)
 			continue
 		}
-
-		messagePublished <- struct{}{}
 	}
+	wg.Done()
 }
 
 type postAdded struct {
