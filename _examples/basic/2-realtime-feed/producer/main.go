@@ -64,7 +64,7 @@ func main() {
 	// Waiting for all messages to be published
 	<-allMessagesPublished
 
-	logger.Info("All messages published", watermill.LogFields{})
+	logger.Info("All messages published", nil)
 }
 
 func worker(publisher message.Publisher, incomingMessage <-chan struct{}, messagePublished chan<- struct{}) {
