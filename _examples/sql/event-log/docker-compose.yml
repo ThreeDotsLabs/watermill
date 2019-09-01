@@ -1,0 +1,37 @@
+version: '3'
+services:
+  server:
+    image: golang:1.12
+    restart: unless-stopped
+    depends_on:
+      - mysql
+      - googlecloud
+    volumes:
+      - .:/app
+      - $GOPATH/pkg/mod:/go/pkg/mod
+    working_dir: /app
+    environment:
+      PUBSUB_EMULATOR_HOST: googlecloud:8085
+    command: go run main.go
+
+  mysql:
+    image: mysql:8.0
+    logging:
+      driver: none
+    restart: unless-stopped
+    ports:
+      - 3306:3306
+    environment:
+      MYSQL_DATABASE: watermill
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+
+  googlecloud:
+    image: google/cloud-sdk:228.0.0
+    logging:
+      driver: none
+    entrypoint: gcloud --quiet beta emulators pubsub start --host-port=0.0.0.0:8085 --verbosity=debug --log-http
+    ports:
+      - 8085:8085
+    environment:
+      PUBSUB_EMULATOR_HOST: googlecloud:8085
+    restart: unless-stopped

@@ -13,7 +13,7 @@ class MiddlewareSourceFile:
 
         for (line_no, line) in enumerate(self._src):
             # function or struct definitions
-            if line.startswith('func') or re.match(r'^type [^s]+? struct', line):
+            if line.startswith('func') or re.match(r'^type \S+? struct', line):
                 # with godocs
                 if line_no > 0 and (self._src[line_no - 1]).startswith('//'):
                     self.add_func_with_godoc(line_no - 1)
@@ -48,7 +48,7 @@ class MiddlewareSourceFile:
         s = '### {}\n\n'.format(middleware_name)
 
         for func_def in self._definitions:
-            s += '```go\n{}\n```\n'.format(func_def)
+            s += '```go\n{}```\n'.format(func_def)
 
         return s
 
