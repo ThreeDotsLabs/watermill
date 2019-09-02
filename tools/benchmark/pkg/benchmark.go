@@ -6,10 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/rcrowley/go-metrics"
-
 	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill/message"
 )
 
 type Results struct {
@@ -37,11 +34,13 @@ func RunBenchmark(pubSubName string) (Results, Results, error) {
 		return Results{}, Results{}, err
 	}
 
-	m := metrics.NewMeter()
+	var c *Counter
 
 	go func() {
 		for {
-			fmt.Printf("processed: %d\n", m.Snapshot().Count())
+			if c != nil {
+				fmt.Printf("processed: %d\n", c.count)
+			}
 			time.Sleep(time.Second * 5)
 		}
 	}()
@@ -49,13 +48,10 @@ func RunBenchmark(pubSubName string) (Results, Results, error) {
 	wg := sync.WaitGroup{}
 	wg.Add(pubsub.MessagesCount)
 
-	router, err := message.NewRouter(message.RouterConfig{}, logger)
-	if err != nil {
-		panic(err)
-	}
+	c = NewCounter()
 
 	go func() {
-		err := pubsub.ConsumeMessages(router, &wg, m)
+		err := pubsub.ConsumeMessages(&wg, c)
 		if err != nil {
 			panic(err)
 		}
@@ -75,13 +71,9 @@ func RunBenchmark(pubSubName string) (Results, Results, error) {
 		RateMean: 0,
 	}
 
-	ms := m.Snapshot()
 	subResults := Results{
-		Count:    ms.Count(),
-		Rate1:    ms.Rate1(),
-		Rate5:    ms.Rate5(),
-		Rate15:   ms.Rate15(),
-		RateMean: ms.RateMean(),
+		Count:    int64(c.Count()),
+		RateMean: c.MeanPerSecond(),
 	}
 
 	return pubResults, subResults, nil

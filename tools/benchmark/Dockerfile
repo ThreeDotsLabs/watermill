@@ -1,3 +1,5 @@
 FROM golang:1.12
-COPY benchmark /benchmark
-ENTRYPOINT ["/benchmark"]
+WORKDIR /app
+COPY . /app
+RUN go build -o benchmark ./cmd
+CMD ["./benchmark"]
