@@ -1,0 +1,21 @@
+version: '3'
+services:
+  server:
+    image: golang:1.12
+    restart: unless-stopped
+    depends_on:
+      - mysql
+    volumes:
+      - .:/app
+      - $GOPATH/pkg/mod:/go/pkg/mod
+    working_dir: /app
+    command: go run main.go
+
+  mysql:
+    image: mysql:8.0
+    restart: unless-stopped
+    ports:
+      - 3306:3306
+    environment:
+      MYSQL_DATABASE: watermill
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"

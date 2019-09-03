@@ -1,10 +1,15 @@
-# Your first app
+# Your first Watermill app
 
-Before checking the examples, it is recommended to read [getting started guide](https://watermill.io/docs/getting-started/).
+This example project shows a basic setup of Watermill. The application runs in a loop, consuming events from a Kafka
+topic, modyfing them and publishing to another topic.
+
+There's a docker-compose file included, so you can run the example and see it in action.
+
+To understand the background and internals, see [getting started guide](https://watermill.io/docs/getting-started/).
 
 ## Files
 
-- [main.go](main.go) - example source code, probably the **most interesting file to you**
+- [main.go](main.go) - example source code, the **most interesting file for you**
 - [docker-compose.yml](docker-compose.yml) - local environment Docker Compose configuration, contains Golang, Kafka and Zookeeper
 - [go.mod](go.mod) - Go modules dependencies, you can find more information at [Go wiki](https://github.com/golang/go/wiki/Modules)
 - [go.sum](go.sum) - Go modules checksums
@@ -17,34 +22,40 @@ To run this example you will need Docker and docker-compose installed. See insta
 
 ```bash
 > docker-compose up
-[a lot of Kafka logs...]
-server_1     | 2018/11/18 11:16:34 received event 1542539794
-server_1     | 2018/11/18 11:16:35 received event 1542539795
-server_1     | 2018/11/18 11:16:36 received event 1542539796
-server_1     | 2018/11/18 11:16:37 received event 1542539797
-server_1     | 2018/11/18 11:16:38 received event 1542539798
-server_1     | 2018/11/18 11:16:39 received event 1542539799
+[some initial logs]
+server_1     | 2019/08/29 19:41:23 received event {ID:0}
+server_1     | 2019/08/29 19:41:23 received event {ID:1}
+server_1     | 2019/08/29 19:41:23 received event {ID:2}
+server_1     | 2019/08/29 19:41:23 received event {ID:3}
+server_1     | 2019/08/29 19:41:24 received event {ID:4}
+server_1     | 2019/08/29 19:41:25 received event {ID:5}
+server_1     | 2019/08/29 19:41:26 received event {ID:6}
+server_1     | 2019/08/29 19:41:27 received event {ID:7}
+server_1     | 2019/08/29 19:41:28 received event {ID:8}
+server_1     | 2019/08/29 19:41:29 received event {ID:9}
 ```
 
-Now all that's left is to take a look at the Kafka topics to check that all messages are there:
+Open another termial and take a look at Kafka topics to see that all messages are there. The initial events should be present on the `events` topic:
 
 ```bash
-> docker-compose exec kafka kafka-console-consumer --bootstrap-server localhost:9092 --topic deadly-easy-topic
+> docker-compose exec kafka kafka-console-consumer --bootstrap-server localhost:9092 --topic events
 
-{"num":1542539605}
-{"num":1542539606}
-{"num":1542539607}
-{"num":1542539608}
-{"num":1542539609}
-{"num":1542539610}
+{"id":12}
+{"id":13}
+{"id":14}
+{"id":15}
+{"id":16}
+{"id":17}
 ```
 
-```bash
-> docker-compose exec kafka kafka-console-consumer --bootstrap-server localhost:9092 --topic deadly-easy-topic_processed
+And the processed messages will be stored in the `events-processed` topic:
 
-{"event_num":1542539642,"time":"2018-11-18T11:14:02.26452706Z"}
-{"event_num":1542539643,"time":"2018-11-18T11:14:03.26633757Z"}
-{"event_num":1542539644,"time":"2018-11-18T11:14:04.268420818Z"}
-{"event_num":1542539645,"time":"2018-11-18T11:14:05.270183092Z"}
-{"event_num":1542539646,"time":"2018-11-18T11:14:06.272387936Z"}
-{"event_num":1542539647,"time":"2018-11-18T11:14:07.274663833Z"}
+```bash
+> docker-compose exec kafka kafka-console-consumer --bootstrap-server localhost:9092 --topic events-processed 
+
+{"processed_id":21,"time":"2019-08-29T19:42:31.4464598Z"}
+{"processed_id":22,"time":"2019-08-29T19:42:32.4501767Z"}
+{"processed_id":23,"time":"2019-08-29T19:42:33.4530692Z"}
+{"processed_id":24,"time":"2019-08-29T19:42:34.4561694Z"}
+{"processed_id":25,"time":"2019-08-29T19:42:35.4608918Z"}
+```

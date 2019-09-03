@@ -1,23 +1,22 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"time"
 
-	"github.com/satori/go.uuid"
-
 	"github.com/ThreeDotsLabs/watermill"
+	"github.com/ThreeDotsLabs/watermill-kafka/pkg/kafka"
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure/kafka"
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
 	"github.com/ThreeDotsLabs/watermill/message/router/plugin"
 )
 
 var (
 	brokers      = []string{"kafka:9092"}
-	consumeTopic = "your-first-app_events"
-	publishTopic = "your-first-app_events-processed"
+	consumeTopic = "events"
+	publishTopic = "events-processed"
 
 	logger = watermill.NewStdLogger(
 		true,  // debug
@@ -26,66 +25,20 @@ var (
 	marshaler = kafka.DefaultMarshaler{}
 )
 
-// createPublisher is a helper function which creates Publisher, in this case - Kafka Publisher.
-// It is based on `confluent-kafka-go` which requires rdkafka installed.
-func createPublisher() message.Publisher {
-	kafkaPublisher, err := kafka.NewPublisher(
-		brokers,
-		marshaler,
-		nil,
-	)
-	if err != nil {
-		panic(err)
-	}
-
-	return kafkaPublisher
-}
-
-// createSubscriber is helper function as previous, but in this case creates Subscriber.
-func createSubscriber(consumerGroup string) message.Subscriber {
-	kafkaSubscriber, err := kafka.NewConfluentSubscriber(kafka.SubscriberConfig{
-		Brokers:         brokers,
-		ConsumerGroup:   consumerGroup, // every handler will have separated consumer group
-		AutoOffsetReset: "earliest",    // when no offsets (for example: new consumer) we want receive all messages
-	}, marshaler, logger)
-	if err != nil {
-		panic(err)
-	}
-
-	return kafkaSubscriber
-}
-
 type event struct {
-	Num int `json:"num"`
+	ID int `json:"id"`
 }
 
-// publishEvents which will produce some events for consuming.
-func publishEvents(publisher message.Publisher) {
-	i := 0
-	for {
-		payload, err := json.Marshal(event{Num: int(time.Now().Unix())})
-		if err != nil {
-			panic(err)
-		}
-
-		err = publisher.Publish(consumeTopic, message.NewMessage(
-			uuid.NewV4().String(), // uuid of the message, very useful for debugging
-			payload,
-		))
-		if err != nil {
-			panic(err)
-		}
-
-		i++
-		time.Sleep(time.Second)
-	}
+type processedEvent struct {
+	ProcessedID int       `json:"processed_id"`
+	Time        time.Time `json:"time"`
 }
 
 func main() {
 	publisher := createPublisher()
 
-	// producing events in background
-	go publishEvents(publisher)
+	// Subscriber is created with consumer group handler_1
+	subscriber := createSubscriber("handler_1")
 
 	router, err := message.NewRouter(message.RouterConfig{}, logger)
 	if err != nil {
@@ -95,51 +48,100 @@ func main() {
 	router.AddPlugin(plugin.SignalsHandler)
 	router.AddMiddleware(middleware.Recoverer)
 
-	// Creating PubSub from publisher and subscriber
-	// Consumer is created with consumer group handler_1
-	// message.NewPubSub is just a facade which joins these two types
-	pubSub := message.NewPubSub(publisher, createSubscriber("handler_1"))
-
-	// adding handler, multiple handlers can be added
-	err = router.AddHandler(
+	// Adding a handler (multiple handlers can be added)
+	router.AddHandler(
 		"handler_1",  // handler name, must be unique
 		consumeTopic, // topic from which messages should be consumed
-		publishTopic, // topic to which produced messages should be published
-		pubSub,
+		subscriber,
+		publishTopic, // topic to which messages should be published
+		publisher,
 		func(msg *message.Message) ([]*message.Message, error) {
 			consumedPayload := event{}
 			err := json.Unmarshal(msg.Payload, &consumedPayload)
 			if err != nil {
-				// default behavior when handler returns error is sending Nack (negative-acknowledgement)
-				// the message will be processed again
+				// When a handler returns an error, the default behavior is to send a Nack (negative-acknowledgement).
+				// The message will be processed again.
 				//
-				// you can change default behaviour by using for example middleware.Retry or middleware.PoisonQueue
-				// you can also implement your own
+				// You can change the default behaviour by using middlewares, like Retry or PoisonQueue.
+				// You can also implement your own middleware.
 				return nil, err
 			}
 
-			log.Printf("received event %d", consumedPayload.Num)
+			log.Printf("received event %+v", consumedPayload)
 
-			type processedEvent struct {
-				EventNum int       `json:"event_num"`
-				Time     time.Time `json:"time"`
-			}
-			producedPayload, err := json.Marshal(processedEvent{
-				EventNum: consumedPayload.Num,
-				Time:     time.Now(),
+			newPayload, err := json.Marshal(processedEvent{
+				ProcessedID: consumedPayload.ID,
+				Time:        time.Now(),
 			})
 			if err != nil {
 				return nil, err
 			}
 
-			producedMessage := message.NewMessage(uuid.NewV4().String(), producedPayload)
+			newMessage := message.NewMessage(watermill.NewUUID(), newPayload)
 
-			return []*message.Message{producedMessage}, nil
+			return []*message.Message{newMessage}, nil
 		},
+	)
+
+	// Simulate incoming events in the background
+	go simulateEvents(publisher)
+
+	if err := router.Run(context.Background()); err != nil {
+		panic(err)
+	}
+}
+
+// createPublisher is a helper function that creates a Publisher, in this case - the Kafka Publisher.
+func createPublisher() message.Publisher {
+	kafkaPublisher, err := kafka.NewPublisher(
+		brokers,
+		marshaler,
+		nil,
+		logger,
 	)
 	if err != nil {
 		panic(err)
 	}
 
-	router.Run()
+	return kafkaPublisher
+}
+
+// createSubscriber is a helper function similar to the previous one, but in this case it creates a Subscriber.
+func createSubscriber(consumerGroup string) message.Subscriber {
+	kafkaSubscriber, err := kafka.NewSubscriber(kafka.SubscriberConfig{
+		Brokers:       brokers,
+		ConsumerGroup: consumerGroup, // every handler will use a separate consumer group
+	}, nil, marshaler, logger)
+	if err != nil {
+		panic(err)
+	}
+
+	return kafkaSubscriber
+}
+
+// simulateEvents produces events that will be later consumed.
+func simulateEvents(publisher message.Publisher) {
+	i := 0
+	for {
+		e := event{
+			ID: i,
+		}
+
+		payload, err := json.Marshal(e)
+		if err != nil {
+			panic(err)
+		}
+
+		err = publisher.Publish(consumeTopic, message.NewMessage(
+			watermill.NewUUID(), // internal uuid of the message, useful for debugging
+			payload,
+		))
+		if err != nil {
+			panic(err)
+		}
+
+		i++
+
+		time.Sleep(time.Second)
+	}
 }

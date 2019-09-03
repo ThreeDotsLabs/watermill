@@ -1,0 +1,16 @@
+version: '3'
+services:
+  server:
+    image: golang:1.11
+    restart: unless-stopped
+    depends_on:
+      - rabbitmq
+    volumes:
+      - .:/app
+      - $GOPATH/pkg/mod:/go/pkg/mod
+    working_dir: /app
+    command: go run main.go
+
+  rabbitmq:
+    image: rabbitmq:3.7
+    restart: unless-stopped

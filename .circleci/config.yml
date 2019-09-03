@@ -1,0 +1,93 @@
+tests_steps: &tests_steps
+  machine: true
+  steps:
+    - checkout
+    - restore_cache:
+        key: '{{ .Branch }}-{{ .Revision }}'
+    - run: cp -r /tmp/mod-cache .mod-cache
+    - run:
+        name: Prepare Docker Compose
+        command: |
+          if [ ! -f docker-compose.yml ]; then
+            cp ./.circleci/docker-compose.override.yml docker-compose.yml
+          else
+            if [ -f ./.circleci/docker-compose.override.yml ]; then
+              cp ./.circleci/docker-compose.override.yml .
+            else
+              echo "docker-compose.override.yml does not exist"
+            fi
+          fi
+
+          docker-compose pull
+    - run:
+        name: Run Docker Compose
+        command: docker-compose up -d
+    - run:
+        name: Wait for services
+        command: docker-compose run watermill ./.circleci/wait-for-services.sh
+    - run: "echo Running tests with flags: $TEST_FLAGS"
+    - run:
+        name: Run tests
+        command: docker-compose run watermill go test ./... $TEST_FLAGS
+        no_output_timeout: 30m
+
+version: 2
+jobs:
+  build:
+    docker:
+      - image: golang:1.12
+    steps:
+      - checkout
+      - run: go build ./...
+      - run: cp -r $GOPATH/pkg/mod/. /tmp/mod-cache
+      - save_cache:
+          key: '{{ .Branch }}-{{ .Revision }}'
+          paths:
+            - /tmp/mod-cache
+  tests_full:
+    <<: *tests_steps
+
+  tests_stress:
+    <<: *tests_steps
+    environment:
+      TEST_FLAGS: "-tags=stress -timeout=30m"
+
+  tests_short:
+    <<: *tests_steps
+    environment:
+      TEST_FLAGS: "-short"
+
+  tests_race:
+    <<: *tests_steps
+    environment:
+      TEST_FLAGS: "-short -race"
+
+workflows:
+  version: 2
+  build_and_tests:
+    jobs:
+      - build
+      - tests_full:
+          filters:
+            branches:
+              only:
+                - master
+          requires:
+            - build
+      - tests_stress:
+          filters:
+            branches:
+              only:
+                - master
+          requires:
+            - build
+      - tests_short:
+          filters:
+            branches:
+              ignore:
+                - master
+          requires:
+            - build
+      - tests_race:
+          requires:
+            - build

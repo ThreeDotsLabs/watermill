@@ -1,21 +1,21 @@
 +++
 title = "Message Router"
-description = "Magic glue of Watermill"
+description = "The Magic Glue of Watermill"
 date = 2018-12-05T12:48:04+01:00
 weight = -850
 draft = false
-bref = "Magic glue of Watermill"
+bref = "The Magic Glue of Watermill"
 toc = true
 +++
 
-[*Publishers and subscribers*]({{< ref "/docs/pub-sub" >}}) are rather low-level parts of Watermill.
-In production use, we want usually use something which is higher level and provides some features like [correlation, metrics, poison queue, retrying, throttling, etc.]({{< ref "/docs/messages-router#middleware" >}}).
+[*Publishers and Subscribers*]({{< ref "/docs/pub-sub" >}}) are rather low-level parts of Watermill.
+In production use, you'd usually want to use a high-level interface and features like [correlation, metrics, poison queue, retrying, throttling, etc.]({{< ref "/docs/messages-router#middleware" >}}).
 
-We also don't want to send Ack when processing was successful. Sometimes, we also want to send a message after processing another.
+You also might not want to send an Ack when processing was successful. Sometimes, you'd like to send a message after processing of another message finishes.
 
-To handle these requirements we created component named Router.
+To handle these requirements, there is a component named **Router**.
 
-<img src="/img/watermill-router.svg" alt="Kiwi standing on oval" style="width:100%;">
+<img src="/img/watermill-router.svg" alt="Watermill Router" style="width:100%;">
 
 ### Configuration
 
@@ -25,69 +25,69 @@ To handle these requirements we created component named Router.
 
 ### Handler
 
-At the beginning we need to implement HandlerFunc:
+At the beginning you need to implement `HandlerFunc`:
 
 {{% render-md %}}
 {{% load-snippet-partial file="content/src-link/message/router.go" first_line_contains="// HandlerFunc is" last_line_contains="type HandlerFunc func" padding_after="1" %}}
 {{% /render-md %}}
 
-Next we need to add a new handler with `Router.AddHandler`:
+Next, you have to add a new handler with `Router.AddHandler`:
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/router.go" first_line_contains="// AddHandler" last_line_contains=") error" padding_after="0" %}}
+{{% load-snippet-partial file="content/src-link/message/router.go" first_line_contains="// AddHandler" last_line_contains=") {" padding_after="0" %}}
 {{% /render-md %}}
 
-And example usage from [Getting Started]({{< ref "/docs/getting-started#using-messages-router" >}}):
+See an example usage from [Getting Started]({{< ref "/docs/getting-started#using-messages-router" >}}):
 {{% render-md %}}
-{{% load-snippet-partial file="content/docs/getting-started/router/main.go" first_line_contains="if err := router.AddHandler(" last_line_contains="panic(err)" padding_after="1" %}}
+{{% load-snippet-partial file="content/docs/getting-started/router/main.go" first_line_contains="router.AddHandler(" last_line_contains="structHandler{}.Handler," padding_after="1" %}}
 {{% /render-md %}}
 
 ### No publisher handler
 
-Not every handler needs to publish messages.
-You can add this kind of handler by using `Router.AddNoPublisherHandler`:
+Not every handler will produce new messages. You can add this kind of handler by using `Router.AddNoPublisherHandler`:
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/router.go" first_line_contains="// AddNoPublisherHandler" last_line_contains=") error" padding_after="0" %}}
+{{% load-snippet-partial file="content/src-link/message/router.go" first_line_contains="// AddNoPublisherHandler" last_line_contains=") {" padding_after="0" %}}
 {{% /render-md %}}
 
 ### Ack
 
-You don't need to call `msg.Ack()` or `msg.Nack()` after a message is processed (but you can, of course).
-`msg.Ack()` is called when `HanderFunc` doesn't return error. If the error was returned, `msg.Nack()` will be called.
+By default, `msg.Ack()` is called when `HanderFunc` doesn't return an error. If an error is returned, `msg.Nack()` will be called.
+Because of this, you don't have to call `msg.Ack()` or `msg.Nack()` after a message is processed (you can if you want, of course).
 
 ### Producing messages
 
-When returning multiple messages in the router,
-you should be aware that most of Publisher's implementations don't support [atomically publishing of the messages]({{< ref "/docs/pub-sub#publishing-multiple-messages" >}}).
+When returning multiple messages from a handler, be aware that most Publisher implementations don't support [atomic publishing of messages]({{< ref "/docs/pub-sub#publishing-multiple-messages" >}}). It may end up producing only some of messages and sending `msg.Nack()` if the broker or the storage are not available.
 
-It may lead to producing only part of the messages and sending `msg.Nack()` when broker or storage is not available.
+If it is an issue, consider publishing just one message with each handler.
 
-When it is a problem, you should consider publishing maximum one message with one handler.
+### Running the Router
 
-### Running router
-
-To run the router, you need to call `Run()`.
+To run the Router, you need to call `Run()`.
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/router.go" first_line_contains="// Run" last_line_contains="func (r *Router) Run() (err error) {" padding_after="0" %}}
+{{% load-snippet-partial file="content/src-link/message/router.go" first_line_contains="// Run" last_line_contains="func (r *Router) Run(ctx context.Context) (err error) {" padding_after="0" %}}
 {{% /render-md %}}
 
-#### Ensuring that router is running
+#### Ensuring that the Router is running
 
-Sometimes, you want to do something after the router was started. You can use `Running()` method for this.
+It can be useful to know if the router is running. You can use the `Running()` method for this.
 
 {{% render-md %}}
 {{% load-snippet-partial file="content/src-link/message/router.go" first_line_contains="// Running" last_line_contains="func (r *Router) Running()" padding_after="0" %}}
 {{% /render-md %}}
 
-### Execution model
+### Execution models
 
-Some *Consumers* may support an only single stream of messages - that means that until `msg.Ack()` is sent you will not receive more messages.
+*Subscribers* can consume either one message at a time or multiple messages in parallel.
 
-However, some *Consumers* can, for example, subscribe to multiple partitions in parallel and multiple messages will be sent even previous was not Acked (Kafka Consumer for example).
-The router can handle this case and spawn multiple HandlerFunc in parallel.
-
+* **Single stream of messages** is the simplest approach and it means that until a `msg.Ack()` is called, the subscriber
+  will not receive any new messages.
+* **Multiple message streams** are supported only by some subscribers. By subscribing to multiple topic partitions at once,
+  several messages can be consumed in parallel, even previous messages that were not acked (for example, the Kafka subscriber
+  works like this). Router handles this model by running concurrent `HandlerFunc`s, one for each partition.
+  
+See the chosen Pub/Sub documentation for supported execution models.
 
 ### Middleware
 
@@ -95,7 +95,7 @@ The router can handle this case and spawn multiple HandlerFunc in parallel.
 {{% load-snippet-partial file="content/src-link/message/router.go" first_line_contains="// HandlerMiddleware" last_line_contains="type HandlerMiddleware" padding_after="1" %}}
 {{% /render-md %}}
 
-A full list of standard middlewares can are in [message/router/middleware](https://github.com/ThreeDotsLabs/watermill/tree/master/message/router/middleware).
+A full list of standard middlewares can be found in [Middlewares]({{< ref "/docs/middlewares" >}}).
 
 ### Plugin
 
@@ -103,4 +103,4 @@ A full list of standard middlewares can are in [message/router/middleware](https
 {{% load-snippet-partial file="content/src-link/message/router.go" first_line_contains="// RouterPlugin" last_line_contains="type RouterPlugin" padding_after="1" %}}
 {{% /render-md %}}
 
-A full list of standard plugins can are in [message/router/plugin](https://github.com/ThreeDotsLabs/watermill/tree/master/message/router/plugin).
+A full list of standard plugins can be found in [message/router/plugin](https://github.com/ThreeDotsLabs/watermill/tree/master/message/router/plugin).

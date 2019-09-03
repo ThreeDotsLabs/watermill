@@ -1,7 +1,7 @@
 module main.go
 
 require (
-	github.com/ThreeDotsLabs/watermill v0.1.2 // indirect
-	github.com/deathowl/go-metrics-prometheus v0.0.0-20181105123824-7cfe975c505b // indirect
-	github.com/prometheus/client_golang v0.9.2 // indirect
+	github.com/ThreeDotsLabs/watermill v1.0.0-rc.2
+	github.com/ThreeDotsLabs/watermill-kafka v1.0.1
+	github.com/pkg/errors v0.8.1
 )

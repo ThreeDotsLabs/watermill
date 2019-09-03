@@ -4,19 +4,16 @@ package main
 import (
 	"context"
 	"log"
-
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure/googlecloud"
+	"time"
 
 	"github.com/ThreeDotsLabs/watermill"
-
-	"github.com/satori/go.uuid"
-
+	"github.com/ThreeDotsLabs/watermill-googlecloud/pkg/googlecloud"
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
 func main() {
+	logger := watermill.NewStdLogger(false, false)
 	subscriber, err := googlecloud.NewSubscriber(
-		context.Background(),
 		googlecloud.SubscriberConfig{
 			// custom function to generate Subscription Name,
 			// there are also predefined TopicSubscriptionName and TopicSubscriptionNameWithSuffix available.
@@ -25,23 +22,23 @@ func main() {
 			},
 			ProjectID: "test-project",
 		},
-		watermill.NewStdLogger(false, false),
+		logger,
 	)
 	if err != nil {
 		panic(err)
 	}
 
 	// Subscribe will create the subscription. Only messages that are sent after the subscription is created may be received.
-	messages, err := subscriber.Subscribe("example.topic")
+	messages, err := subscriber.Subscribe(context.Background(), "example.topic")
 	if err != nil {
 		panic(err)
 	}
 
 	go process(messages)
 
-	publisher, err := googlecloud.NewPublisher(context.Background(), googlecloud.PublisherConfig{
+	publisher, err := googlecloud.NewPublisher(googlecloud.PublisherConfig{
 		ProjectID: "test-project",
-	})
+	}, logger)
 	if err != nil {
 		panic(err)
 	}
@@ -51,15 +48,17 @@ func main() {
 
 func publishMessages(publisher message.Publisher) {
 	for {
-		msg := message.NewMessage(uuid.NewV4().String(), []byte("Hello, world!"))
+		msg := message.NewMessage(watermill.NewUUID(), []byte("Hello, world!"))
 
 		if err := publisher.Publish("example.topic", msg); err != nil {
 			panic(err)
 		}
+
+		time.Sleep(time.Second)
 	}
 }
 
-func process(messages chan *message.Message) {
+func process(messages <-chan *message.Message) {
 	for msg := range messages {
 		log.Printf("received message: %s, payload: %s", msg.UUID, string(msg.Payload))
 

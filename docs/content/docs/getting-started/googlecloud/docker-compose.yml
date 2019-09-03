@@ -2,11 +2,12 @@ version: '3'
 services:
   server:
     image: golang:1.11
-    restart: on-failure
+    restart: unless-stopped
     depends_on:
       - googlecloud
     volumes:
       - .:/app
+      - $GOPATH/pkg/mod:/go/pkg/mod
     environment:
       # use local emulator instead of google cloud engine
       PUBSUB_EMULATOR_HOST: "googlecloud:8085"
@@ -16,4 +17,4 @@ services:
   googlecloud:
     image: google/cloud-sdk:228.0.0
     entrypoint: gcloud --quiet beta emulators pubsub start --host-port=googlecloud:8085 --verbosity=debug --log-http
-    restart: on-failure
+    restart: unless-stopped

@@ -1,13 +1,23 @@
 package message
 
 import (
+	"context"
 	"fmt"
+	"runtime/debug"
 	"sync"
 	"time"
 
-	"github.com/ThreeDotsLabs/watermill"
-	sync_internal "github.com/ThreeDotsLabs/watermill/internal/sync"
 	"github.com/pkg/errors"
+
+	"github.com/ThreeDotsLabs/watermill"
+	"github.com/ThreeDotsLabs/watermill/internal"
+	sync_internal "github.com/ThreeDotsLabs/watermill/pubsub/sync"
+)
+
+var (
+	// ErrOutputInNoPublisherHandler happens when a handler func returned some messages in a no-publisher handler.
+	// todo: maybe change the handler func signature in no-publisher handler so that there's no possibility for this
+	ErrOutputInNoPublisherHandler = errors.New("returned output messages in a handler without publisher")
 )
 
 // HandlerFunc is function called when message is received.
@@ -20,6 +30,9 @@ import (
 // HandlerFunc's are executed parallel when multiple messages was received
 // (because msg.Ack() was sent in HandlerFunc or Subscriber supports multiple consumers).
 type HandlerFunc func(msg *Message) ([]*Message, error)
+
+// NoPublishHandlerFunc is HandlerFunc alternative, which doesn't produce any messages.
+type NoPublishHandlerFunc func(msg *Message) error
 
 // HandlerMiddleware allows us to write something like decorators to HandlerFunc.
 // It can execute something before handler (for example: modify consumed message)
@@ -41,6 +54,12 @@ type HandlerMiddleware func(h HandlerFunc) HandlerFunc
 
 // RouterPlugin is function which is executed on Router start.
 type RouterPlugin func(*Router) error
+
+// PublisherDecorator wraps the underlying Publisher, adding some functionality.
+type PublisherDecorator func(pub Publisher) (Publisher, error)
+
+// SubscriberDecorator wraps the underlying Subscriber, adding some functionality.
+type SubscriberDecorator func(sub Subscriber) (Subscriber, error)
 
 type RouterConfig struct {
 	// CloseTimeout determines how long router should work for handlers when closing.
@@ -92,11 +111,15 @@ type Router struct {
 	handlersWg        *sync.WaitGroup
 	runningHandlersWg *sync.WaitGroup
 
-	closeCh  chan struct{}
-	closedCh chan struct{}
-	closed   bool
+	closeCh    chan struct{}
+	closedCh   chan struct{}
+	closed     bool
+	closedLock sync.Mutex
 
 	logger watermill.LoggerAdapter
+
+	publisherDecorators  []PublisherDecorator
+	subscriberDecorators []SubscriberDecorator
 
 	isRunning bool
 	running   chan struct{}
@@ -121,34 +144,76 @@ func (r *Router) AddPlugin(p ...RouterPlugin) {
 	r.plugins = append(r.plugins, p...)
 }
 
+// AddPublisherDecorators wraps the router's Publisher.
+// The first decorator is the innermost, i.e. calls the original publisher.
+func (r *Router) AddPublisherDecorators(dec ...PublisherDecorator) {
+	r.logger.Debug("Adding publisher decorators", watermill.LogFields{"count": fmt.Sprintf("%d", len(dec))})
+
+	r.publisherDecorators = append(r.publisherDecorators, dec...)
+}
+
+// AddSubscriberDecorators wraps the router's Subscriber.
+// The first decorator is the innermost, i.e. calls the original subscriber.
+func (r *Router) AddSubscriberDecorators(dec ...SubscriberDecorator) {
+	r.logger.Debug("Adding subscriber decorators", watermill.LogFields{"count": fmt.Sprintf("%d", len(dec))})
+
+	r.subscriberDecorators = append(r.subscriberDecorators, dec...)
+}
+
+type DuplicateHandlerNameError struct {
+	HandlerName string
+}
+
+func (d DuplicateHandlerNameError) Error() string {
+	return fmt.Sprintf("handler with name %s already exists", d.HandlerName)
+}
+
 // AddHandler adds a new handler.
 //
 // handlerName must be unique. For now, it is used only for debugging.
 //
 // subscribeTopic is a topic from which handler will receive messages.
 //
-// publishTopic is a topic to which router will produce messages retuened by handlerFunc.
+// publishTopic is a topic to which router will produce messages returned by handlerFunc.
 // When handler needs to publish to multiple topics,
 // it is recommended to just inject Publisher to Handler or implement middleware
 // which will catch messages and publish to topic based on metadata for example.
-//
-// pubSub is PubSub from which messages will be consumed and to which created messages will be published.
-// If you have separated Publisher and Subscriber object,
-// you can create PubSub object by calling message.NewPubSub(publisher, subscriber).
 func (r *Router) AddHandler(
 	handlerName string,
 	subscribeTopic string,
+	subscriber Subscriber,
 	publishTopic string,
-	pubSub PubSub,
+	publisher Publisher,
 	handlerFunc HandlerFunc,
-) error {
-	if err := r.AddNoPublisherHandler(handlerName, subscribeTopic, pubSub, handlerFunc); err != nil {
-		return err
-	}
-	r.handlers[handlerName].publisher = pubSub
-	r.handlers[handlerName].publishTopic = publishTopic
+) {
+	r.logger.Info("Adding handler", watermill.LogFields{
+		"handler_name": handlerName,
+		"topic":        subscribeTopic,
+	})
 
-	return nil
+	if _, ok := r.handlers[handlerName]; ok {
+		panic(DuplicateHandlerNameError{handlerName})
+	}
+
+	publisherName, subscriberName := internal.StructName(publisher), internal.StructName(subscriber)
+
+	r.handlers[handlerName] = &handler{
+		name:   handlerName,
+		logger: r.logger,
+
+		subscriber:     subscriber,
+		subscribeTopic: subscribeTopic,
+		subscriberName: subscriberName,
+
+		publisher:     publisher,
+		publishTopic:  publishTopic,
+		publisherName: publisherName,
+
+		handlerFunc:       handlerFunc,
+		runningHandlersWg: r.runningHandlersWg,
+		messagesCh:        nil,
+		closeCh:           r.closeCh,
+	}
 }
 
 // AddNoPublisherHandler adds a new handler.
@@ -164,51 +229,48 @@ func (r *Router) AddNoPublisherHandler(
 	handlerName string,
 	subscribeTopic string,
 	subscriber Subscriber,
-	handlerFunc HandlerFunc,
-) error {
-	r.logger.Info("Adding subscriber", watermill.LogFields{
-		"handler_name": handlerName,
-		"topic":        subscribeTopic,
-	})
-
-	if _, ok := r.handlers[handlerName]; ok {
-		return errors.Errorf("handler %s already exists", handlerName)
+	handlerFunc NoPublishHandlerFunc,
+) {
+	handlerFuncAdapter := func(msg *Message) ([]*Message, error) {
+		return nil, handlerFunc(msg)
 	}
 
-	r.handlers[handlerName] = &handler{
-		name:              handlerName,
-		subscribeTopic:    subscribeTopic,
-		handlerFunc:       handlerFunc,
-		subscriber:        subscriber,
-		logger:            r.logger,
-		runningHandlersWg: r.runningHandlersWg,
-		closeCh:           r.closeCh,
-	}
-
-	return nil
+	r.AddHandler(handlerName, subscribeTopic, subscriber, "", disabledPublisher{}, handlerFuncAdapter)
 }
 
 // Run runs all plugins and handlers and starts subscribing to provided topics.
-// This call is blocking until router is running.
+// This call is blocking while the router is running.
+//
+// When all handlers have stopped (for example, because subscriptions were closed), the router will also stop.
 //
 // To stop Run() you should call Close() on the router.
-func (r *Router) Run() (err error) {
+//
+// ctx will be propagated to all subscribers.
+//
+// When all handlers are stopped (for example: because of closed connection), Run() will be also stopped.
+func (r *Router) Run(ctx context.Context) (err error) {
 	if r.isRunning {
 		return errors.New("router is already running")
 	}
 	r.isRunning = true
 
-	defer func() {
-		if r := recover(); r != nil {
-			err = errors.Errorf("panic recovered: %#v", r)
-			return
-		}
-	}()
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
 	r.logger.Debug("Loading plugins", nil)
 	for _, plugin := range r.plugins {
 		if err := plugin(r); err != nil {
 			return errors.Wrapf(err, "cannot initialize plugin %v", plugin)
+		}
+	}
+
+	r.logger.Debug("Applying decorators", nil)
+	for name, h := range r.handlers {
+		if err = r.decorateHandlerPublisher(h); err != nil {
+			return errors.Wrapf(err, "could not decorate publisher of handler %s", name)
+		}
+		if err = r.decorateHandlerSubscriber(h); err != nil {
+			return errors.Wrapf(err, "could not decorate subscriber of handler %s", name)
 		}
 	}
 
@@ -218,7 +280,7 @@ func (r *Router) Run() (err error) {
 			"topic":           h.subscribeTopic,
 		})
 
-		messages, err := h.subscriber.Subscribe(h.subscribeTopic)
+		messages, err := h.subscriber.Subscribe(ctx, h.subscribeTopic)
 		if err != nil {
 			return errors.Wrapf(err, "cannot subscribe topic %s", h.subscribeTopic)
 		}
@@ -244,7 +306,10 @@ func (r *Router) Run() (err error) {
 
 	close(r.running)
 
+	go r.closeWhenAllHandlersStopped()
+
 	<-r.closeCh
+	cancel()
 
 	r.logger.Info("Waiting for messages", watermill.LogFields{
 		"timeout": r.config.CloseTimeout,
@@ -257,10 +322,26 @@ func (r *Router) Run() (err error) {
 	return nil
 }
 
+// closeWhenAllHandlersStopped closed router, when all handlers has stopped,
+// because for example all subscriptions are closed.
+func (r *Router) closeWhenAllHandlersStopped() {
+	r.handlersWg.Wait()
+	if r.isClosed() {
+		// already closed
+		return
+	}
+
+	r.logger.Error("All handlers stopped, closing router", errors.New("all router handlers stopped"), nil)
+
+	if err := r.Close(); err != nil {
+		r.logger.Error("Cannot close router", err, nil)
+	}
+}
+
 // Running is closed when router is running.
 // In other words: you can wait till router is running using
 //		fmt.Println("Starting router")
-//		go r.Run()
+//		go r.Run(ctx)
 //		<- r.Running()
 //		fmt.Println("Router is running")
 func (r *Router) Running() chan struct{} {
@@ -268,6 +349,9 @@ func (r *Router) Running() chan struct{} {
 }
 
 func (r *Router) Close() error {
+	r.closedLock.Lock()
+	defer r.closedLock.Unlock()
+
 	if r.closed {
 		return nil
 	}
@@ -277,29 +361,40 @@ func (r *Router) Close() error {
 	defer r.logger.Info("Router closed", nil)
 
 	close(r.closeCh)
+	defer close(r.closedCh)
 
 	timeouted := sync_internal.WaitGroupTimeout(r.handlersWg, r.config.CloseTimeout)
 	if timeouted {
 		return errors.New("router close timeouted")
 	}
 
-	close(r.closedCh)
-
 	return nil
 }
 
-type handler struct {
-	name           string
-	subscribeTopic string
-	publishTopic   string
-	handlerFunc    HandlerFunc
+func (r *Router) isClosed() bool {
+	r.closedLock.Lock()
+	defer r.closedLock.Unlock()
 
-	publisher         Publisher
-	subscriber        Subscriber
-	logger            watermill.LoggerAdapter
+	return r.closed
+}
+
+type handler struct {
+	name   string
+	logger watermill.LoggerAdapter
+
+	subscriber     Subscriber
+	subscribeTopic string
+	subscriberName string
+
+	publisher     Publisher
+	publishTopic  string
+	publisherName string
+
+	handlerFunc HandlerFunc
+
 	runningHandlersWg *sync.WaitGroup
 
-	messagesCh chan *Message
+	messagesCh <-chan *Message
 
 	closeCh chan struct{}
 }
@@ -333,7 +428,68 @@ func (h *handler) run(middlewares []HandlerMiddleware) {
 	}
 
 	h.logger.Debug("Router handler stopped", nil)
+}
 
+// decorateHandlerPublisher applies the decorator chain to handler's publisher.
+// They are applied in reverse order, so that the later decorators use the result of former ones.
+func (r *Router) decorateHandlerPublisher(h *handler) error {
+	var err error
+	pub := h.publisher
+	for i := len(r.publisherDecorators) - 1; i >= 0; i-- {
+		decorator := r.publisherDecorators[i]
+		pub, err = decorator(pub)
+		if err != nil {
+			return errors.Wrap(err, "could not apply publisher decorator")
+		}
+	}
+	r.handlers[h.name].publisher = pub
+	return nil
+}
+
+// decorateHandlerSubscriber applies the decorator chain to handler's subscriber.
+// They are applied in regular order, so that the later decorators use the result of former ones.
+func (r *Router) decorateHandlerSubscriber(h *handler) error {
+	var err error
+	sub := h.subscriber
+
+	// add values to message context to subscriber
+	// it goes before other decorators, so that they may take advantage of these values
+	messageTransform := func(msg *Message) {
+		if msg != nil {
+			h.addHandlerContext(msg)
+		}
+	}
+	sub, err = MessageTransformSubscriberDecorator(messageTransform)(sub)
+	if err != nil {
+		return errors.Wrapf(err, "cannot wrap subscriber with context decorator")
+	}
+
+	for _, decorator := range r.subscriberDecorators {
+		sub, err = decorator(sub)
+		if err != nil {
+			return errors.Wrap(err, "could not apply subscriber decorator")
+		}
+	}
+	r.handlers[h.name].subscriber = sub
+	return nil
+}
+
+// addHandlerContext enriches the contex with values that are relevant within this handler's context.
+func (h *handler) addHandlerContext(messages ...*Message) {
+	for i, msg := range messages {
+		ctx := msg.Context()
+
+		if h.name != "" {
+			ctx = context.WithValue(ctx, handlerNameKey, h.name)
+		}
+		if h.publisherName != "" {
+			ctx = context.WithValue(ctx, publisherNameKey, h.publisherName)
+		}
+		if h.subscriberName != "" {
+			ctx = context.WithValue(ctx, subscriberNameKey, h.subscriberName)
+		}
+		messages[i].SetContext(ctx)
+	}
 }
 
 func (h *handler) handleClose() {
@@ -354,7 +510,11 @@ func (h *handler) handleMessage(msg *Message, handler HandlerFunc) {
 
 	defer func() {
 		if recovered := recover(); recovered != nil {
-			h.logger.Error("Panic recovered in handler", errors.Errorf("%s", recovered), nil)
+			h.logger.Error(
+				"Panic recovered in handler. Stack: " + string(debug.Stack()),
+				errors.Errorf("%s", recovered),
+				nil,
+			)
 			msg.Nack()
 			return
 		}
@@ -372,6 +532,8 @@ func (h *handler) handleMessage(msg *Message, handler HandlerFunc) {
 		return
 	}
 
+	h.addHandlerContext(producedMessages...)
+
 	if err := h.publishProducedMessages(producedMessages, msgFields); err != nil {
 		h.logger.Error("Publishing produced messages failed", err, nil)
 		msg.Nack()
@@ -386,12 +548,13 @@ func (h *handler) publishProducedMessages(producedMessages Messages, msgFields w
 		return nil
 	}
 
-	if h.publishTopic == "" {
-		return errors.New("router was created without publisher, cannot publish messages")
+	if h.publisher == nil {
+		return ErrOutputInNoPublisherHandler
 	}
 
 	h.logger.Trace("Sending produced messages", msgFields.Add(watermill.LogFields{
 		"produced_messages_count": len(producedMessages),
+		"publish_topic":           h.publishTopic,
 	}))
 
 	for _, msg := range producedMessages {
@@ -405,5 +568,15 @@ func (h *handler) publishProducedMessages(producedMessages Messages, msgFields w
 		}
 	}
 
+	return nil
+}
+
+type disabledPublisher struct{}
+
+func (disabledPublisher) Publish(topic string, messages ...*Message) error {
+	return ErrOutputInNoPublisherHandler
+}
+
+func (disabledPublisher) Close() error {
 	return nil
 }

@@ -2,25 +2,30 @@ version: '3'
 services:
   server:
     image: golang:1.11
-    restart: on-failure
+    restart: unless-stopped
     depends_on:
       - kafka
     volumes:
       - .:/app
+      - $GOPATH/pkg/mod:/go/pkg/mod
     working_dir: /app
     command: go run main.go
 
   zookeeper:
     image: confluentinc/cp-zookeeper:latest
-    restart: on-failure
+    restart: unless-stopped
+    logging:
+      driver: none
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
 
   kafka:
     image: confluentinc/cp-kafka:latest
-    restart: on-failure
+    restart: unless-stopped
     depends_on:
       - zookeeper
+    logging:
+      driver: none
     environment:
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092

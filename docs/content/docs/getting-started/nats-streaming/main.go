@@ -2,16 +2,14 @@
 package main
 
 import (
+	"context"
 	"log"
 	"time"
 
-	"github.com/nats-io/go-nats-streaming"
+	stan "github.com/nats-io/stan.go"
 
 	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill/message/infrastructure/nats"
-
-	"github.com/satori/go.uuid"
-
+	"github.com/ThreeDotsLabs/watermill-nats/pkg/nats"
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
@@ -36,7 +34,7 @@ func main() {
 		panic(err)
 	}
 
-	messages, err := subscriber.Subscribe("example.topic")
+	messages, err := subscriber.Subscribe(context.Background(), "example.topic")
 	if err != nil {
 		panic(err)
 	}
@@ -63,20 +61,22 @@ func main() {
 
 func publishMessages(publisher message.Publisher) {
 	for {
-		msg := message.NewMessage(uuid.NewV4().String(), []byte("Hello, world!"))
+		msg := message.NewMessage(watermill.NewUUID(), []byte("Hello, world!"))
 
 		if err := publisher.Publish("example.topic", msg); err != nil {
 			panic(err)
 		}
+
+		time.Sleep(time.Second)
 	}
 }
 
-func process(messages chan *message.Message) {
+func process(messages <-chan *message.Message) {
 	for msg := range messages {
 		log.Printf("received message: %s, payload: %s", msg.UUID, string(msg.Payload))
 
 		// we need to Acknowledge that we received and processed the message,
-		// otherwise we will not receive next message
+		// otherwise, it will be resent over and over again.
 		msg.Ack()
 	}
 }

@@ -58,7 +58,7 @@ func TestMessage_Equals(t *testing.T) {
 
 func TestMessage_Ack(t *testing.T) {
 	msg := &message.Message{}
-	require.NoError(t, msg.Ack())
+	require.True(t, msg.Ack())
 
 	assertAcked(t, msg)
 	assertNoNack(t, msg)
@@ -66,22 +66,22 @@ func TestMessage_Ack(t *testing.T) {
 
 func TestMessage_Ack_idempotent(t *testing.T) {
 	msg := &message.Message{}
-	require.NoError(t, msg.Ack())
-	require.NoError(t, msg.Ack())
+	require.True(t, msg.Ack())
+	require.True(t, msg.Ack())
 
 	assertAcked(t, msg)
 }
 
 func TestMessage_Ack_already_Nack(t *testing.T) {
 	msg := &message.Message{}
-	require.NoError(t, msg.Nack())
+	require.True(t, msg.Nack())
 
-	assert.Equal(t, message.ErrAlreadyNacked, msg.Ack())
+	assert.False(t, msg.Ack())
 }
 
 func TestMessage_Nack(t *testing.T) {
 	msg := &message.Message{}
-	require.NoError(t, msg.Nack())
+	require.True(t, msg.Nack())
 
 	assertNoAck(t, msg)
 	assertNacked(t, msg)
@@ -89,28 +89,38 @@ func TestMessage_Nack(t *testing.T) {
 
 func TestMessage_Nack_idempotent(t *testing.T) {
 	msg := &message.Message{}
-	require.NoError(t, msg.Nack())
-	require.NoError(t, msg.Nack())
+	require.True(t, msg.Nack())
+	require.True(t, msg.Nack())
 
 	assertNacked(t, msg)
 }
 
 func TestMessage_Nack_already_Ack(t *testing.T) {
 	msg := &message.Message{}
-	require.NoError(t, msg.Ack())
+	require.True(t, msg.Ack())
 
-	assert.Equal(t, message.ErrAlreadyAcked, msg.Nack())
+	assert.False(t, msg.Nack())
 }
 
 func TestMessage_Copy(t *testing.T) {
 	msg := message.NewMessage("1", []byte("foo"))
 	msgCopy := msg.Copy()
 
-	require.NoError(t, msg.Ack())
+	require.True(t, msg.Ack())
 
 	assertAcked(t, msg)
 	assertNoAck(t, msgCopy)
 	assert.True(t, msg.Equals(msgCopy))
+}
+
+func TestMessage_CopyMetadata(t *testing.T) {
+	msg := message.NewMessage("1", []byte("foo"))
+	msg.Metadata.Set("foo", "bar")
+	msgCopy := msg.Copy()
+
+	msg.Metadata.Set("foo", "baz")
+
+	assert.Equal(t, msgCopy.Metadata.Get("foo"), "bar", "did not expect changing source message's metadata to alter copy's metadata")
 }
 
 func assertAcked(t *testing.T, msg *message.Message) {

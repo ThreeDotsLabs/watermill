@@ -1,0 +1,10 @@
+version: '3'
+services:
+  watermill:
+    image: golang:1.12
+    command: /bin/true
+    volumes:
+      - .:/app
+      - .mod-cache:/go/pkg/mod
+    working_dir: /app
+

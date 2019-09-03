@@ -1,0 +1,4 @@
+validation_cmd: "docker-compose up"
+teardown_cmd: "docker-compose down"
+timeout: 60
+expected_output: "received event {ID:[0-9]+}"

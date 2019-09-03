@@ -5,7 +5,7 @@ description = ""
 
 ### Community Support
 
-Please join us on the `#watermill` channel on the [Gophers slack](https://gophers.slack.com/): You can get the invite [here](https://gophersinvite.herokuapp.com/).
+Please join us on the `#watermill` channel on the [Gophers slack](https://gophers.slack.com/). You can get the invite [here](https://gophersinvite.herokuapp.com/).
 
 ### Professional Support
 

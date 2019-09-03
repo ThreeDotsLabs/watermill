@@ -1,0 +1,55 @@
+version: '3'
+services:
+  webhooks-server:
+    image: golang:1.11
+    restart: unless-stopped
+    volumes:
+    - .:/app
+    - $GOPATH/pkg/mod:/go/pkg/mod
+    working_dir: /app/webhooks-server/
+    command: go run main.go
+
+  router:
+    image: golang:1.11
+    restart: unless-stopped
+    depends_on:
+      - kafka
+    volumes:
+    - .:/app
+    - $GOPATH/pkg/mod:/go/pkg/mod
+    working_dir: /app/router/
+    command: go run main.go
+
+  producer:
+    image: golang:1.11
+    restart: unless-stopped
+    depends_on:
+    - kafka
+    - webhooks-server
+    - router
+    volumes:
+    - .:/app
+    - $GOPATH/pkg/mod:/go/pkg/mod
+    working_dir: /app/producer/
+    command: go run main.go
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    restart: unless-stopped
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+    logging:
+      driver: none
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    restart: unless-stopped
+    logging:
+      driver: none
+    depends_on:
+    - zookeeper
+    environment:
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
