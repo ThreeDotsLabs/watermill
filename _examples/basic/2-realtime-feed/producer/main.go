@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
+	"os"
+	"os/signal"
 	"sync"
 	"time"
 
@@ -18,8 +20,8 @@ import (
 var (
 	brokers = []string{"kafka:9092"}
 
-	messagesToPublish = 10000
-	workers           = 25
+	messagesPerSecond = 100
+	numWorkers        = 20
 )
 
 func main() {
@@ -34,14 +36,42 @@ func main() {
 	}
 	defer publisher.Close()
 
-	messageStream := make(chan *message.Message, workers)
+	closeCh := make(chan struct{})
 	workersGroup := &sync.WaitGroup{}
+	workersGroup.Add(numWorkers)
 
-	for i := 0; i < workers; i++ {
-		go worker(publisher, workersGroup, messageStream)
+	for i := 0; i < numWorkers; i++ {
+		go worker(publisher, workersGroup, closeCh)
 	}
 
-	for i := 0; i < messagesToPublish; i++ {
+	// wait for SIGINT
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	<-c
+
+	// signal for the workers to stop publishing
+	close(closeCh)
+
+	// Waiting for all messages to be published
+	workersGroup.Wait()
+
+	logger.Info("All messages published", watermill.LogFields{})
+}
+
+// worker publishes messages until closeCh is closed.
+func worker(publisher message.Publisher, wg *sync.WaitGroup, closeCh chan struct{}) {
+	ticker := time.NewTicker(time.Duration(int(time.Second) / messagesPerSecond))
+
+	for {
+		select {
+		case <-closeCh:
+			ticker.Stop()
+			wg.Done()
+			return
+
+		case <-ticker.C:
+		}
+
 		msgPayload := postAdded{
 			OccurredOn: time.Now(),
 			Author:     gofakeit.Username(),
@@ -58,27 +88,12 @@ func main() {
 
 		// Use a middleware to set the correlation ID, it's useful for debugging
 		middleware.SetCorrelationID(watermill.NewShortUUID(), msg)
-
-		messageStream <- msg
-	}
-	close(messageStream)
-
-	// Waiting for all messages to be published
-	workersGroup.Wait()
-
-	logger.Info("All messages published", watermill.LogFields{})
-}
-
-func worker(publisher message.Publisher, wg *sync.WaitGroup, messages <-chan *message.Message) {
-	wg.Add(1)
-	for msg := range messages {
-		err := publisher.Publish("posts_published", msg)
+		err = publisher.Publish("posts_published", msg)
 		if err != nil {
 			fmt.Println("cannot publish message:", err)
 			continue
 		}
 	}
-	wg.Done()
 }
 
 type postAdded struct {
