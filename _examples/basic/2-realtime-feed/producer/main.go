@@ -4,6 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
+	"os"
+	"os/signal"
+	"sync"
 	"time"
 
 	"github.com/brianvoe/gofakeit"
@@ -17,8 +20,8 @@ import (
 var (
 	brokers = []string{"kafka:9092"}
 
-	messagesToPublish = 10000
-	workers           = 25
+	messagesPerSecond = 100
+	numWorkers        = 20
 )
 
 func main() {
@@ -33,42 +36,42 @@ func main() {
 	}
 	defer publisher.Close()
 
-	messagePublished := make(chan struct{})
-	allMessagesPublished := make(chan struct{})
+	closeCh := make(chan struct{})
+	workersGroup := &sync.WaitGroup{}
+	workersGroup.Add(numWorkers)
 
-	go func() {
-		publishedMessages := 0
-		for range messagePublished {
-			publishedMessages++
-
-			if publishedMessages%1000 == 0 {
-				logger.Info("messages left", watermill.LogFields{"count": messagesToPublish - publishedMessages})
-			}
-			if publishedMessages >= messagesToPublish {
-				allMessagesPublished <- struct{}{}
-				break
-			}
-		}
-	}()
-
-	workerMessages := make(chan struct{})
-
-	for num := 0; num < workers; num++ {
-		go worker(publisher, workerMessages, messagePublished)
+	for i := 0; i < numWorkers; i++ {
+		go worker(publisher, workersGroup, closeCh)
 	}
 
-	for i := 0; i < messagesToPublish; i++ {
-		workerMessages <- struct{}{}
-	}
+	// wait for SIGINT
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	<-c
+
+	// signal for the workers to stop publishing
+	close(closeCh)
 
 	// Waiting for all messages to be published
-	<-allMessagesPublished
+	workersGroup.Wait()
 
 	logger.Info("All messages published", nil)
 }
 
-func worker(publisher message.Publisher, incomingMessage <-chan struct{}, messagePublished chan<- struct{}) {
-	for range incomingMessage {
+// worker publishes messages until closeCh is closed.
+func worker(publisher message.Publisher, wg *sync.WaitGroup, closeCh chan struct{}) {
+	ticker := time.NewTicker(time.Duration(int(time.Second) / messagesPerSecond))
+
+	for {
+		select {
+		case <-closeCh:
+			ticker.Stop()
+			wg.Done()
+			return
+
+		case <-ticker.C:
+		}
+
 		msgPayload := postAdded{
 			OccurredOn: time.Now(),
 			Author:     gofakeit.Username(),
@@ -85,14 +88,11 @@ func worker(publisher message.Publisher, incomingMessage <-chan struct{}, messag
 
 		// Use a middleware to set the correlation ID, it's useful for debugging
 		middleware.SetCorrelationID(watermill.NewShortUUID(), msg)
-
 		err = publisher.Publish("posts_published", msg)
 		if err != nil {
 			fmt.Println("cannot publish message:", err)
 			continue
 		}
-
-		messagePublished <- struct{}{}
 	}
 }
 

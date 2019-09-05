@@ -27,6 +27,7 @@ if [[ "$1" == "--copy" ]]; then
     rm content/src-link -r || true
     mkdir content/src-link/
     cp ../message/ content/src-link/ -r
+    cp ../pubsub/ content/src-link/ -r
     cp ../_examples/ content/src-link/ -r
     cp ../components/ content/src-link/ -r
 else
