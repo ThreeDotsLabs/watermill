@@ -55,7 +55,7 @@ func main() {
 	// Waiting for all messages to be published
 	workersGroup.Wait()
 
-	logger.Info("All messages published", watermill.LogFields{})
+	logger.Info("All messages published", nil)
 }
 
 // worker publishes messages until closeCh is closed.
