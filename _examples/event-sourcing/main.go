@@ -3,7 +3,7 @@ package main
 import "fmt"
 
 func main() {
-	a1 := NewAccount("1")
+	a1 := CreateNewAccount("1")
 	a1.Deposit(10)
 	if err := a1.Withdraw(3); err != nil {
 		panic(err)
@@ -25,6 +25,10 @@ func main() {
 
 	fmt.Println("10-3 = (repo)", a1Repo.Balance())
 
-	a2 := NewAccountFromHistory("2", []Event{Deposited{15}, Withdrawed{3}})
+	a2 := NewAccountFromHistory([]Event{
+		AccountCreated{"2"},
+		Deposited{15},
+		Withdrawed{3},
+	})
 	fmt.Println("15-3 = ", a2.Balance())
 }

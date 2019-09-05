@@ -15,7 +15,7 @@ func (r *AccountEventSourcedRepository) Save(account *Account) error {
 		r.events[key] = []Event{}
 	}
 
-	r.events[key] = append(r.events[key], account.PopNewEvents()...)
+	r.events[key] = append(r.events[key], account.PopChanges()...)
 
 	return nil
 }
@@ -26,7 +26,7 @@ func (r AccountEventSourcedRepository) Find(id string) (*Account, error) {
 		return nil, err
 	}
 
-	return NewAccountFromHistory(id, events), nil
+	return NewAccountFromHistory(events), nil
 }
 
 func (r AccountEventSourcedRepository) findEvents(id string) ([]Event, error) {
