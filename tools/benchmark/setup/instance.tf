@@ -5,8 +5,8 @@ provider "google" {
 }
 
 data "google_compute_image" "ubuntu_18" {
-  family  = "cos-stable"
-  project = "cos-cloud"
+  family  = "ubuntu-1904"
+  project = "ubuntu-os-cloud"
 }
 
 resource "google_compute_instance" "default" {

@@ -1,9 +1,26 @@
-docker pull docker/compose:1.24.0
-echo alias docker-compose="'"'docker run --rm \
-    -v /var/run/docker.sock:/var/run/docker.sock \
-    -v "$PWD:$PWD" \
-    -w="$PWD" \
-    docker/compose:1.24.0'"'" >> /home/benchmark/.bashrc
-echo export GOPATH=~/go >> /home/benchmark/.bashrc
-git clone https://github.com/ThreeDotsLabs/watermill /home/benchmark/watermill
-chown -R benchmark:benchmark /home/benchmark/watermill
+apt-get update
+apt-get install -y \
+    apt-transport-https \
+    ca-certificates \
+    curl \
+    gnupg-agent \
+    software-properties-common
+
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
+apt-key fingerprint 0EBFCD88
+
+add-apt-repository \
+   "deb [arch=amd64] https://download.docker.com/linux/ubuntu \
+   $(lsb_release -cs) \
+   stable"
+
+apt-get install -y docker-ce docker-ce-cli containerd.io
+
+curl -L "https://github.com/docker/compose/releases/download/1.24.1/docker-compose-$(uname -s)-$(uname -m)" \
+    -o /usr/local/bin/docker-compose
+chmod +x /usr/local/bin/docker-compose
+
+adduser benchmark docker
+
+su - benchmark -c "git clone https://github.com/ThreeDotsLabs/watermill"
+su - benchmark -c "echo export GOPATH=~/go >> .bash_profile"
