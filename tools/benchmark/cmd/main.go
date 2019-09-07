@@ -4,25 +4,46 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"strconv"
+	"strings"
 
 	"github.com/ThreeDotsLabs/watermill/tools/benchmark/pkg"
 )
 
+const (
+	defaultMessagesCount = 1000000
+	defaultMessageSize   = "256,512,1024"
+)
+
 var pubsubFlag = flag.String("pubsub", "", "")
+var messagesCount = flag.Uint64("count", defaultMessagesCount, "")
+var messageSizes = flag.String("size", defaultMessageSize, "comma-separated list of message sizes")
 
 func main() {
 	flag.Parse()
+	sizes := strings.Split(*messageSizes, ",")
 
-	fmt.Printf("starting benchmark, pubsub: %s\n", *pubsubFlag)
+	var subResults []pkg.Results
 
-	_, subResults, err := pkg.RunBenchmark(*pubsubFlag)
-	if err != nil {
-		log.Fatal(err)
+	for _, size := range sizes {
+		s, err := strconv.Atoi(size)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		fmt.Printf("Starting benchmark for PubSub %s (%d messages, %d bytes each)\n",
+			*pubsubFlag, *messagesCount, s)
+
+		_, subRes, err := pkg.RunBenchmark(*pubsubFlag, *messagesCount, uint64(s))
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		subResults = append(subResults, subRes)
 	}
 
-	fmt.Printf("  count:       %9d\n", subResults.Count)
-	fmt.Printf("  1-min rate:  %12.2f\n", subResults.Rate1)
-	fmt.Printf("  5-min rate:  %12.2f\n", subResults.Rate5)
-	fmt.Printf("  15-min rate: %12.2f\n", subResults.Rate15)
-	fmt.Printf("  mean rate:   %12.2f\n", subResults.RateMean)
+	fmt.Printf("messages\tmessage size\trate (messages/s)\tthroughput (b/s)\n")
+	for _, r := range subResults {
+		fmt.Printf("%d\t%d\t%f\t%f\n", r.Count, r.MessageSize, r.MeanRate, r.MeanThroughput)
+	}
 }

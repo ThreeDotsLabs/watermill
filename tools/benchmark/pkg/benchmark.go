@@ -10,22 +10,21 @@ import (
 )
 
 type Results struct {
-	Count    int64
-	Rate1    float64
-	Rate5    float64
-	Rate15   float64
-	RateMean float64
+	Count          uint64
+	MessageSize    uint64
+	MeanRate       float64
+	MeanThroughput float64
 }
 
 // RunBenchmark runs benchmark on chosen pubsub and returns publishing and subscribing results.
-func RunBenchmark(pubSubName string) (Results, Results, error) {
+func RunBenchmark(pubSubName string, messagesCount uint64, messageSize uint64) (Results, Results, error) {
 	if err := initialise(pubSubName); err != nil {
 		return Results{}, Results{}, err
 	}
 
 	topic := "benchmark_" + watermill.NewShortUUID()
 
-	pubsub, err := NewPubSub(pubSubName, topic)
+	pubsub, err := NewPubSub(pubSubName, topic, messagesCount, messageSize)
 	if err != nil {
 		return Results{}, Results{}, err
 	}
@@ -46,7 +45,7 @@ func RunBenchmark(pubSubName string) (Results, Results, error) {
 	}()
 
 	wg := sync.WaitGroup{}
-	wg.Add(pubsub.MessagesCount)
+	wg.Add(int(pubsub.MessagesCount))
 
 	c = NewCounter()
 
@@ -64,16 +63,15 @@ func RunBenchmark(pubSubName string) (Results, Results, error) {
 	}
 
 	pubResults := Results{
-		Count:    0,
-		Rate1:    0,
-		Rate5:    0,
-		Rate15:   0,
-		RateMean: 0,
+		Count:       pubsub.MessagesCount,
+		MessageSize: pubsub.MessageSize,
 	}
 
 	subResults := Results{
-		Count:    int64(c.Count()),
-		RateMean: c.MeanPerSecond(),
+		Count:          c.Count(),
+		MessageSize:    pubsub.MessageSize,
+		MeanRate:       c.MeanPerSecond(),
+		MeanThroughput: c.MeanPerSecond() * float64(pubsub.MessageSize),
 	}
 
 	return pubResults, subResults, nil
@@ -83,7 +81,7 @@ func RunBenchmark(pubSubName string) (Results, Results, error) {
 func initialise(pubSubName string) error {
 	topic := "benchmark_init_" + watermill.NewShortUUID()
 
-	pubsub, err := NewPubSub(pubSubName, topic)
+	pubsub, err := NewPubSub(pubSubName, topic, 0, 0)
 	if err != nil {
 		return err
 	}

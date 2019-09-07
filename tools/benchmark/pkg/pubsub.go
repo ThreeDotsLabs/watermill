@@ -16,24 +16,19 @@ import (
 	"github.com/ThreeDotsLabs/watermill/pubsub/gochannel"
 )
 
-const (
-	defaultMessagesCount = 1000000
-	defaultMessageSize   = 1024
-)
-
 var logger = watermill.NopLogger{}
 
 type PubSub struct {
 	Publisher  message.Publisher
 	Subscriber message.Subscriber
 
-	MessagesCount int
-	MessageSize   int
+	MessagesCount uint64
+	MessageSize   uint64
 
 	Topic string
 }
 
-func NewPubSub(name string, topic string) (PubSub, error) {
+func NewPubSub(name string, topic string, messagesCount uint64, messageSize uint64) (PubSub, error) {
 	definition, ok := pubSubDefinitions[name]
 	if !ok {
 		return PubSub{}, fmt.Errorf("unknown PubSub: %s", name)
@@ -45,8 +40,8 @@ func NewPubSub(name string, topic string) (PubSub, error) {
 		Publisher:  pub,
 		Subscriber: sub,
 
-		MessagesCount: defaultMessagesCount,
-		MessageSize:   defaultMessageSize,
+		MessagesCount: messagesCount,
+		MessageSize:   messageSize,
 		Topic:         topic,
 	}, nil
 }
