@@ -1,25 +1,25 @@
 version: '3'
 services:
-  publishing:
-    image: golang:1.11
+  producer:
+    image: golang:1.12
     restart: unless-stopped
     depends_on:
     - kafka
     volumes:
     - .:/app
     - $GOPATH/pkg/mod:/go/pkg/mod
-    working_dir: /app/publishing-app/
+    working_dir: /app/producer/
     command: go run main.go
 
-  subscribing:
-    image: golang:1.11
+  consumer:
+    image: golang:1.12
     restart: unless-stopped
     depends_on:
-      - kafka
+    - kafka
     volumes:
     - .:/app
     - $GOPATH/pkg/mod:/go/pkg/mod
-    working_dir: /app/subscribing-app/
+    working_dir: /app/consumer/
     command: go run main.go
 
   zookeeper:
