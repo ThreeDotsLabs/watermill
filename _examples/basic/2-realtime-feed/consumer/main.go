@@ -46,7 +46,7 @@ func main() {
 	}
 
 	r.AddMiddleware(
-		// Recoverer middleware recovers panic from handlers
+		// Recoverer middleware recovers panic from handlers and middlewares
 		middleware.Recoverer,
 
 		// Limit incoming messages to 10 per second
