@@ -94,8 +94,6 @@ Watermill is already in v1.0.0 and is production-ready. API is already stable an
 To ensure, that all Pub/Sub implementations are stable and safe to use in the production, we created [set of tests](https://github.com/ThreeDotsLabs/watermill/blob/master/pubsub/tests/test_pubsub.go#L34) which needs to be passed by every implementation before merging to master.
 All tests are also executed in [*stress*](https://github.com/ThreeDotsLabs/watermill/blob/master/pubsub/tests/test_pubsub.go#L171) mode - that means that we are running all the tests **20x** in parallel.
 
-The core functionality of Watermill is tested with unit tests.
-
 All tests are executed against race conditions (`-race` flag in tests).
 
 ## Support
