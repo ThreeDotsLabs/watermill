@@ -148,7 +148,7 @@ Let's go back to the CQRS. As you already know, CQRS is built from multiple comp
 To simplify creating all these building blocks, we created `cqrs.Facade`, which creates all of them.
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/_examples/cqrs-protobuf/main.go" first_line_contains="main() {" last_line_contains="err := router.Run()" padding_after="3" %}}
+{{% load-snippet-partial file="content/src-link/_examples/cqrs-protobuf/main.go" first_line_contains="main() {" last_line_contains="err := router.Run(" padding_after="3" %}}
 {{% /render-md %}}
 
 And that's all. We have a working CQRS application.

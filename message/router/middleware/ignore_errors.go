@@ -10,6 +10,7 @@ type IgnoreErrors struct {
 	ignoredErrors map[string]struct{}
 }
 
+// NewIgnoreErrors creates a new IgnoreErrors middleware.
 func NewIgnoreErrors(errs []error) IgnoreErrors {
 	errsMap := make(map[string]struct{}, len(errs))
 

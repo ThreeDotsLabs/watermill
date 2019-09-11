@@ -7,8 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ThreeDotsLabs/watermill/pubsub/tests"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -17,6 +15,7 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/subscriber"
 	"github.com/ThreeDotsLabs/watermill/pubsub/gochannel"
+	"github.com/ThreeDotsLabs/watermill/pubsub/tests"
 )
 
 func TestRouter_functional(t *testing.T) {
@@ -442,6 +441,54 @@ func TestRouterDecoratorsOrder(t *testing.T) {
 
 	assert.Equal(t, "foobar", transformedMessage.Metadata.Get("pub"))
 	assert.Equal(t, "foobar", transformedMessage.Metadata.Get("sub"))
+}
+
+func TestRouter_concurrent_close(t *testing.T) {
+	logger := watermill.NewStdLogger(true, true)
+
+	router, err := message.NewRouter(message.RouterConfig{}, logger)
+	require.NoError(t, err)
+
+	go func() {
+		err := router.Close()
+		require.NoError(t, err)
+	}()
+
+	err = router.Close()
+	require.NoError(t, err)
+}
+
+func TestRouter_concurrent_close_on_handlers_closed(t *testing.T) {
+	logger := watermill.NewStdLogger(true, true)
+
+	router, err := message.NewRouter(message.RouterConfig{}, logger)
+	require.NoError(t, err)
+
+	_, sub := createPubSub()
+
+	router.AddNoPublisherHandler(
+		"handler",
+		"subTopic",
+		sub,
+		func(msg *message.Message) error {
+			return nil
+		},
+	)
+
+	go func() {
+		if err := router.Run(context.Background()); err != nil {
+			panic(err)
+		}
+	}()
+	<-router.Running()
+
+	go func() {
+		err := sub.Close()
+		require.NoError(t, err)
+	}()
+
+	err = router.Close()
+	require.NoError(t, err)
 }
 
 func createBenchSubscriber(b *testing.B) benchMockSubscriber {

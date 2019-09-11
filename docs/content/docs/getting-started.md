@@ -10,29 +10,77 @@ type = "docs"
 
 ### What is Watermill?
 
-Watermill is a Golang library for working efficiently with message streams. It is intended for building event-driven applications, enabling event sourcing, RPC over messages, sagas and basically whatever else comes to your mind. You can use conventional pub/sub implementations like Kafka or RabbitMQ, but also HTTP or MySQL binlog if that fits your use case.
+Watermill is a Golang library for working efficiently with message streams. It is intended for building event-driven
+applications. It can be used for event sourcing, RPC over messages, sagas and whatever else comes to your mind.
+You can use conventional pub/sub implementations like Kafka or RabbitMQ, but also HTTP or MySQL binlog, if that fits your use case.
 
-It comes with a set of Pub/Sub implementations, which can be easily extended by your own implementations.
+It comes with a set of Pub/Sub implementations and can be easily extended by your own.
 
-Watermill is also shipped with a set of standard tools (middlewares) like instrumentation, poison queue, throttling, correlation and other tools used by every message-driven application.
+Watermill also ships with standard middlewares like instrumentation, poison queue, throttling, correlation
+and other tools used by every message-driven application.
+
+### Why use Watermill?
+
+With more projects adopting the microservices pattern over recent years, we realized that synchronous communication
+is not always the right choice. Asynchronous methods started to grow as a new standard way to communicate.
+
+But while there's a lot of existing tooling for synchronous integration patterns (e.g. HTTP), correctly setting up
+a message-oriented project can be a challenge. There's a lot of different message queues and streaming systems,
+each with different features and client library API.
+
+Watermill aims to be the standard messaging library for Go, hiding all that complexity behind an API that is easy to
+understand. It provides all you might need for building an application based on events or other asynchronous patterns.
+After looking at the examples, you should be able to quickly integrate Watermill with your project.
 
 ### Install
 
 ```bash
-go get -u github.com/ThreeDotsLabs/watermill/
+go get -u github.com/ThreeDotsLabs/watermill
 ```
 
-### Subscribing for messages
+### One Minute Background
 
-One of the most important parts of Watermill is the [*Message*]({{< ref "/docs/message" >}}). It is as important as `http.Request` is for `http` package.
-Almost every part of Watermill uses this type in some part.
+The basic idea behind event-driven applications stays always the same: listen for incoming messages and react to them.
+Watermill supports this behavior for multiple [publishers and subscribers]({{< ref "/pubsubs" >}}).
 
-When you are building reactive/event-driven application/[insert your buzzword here] you always want to listen for incoming messages to react on them.
-Watermill is supporting multiple [publishers and subscribers implementations]({{< ref "/pubsubs" >}}) with compatible interfaces and abstractions, which provide a similar behaviour.
+The core part of Watermill is the [*Message*]({{< ref "/docs/message" >}}). It is as important as the `http.Request`
+is for the `http` package. Most Watermill features use this struct in some way.
 
-Let's start with subscribing for messages.
+Even though PubSub libraries come with complex features, for Watermill it's enough to implement two interfaces to start
+working with them: the `Publisher` and `Subscriber`.
 
-{{% tabs id="subscribing" tabs="go-channel,kafka,nats-streaming,gcloud,amqp" labels="Go Channel,Kafka,NATS Streaming,Google Cloud Pub/Sub,RabbitMQ (AMQP)" %}}
+```go
+type Publisher interface {
+	Publish(topic string, messages ...*Message) error
+	Close() error
+}
+
+type Subscriber interface {
+	Subscribe(ctx context.Context, topic string) (<-chan *Message, error)
+	Close() error
+}
+```
+
+### Subscribing for Messages
+
+Let's start with subscribing. `Subscribe` expects a topic name and returns a channel of incoming messages.
+What topic exactly means depends on the PubSub implementation.
+
+```go
+messages, err := subscriber.Subscribe(ctx, "example.topic")
+if err != nil {
+	panic(err)
+}
+
+for msg := range messages {
+	fmt.Printf("received message: %s, payload: %s\n", msg.UUID, string(msg.Payload))
+	msg.Ack()
+}
+```
+
+See detailed examples below for supported PubSubs.
+
+{{% tabs id="subscribing" tabs="go-channel,kafka,nats-streaming,gcloud,amqp,sql" labels="Go Channel,Kafka,NATS Streaming,Google Cloud Pub/Sub,RabbitMQ (AMQP),SQL" %}}
 
 {{% tabs-tab id="go-channel"%}}
 {{% load-snippet-partial file="content/docs/getting-started/go-channel/main.go" first_line_contains="package main" last_line_contains="process(messages)" %}}
@@ -53,9 +101,9 @@ The easiest way to run Watermill locally with Kafka is using Docker.
 
 The source should go to `main.go`.
 
-To run, please execute `docker-compose up` command.
+To run, execute `docker-compose up` command.
 
-A more detailed explanation of how it is running (and how to add live code reload) can be found in [*Go Docker dev environment* article](https://threedots.tech/post/go-docker-dev-environment-with-go-modules-and-live-code-reloading/).
+A more detailed explanation of how it is working (and how to add live code reload) can be found in [*Go Docker dev environment* article](https://threedots.tech/post/go-docker-dev-environment-with-go-modules-and-live-code-reloading/).
 
 {{% /collapse-box %}}
 {{< /collapse >}}
@@ -78,9 +126,9 @@ The easiest way to run Watermill locally with NATS is using Docker.
 
 The source should go to `main.go`.
 
-To run please execute `docker-compose up` command.
+To run execute `docker-compose up` command.
 
-A more detailed explanation of how it is running (and how to add live code reload) can be found in [*Go Docker dev environment* article](https://threedots.tech/post/go-docker-dev-environment-with-go-modules-and-live-code-reloading/).
+A more detailed explanation of how it is working (and how to add live code reload) can be found in [*Go Docker dev environment* article](https://threedots.tech/post/go-docker-dev-environment-with-go-modules-and-live-code-reloading/).
 {{% /collapse-box %}}
 {{< /collapse >}}
 
@@ -103,9 +151,9 @@ You can run Google Cloud Pub/Sub emulator locally for development.
 
 The source should go to `main.go`.
 
-To run, please execute `docker-compose up`.
+To run, execute `docker-compose up`.
 
-A more detailed explanation of how it is running (and how to add live code reload) can be found in [*Go Docker dev environment* article](https://threedots.tech/post/go-docker-dev-environment-with-go-modules-and-live-code-reloading/).
+A more detailed explanation of how it is working (and how to add live code reload) can be found in [*Go Docker dev environment* article](https://threedots.tech/post/go-docker-dev-environment-with-go-modules-and-live-code-reloading/).
 {{% /collapse-box %}}
 {{< /collapse >}}
 
@@ -125,9 +173,9 @@ Running in Docker
 
 The source should go to `main.go`.
 
-To run, please execute `docker-compose up`.
+To run, execute `docker-compose up`.
 
-A more detailed explanation of how it is running (and how to add live code reload) can be found in [*Go Docker dev environment* article](https://threedots.tech/post/go-docker-dev-environment-with-go-modules-and-live-code-reloading/).
+A more detailed explanation of how it is working (and how to add live code reload) can be found in [*Go Docker dev environment* article](https://threedots.tech/post/go-docker-dev-environment-with-go-modules-and-live-code-reloading/).
 {{% /collapse-box %}}
 {{< /collapse >}}
 
@@ -135,11 +183,53 @@ A more detailed explanation of how it is running (and how to add live code reloa
 {{% load-snippet-partial file="content/docs/getting-started/amqp/main.go" first_line_contains="func process" %}}
 {{% /tabs-tab %}}
 
+{{% tabs-tab id="sql"%}}
+
+{{< collapse id="running_sql" >}}
+
+{{< collapse-toggle box_id="sql-docker" >}}
+Running in Docker
+{{% /collapse-toggle %}}
+{{% collapse-box id="sql-docker" %}}
+{{% load-snippet file="content/docs/getting-started/sql/docker-compose.yml" type="yaml" %}}
+
+The source should go to `main.go`.
+
+To run, execute `docker-compose up`.
+
+A more detailed explanation of how it is working (and how to add live code reload) can be found in [*Go Docker dev environment* article](https://threedots.tech/post/go-docker-dev-environment-with-go-modules-and-live-code-reloading/).
+{{% /collapse-box %}}
+{{< /collapse >}}
+
+{{% load-snippet-partial file="content/docs/getting-started/sql/main.go" first_line_contains="package main" last_line_contains="process(messages)" %}}
+{{% load-snippet-partial file="content/docs/getting-started/sql/main.go" first_line_contains="func process" %}}
+{{% /tabs-tab %}}
+
 {{% /tabs %}}
 
-### Publishing messages
+### Creating Messages
 
-{{% tabs id="publishing" tabs="go-channel,kafka,nats-streaming,gcloud,amqp" labels="Go Channel,Kafka,NATS Streaming,Google Cloud Pub/Sub,RabbitMQ (AMQP)" %}}
+Watermill doesn't enforce any message format. `NewMessage` expects a slice of bytes as the payload. You can use
+strings, JSON, protobuf, Avro, gob or anything else that serializes to `[]byte`.
+
+The message UUID is optional, but recommended, as it helps with debugging.
+
+```go
+msg := message.NewMessage(watermill.NewUUID(), []byte("Hello, world!"))
+```
+
+### Publishing Messages
+
+`Publish` expects a topic and one or more `Message`s to be published.
+
+```go
+err := publisher.Publish("example.topic", msg)
+if err != nil {
+    panic(err)
+}
+```
+
+{{% tabs id="publishing" tabs="go-channel,kafka,nats-streaming,gcloud,amqp,sql" labels="Go Channel,Kafka,NATS Streaming,Google Cloud Pub/Sub,RabbitMQ (AMQP),SQL" %}}
 
 {{% tabs-tab id="go-channel"%}}
 {{% load-snippet-partial file="content/docs/getting-started/go-channel/main.go" first_line_contains="go process(messages)" last_line_contains="publisher.Publish" padding_after="4" %}}
@@ -161,16 +251,16 @@ A more detailed explanation of how it is running (and how to add live code reloa
 {{% load-snippet-partial file="content/docs/getting-started/amqp/main.go" first_line_contains="go process(messages)" last_line_contains="publisher.Publish" padding_after="4" %}}
 {{% /tabs-tab %}}
 
+{{% tabs-tab id="sql" %}}
+{{% load-snippet-partial file="content/docs/getting-started/sql/main.go" first_line_contains="go process(messages)" last_line_contains="publisher.Publish" padding_after="4" %}}
+{{% /tabs-tab %}}
+
 {{% /tabs %}}
-
-##### Message format
-
-We don't enforce any message format. You can use strings, JSON, protobuf, Avro, gob or anything else that serializes to `[]byte`.
 
 ### Using *Messages Router*
 
 [*Publishers and subscribers*]({{< ref "/docs/pub-sub" >}}) are rather low-level parts of Watermill.
-In production use, you'd usually want to use a high-level interface and features like [correlation, metrics, poison queue, retrying, throttling, etc.]({{< ref "/docs/messages-router#middleware" >}}).
+In most cases, you'd usually want to use a high-level interface and features like [correlation, metrics, poison queue, retrying, throttling, etc.]({{< ref "/docs/messages-router#middleware" >}}).
 
 You also might not want to send an Ack when processing was successful. Sometimes, you'd like to send a message after processing of another message finishes.
 
@@ -178,16 +268,15 @@ To handle these requirements, there is a component named [*Router*]({{< ref "/do
 
 The flow of our application looks like this:
 
-1. We are producing a message to the topic `example.topic_1` every second.
-2. `struct_handler` handler is listening to `example.topic_1`. When a message is received, the UUID is printed and a new message is produced to `example.topic_2`.
-3. `print_events_topic_1` handler is listening to `example.topic_1` and printing message UUID, payload and metadata. Correlation ID should be the same as in message in `example.topic_1`.
-4. `print_events_topic_2` handler is listening to `example.topic_2` and printing message UUID, payload and metadata. Correlation ID should be the same as in message in `example.topic_2`.
+1. A message is produced on topic `example.topic_1` every second.
+2. `struct_handler` handler listens on `example.topic_1`. When a message is received, the UUID is printed and a new message is produced on `example.topic_2`.
+3. `print_events_topic_1` handler listens on `example.topic_1` and prints message UUID, payload and metadata. Correlation ID should be the same as in the message on `example.topic_1`.
+4. `print_events_topic_2` handler listens on `example.topic_2` and prints message UUID, payload and metadata. Correlation ID should be the same as in the message on `example.topic_2`.
 
 #### Router configuration
 
-For the beginning, we should start with the configuration of the router. We will configure which plugins and middlewares we want to use.
-
-We also will set up handlers which this router will support. Every handler will independently handle the messages.
+Start with configuring the router, adding plugins and middlewares.
+Then set up handlers that the router will use. Each handler will independently handle messages.
 
 {{% render-md %}}
 {{% load-snippet-partial file="content/docs/getting-started/router/main.go" first_line_contains="package" last_line_contains="router.Run(ctx)" padding_after="4" %}}
@@ -195,8 +284,8 @@ We also will set up handlers which this router will support. Every handler will 
 
 #### Producing messages
 
-Producing messages works just like before. We have only added `middleware.SetCorrelationID` to set the correlation ID.
-Correlation ID will be added to all messages produced by the router (`middleware.CorrelationID`).
+Producing messages works the same like when using publisher directly. Notice that we've added `SetCorrelationID` middleware.
+Correlation ID will be added to all messages produced by the router (it will be stored in metadata).
 
 {{% render-md %}}
 {{% load-snippet-partial file="content/docs/getting-started/router/main.go" first_line_contains="func publishMessages" last_line_contains="time.Sleep(time.Second)" padding_after="2" %}}
@@ -204,13 +293,13 @@ Correlation ID will be added to all messages produced by the router (`middleware
 
 #### Handlers
 
-You may notice that we have two types of *handler functions*:
+You may have noticed that there are two types of *handler functions*:
 
 1. function `func(msg *message.Message) ([]*message.Message, error)`
 2. method `func (c structHandler) Handler(msg *message.Message) ([]*message.Message, error)`
 
-The second option is useful when your function requires some dependencies like database, logger, etc.
-If you use a simple function without dependencies, it's fine to use the second option.
+If your handler is a function without any dependencies, it's fine to use the first one.
+The second option is useful when your handler requires some dependencies like database handle, a logger, etc.
 
 {{% render-md %}}
 {{% load-snippet-partial file="content/docs/getting-started/router/main.go" first_line_contains="func printMessages" last_line_contains="return message.Messages{msg}, nil" padding_after="3" %}}
@@ -222,13 +311,24 @@ You can run this example by `go run main.go`.
 
 You've just created your first application with Watermill. You can find the full source in [/docs/content/docs/getting-started/router/main.go](https://github.com/ThreeDotsLabs/watermill/blob/master/docs/content/docs/getting-started/router/main.go).
 
+### Logging
+
+To see Watermill's logs, you have to pass any logger that implements the [LoggerAdapter](https://github.com/ThreeDotsLabs/watermill/blob/master/log.go).
+For experimental development, you can use `NewStdLogger`.
+
+### Testing
+
+Watermill provides [a set of test scenarios](https://github.com/ThreeDotsLabs/watermill/blob/master/pubsub/tests/test_pubsub.go)
+that any Pub/Sub implementation can use. Each test suite needs to declare what features it supports and how to construct a new Pub/Sub.
+These scenarios check both basic usage and more uncommon use cases. Stress tests are also included.
+
 ### Deployment
 
 Watermill is not a framework. We don't enforce any type of deployment and it's totally up to you.
 
 ### What's next?
 
-For more detailed documentation you should check [documentation topics list]({{< ref "/docs" >}}).
+For more detailed documentation check [documentation topics]({{< ref "/docs" >}}).
 
 #### Examples
 
@@ -239,7 +339,7 @@ After that, you can check the [Simple app](https://github.com/ThreeDotsLabs/wate
 
 The [third example](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/http-to-kafka)  showcases the use of a different Subscriber implementation, namely **HTTP**. It is a very simple application, which can save GitLab webhooks to Kafka.
 
-You may also find some useful informations in our [README](https://github.com/ThreeDotsLabs/watermill#readme) .
+Most recent information can be found in the project's [README](https://github.com/ThreeDotsLabs/watermill#readme).
 
 #### Support
 
