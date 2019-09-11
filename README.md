@@ -10,8 +10,6 @@ for building event driven applications, enabling event sourcing, RPC over messag
 sagas and basically whatever else comes to your mind. You can use conventional pub/sub
 implementations like Kafka or RabbitMQ, but also HTTP or MySQL binlog if that fits your use case.
 
-**Note:** This is README file is created for `master`. You may want to check README [for release v0.4.0.](https://github.com/ThreeDotsLabs/watermill/tree/v0.4.0#watermill)
-
 Documentation: https://watermill.io/
 
 Getting started guide: https://watermill.io/docs/getting-started/
@@ -89,11 +87,24 @@ All contributions are very much welcome. If you'd like to help with Watermill de
 please see [open issues](https://github.com/ThreeDotsLabs/watermill/issues?utf8=%E2%9C%93&q=is%3Aissue+is%3Aopen+)
 and submit your pull request via GitHub.
 
+## Stability
+
+Watermill is already in v1.0.0, and is production ready. API is already stable, and will be not changed without changing major version.
+
+To ensure, that all Pub/Sub implementations are stable and safe to use in the production, we created [set of tests](https://github.com/ThreeDotsLabs/watermill/blob/master/pubsub/tests/test_pubsub.go#L34) which needs to be passed by every implementation before merging to master.
+All tests are also executed in [*stress*](https://github.com/ThreeDotsLabs/watermill/blob/master/pubsub/tests/test_pubsub.go#L171) mode - that means that we are running all the tests **20x** in parallel.
+
+Core functionality of Watermill is tested with unit tests.
+
+All tests are executed against race conditions (`-race` flag in tests).
+
 ## Support
 
 If you didn't find the answer to your question in [the documentation](https://watermill.io/), feel free to ask us directly!
 
 Please join us on the `#watermill` channel on the [Gophers slack](https://gophers.slack.com/): You can get an invite [here](https://gophersinvite.herokuapp.com/).
+
+We are very open to feedback from you. You can give it using [survey](https://www.surveymonkey.com/r/WZXD392).
 
 ## Why the name?
 
