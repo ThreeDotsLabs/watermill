@@ -20,5 +20,5 @@ You can replace all import paths, with provided `sed`:
 - `github.com/ThreeDotsLabs/watermill/message/infrastructure/gochannel` was moved to `github.com/ThreeDotsLabs/watermill/pubsub/gochannel`
 - `middleware.Retry` configuration parameters have been renamed
 - Universal Pub/Sub tests have been moved from `github.com/ThreeDotsLabs/watermill/message/infrastructure` to `github.com/ThreeDotsLabs/watermill/pubsub/tests`
-- All universal tests requires now `TestContext`.
+- All universal tests require now `TestContext`.
 - Removed `context` from `googlecloud.NewPublisher`
