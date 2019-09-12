@@ -27,8 +27,9 @@ func (ps PubSub) PublishMessages() error {
 		return err
 	}
 
+	wg.Add(workers)
+
 	for num := 0; num < workers; num++ {
-		wg.Add(1)
 		go func() {
 			defer wg.Done()
 

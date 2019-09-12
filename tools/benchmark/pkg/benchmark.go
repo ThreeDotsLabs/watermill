@@ -18,11 +18,11 @@ type Results struct {
 
 // RunBenchmark runs benchmark on chosen pubsub and returns publishing and subscribing results.
 func RunBenchmark(pubSubName string, messagesCount uint64, messageSize uint64) (Results, Results, error) {
-	if err := initialise(pubSubName); err != nil {
+	topic := "benchmark_" + watermill.NewShortUUID()
+
+	if err := initialise(pubSubName, topic); err != nil {
 		return Results{}, Results{}, err
 	}
-
-	topic := "benchmark_" + watermill.NewShortUUID()
 
 	pubsub, err := NewPubSub(pubSubName, topic, messagesCount, messageSize)
 	if err != nil {
@@ -35,12 +35,19 @@ func RunBenchmark(pubSubName string, messagesCount uint64, messageSize uint64) (
 
 	var c *Counter
 
+	doneChannel := make(chan struct{})
+
 	go func() {
+		ticker := time.NewTicker(time.Second * 5)
 		for {
-			if c != nil {
-				fmt.Printf("processed: %d\n", c.count)
+			select {
+			case <-doneChannel:
+				return
+			case <-ticker.C:
+				if c != nil {
+					fmt.Printf("processed: %d\n", c.count)
+				}
 			}
-			time.Sleep(time.Second * 5)
 		}
 	}()
 
@@ -57,6 +64,8 @@ func RunBenchmark(pubSubName string, messagesCount uint64, messageSize uint64) (
 	}()
 
 	wg.Wait()
+
+	doneChannel <- struct{}{}
 
 	if err := pubsub.Close(); err != nil {
 		return Results{}, Results{}, err
@@ -78,9 +87,7 @@ func RunBenchmark(pubSubName string, messagesCount uint64, messageSize uint64) (
 }
 
 // It is required to create a subscriber for some PubSubs for initialisation.
-func initialise(pubSubName string) error {
-	topic := "benchmark_init_" + watermill.NewShortUUID()
-
+func initialise(pubSubName string, topic string) error {
 	pubsub, err := NewPubSub(pubSubName, topic, 0, 0)
 	if err != nil {
 		return err

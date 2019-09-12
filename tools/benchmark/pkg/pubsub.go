@@ -60,7 +60,9 @@ type PubSubDefinition struct {
 var pubSubDefinitions = map[string]PubSubDefinition{
 	"gochannel": {
 		Constructor: func() (message.Publisher, message.Subscriber) {
-			pubsub := gochannel.NewGoChannel(gochannel.Config{}, logger)
+			pubsub := gochannel.NewGoChannel(gochannel.Config{
+				Persistent: true,
+			}, logger)
 			return pubsub, pubsub
 		},
 	},
@@ -109,7 +111,7 @@ var pubSubDefinitions = map[string]PubSubDefinition{
 
 			pub, err := nats.NewStreamingPublisher(nats.StreamingPublisherConfig{
 				ClusterID: "test-cluster",
-				ClientID:  "benchmark_pub_" + watermill.NewShortUUID(),
+				ClientID:  "benchmark_pub",
 				StanOptions: []stan.Option{
 					stan.NatsURL(natsURL),
 				},
@@ -121,7 +123,7 @@ var pubSubDefinitions = map[string]PubSubDefinition{
 
 			sub, err := nats.NewStreamingSubscriber(nats.StreamingSubscriberConfig{
 				ClusterID:        "test-cluster",
-				ClientID:         "benchmark_sub_" + watermill.NewShortUUID(),
+				ClientID:         "benchmark_sub",
 				QueueGroup:       "test-queue",
 				DurableName:      "durable-name",
 				SubscribersCount: 8, // todo - experiment
