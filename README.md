@@ -91,7 +91,7 @@ and submit your pull request via GitHub.
 
 Watermill v1.0.0 has been released and is production-ready. The public API is stable and will not change without changing the major version.
 
-To ensure, that all Pub/Sub implementations are stable and safe to use in the production, we created [set of tests](https://github.com/ThreeDotsLabs/watermill/blob/master/pubsub/tests/test_pubsub.go#L34) which needs to be passed by every implementation before merging to master.
+To ensure that all Pub/Subs are stable and safe to use in production, we created a [set of tests](https://github.com/ThreeDotsLabs/watermill/blob/master/pubsub/tests/test_pubsub.go#L34) that need to pass for each of the implementations before merging to master.
 All tests are also executed in [*stress*](https://github.com/ThreeDotsLabs/watermill/blob/master/pubsub/tests/test_pubsub.go#L171) mode - that means that we are running all the tests **20x** in parallel.
 
 All tests are executed against race conditions (`-race` flag in tests).
