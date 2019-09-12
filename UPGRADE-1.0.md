@@ -4,7 +4,7 @@ In v1.0.0 we introduced a couple of breaking changes, to keep stable API until v
 
 ## Migrating Pub/Subs
 
-All Pub/Subs (excluding go-channel implementation) was moved to separated repositories.
+All Pub/Subs (excluding go-channel implementation) were moved to separated repositories.
 You can replace all import paths, with provided `sed`:
 
 	find . -type f -iname '*.go' -exec sed -i -E "s/github\.com\/ThreeDotsLabs\/watermill\/message\/infrastructure\/(amqp|googlecloud|http|io|kafka|nats|sql)/github.com\/ThreeDotsLabs\/watermill-\1\/pkg\/\1/" "{}" +;
