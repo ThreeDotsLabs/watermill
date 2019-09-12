@@ -102,7 +102,7 @@ If you didn't find the answer to your question in [the documentation](https://wa
 
 Please join us on the `#watermill` channel on the [Gophers slack](https://gophers.slack.com/): You can get an invite [here](https://gophersinvite.herokuapp.com/).
 
-We are very open to feedback from you. You can give it using [survey](https://www.surveymonkey.com/r/WZXD392).
+All kind of feedback is very welcome and appreciated. Please submit it using [the survey](https://www.surveymonkey.com/r/WZXD392).
 
 ## Why the name?
 
