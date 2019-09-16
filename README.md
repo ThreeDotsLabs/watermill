@@ -85,9 +85,7 @@ All Pub/Subs implementation documentation can be found in the [documentation](ht
 
 ## Contributing
 
-All contributions are very much welcome. If you'd like to help with Watermill development,
-please see [open issues](https://github.com/ThreeDotsLabs/watermill/issues?utf8=%E2%9C%93&q=is%3Aissue+is%3Aopen+)
-and submit your pull request via GitHub.
+Please check our [contributing guide](CONTRIBUTING.md).
 
 ## Support
 
