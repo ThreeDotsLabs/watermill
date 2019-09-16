@@ -511,16 +511,12 @@ func (h *handler) handleMessage(msg *Message, handler HandlerFunc) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			h.logger.Error(
-				"Panic recovered in handler. Stack: " + string(debug.Stack()),
+				"Panic recovered in handler. Stack: "+string(debug.Stack()),
 				errors.Errorf("%s", recovered),
-				nil,
+				msgFields,
 			)
 			msg.Nack()
-			return
 		}
-
-		msg.Ack()
-		h.logger.Trace("Message acked", msgFields)
 	}()
 
 	h.logger.Trace("Received message", msgFields)
@@ -540,7 +536,8 @@ func (h *handler) handleMessage(msg *Message, handler HandlerFunc) {
 		return
 	}
 
-	h.logger.Trace("Message processed", msgFields)
+	msg.Ack()
+	h.logger.Trace("Message acked", msgFields)
 }
 
 func (h *handler) publishProducedMessages(producedMessages Messages, msgFields watermill.LogFields) error {
