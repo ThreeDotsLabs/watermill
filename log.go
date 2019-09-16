@@ -35,6 +35,8 @@ func (l LogFields) Copy() LogFields {
 	return cpy
 }
 
+// LoggerAdapter is an interface, that you need to implement to support Watermill logging.
+// You can use StdLoggerAdapter as a reference implementation.
 type LoggerAdapter interface {
 	Error(msg string, err error, fields LogFields)
 	Info(msg string, fields LogFields)

@@ -10,8 +10,6 @@ for building event driven applications, enabling event sourcing, RPC over messag
 sagas and basically whatever else comes to your mind. You can use conventional pub/sub
 implementations like Kafka or RabbitMQ, but also HTTP or MySQL binlog if that fits your use case.
 
-**Note:** This is README file is created for `master`. You may want to check README [for release v0.4.0.](https://github.com/ThreeDotsLabs/watermill/tree/v0.4.0#watermill)
-
 Documentation: https://watermill.io/
 
 Getting started guide: https://watermill.io/docs/getting-started/
@@ -89,11 +87,22 @@ All contributions are very much welcome. If you'd like to help with Watermill de
 please see [open issues](https://github.com/ThreeDotsLabs/watermill/issues?utf8=%E2%9C%93&q=is%3Aissue+is%3Aopen+)
 and submit your pull request via GitHub.
 
+## Stability
+
+Watermill v1.0.0 has been released and is production-ready. The public API is stable and will not change without changing the major version.
+
+To ensure that all Pub/Subs are stable and safe to use in production, we created a [set of tests](https://github.com/ThreeDotsLabs/watermill/blob/master/pubsub/tests/test_pubsub.go#L34) that need to pass for each of the implementations before merging to master.
+All tests are also executed in [*stress*](https://github.com/ThreeDotsLabs/watermill/blob/master/pubsub/tests/test_pubsub.go#L171) mode - that means that we are running all the tests **20x** in parallel.
+
+All tests are run with the race condition detector enabled (`-race` flag in tests).
+
 ## Support
 
 If you didn't find the answer to your question in [the documentation](https://watermill.io/), feel free to ask us directly!
 
 Please join us on the `#watermill` channel on the [Gophers slack](https://gophers.slack.com/): You can get an invite [here](https://gophersinvite.herokuapp.com/).
+
+Every bit of feedback is very welcome and appreciated. Please submit it using [the survey](https://www.surveymonkey.com/r/WZXD392).
 
 ## Why the name?
 
