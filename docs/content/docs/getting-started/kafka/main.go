@@ -9,7 +9,7 @@ import (
 	"github.com/Shopify/sarama"
 
 	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill-kafka/pkg/kafka"
+	"github.com/ThreeDotsLabs/watermill-kafka/v2/pkg/kafka"
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
@@ -20,11 +20,11 @@ func main() {
 
 	subscriber, err := kafka.NewSubscriber(
 		kafka.SubscriberConfig{
-			Brokers:       []string{"kafka:9092"},
-			ConsumerGroup: "test_consumer_group",
+			Brokers:               []string{"kafka:9092"},
+			Unmarshaler:           kafka.DefaultMarshaler{},
+			OverwriteSaramaConfig: saramaSubscriberConfig,
+			ConsumerGroup:         "test_consumer_group",
 		},
-		saramaSubscriberConfig,
-		kafka.DefaultMarshaler{},
 		watermill.NewStdLogger(false, false),
 	)
 	if err != nil {
@@ -39,9 +39,10 @@ func main() {
 	go process(messages)
 
 	publisher, err := kafka.NewPublisher(
-		[]string{"kafka:9092"},
-		kafka.DefaultMarshaler{},
-		nil, // no custom sarama config
+		kafka.PublisherConfig{
+			Brokers:   []string{"kafka:9092"},
+			Marshaler: kafka.DefaultMarshaler{},
+		},
 		watermill.NewStdLogger(false, false),
 	)
 	if err != nil {

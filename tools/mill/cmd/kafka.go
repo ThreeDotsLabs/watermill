@@ -5,7 +5,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/ThreeDotsLabs/watermill-kafka/pkg/kafka"
+	"github.com/ThreeDotsLabs/watermill-kafka/v2/pkg/kafka"
 )
 
 var kafkaCmd = &cobra.Command{
@@ -34,11 +34,11 @@ For the configuration of consuming/producing of the messages, check the help of 
 
 			consumer, err = kafka.NewSubscriber(
 				kafka.SubscriberConfig{
-					Brokers:       brokers,
-					ConsumerGroup: viper.GetString("kafka.consume.consumerGroup"),
+					Brokers:               brokers,
+					Unmarshaler:           kafka.DefaultMarshaler{},
+					OverwriteSaramaConfig: saramaSubscriberConfig,
+					ConsumerGroup:         viper.GetString("kafka.consume.consumerGroup"),
 				},
-				saramaSubscriberConfig,
-				kafka.DefaultMarshaler{},
 				logger,
 			)
 			if err != nil {
@@ -47,7 +47,13 @@ For the configuration of consuming/producing of the messages, check the help of 
 		}
 
 		if cmd.Use == "produce" {
-			producer, err = kafka.NewPublisher(brokers, kafka.DefaultMarshaler{}, nil, logger)
+			producer, err = kafka.NewPublisher(
+				kafka.PublisherConfig{
+					Brokers:   brokers,
+					Marshaler: kafka.DefaultMarshaler{},
+				},
+				logger,
+			)
 			if err != nil {
 				return err
 			}
