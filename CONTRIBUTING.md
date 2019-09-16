@@ -46,5 +46,3 @@ Useful commands:
 - [Effective Go](https://golang.org/doc/effective_go.html)
 - SOLID
 - code should be open for configuration and not coupled to any serialization method (for example: [AMQP marshaler](https://github.com/ThreeDotsLabs/watermill-amqp/blob/master/pkg/amqp/marshaler.go), [AMQP Config](https://github.com/ThreeDotsLabs/watermill-amqp/blob/master/pkg/amqp/config.go)
-
-## Tests
