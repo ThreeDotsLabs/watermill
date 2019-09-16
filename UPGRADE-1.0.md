@@ -1,6 +1,6 @@
 # Upgrade instructions from v0.4.X
 
-In v1.0.0 we introduced a couple of breaking changes, to keep stable API until version v2.
+In v1.0.0 we introduced a couple of breaking changes, to keep a stable API until version v2.
 
 ## Migrating Pub/Subs
 
