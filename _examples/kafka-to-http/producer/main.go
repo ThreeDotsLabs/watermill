@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill-kafka/pkg/kafka"
+	"github.com/ThreeDotsLabs/watermill-kafka/v2/pkg/kafka"
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
@@ -24,7 +24,13 @@ const (
 )
 
 func main() {
-	pub, err := kafka.NewPublisher(brokers, kafka.DefaultMarshaler{}, nil, logger)
+	pub, err := kafka.NewPublisher(
+		kafka.PublisherConfig{
+			Brokers:   brokers,
+			Marshaler: kafka.DefaultMarshaler{},
+		},
+		logger,
+	)
 	if err != nil {
 		panic(err)
 	}

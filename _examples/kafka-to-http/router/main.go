@@ -5,7 +5,7 @@ import (
 
 	"github.com/ThreeDotsLabs/watermill"
 	watermill_http "github.com/ThreeDotsLabs/watermill-http/pkg/http"
-	"github.com/ThreeDotsLabs/watermill-kafka/pkg/kafka"
+	"github.com/ThreeDotsLabs/watermill-kafka/v2/pkg/kafka"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/router/plugin"
 )
@@ -39,9 +39,13 @@ func main() {
 		panic(err)
 	}
 
-	subscriber, err := kafka.NewSubscriber(kafka.SubscriberConfig{
-		Brokers: []string{"kafka:9092"},
-	}, nil, kafka.DefaultMarshaler{}, logger)
+	subscriber, err := kafka.NewSubscriber(
+		kafka.SubscriberConfig{
+			Brokers:     []string{"kafka:9092"},
+			Unmarshaler: kafka.DefaultMarshaler{},
+		},
+		logger,
+	)
 	if err != nil {
 		panic(err)
 	}

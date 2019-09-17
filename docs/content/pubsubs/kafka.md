@@ -33,7 +33,7 @@ You can pass [custom config](https://github.com/Shopify/sarama/blob/master/confi
 When `nil` is passed, default config is used (`DefaultSaramaSubscriberConfig`).
 
 {{% render-md %}}
-{{% load-snippet-partial file="src-link/watermill-kafka/pkg/kafka/config.go" first_line_contains="// DefaultSaramaSubscriberConfig" last_line_contains="return config" padding_after="1" %}}
+{{% load-snippet-partial file="src-link/watermill-kafka/pkg/kafka/subscriber.go" first_line_contains="// DefaultSaramaSubscriberConfig" last_line_contains="return config" padding_after="1" %}}
 {{% /render-md %}}
 
 #### Connecting

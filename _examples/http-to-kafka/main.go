@@ -12,7 +12,7 @@ import (
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill-http/pkg/http"
-	"github.com/ThreeDotsLabs/watermill-kafka/pkg/kafka"
+	"github.com/ThreeDotsLabs/watermill-kafka/v2/pkg/kafka"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
 	"github.com/ThreeDotsLabs/watermill/message/router/plugin"
@@ -31,7 +31,13 @@ func main() {
 	flag.Parse()
 	logger := watermill.NewStdLogger(true, true)
 
-	kafkaPublisher, err := kafka.NewPublisher([]string{*kafkaAddr}, kafka.DefaultMarshaler{}, nil, logger)
+	kafkaPublisher, err := kafka.NewPublisher(
+		kafka.PublisherConfig{
+			Brokers:   []string{*kafkaAddr},
+			Marshaler: kafka.DefaultMarshaler{},
+		},
+		logger,
+	)
 	if err != nil {
 		panic(err)
 	}

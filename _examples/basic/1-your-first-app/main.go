@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill-kafka/pkg/kafka"
+	"github.com/ThreeDotsLabs/watermill-kafka/v2/pkg/kafka"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
 	"github.com/ThreeDotsLabs/watermill/message/router/plugin"
@@ -94,9 +94,10 @@ func main() {
 // createPublisher is a helper function that creates a Publisher, in this case - the Kafka Publisher.
 func createPublisher() message.Publisher {
 	kafkaPublisher, err := kafka.NewPublisher(
-		brokers,
-		marshaler,
-		nil,
+		kafka.PublisherConfig{
+			Brokers:   brokers,
+			Marshaler: marshaler,
+		},
 		logger,
 	)
 	if err != nil {
@@ -108,10 +109,14 @@ func createPublisher() message.Publisher {
 
 // createSubscriber is a helper function similar to the previous one, but in this case it creates a Subscriber.
 func createSubscriber(consumerGroup string) message.Subscriber {
-	kafkaSubscriber, err := kafka.NewSubscriber(kafka.SubscriberConfig{
-		Brokers:       brokers,
-		ConsumerGroup: consumerGroup, // every handler will use a separate consumer group
-	}, nil, marshaler, logger)
+	kafkaSubscriber, err := kafka.NewSubscriber(
+		kafka.SubscriberConfig{
+			Brokers:       brokers,
+			Unmarshaler:   marshaler,
+			ConsumerGroup: consumerGroup, // every handler will use a separate consumer group
+		},
+		logger,
+	)
 	if err != nil {
 		panic(err)
 	}
