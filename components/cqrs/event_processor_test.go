@@ -13,6 +13,37 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestNewEventProcessor(t *testing.T) {
+	handlers := []cqrs.EventHandler{nonPointerEventProcessor{}}
+
+	generateTopic := func(commandName string) string {
+		return ""
+	}
+	subscriberConstructor := func(handlerName string) (subscriber message.Subscriber, e error) {
+		return nil, nil
+	}
+
+	cp, err := cqrs.NewEventProcessor(handlers, generateTopic, subscriberConstructor, cqrs.JSONMarshaler{}, nil)
+	assert.NotNil(t, cp)
+	assert.NoError(t, err)
+
+	cp, err = cqrs.NewEventProcessor([]cqrs.EventHandler{}, generateTopic, subscriberConstructor, cqrs.JSONMarshaler{}, nil)
+	assert.Nil(t, cp)
+	assert.Error(t, err)
+
+	cp, err = cqrs.NewEventProcessor(handlers, nil, subscriberConstructor, cqrs.JSONMarshaler{}, nil)
+	assert.Nil(t, cp)
+	assert.Error(t, err)
+
+	cp, err = cqrs.NewEventProcessor(handlers, generateTopic, nil, cqrs.JSONMarshaler{}, nil)
+	assert.Nil(t, cp)
+	assert.Error(t, err)
+
+	cp, err = cqrs.NewEventProcessor(handlers, generateTopic, subscriberConstructor, nil, nil)
+	assert.Nil(t, cp)
+	assert.Error(t, err)
+}
+
 type nonPointerEventProcessor struct {
 }
 
