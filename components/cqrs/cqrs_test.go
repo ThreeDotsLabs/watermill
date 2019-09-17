@@ -277,56 +277,56 @@ func TestFacadeConfig_Validate(t *testing.T) {
 			Valid: false,
 		},
 		{
-			Name: "missing_GenerateCommandsTopic",
+			Name: "missing_CommandsSubscriberConstructor",
 			Config: transformConfig(validConfig, func(config *cqrs.FacadeConfig) {
 				config.CommandsSubscriberConstructor = nil
 			}),
 			Valid: false,
 		},
 		{
-			Name: "missing_GenerateCommandsTopic",
+			Name: "missing_CommandsPublisher",
 			Config: transformConfig(validConfig, func(config *cqrs.FacadeConfig) {
 				config.CommandsPublisher = nil
 			}),
 			Valid: false,
 		},
 		{
-			Name: "missing_GenerateCommandsTopic",
+			Name: "missing_GenerateEventsTopic",
 			Config: transformConfig(validConfig, func(config *cqrs.FacadeConfig) {
 				config.GenerateEventsTopic = nil
 			}),
 			Valid: false,
 		},
 		{
-			Name: "missing_GenerateCommandsTopic",
+			Name: "missing_GenerateEventsTopic",
 			Config: transformConfig(validConfig, func(config *cqrs.FacadeConfig) {
 				config.EventsSubscriberConstructor = nil
 			}),
 			Valid: false,
 		},
 		{
-			Name: "missing_GenerateCommandsTopic",
+			Name: "missing_EventsPublisher",
 			Config: transformConfig(validConfig, func(config *cqrs.FacadeConfig) {
 				config.EventsPublisher = nil
 			}),
 			Valid: false,
 		},
 		{
-			Name: "missing_GenerateCommandsTopic",
+			Name: "missing_Router",
 			Config: transformConfig(validConfig, func(config *cqrs.FacadeConfig) {
 				config.Router = nil
 			}),
 			Valid: false,
 		},
 		{
-			Name: "missing_GenerateCommandsTopic",
+			Name: "missing_Logger",
 			Config: transformConfig(validConfig, func(config *cqrs.FacadeConfig) {
 				config.Logger = nil
 			}),
 			Valid: false,
 		},
 		{
-			Name: "missing_GenerateCommandsTopic",
+			Name: "missing_CommandEventMarshaler",
 			Config: transformConfig(validConfig, func(config *cqrs.FacadeConfig) {
 				config.CommandEventMarshaler = nil
 			}),
