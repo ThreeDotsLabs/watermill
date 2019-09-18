@@ -44,11 +44,11 @@ TLS config can be passed to `Config.TLSConfig`.
 ##### Connecting
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/docs/getting-started/amqp/main.go" first_line_contains="publisher, err :=" last_line_contains="panic(err)" padding_after="1" %}}
+{{% load-snippet-partial file="src-link/_examples/getting-started/amqp/main.go" first_line_contains="publisher, err :=" last_line_contains="panic(err)" padding_after="1" %}}
 {{% /render-md %}}
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/docs/getting-started/amqp/main.go" first_line_contains="subscriber, err :=" last_line_contains="panic(err)" padding_after="1" %}}
+{{% load-snippet-partial file="src-link/_examples/getting-started/amqp/main.go" first_line_contains="subscriber, err :=" last_line_contains="panic(err)" padding_after="1" %}}
 {{% /render-md %}}
 
 #### Publishing

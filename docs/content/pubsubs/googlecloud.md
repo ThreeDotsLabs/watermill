@@ -67,11 +67,11 @@ Watermill will connect to the instance of Google Cloud Pub/Sub indicated by the 
 For development, you can use a Docker image with the emulator and the `PUBSUB_EMULATOR_HOST` env ([check out the Getting Started guide]({{< ref "getting-started#subscribing_gcloud" >}})).
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/docs/getting-started/googlecloud/main.go" first_line_contains="publisher, err :=" last_line_contains="panic(err)" padding_after="1" %}}
+{{% load-snippet-partial file="src-link/_examples/getting-started/googlecloud/main.go" first_line_contains="publisher, err :=" last_line_contains="panic(err)" padding_after="1" %}}
 {{% /render-md %}}
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/docs/getting-started/googlecloud/main.go" first_line_contains="subscriber, err :=" last_line_contains="panic(err)" padding_after="1" %}}
+{{% load-snippet-partial file="src-link/_examples/getting-started/googlecloud/main.go" first_line_contains="subscriber, err :=" last_line_contains="panic(err)" padding_after="1" %}}
 {{% /render-md %}}
 
 #### Publishing

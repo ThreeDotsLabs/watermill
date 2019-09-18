@@ -32,13 +32,14 @@ if [[ "$1" == "--copy" ]]; then
     cp ../components/ content/src-link/ -r
 else
     declare -a files_to_link=(
+        "_examples"
+
         "message/decorator.go"
         "message/message.go"
         "message/pubsub.go"
         "message/router.go"
         "pubsub/gochannel/pubsub.go"
 
-        "_examples/cqrs-protobuf/main.go"
         "components/cqrs/command_bus.go"
         "components/cqrs/command_processor.go"
         "components/cqrs/event_bus.go"
@@ -49,9 +50,6 @@ else
 
         "components/metrics/builder.go"
         "components/metrics/http.go"
-        "_examples/metrics/main.go"
-
-        "_examples/sql/transactional-events/main.go"
     )
 
     pushd ../

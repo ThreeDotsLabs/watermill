@@ -83,8 +83,8 @@ See detailed examples below for supported PubSubs.
 {{% tabs id="subscribing" tabs="go-channel,kafka,nats-streaming,gcloud,amqp,sql" labels="Go Channel,Kafka,NATS Streaming,Google Cloud Pub/Sub,RabbitMQ (AMQP),SQL" %}}
 
 {{% tabs-tab id="go-channel"%}}
-{{% load-snippet-partial file="content/docs/getting-started/go-channel/main.go" first_line_contains="package main" last_line_contains="process(messages)" %}}
-{{% load-snippet-partial file="content/docs/getting-started/go-channel/main.go" first_line_contains="func process" %}}
+{{% load-snippet-partial file="src-link/_examples/getting-started/go-channel/main.go" first_line_contains="package main" last_line_contains="process(messages)" %}}
+{{% load-snippet-partial file="src-link/_examples/getting-started/go-channel/main.go" first_line_contains="func process" %}}
 {{% /tabs-tab %}}
 
 {{% tabs-tab id="kafka" %}}
@@ -97,7 +97,7 @@ Running in Docker
 {{% collapse-box id="docker" %}}
 The easiest way to run Watermill locally with Kafka is using Docker.
 
-{{% load-snippet file="content/docs/getting-started/kafka/docker-compose.yml" type="yaml" %}}
+{{% load-snippet file="src-link/_examples/getting-started/kafka/docker-compose.yml" type="yaml" %}}
 
 The source should go to `main.go`.
 
@@ -108,8 +108,8 @@ A more detailed explanation of how it is working (and how to add live code reloa
 {{% /collapse-box %}}
 {{< /collapse >}}
 
-{{% load-snippet-partial file="content/docs/getting-started/kafka/main.go" first_line_contains="package main" last_line_contains="process(messages)" %}}
-{{% load-snippet-partial file="content/docs/getting-started/kafka/main.go" first_line_contains="func process" %}}
+{{% load-snippet-partial file="src-link/_examples/getting-started/kafka/main.go" first_line_contains="package main" last_line_contains="process(messages)" %}}
+{{% load-snippet-partial file="src-link/_examples/getting-started/kafka/main.go" first_line_contains="func process" %}}
 {{% /tabs-tab %}}
 
 {{% tabs-tab id="nats-streaming"%}}
@@ -122,7 +122,7 @@ Running in Docker
 {{% collapse-box id="nats-streaming-docker" %}}
 The easiest way to run Watermill locally with NATS is using Docker.
 
-{{% load-snippet file="content/docs/getting-started/nats-streaming/docker-compose.yml" type="yaml" %}}
+{{% load-snippet file="src-link/_examples/getting-started/nats-streaming/docker-compose.yml" type="yaml" %}}
 
 The source should go to `main.go`.
 
@@ -132,8 +132,8 @@ A more detailed explanation of how it is working (and how to add live code reloa
 {{% /collapse-box %}}
 {{< /collapse >}}
 
-{{% load-snippet-partial file="content/docs/getting-started/nats-streaming/main.go" first_line_contains="package main" last_line_contains="process(messages)" %}}
-{{% load-snippet-partial file="content/docs/getting-started/nats-streaming/main.go" first_line_contains="func process" %}}
+{{% load-snippet-partial file="src-link/_examples/getting-started/nats-streaming/main.go" first_line_contains="package main" last_line_contains="process(messages)" %}}
+{{% load-snippet-partial file="src-link/_examples/getting-started/nats-streaming/main.go" first_line_contains="func process" %}}
 {{% /tabs-tab %}}
 
 
@@ -147,7 +147,7 @@ Running in Docker
 {{% collapse-box id="gcloud-streaming-docker" %}}
 You can run Google Cloud Pub/Sub emulator locally for development.
 
-{{% load-snippet file="content/docs/getting-started/googlecloud/docker-compose.yml" type="yaml" %}}
+{{% load-snippet file="src-link/_examples/getting-started/googlecloud/docker-compose.yml" type="yaml" %}}
 
 The source should go to `main.go`.
 
@@ -157,8 +157,8 @@ A more detailed explanation of how it is working (and how to add live code reloa
 {{% /collapse-box %}}
 {{< /collapse >}}
 
-{{% load-snippet-partial file="content/docs/getting-started/googlecloud/main.go" first_line_contains="package main" last_line_contains="process(messages)" %}}
-{{% load-snippet-partial file="content/docs/getting-started/googlecloud/main.go" first_line_contains="func process" %}}
+{{% load-snippet-partial file="src-link/_examples/getting-started/googlecloud/main.go" first_line_contains="package main" last_line_contains="process(messages)" %}}
+{{% load-snippet-partial file="src-link/_examples/getting-started/googlecloud/main.go" first_line_contains="func process" %}}
 {{% /tabs-tab %}}
 
 {{% tabs-tab id="amqp"%}}
@@ -169,7 +169,7 @@ A more detailed explanation of how it is working (and how to add live code reloa
 Running in Docker
 {{% /collapse-toggle %}}
 {{% collapse-box id="amqp-docker" %}}
-{{% load-snippet file="content/docs/getting-started/amqp/docker-compose.yml" type="yaml" %}}
+{{% load-snippet file="src-link/_examples/getting-started/amqp/docker-compose.yml" type="yaml" %}}
 
 The source should go to `main.go`.
 
@@ -179,8 +179,8 @@ A more detailed explanation of how it is working (and how to add live code reloa
 {{% /collapse-box %}}
 {{< /collapse >}}
 
-{{% load-snippet-partial file="content/docs/getting-started/amqp/main.go" first_line_contains="package main" last_line_contains="process(messages)" %}}
-{{% load-snippet-partial file="content/docs/getting-started/amqp/main.go" first_line_contains="func process" %}}
+{{% load-snippet-partial file="src-link/_examples/getting-started/amqp/main.go" first_line_contains="package main" last_line_contains="process(messages)" %}}
+{{% load-snippet-partial file="src-link/_examples/getting-started/amqp/main.go" first_line_contains="func process" %}}
 {{% /tabs-tab %}}
 
 {{% tabs-tab id="sql"%}}
@@ -191,7 +191,7 @@ A more detailed explanation of how it is working (and how to add live code reloa
 Running in Docker
 {{% /collapse-toggle %}}
 {{% collapse-box id="sql-docker" %}}
-{{% load-snippet file="content/docs/getting-started/sql/docker-compose.yml" type="yaml" %}}
+{{% load-snippet file="src-link/_examples/getting-started/sql/docker-compose.yml" type="yaml" %}}
 
 The source should go to `main.go`.
 
@@ -201,8 +201,8 @@ A more detailed explanation of how it is working (and how to add live code reloa
 {{% /collapse-box %}}
 {{< /collapse >}}
 
-{{% load-snippet-partial file="content/docs/getting-started/sql/main.go" first_line_contains="package main" last_line_contains="process(messages)" %}}
-{{% load-snippet-partial file="content/docs/getting-started/sql/main.go" first_line_contains="func process" %}}
+{{% load-snippet-partial file="src-link/_examples/getting-started/sql/main.go" first_line_contains="package main" last_line_contains="process(messages)" %}}
+{{% load-snippet-partial file="src-link/_examples/getting-started/sql/main.go" first_line_contains="func process" %}}
 {{% /tabs-tab %}}
 
 {{% /tabs %}}
@@ -232,27 +232,27 @@ if err != nil {
 {{% tabs id="publishing" tabs="go-channel,kafka,nats-streaming,gcloud,amqp,sql" labels="Go Channel,Kafka,NATS Streaming,Google Cloud Pub/Sub,RabbitMQ (AMQP),SQL" %}}
 
 {{% tabs-tab id="go-channel"%}}
-{{% load-snippet-partial file="content/docs/getting-started/go-channel/main.go" first_line_contains="go process(messages)" last_line_contains="publisher.Publish" padding_after="4" %}}
+{{% load-snippet-partial file="src-link/_examples/getting-started/go-channel/main.go" first_line_contains="go process(messages)" last_line_contains="publisher.Publish" padding_after="4" %}}
 {{% /tabs-tab %}}
 
 {{% tabs-tab id="kafka" %}}
-{{% load-snippet-partial file="content/docs/getting-started/kafka/main.go" first_line_contains="go process(messages)" last_line_contains="publisher.Publish" padding_after="4" %}}
+{{% load-snippet-partial file="src-link/_examples/getting-started/kafka/main.go" first_line_contains="go process(messages)" last_line_contains="publisher.Publish" padding_after="4" %}}
 {{% /tabs-tab %}}
 
 {{% tabs-tab id="nats-streaming" %}}
-{{% load-snippet-partial file="content/docs/getting-started/nats-streaming/main.go" first_line_contains="go process(messages)" last_line_contains="publisher.Publish" padding_after="4" %}}
+{{% load-snippet-partial file="src-link/_examples/getting-started/nats-streaming/main.go" first_line_contains="go process(messages)" last_line_contains="publisher.Publish" padding_after="4" %}}
 {{% /tabs-tab %}}
 
 {{% tabs-tab id="gcloud" %}}
-{{% load-snippet-partial file="content/docs/getting-started/googlecloud/main.go" first_line_contains="go process(messages)" last_line_contains="publisher.Publish" padding_after="4" %}}
+{{% load-snippet-partial file="src-link/_examples/getting-started/googlecloud/main.go" first_line_contains="go process(messages)" last_line_contains="publisher.Publish" padding_after="4" %}}
 {{% /tabs-tab %}}
 
 {{% tabs-tab id="amqp" %}}
-{{% load-snippet-partial file="content/docs/getting-started/amqp/main.go" first_line_contains="go process(messages)" last_line_contains="publisher.Publish" padding_after="4" %}}
+{{% load-snippet-partial file="src-link/_examples/getting-started/amqp/main.go" first_line_contains="go process(messages)" last_line_contains="publisher.Publish" padding_after="4" %}}
 {{% /tabs-tab %}}
 
 {{% tabs-tab id="sql" %}}
-{{% load-snippet-partial file="content/docs/getting-started/sql/main.go" first_line_contains="go process(messages)" last_line_contains="publisher.Publish" padding_after="4" %}}
+{{% load-snippet-partial file="src-link/_examples/getting-started/sql/main.go" first_line_contains="go process(messages)" last_line_contains="publisher.Publish" padding_after="4" %}}
 {{% /tabs-tab %}}
 
 {{% /tabs %}}
@@ -279,7 +279,7 @@ Start with configuring the router, adding plugins and middlewares.
 Then set up handlers that the router will use. Each handler will independently handle messages.
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/docs/getting-started/router/main.go" first_line_contains="package" last_line_contains="router.Run(ctx)" padding_after="4" %}}
+{{% load-snippet-partial file="src-link/_examples/getting-started/router/main.go" first_line_contains="package" last_line_contains="router.Run(ctx)" padding_after="4" %}}
 {{% /render-md %}}
 
 #### Producing messages
@@ -288,7 +288,7 @@ Producing messages works the same like when using publisher directly. Notice tha
 Correlation ID will be added to all messages produced by the router (it will be stored in metadata).
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/docs/getting-started/router/main.go" first_line_contains="func publishMessages" last_line_contains="time.Sleep(time.Second)" padding_after="2" %}}
+{{% load-snippet-partial file="src-link/_examples/getting-started/router/main.go" first_line_contains="func publishMessages" last_line_contains="time.Sleep(time.Second)" padding_after="2" %}}
 {{% /render-md %}}
 
 #### Handlers
@@ -302,14 +302,14 @@ If your handler is a function without any dependencies, it's fine to use the fir
 The second option is useful when your handler requires some dependencies like database handle, a logger, etc.
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/docs/getting-started/router/main.go" first_line_contains="func printMessages" last_line_contains="return message.Messages{msg}, nil" padding_after="3" %}}
+{{% load-snippet-partial file="src-link/_examples/getting-started/router/main.go" first_line_contains="func printMessages" last_line_contains="return message.Messages{msg}, nil" padding_after="3" %}}
 {{% /render-md %}}
 
 #### Done!
 
 You can run this example by `go run main.go`.
 
-You've just created your first application with Watermill. You can find the full source in [/docs/content/docs/getting-started/router/main.go](https://github.com/ThreeDotsLabs/watermill/blob/master/docs/content/docs/getting-started/router/main.go).
+You've just created your first application with Watermill. You can find the full source in [/docs/src-link/_examples/getting-started/router/main.go](https://github.com/ThreeDotsLabs/watermill/blob/master/docs/src-link/_examples/getting-started/router/main.go).
 
 ### Logging
 
