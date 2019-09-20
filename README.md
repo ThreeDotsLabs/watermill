@@ -12,11 +12,11 @@ implementations like Kafka or RabbitMQ, but also HTTP or MySQL binlog if that fi
 
 ## Goals
 
-* **Easy** to understand (see examples below).
+* **Easy** to understand (see [Examples](/#examples)).
 * **Universal** - event-driven architecture, messaging, stream processing, CQRS - use it for whatever you need.
-* **Fast** - *(benchmarks coming soon)*
+* **Fast** (see [Benchmarks](/#benchmarks))
 * **Flexible** with middlewares and plugins.
-* **Resilient** - using proven technologies and passing stress tests *(results coming soon)*.
+* **Resilient** - using proven technologies and passing stress tests (see [Stability](/#stability)).
 
 ## Getting Started
 
@@ -40,7 +40,7 @@ Pick what you like the best or see in order:
 * SQL Pub/Sub
     * [Event Log](_examples/sql/event-log)
     * [Transactional Events](_examples/sql/transactional-events)
-* [Getting Started Examples](_examples/getting-started)
+* [Getting Started Examples](_examples/pubsubs)
     * These examples are part of the [Getting started guide](https://watermill.io/docs/getting-started/) and show usage of a single component at a time.
 * Complete projects
     * [NATS example](https://github.com/ThreeDotsLabs/nats-example)
@@ -109,6 +109,10 @@ To ensure that all Pub/Subs are stable and safe to use in production, we created
 All tests are also executed in [*stress*](https://github.com/ThreeDotsLabs/watermill/blob/master/pubsub/tests/test_pubsub.go#L171) mode - that means that we are running all the tests **20x** in parallel.
 
 All tests are run with the race condition detector enabled (`-race` flag in tests).
+
+## Benchmarks
+
+Coming soon!
 
 ## Support
 

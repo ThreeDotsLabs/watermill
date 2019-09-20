@@ -39,14 +39,14 @@ By default NATS client will try to connect to `localhost:4222`. If you are using
 {{% load-snippet-partial file="src-link/watermill-nats/pkg/nats/publisher.go" first_line_contains="// NewStreamingPublisher" last_line_contains="func NewStreamingPublisher" %}}
 
 Example:
-{{% load-snippet-partial file="src-link/_examples/getting-started/nats-streaming/main.go" first_line_contains="publisher, err :=" last_line_contains="panic(err)" padding_after="1" %}}
+{{% load-snippet-partial file="src-link/_examples/pubsubs/nats-streaming/main.go" first_line_contains="publisher, err :=" last_line_contains="panic(err)" padding_after="1" %}}
 {{% /render-md %}}
 
 {{% render-md %}}
 {{% load-snippet-partial file="src-link/watermill-nats/pkg/nats/subscriber.go" first_line_contains="// NewStreamingSubscriber" last_line_contains="func NewStreamingSubscriber" %}}
 
 Example:
-{{% load-snippet-partial file="src-link/_examples/getting-started/nats-streaming/main.go" first_line_contains="subscriber, err :=" last_line_contains="panic(err)" padding_after="1" %}}
+{{% load-snippet-partial file="src-link/_examples/pubsubs/nats-streaming/main.go" first_line_contains="subscriber, err :=" last_line_contains="panic(err)" padding_after="1" %}}
 {{% /render-md %}}
 
 You can also use `NewStreamingSubscriberWithStanConn` and `NewStreamingPublisherWithStanConn` to use a custom `stan.Conn` created by `NewStanConnection`.
