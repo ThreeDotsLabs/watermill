@@ -47,6 +47,8 @@ func TestCQRS(t *testing.T) {
 	captureEventHandler.Reset()
 
 	assert.NoError(t, router.Close())
+
+	assert.Equal(t, cqrsFacade.CommandEventMarshaler(), ts.Marshaler)
 }
 
 func createRouterAndFacade(ts TestServices, t *testing.T, commandHandler *CaptureCommandHandler, eventHandler *CaptureEventHandler) (*message.Router, *cqrs.Facade) {
@@ -223,4 +225,127 @@ func (p *publisherStub) Publish(topic string, messages ...*message.Message) erro
 	p.messages[topic] = append(p.messages[topic], messages...)
 
 	return nil
+}
+
+func TestFacadeConfig_Validate(t *testing.T) {
+	ts := NewTestServices()
+
+	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
+	require.NoError(t, err)
+
+	validConfig := cqrs.FacadeConfig{
+		GenerateCommandsTopic: func(commandName string) string {
+			return commandName
+		},
+		GenerateEventsTopic: func(eventName string) string {
+			return eventName
+		},
+		CommandHandlers: func(cb *cqrs.CommandBus, eb *cqrs.EventBus) []cqrs.CommandHandler {
+			return []cqrs.CommandHandler{}
+		},
+		EventHandlers: func(cb *cqrs.CommandBus, eb *cqrs.EventBus) []cqrs.EventHandler {
+			return []cqrs.EventHandler{}
+		},
+		Router:            router,
+		CommandsPublisher: ts.CommandsPubSub,
+		CommandsSubscriberConstructor: func(handlerName string) (message.Subscriber, error) {
+			return ts.CommandsPubSub, nil
+		},
+		EventsPublisher: ts.EventsPubSub,
+		EventsSubscriberConstructor: func(handlerName string) (message.Subscriber, error) {
+			return ts.EventsPubSub, nil
+		},
+		Logger:                ts.Logger,
+		CommandEventMarshaler: ts.Marshaler,
+	}
+
+	testCases := []struct {
+		Name   string
+		Config cqrs.FacadeConfig
+		Valid  bool
+	}{
+		{
+			Name:   "valid",
+			Config: validConfig,
+			Valid:  true,
+		},
+		{
+			Name: "missing_GenerateCommandsTopic",
+			Config: transformConfig(validConfig, func(config *cqrs.FacadeConfig) {
+				config.GenerateCommandsTopic = nil
+			}),
+			Valid: false,
+		},
+		{
+			Name: "missing_CommandsSubscriberConstructor",
+			Config: transformConfig(validConfig, func(config *cqrs.FacadeConfig) {
+				config.CommandsSubscriberConstructor = nil
+			}),
+			Valid: false,
+		},
+		{
+			Name: "missing_CommandsPublisher",
+			Config: transformConfig(validConfig, func(config *cqrs.FacadeConfig) {
+				config.CommandsPublisher = nil
+			}),
+			Valid: false,
+		},
+		{
+			Name: "missing_GenerateEventsTopic",
+			Config: transformConfig(validConfig, func(config *cqrs.FacadeConfig) {
+				config.GenerateEventsTopic = nil
+			}),
+			Valid: false,
+		},
+		{
+			Name: "missing_GenerateEventsTopic",
+			Config: transformConfig(validConfig, func(config *cqrs.FacadeConfig) {
+				config.EventsSubscriberConstructor = nil
+			}),
+			Valid: false,
+		},
+		{
+			Name: "missing_EventsPublisher",
+			Config: transformConfig(validConfig, func(config *cqrs.FacadeConfig) {
+				config.EventsPublisher = nil
+			}),
+			Valid: false,
+		},
+		{
+			Name: "missing_Router",
+			Config: transformConfig(validConfig, func(config *cqrs.FacadeConfig) {
+				config.Router = nil
+			}),
+			Valid: false,
+		},
+		{
+			Name: "missing_Logger",
+			Config: transformConfig(validConfig, func(config *cqrs.FacadeConfig) {
+				config.Logger = nil
+			}),
+			Valid: false,
+		},
+		{
+			Name: "missing_CommandEventMarshaler",
+			Config: transformConfig(validConfig, func(config *cqrs.FacadeConfig) {
+				config.CommandEventMarshaler = nil
+			}),
+			Valid: false,
+		},
+	}
+
+	for _, c := range testCases {
+		t.Run(c.Name, func(t *testing.T) {
+			if c.Valid {
+				assert.NoError(t, c.Config.Validate())
+			} else {
+				assert.Error(t, c.Config.Validate())
+			}
+		})
+	}
+}
+
+func transformConfig(config cqrs.FacadeConfig, transformFn func(config *cqrs.FacadeConfig)) cqrs.FacadeConfig {
+	transformFn(&config)
+	return config
 }

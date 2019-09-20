@@ -13,6 +13,37 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestNewCommandProcessor(t *testing.T) {
+	handlers := []cqrs.CommandHandler{nonPointerCommandHandler{}}
+
+	generateTopic := func(commandName string) string {
+		return ""
+	}
+	subscriberConstructor := func(handlerName string) (subscriber message.Subscriber, e error) {
+		return nil, nil
+	}
+
+	cp, err := cqrs.NewCommandProcessor(handlers, generateTopic, subscriberConstructor, cqrs.JSONMarshaler{}, nil)
+	assert.NotNil(t, cp)
+	assert.NoError(t, err)
+
+	cp, err = cqrs.NewCommandProcessor([]cqrs.CommandHandler{}, generateTopic, subscriberConstructor, cqrs.JSONMarshaler{}, nil)
+	assert.Nil(t, cp)
+	assert.Error(t, err)
+
+	cp, err = cqrs.NewCommandProcessor(handlers, nil, subscriberConstructor, cqrs.JSONMarshaler{}, nil)
+	assert.Nil(t, cp)
+	assert.Error(t, err)
+
+	cp, err = cqrs.NewCommandProcessor(handlers, generateTopic, nil, cqrs.JSONMarshaler{}, nil)
+	assert.Nil(t, cp)
+	assert.Error(t, err)
+
+	cp, err = cqrs.NewCommandProcessor(handlers, generateTopic, subscriberConstructor, nil, nil)
+	assert.Nil(t, cp)
+	assert.Error(t, err)
+}
+
 type nonPointerCommandHandler struct {
 }
 
@@ -76,4 +107,5 @@ func TestCommandProcessor_multiple_same_command_handlers(t *testing.T) {
 
 	err = commandProcessor.AddHandlersToRouter(router)
 	assert.EqualValues(t, cqrs.DuplicateCommandHandlerError{CommandName: "cqrs_test.TestCommand"}, err)
+	assert.Equal(t, "command handler for command cqrs_test.TestCommand already exists", err.Error())
 }
