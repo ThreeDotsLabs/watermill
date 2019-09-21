@@ -165,108 +165,196 @@ func TestRouter_functional_nack(t *testing.T) {
 	tests.AssertAllMessagesReceived(t, []*message.Message{publishedMsg, publishedMsg}, messages)
 }
 
-func TestRouter_ack_nack_on_failures(t *testing.T) {
-	testCases := []struct {
-		Name                 string
-		PublisherShouldPanic bool
-		PublisherShouldError bool
-		HandlerShouldError   bool
-		ExpectAck            bool
-		ExpectNack           bool
-	}{
-		{
-			Name:                 "publisher_success",
-			PublisherShouldPanic: false,
-			PublisherShouldError: false,
-			HandlerShouldError:   false,
-			ExpectAck:            true,
-			ExpectNack:           false,
-		},
-		{
-			Name:                 "publisher_error",
-			PublisherShouldPanic: false,
-			PublisherShouldError: true,
-			HandlerShouldError:   false,
-			ExpectAck:            false,
-			ExpectNack:           true,
-		},
-		{
-			Name:                 "publisher_panic",
-			PublisherShouldPanic: true,
-			PublisherShouldError: false,
-			HandlerShouldError:   false,
-			ExpectAck:            false,
-			ExpectNack:           true,
-		},
-		{
-			Name:                 "handler_error",
-			PublisherShouldPanic: false,
-			PublisherShouldError: false,
-			HandlerShouldError:   true,
-			ExpectAck:            false,
-			ExpectNack:           true,
-		},
+func TestRouter_ack_on_publishing_success(t *testing.T) {
+	publisher := &failingPublisherMock{
+		shouldPanic: false,
+		shouldError: false,
+	}
+	subscriber := &subscriberMock{
+		messages: make(chan *message.Message),
+	}
+	router, err := message.NewRouter(message.RouterConfig{
+		CloseTimeout: time.Second,
+	}, watermill.NewStdLogger(true, true))
+	require.NoError(t, err)
+
+	handlerFunc := func(msg *message.Message) ([]*message.Message, error) {
+		return message.Messages{msg}, nil
 	}
 
-	for i := range testCases {
-		t.Run(testCases[i].Name, func(t *testing.T) {
-			tc := testCases[i]
-			publisher := &failingPublisherMock{
-				shouldPanic: tc.PublisherShouldPanic,
-				shouldError: tc.PublisherShouldError,
-			}
-			subscriber := &subscriberMock{
-				messages: make(chan *message.Message),
-			}
-			router, err := message.NewRouter(message.RouterConfig{
-				CloseTimeout: time.Second,
-			}, watermill.NewStdLogger(true, true))
-			require.NoError(t, err)
+	topic := "ack_on_publishing_success"
+	router.AddHandler(
+		"ack_on_publishing_success_handler",
+		topic,
+		subscriber,
+		topic,
+		publisher,
+		handlerFunc,
+	)
+	go func() {
+		err := router.Run(context.Background())
+		require.NoError(t, err)
+	}()
+	<-router.Running()
 
-			handlerMutex := &sync.Mutex{}
-			handlerErrored := false
+	msg := message.NewMessage("uuid", []byte{})
+	subscriber.messages <- msg
 
-			handlerFunc := func(msg *message.Message) ([]*message.Message, error) {
-				handlerMutex.Lock()
-				defer handlerMutex.Unlock()
-				if tc.HandlerShouldError && !handlerErrored {
-					handlerErrored = true
-					return nil, errors.New("handler error")
-				}
-				return message.Messages{msg}, nil
-			}
-
-			topic := "topic" + tc.Name
-			router.AddHandler(
-				"handler"+tc.Name,
-				topic,
-				subscriber,
-				topic,
-				publisher,
-				handlerFunc,
-			)
-			go func() {
-				err := router.Run(context.Background())
-				require.NoError(t, err)
-			}()
-			<-router.Running()
-
-			msg := message.NewMessage("msg"+tc.Name, []byte{})
-			subscriber.messages <- msg
-
-			select {
-			case <-msg.Acked():
-				assert.True(t, tc.ExpectAck, "did not expect message to be acked")
-			case <-msg.Nacked():
-				assert.True(t, tc.ExpectNack, "did not expect message to be nacked")
-			case <-time.After(5 * time.Second):
-				t.Fatal("expected the message to be acked or nacked")
-			}
-
-			err = router.Close()
-			require.NoError(t, err)
-		})
+	select {
+	case <-msg.Acked():
+		// ok
+	case <-msg.Nacked():
+		t.Fatal("did not expect the message to be nacked")
+	case <-time.After(5 * time.Second):
+		t.Fatal("expected the message to be acked")
 	}
+
+	err = router.Close()
+	require.NoError(t, err)
+}
+
+func TestRouter_nack_on_publishing_failure(t *testing.T) {
+	publisher := &failingPublisherMock{
+		shouldPanic: false,
+		shouldError: true,
+	}
+	subscriber := &subscriberMock{
+		messages: make(chan *message.Message),
+	}
+	router, err := message.NewRouter(message.RouterConfig{
+		CloseTimeout: time.Second,
+	}, watermill.NewStdLogger(true, true))
+	require.NoError(t, err)
+
+	handlerFunc := func(msg *message.Message) ([]*message.Message, error) {
+		return message.Messages{msg}, nil
+	}
+
+	topic := "nack_on_publishing_failure"
+	router.AddHandler(
+		"nack_on_publishing_failure_handler",
+		topic,
+		subscriber,
+		topic,
+		publisher,
+		handlerFunc,
+	)
+	go func() {
+		err := router.Run(context.Background())
+		require.NoError(t, err)
+	}()
+	<-router.Running()
+
+	msg := message.NewMessage("uuid", []byte{})
+	subscriber.messages <- msg
+
+	select {
+	case <-msg.Acked():
+		t.Fatal("did not expect the message to be acked")
+	case <-msg.Nacked():
+		// ok
+	case <-time.After(5 * time.Second):
+		t.Fatal("expected the message to be nacked")
+	}
+
+	err = router.Close()
+	require.NoError(t, err)
+}
+
+func TestRouter_nack_on_panic(t *testing.T) {
+	publisher := &failingPublisherMock{
+		shouldPanic: true,
+		shouldError: false,
+	}
+	subscriber := &subscriberMock{
+		messages: make(chan *message.Message),
+	}
+	router, err := message.NewRouter(message.RouterConfig{
+		CloseTimeout: time.Second,
+	}, watermill.NewStdLogger(true, true))
+	require.NoError(t, err)
+
+	handlerFunc := func(msg *message.Message) ([]*message.Message, error) {
+		return message.Messages{msg}, nil
+	}
+
+	topic := "nack_on_panic"
+	router.AddHandler(
+		"nack_on_panic_handler",
+		topic,
+		subscriber,
+		topic,
+		publisher,
+		handlerFunc,
+	)
+	go func() {
+		err := router.Run(context.Background())
+		require.NoError(t, err)
+	}()
+	<-router.Running()
+
+	msg := message.NewMessage("uuid", []byte{})
+	subscriber.messages <- msg
+
+	select {
+	case <-msg.Acked():
+		t.Fatal("did not expect the message to be acked")
+	case <-msg.Nacked():
+		// ok
+	case <-time.After(5 * time.Second):
+		t.Fatal("expected the message to be nacked")
+	}
+
+	err = router.Close()
+	require.NoError(t, err)
+}
+
+func TestRouter_nack_on_handler_failure(t *testing.T) {
+	publisher := &failingPublisherMock{
+		shouldPanic: false,
+		shouldError: false,
+	}
+	subscriber := &subscriberMock{
+		messages: make(chan *message.Message),
+	}
+	router, err := message.NewRouter(message.RouterConfig{
+		CloseTimeout: time.Second,
+	}, watermill.NewStdLogger(true, true))
+	require.NoError(t, err)
+
+	handlerFunc := func(msg *message.Message) ([]*message.Message, error) {
+		return nil, errors.New("handler error")
+	}
+
+	topic := "nack_on_handler_failure"
+	router.AddHandler(
+		"nack_on_handler_failure_handler",
+		topic,
+		subscriber,
+		topic,
+		publisher,
+		handlerFunc,
+	)
+	go func() {
+		err := router.Run(context.Background())
+		require.NoError(t, err)
+	}()
+	<-router.Running()
+
+	msg := message.NewMessage("uuid", []byte{})
+	subscriber.messages <- msg
+
+	select {
+	case <-msg.Acked():
+		t.Fatal("did not expect the message to be acked")
+	case <-msg.Nacked():
+		// ok
+	case <-time.After(5 * time.Second):
+		t.Fatal("expected the message to be nacked")
+	}
+
+	err = router.Close()
+	require.NoError(t, err)
 }
 
 type subscriberMock struct {
