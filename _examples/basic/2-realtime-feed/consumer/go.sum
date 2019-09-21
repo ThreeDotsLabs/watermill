@@ -7,8 +7,8 @@ github.com/Shopify/toxiproxy v2.1.4+incompatible h1:TKdv8HiTLgE5wdJuEML90aBgNWso
 github.com/Shopify/toxiproxy v2.1.4+incompatible/go.mod h1:OXgGpZ6Cli1/URJOF1DMxUHB2q5Ap20/P/eIdh4G0pI=
 github.com/ThreeDotsLabs/watermill v1.0.0-rc.2 h1:DCKR8kSLHUyZny6LiKtO7h+IZPMo0t9x786FOZmoAh4=
 github.com/ThreeDotsLabs/watermill v1.0.0-rc.2/go.mod h1:gjVFKc8aN+vmEHw3pA0kh4mmuwHe02nyfghb6IWWiKE=
-github.com/ThreeDotsLabs/watermill-kafka v1.0.1 h1:YQgkPKNWF0VrN87ito+CpG15AOsXzG/8fXilTROHpZI=
-github.com/ThreeDotsLabs/watermill-kafka v1.0.1/go.mod h1:rkfdt6PpcQpOGhyublmmGIYUs6qGN3ajYT6P3jYpFYE=
+github.com/ThreeDotsLabs/watermill-kafka/v2 v2.0.0 h1:+8FeCjF+BgW5b8L7TofMYw8eQUiITF/0evJh38wt3W0=
+github.com/ThreeDotsLabs/watermill-kafka/v2 v2.0.0/go.mod h1:0/RwtDh+LUbVawbSoN2ifZbqhbaW8OK5AJLZ6g7BESE=
 github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc/go.mod h1:LOuyumcjzFXgccqObfd/Ljyb9UuFJ6TxHnclSeseNhc=
 github.com/alecthomas/units v0.0.0-20151022065526-2efee857e7cf/go.mod h1:ybxpYRFXyAe+OPACYpWeL0wqObRcbAqCMya13uyzqw0=
 github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973 h1:xJ4a3vCFaGF/jqvzLMYoU8P317H5OQ+Via4RmuPwCS0=

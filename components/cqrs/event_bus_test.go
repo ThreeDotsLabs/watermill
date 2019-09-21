@@ -9,6 +9,30 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestNewEventBus(t *testing.T) {
+	pub := newPublisherStub()
+	generateTopic := func(commandName string) string {
+		return ""
+	}
+	marshaler := cqrs.JSONMarshaler{}
+
+	cb, err := cqrs.NewEventBus(pub, generateTopic, marshaler)
+	assert.NotNil(t, cb)
+	assert.NoError(t, err)
+
+	cb, err = cqrs.NewEventBus(nil, generateTopic, marshaler)
+	assert.Nil(t, cb)
+	assert.Error(t, err)
+
+	cb, err = cqrs.NewEventBus(pub, nil, marshaler)
+	assert.Nil(t, cb)
+	assert.Error(t, err)
+
+	cb, err = cqrs.NewEventBus(pub, generateTopic, nil)
+	assert.Nil(t, cb)
+	assert.Error(t, err)
+}
+
 func TestEventBus_Send_ContextPropagation(t *testing.T) {
 	publisher := newPublisherStub()
 

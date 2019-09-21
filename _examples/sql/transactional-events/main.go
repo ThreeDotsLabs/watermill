@@ -10,7 +10,7 @@ import (
 	driver "github.com/go-sql-driver/mysql"
 
 	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill-kafka/pkg/kafka"
+	"github.com/ThreeDotsLabs/watermill-kafka/v2/pkg/kafka"
 	"github.com/ThreeDotsLabs/watermill-sql/pkg/sql"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
@@ -105,9 +105,10 @@ func createSubscriber(db *stdSQL.DB) message.Subscriber {
 
 func createPublisher() message.Publisher {
 	pub, err := kafka.NewPublisher(
-		[]string{"kafka:9092"},
-		kafka.DefaultMarshaler{},
-		nil,
+		kafka.PublisherConfig{
+			Brokers:   []string{"kafka:9092"},
+			Marshaler: kafka.DefaultMarshaler{},
+		},
 		logger,
 	)
 	if err != nil {

@@ -10,7 +10,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill-kafka/pkg/kafka"
+	"github.com/ThreeDotsLabs/watermill-kafka/v2/pkg/kafka"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
 	"github.com/ThreeDotsLabs/watermill/message/router/plugin"
@@ -25,7 +25,13 @@ func main() {
 	logger := watermill.NewStdLogger(false, false)
 	logger.Info("Starting the consumer", nil)
 
-	pub, err := kafka.NewPublisher(brokers, marshaler, nil, logger)
+	pub, err := kafka.NewPublisher(
+		kafka.PublisherConfig{
+			Brokers:   brokers,
+			Marshaler: marshaler,
+		},
+		logger,
+	)
 	if err != nil {
 		panic(err)
 	}
@@ -101,10 +107,9 @@ func createSubscriber(consumerGroup string, logger watermill.LoggerAdapter) mess
 	sub, err := kafka.NewSubscriber(
 		kafka.SubscriberConfig{
 			Brokers:       brokers,
+			Unmarshaler:   marshaler,
 			ConsumerGroup: consumerGroup,
 		},
-		nil,
-		marshaler,
 		logger,
 	)
 	if err != nil {

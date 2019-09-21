@@ -74,8 +74,8 @@ Supported Pub/Subs:
 All Pub/Subs implementation documentation can be found in the [documentation](https://watermill.io/docs/pub-sub-implementations/).
 
 ## Examples
-* [Your first app](_examples/your-first-app) - start here!
-* [Simple application with publisher and subscriber](_examples/simple-app)
+* [Your first app](_examples/basic/1-your-first-app) - start here!
+* [Simple application with publisher and subscriber](_examples/basic/2-realtime-feed)
 * [HTTP to Kafka](_examples/http-to-kafka)
 * [NATS example](https://github.com/ThreeDotsLabs/nats-example)
 * [RabbitMQ, webhooks and Kafka integration](https://github.com/ThreeDotsLabs/event-driven-example)
@@ -83,9 +83,7 @@ All Pub/Subs implementation documentation can be found in the [documentation](ht
 
 ## Contributing
 
-All contributions are very much welcome. If you'd like to help with Watermill development,
-please see [open issues](https://github.com/ThreeDotsLabs/watermill/issues?utf8=%E2%9C%93&q=is%3Aissue+is%3Aopen+)
-and submit your pull request via GitHub.
+Please check our [contributing guide](CONTRIBUTING.md).
 
 ## Stability
 

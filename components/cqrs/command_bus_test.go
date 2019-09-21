@@ -10,6 +10,30 @@ import (
 	"github.com/ThreeDotsLabs/watermill/components/cqrs"
 )
 
+func TestNewCommandBus(t *testing.T) {
+	pub := newPublisherStub()
+	generateTopic := func(commandName string) string {
+		return ""
+	}
+	marshaler := cqrs.JSONMarshaler{}
+
+	cb, err := cqrs.NewCommandBus(pub, generateTopic, marshaler)
+	assert.NotNil(t, cb)
+	assert.NoError(t, err)
+
+	cb, err = cqrs.NewCommandBus(nil, generateTopic, marshaler)
+	assert.Nil(t, cb)
+	assert.Error(t, err)
+
+	cb, err = cqrs.NewCommandBus(pub, nil, marshaler)
+	assert.Nil(t, cb)
+	assert.Error(t, err)
+
+	cb, err = cqrs.NewCommandBus(pub, generateTopic, nil)
+	assert.Nil(t, cb)
+	assert.Error(t, err)
+}
+
 func TestCommandBus_Send_ContextPropagation(t *testing.T) {
 	publisher := newPublisherStub()
 

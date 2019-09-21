@@ -12,7 +12,7 @@ import (
 	"github.com/brianvoe/gofakeit"
 
 	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill-kafka/pkg/kafka"
+	"github.com/ThreeDotsLabs/watermill-kafka/v2/pkg/kafka"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
 )
@@ -30,7 +30,13 @@ func main() {
 
 	rand.Seed(time.Now().Unix())
 
-	publisher, err := kafka.NewPublisher(brokers, kafka.DefaultMarshaler{}, nil, logger)
+	publisher, err := kafka.NewPublisher(
+		kafka.PublisherConfig{
+			Brokers:   brokers,
+			Marshaler: kafka.DefaultMarshaler{},
+		},
+		logger,
+	)
 	if err != nil {
 		panic(err)
 	}
