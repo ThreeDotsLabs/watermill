@@ -245,7 +245,10 @@ func TestRouter_ack_nack_on_failures(t *testing.T) {
 				publisher,
 				handlerFunc,
 			)
-			go router.Run(context.Background())
+			go func() {
+				err := router.Run(context.Background())
+				require.NoError(t, err)
+			}()
 			<-router.Running()
 
 			msg := message.NewMessage("msg"+tc.Name, []byte{})
