@@ -31,6 +31,8 @@ Pick what you like the best or see in order:
 * Basic
     * [Your first app](_examples/basic/your-first-app) - **start here!**
     * [Realtime feed](_examples/basic/realtime-feed)
+    * [Pub/Subs usage](_examples/pubsubs)
+        * These examples are part of the [Getting started guide](https://watermill.io/docs/getting-started/) and show usage of a single Pub/Sub at a time.
 * Webhooks
     * [HTTP to Kafka](_examples/webhooks/http-to-kafka)
     * [Kafka to HTTP](_examples/webhooks/kafka-to-http)
@@ -40,8 +42,6 @@ Pick what you like the best or see in order:
 * SQL Pub/Sub
     * [Event Log](_examples/sql/event-log)
     * [Transactional Events](_examples/sql/transactional-events)
-* [Getting Started Examples](_examples/pubsubs)
-    * These examples are part of the [Getting started guide](https://watermill.io/docs/getting-started/) and show usage of a single component at a time.
 * Complete projects
     * [NATS example](https://github.com/ThreeDotsLabs/nats-example)
     * [RabbitMQ, webhooks and Kafka integration](https://github.com/ThreeDotsLabs/event-driven-example)
