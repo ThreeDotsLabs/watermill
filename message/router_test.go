@@ -214,7 +214,6 @@ func TestRouter_ack_nack_on_failures(t *testing.T) {
 			publisher := &failingPublisherMock{
 				shouldPanic: tc.PublisherShouldPanic,
 				shouldError: tc.PublisherShouldError,
-				published:   make(chan struct{}),
 			}
 			subscriber := &subscriberMock{
 				messages: make(chan *message.Message),
@@ -283,15 +282,9 @@ func (s *subscriberMock) Close() error {
 type failingPublisherMock struct {
 	shouldPanic bool
 	shouldError bool
-	published   chan struct{}
 }
 
 func (p *failingPublisherMock) Publish(topic string, messages ...*message.Message) error {
-	if internal.IsChannelClosed(p.published) {
-		return nil
-	}
-
-	defer close(p.published)
 	if p.shouldPanic {
 		panic("publisher panicked")
 	}
