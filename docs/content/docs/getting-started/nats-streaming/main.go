@@ -20,7 +20,7 @@ func main() {
 			ClientID:         "example-subscriber",
 			QueueGroup:       "example",
 			DurableName:      "my-durable",
-			SubscribersCount: 4, // how much goroutines should consume messages
+			SubscribersCount: 4, // how many goroutines should consume messages
 			CloseTimeout:     time.Minute,
 			AckWaitTimeout:   time.Second * 30,
 			StanOptions: []stan.Option{
