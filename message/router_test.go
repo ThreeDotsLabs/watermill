@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -163,6 +164,144 @@ func TestRouter_functional_nack(t *testing.T) {
 
 	tests.AssertAllMessagesReceived(t, []*message.Message{publishedMsg, publishedMsg}, messages)
 }
+
+func TestRouter_ack_nack_on_failures(t *testing.T) {
+	testCases := []struct {
+		Name                 string
+		PublisherShouldPanic bool
+		PublisherShouldError bool
+		HandlerShouldError   bool
+		ExpectAck            bool
+		ExpectNack           bool
+	}{
+		{
+			Name:                 "publisher_success",
+			PublisherShouldPanic: false,
+			PublisherShouldError: false,
+			HandlerShouldError:   false,
+			ExpectAck:            true,
+			ExpectNack:           false,
+		},
+		{
+			Name:                 "publisher_error",
+			PublisherShouldPanic: false,
+			PublisherShouldError: true,
+			HandlerShouldError:   false,
+			ExpectAck:            false,
+			ExpectNack:           true,
+		},
+		{
+			Name:                 "publisher_panic",
+			PublisherShouldPanic: true,
+			PublisherShouldError: false,
+			HandlerShouldError:   false,
+			ExpectAck:            false,
+			ExpectNack:           true,
+		},
+		{
+			Name:                 "handler_error",
+			PublisherShouldPanic: false,
+			PublisherShouldError: false,
+			HandlerShouldError:   true,
+			ExpectAck:            false,
+			ExpectNack:           true,
+		},
+	}
+
+	for i := range testCases {
+		t.Run(testCases[i].Name, func(t *testing.T) {
+			tc := testCases[i]
+			publisher := &failingPublisherMock{
+				shouldPanic: tc.PublisherShouldPanic,
+				shouldError: tc.PublisherShouldError,
+				published:   make(chan struct{}),
+			}
+			subscriber := &subscriberMock{
+				messages: make(chan *message.Message),
+			}
+			router, err := message.NewRouter(message.RouterConfig{
+				CloseTimeout: time.Second,
+			}, watermill.NewStdLogger(true, true))
+			require.NoError(t, err)
+
+			handlerMutex := &sync.Mutex{}
+			handlerErrored := false
+
+			handlerFunc := func(msg *message.Message) ([]*message.Message, error) {
+				handlerMutex.Lock()
+				defer handlerMutex.Unlock()
+				if tc.HandlerShouldError && !handlerErrored {
+					handlerErrored = true
+					return nil, errors.New("handler error")
+				}
+				return message.Messages{msg}, nil
+			}
+
+			topic := "topic" + tc.Name
+			router.AddHandler(
+				"handler"+tc.Name,
+				topic,
+				subscriber,
+				topic,
+				publisher,
+				handlerFunc,
+			)
+			go router.Run(context.Background())
+			<-router.Running()
+
+			msg := message.NewMessage("msg"+tc.Name, []byte{})
+			subscriber.messages <- msg
+
+			select {
+			case <-msg.Acked():
+				assert.True(t, tc.ExpectAck, "did not expect message to be acked")
+			case <-msg.Nacked():
+				assert.True(t, tc.ExpectNack, "did not expect message to be nacked")
+			case <-time.After(5 * time.Second):
+				t.Fatal("expected the message to be acked or nacked")
+			}
+
+			err = router.Close()
+			require.NoError(t, err)
+		})
+	}
+}
+
+type subscriberMock struct {
+	messages chan *message.Message
+}
+
+func (s *subscriberMock) Subscribe(ctx context.Context, topic string) (<-chan *message.Message, error) {
+	return s.messages, nil
+}
+
+func (s *subscriberMock) Close() error {
+	close(s.messages)
+	return nil
+}
+
+type failingPublisherMock struct {
+	shouldPanic bool
+	shouldError bool
+	published   chan struct{}
+}
+
+func (p *failingPublisherMock) Publish(topic string, messages ...*message.Message) error {
+	if internal.IsChannelClosed(p.published) {
+		return nil
+	}
+
+	defer close(p.published)
+	if p.shouldPanic {
+		panic("publisher panicked")
+	}
+	if p.shouldError {
+		return errors.New("publisher failed")
+	}
+	return nil
+}
+
+func (p *failingPublisherMock) Close() error { return nil }
 
 func TestRouter_stop_when_all_handlers_stopped(t *testing.T) {
 	pub1, sub1 := createPubSub()
