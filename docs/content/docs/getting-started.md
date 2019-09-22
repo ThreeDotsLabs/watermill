@@ -257,7 +257,7 @@ if err != nil {
 
 {{% /tabs %}}
 
-### Using *Messages Router*
+### Using *Message Router*
 
 [*Publishers and subscribers*]({{< ref "/docs/pub-sub" >}}) are rather low-level parts of Watermill.
 In most cases, you'd usually want to use a high-level interface and features like [correlation, metrics, poison queue, retrying, throttling, etc.]({{< ref "/docs/messages-router#middleware" >}}).
@@ -268,7 +268,7 @@ Sometimes, you want to perform some action based on the incoming message, and pu
 
 To handle these requirements, there is a component named [*Router*]({{< ref "/docs/messages-router" >}}).
 
-### Example application of *Messages Router*
+### Example application of *Message Router*
 The flow of the example application looks like this:
 
 1. A message is produced on topic `incoming_messages_topic` every second.
