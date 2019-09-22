@@ -15,8 +15,8 @@ import (
 )
 
 var (
-	// just a simplest implementation,
-	// probably you want to ship your own implementation of `watermill.LoggerAdapter`
+	// For this example, we're using just a simple logger implementation,
+	// You probably want to ship your own implementation of `watermill.LoggerAdapter`.
 	logger = watermill.NewStdLogger(false, false)
 )
 
@@ -26,61 +26,61 @@ func main() {
 		panic(err)
 	}
 
-	// this plugin will gracefully shutdown router, when SIGTERM was sent
-	// you can also close router by just calling `r.Close()`
+	// SignalsHandler will gracefully shutdown Router when SIGTERM is received.
+	// You can also close the router by just calling `r.Close()`.
 	router.AddPlugin(plugin.SignalsHandler)
 
 	router.AddMiddleware(
-		// correlation ID will copy correlation id from consumed message metadata to produced messages
+		// CorrelationID will copy the correlation id from the incoming message's metadata to the produced messages
 		middleware.CorrelationID,
 
-		// when error occurred, function will be retried,
-		// after max retries (or if no Retry middleware is added) Nack is send and message will be resent
+		// The handler function is retried if it returns an error.
+		// After MaxRetries, the message is Nacked and it's up to the PubSub to resend it.
 		middleware.Retry{
 			MaxRetries:      3,
 			InitialInterval: time.Millisecond * 100,
 			Logger:          logger,
 		}.Middleware,
 
-		// this middleware will handle panics from handlers
-		// and pass them as error to retry middleware in this case
+		// Recoverer handles panics from handlers.
+		// In this case, it passes them as errors to the Retry middleware.
 		middleware.Recoverer,
 	)
 
-	// for simplicity we are using gochannel Pub/Sub here,
-	// you can replace it with any Pub/Sub implementation, it will work the same
+	// For simplicity, we are using the gochannel Pub/Sub here,
+	// You can replace it with any Pub/Sub implementation, it will work the same.
 	pubSub := gochannel.NewGoChannel(gochannel.Config{}, logger)
 
-	// producing some messages in background
+	// Producing some incoming messages in background
 	go publishMessages(pubSub)
 
 	router.AddHandler(
-		"struct_handler",  // handler name, must be unique
-		"example.topic_1", // topic from which we will read events
+		"struct_handler",          // handler name, must be unique
+		"incoming_messages_topic", // topic from which we will read events
 		pubSub,
-		"example.topic_2", // topic to which we will publish event
+		"outgoing_messages_topic", // topic to which we will publish events
 		pubSub,
 		structHandler{}.Handler,
 	)
 
-	// just for debug, we are printing all events sent to `example.topic_1`
+	// just for debug, we are printing all messages received on `incoming_messages_topic`
 	router.AddNoPublisherHandler(
-		"print_events_topic_1",
-		"example.topic_1",
+		"print_incoming_messages",
+		"incoming_messages_topic",
 		pubSub,
 		printMessages,
 	)
 
-	// just for debug, we are printing all events sent to `example.topic_2`
+	// just for debug, we are printing all events sent to `outgoing_messages_topic`
 	router.AddNoPublisherHandler(
-		"print_events_topic_2",
-		"example.topic_2",
+		"print_outgoing_messages",
+		"outgoing_messages_topic",
 		pubSub,
 		printMessages,
 	)
 
-	// when everything is ready, let's run router,
-	// this function is blocking since router is running
+	// Now that all handlers are registered, we're running the Router.
+	// Run is blocking while the router is running.
 	ctx := context.Background()
 	if err := router.Run(ctx); err != nil {
 		panic(err)
@@ -94,7 +94,7 @@ func publishMessages(publisher message.Publisher) {
 
 		log.Printf("sending message %s, correlation id: %s\n", msg.UUID, middleware.MessageCorrelationID(msg))
 
-		if err := publisher.Publish("example.topic_1", msg); err != nil {
+		if err := publisher.Publish("incoming_messages_topic", msg); err != nil {
 			panic(err)
 		}
 
