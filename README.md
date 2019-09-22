@@ -29,21 +29,20 @@ Pick what you like the best or see in order:
 ## Examples
 
 * Basic
-    * [Your first app](_examples/basic/your-first-app) - **start here!**
-    * [Realtime feed](_examples/basic/realtime-feed)
-    * [Pub/Subs usage](_examples/pubsubs)
-        * These examples are part of the [Getting started guide](https://watermill.io/docs/getting-started/) and show usage of a single Pub/Sub at a time.
-* Webhooks
-    * [HTTP to Kafka](_examples/webhooks/http-to-kafka)
-    * [Kafka to HTTP](_examples/webhooks/kafka-to-http)
-* Components
-    * [Metrics](_examples/components/metrics)
-    * [CQRS with protobuf](_examples/components/cqrs-protobuf)
-* SQL Pub/Sub
-    * [Event Log](_examples/sql/event-log)
-    * [Transactional Events](_examples/sql/transactional-events)
+    * [Your first app](_examples/basic/1-your-first-app) - **start here!**
+    * [Realtime feed](_examples/basic/2-realtime-feed)
+    * [Router](_examples/basic/3-router)
+    * [Metrics](_examples/basic/4-metrics)
+    * [CQRS with protobuf](_examples/basic/5-cqrs-protobuf)
+* [Pub/Subs usage](_examples/pubsubs)
+    * These examples are part of the [Getting started guide](https://watermill.io/docs/getting-started/) and show usage of a single Pub/Sub at a time.
+* Real-world examples
+    * [Receiving webhooks](_examples/real-world-examples/receiving-webhooks)
+    * [Sending webhooks](_examples/real-world-examples/sending-webhooks)
+    * [Persistent Event Log](_examples/real-world-examples/persistent-event-log)
+    * [Transactional Events](_examples/real-world-examples/transactional-events)
 * Complete projects
-    * [NATS example](https://github.com/ThreeDotsLabs/nats-example)
+    * [NATS example with live code reloading](https://github.com/ThreeDotsLabs/nats-example)
     * [RabbitMQ, webhooks and Kafka integration](https://github.com/ThreeDotsLabs/event-driven-example)
 
 ## Background

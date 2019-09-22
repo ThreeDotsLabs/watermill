@@ -90,7 +90,7 @@ constructor. You have to create one publisher for each transaction.
 
 Example:
 {{% render-md %}}
-{{% load-snippet-partial file="src-link/_examples/sql/transactional-events/main.go" first_line_contains="func simulateEvents" last_line_contains="return pub.Publish(" padding_after="3" %}}
+{{% load-snippet-partial file="src-link/_examples/real-world-examples/transactional-events/main.go" first_line_contains="func simulateEvents" last_line_contains="return pub.Publish(" padding_after="3" %}}
 {{% /render-md %}}
 
 #### Subscribing

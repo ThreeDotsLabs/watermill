@@ -30,7 +30,7 @@ If you are using Watermill's [router](/docs/messages-router) (which is recommend
 Example use of `AddPrometheusRouterMetrics`:
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/_examples/components/metrics/main.go" first_line_contains="// we leave the namespace" last_line_contains="metricsBuilder.AddPrometheusRouterMetrics" %}}
+{{% load-snippet-partial file="content/src-link/_examples/basic/4-metrics/main.go" first_line_contains="// we leave the namespace" last_line_contains="metricsBuilder.AddPrometheusRouterMetrics" %}}
 {{% /render-md %}}
 
 In the snippet above, we have left the `namespace` and `subsystem` arguments empty. The Prometheus client library [uses these](https://godoc.org/github.com/prometheus/client_golang/prometheus#BuildFQName) to prefix the metric names. You may want to use namespace or subsystem, but be aware that this will impact the metric names and you will have to adjust the Grafana dashboard accordingly.
@@ -38,7 +38,7 @@ In the snippet above, we have left the `namespace` and `subsystem` arguments emp
 Standalone publishers and subscribers may also be decorated through the use of dedicated methods of `PrometheusMetricBuilder`:
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/_examples/components/metrics/main.go" first_line_contains="subWithMetrics, err := " last_line_contains="pubWithMetrics, err := " padding_after="3" %}}
+{{% load-snippet-partial file="content/src-link/_examples/basic/4-metrics/main.go" first_line_contains="subWithMetrics, err := " last_line_contains="pubWithMetrics, err := " padding_after="3" %}}
 {{% /render-md %}}
 
 ### Exposing the /metrics endpoint
@@ -54,14 +54,14 @@ To serve this endpoint, there are two convenience functions, one using a previou
 Here is an example of its use in practice:
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/_examples/components/metrics/main.go" first_line_contains="prometheusRegistry, closeMetricsServer :=" last_line_contains="metricsBuilder.AddPrometheusRouterMetrics" %}}
+{{% load-snippet-partial file="content/src-link/_examples/basic/4-metrics/main.go" first_line_contains="prometheusRegistry, closeMetricsServer :=" last_line_contains="metricsBuilder.AddPrometheusRouterMetrics" %}}
 {{% /render-md %}}
 
 ### Example application
 
-To see how the metrics dashboard works in practice, you can check out the [metrics example](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/components/metrics). 
+To see how the metrics dashboard works in practice, you can check out the [metrics example](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/basic/4-metrics). 
 
-Follow the instructions in the example's [README](https://github.com/ThreeDotsLabs/watermill/blob/master/_examples/components/metrics/README.md) to make it run and add the Prometheus data source to Grafana.
+Follow the instructions in the example's [README](https://github.com/ThreeDotsLabs/watermill/blob/master/_examples/basic/4-metrics/README.md) to make it run and add the Prometheus data source to Grafana.
 
 ### Grafana dashboard
 
@@ -131,7 +131,7 @@ For more information on Prometheus metric types, please refer to [Prometheus doc
   </tr>
 </table>
 
-Additionally, every metric has the `node` label, provided by Prometheus, with value corresponding to the instance that the metric comes from, and `job`, which is the job name specified in the [Prometheus configuration file](https://github.com/ThreeDotsLabs/watermill/blob/master/_examples/components/metrics/prometheus.yml).
+Additionally, every metric has the `node` label, provided by Prometheus, with value corresponding to the instance that the metric comes from, and `job`, which is the job name specified in the [Prometheus configuration file](https://github.com/ThreeDotsLabs/watermill/blob/master/_examples/basic/4-metrics/prometheus.yml).
 
 **NOTE**: As described [above](#wrapping-publishers-subscribers-and-handlers), using non-empty `namespace` or `subsystem` will result in prefixed metric names. You might need to adjust for it, for example in the definitions of panels in the Grafana dashboard.
 

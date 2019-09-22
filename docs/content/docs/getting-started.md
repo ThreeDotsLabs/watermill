@@ -279,7 +279,7 @@ Start with configuring the router, adding plugins and middlewares.
 Then set up handlers that the router will use. Each handler will independently handle messages.
 
 {{% render-md %}}
-{{% load-snippet-partial file="src-link/_examples/pubsubs/router/main.go" first_line_contains="package" last_line_contains="router.Run(ctx)" padding_after="4" %}}
+{{% load-snippet-partial file="src-link/_examples/basic/3-router/main.go" first_line_contains="package" last_line_contains="router.Run(ctx)" padding_after="4" %}}
 {{% /render-md %}}
 
 #### Producing messages
@@ -288,7 +288,7 @@ Producing messages works the same like when using publisher directly. Notice tha
 Correlation ID will be added to all messages produced by the router (it will be stored in metadata).
 
 {{% render-md %}}
-{{% load-snippet-partial file="src-link/_examples/pubsubs/router/main.go" first_line_contains="func publishMessages" last_line_contains="time.Sleep(time.Second)" padding_after="2" %}}
+{{% load-snippet-partial file="src-link/_examples/basic/3-router/main.go" first_line_contains="func publishMessages" last_line_contains="time.Sleep(time.Second)" padding_after="2" %}}
 {{% /render-md %}}
 
 #### Handlers
@@ -302,14 +302,14 @@ If your handler is a function without any dependencies, it's fine to use the fir
 The second option is useful when your handler requires some dependencies like database handle, a logger, etc.
 
 {{% render-md %}}
-{{% load-snippet-partial file="src-link/_examples/pubsubs/router/main.go" first_line_contains="func printMessages" last_line_contains="return message.Messages{msg}, nil" padding_after="3" %}}
+{{% load-snippet-partial file="src-link/_examples/basic/3-router/main.go" first_line_contains="func printMessages" last_line_contains="return message.Messages{msg}, nil" padding_after="3" %}}
 {{% /render-md %}}
 
 #### Done!
 
 You can run this example by `go run main.go`.
 
-You've just created your first application with Watermill. You can find the full source in [/docs/src-link/_examples/pubsubs/router/main.go](https://github.com/ThreeDotsLabs/watermill/blob/master/docs/src-link/_examples/pubsubs/router/main.go).
+You've just created your first application with Watermill. You can find the full source in [/docs/src-link/_examples/basic/3-router/main.go](https://github.com/ThreeDotsLabs/watermill/blob/master/docs/src-link/_examples/basic/3-router/main.go).
 
 ### Logging
 
