@@ -14,9 +14,9 @@ implementations like Kafka or RabbitMQ, but also HTTP or MySQL binlog if that fi
 
 * **Easy** to understand.
 * **Universal** - event-driven architecture, messaging, stream processing, CQRS - use it for whatever you need.
-* **Fast** (see [Benchmarks](/#benchmarks)).
+* **Fast** (see [Benchmarks](#benchmarks)).
 * **Flexible** with middlewares, plugins and Pub/Sub configurations.
-* **Resilient** - using proven technologies and passing stress tests (see [Stability](/#stability)).
+* **Resilient** - using proven technologies and passing stress tests (see [Stability](#stability)).
 
 ## Getting Started
 
