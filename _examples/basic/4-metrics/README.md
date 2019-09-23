@@ -1,13 +1,14 @@
-### Prometheus metrics showcase
+# Prometheus metrics showcase
 
 This is an example application that showcases how Watermill may be monitored with Prometheus metrics.
 
 The docker-compose bundle contains the following services:
 
 #### Golang
- A [Golang](https://hub.docker.com/_/golang) image which runs the [example code](https://github.com/ThreeDotsLabs/watermill/blob/master/_examples/metrics/main.go). It consists of a router with a single handler. 
+
+A [Golang](https://hub.docker.com/_/golang) image which runs the [example code](https://github.com/ThreeDotsLabs/watermill/blob/master/_examples/metrics/main.go). t consists of a router with a single handler. 
  
- The handler consumes messages from a [Gochannel PubSub](https://github.com/ThreeDotsLabs/watermill/tree/master/message/infrastructure/gochannel), and publishes 0-4 copies of the message with a preconfigured random delay.
+The handler consumes messages from a [Gochannel PubSub](https://github.com/ThreeDotsLabs/watermill/tree/master/message/infrastructure/gochannel), and publishes 0-4 copies of the message with a preconfigured random delay.
 
 Additionally, there is one goroutine which produces messages incoming to the handler with a gochannel publisher, and another goroutine which consumes the messages outgoing from the handler.
 

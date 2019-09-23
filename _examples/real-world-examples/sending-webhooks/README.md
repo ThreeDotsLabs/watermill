@@ -1,6 +1,6 @@
-# HTTP producer example
+# Sending webhooks (Kafka to HTTP)
 
-This example showcases the use of HTTP producer to call webhooks with HTTP POST requests. It consists of three services:
+This example showcases the use of the **HTTP Publisher** to call webhooks with HTTP POST requests. It consists of three services:
 
 1. `producer` publishes messages on Kafka. The messages come in three varieties: `Foo`, `Bar`, and `Baz`. The event type is encoded in metadata, under the key `event_type`.
 1. `webhook_server` is a HTTP server that listens for requests and prints the path, method, and payload on stdout.

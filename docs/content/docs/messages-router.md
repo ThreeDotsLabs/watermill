@@ -39,7 +39,7 @@ Next, you have to add a new handler with `Router.AddHandler`:
 
 See an example usage from [Getting Started]({{< ref "/docs/getting-started#using-messages-router" >}}):
 {{% render-md %}}
-{{% load-snippet-partial file="content/docs/getting-started/router/main.go" first_line_contains="router.AddHandler(" last_line_contains="structHandler{}.Handler," padding_after="1" %}}
+{{% load-snippet-partial file="src-link/_examples/basic/3-router/main.go" first_line_contains="router.AddHandler(" last_line_contains="structHandler{}.Handler," padding_after="1" %}}
 {{% /render-md %}}
 
 ### No publisher handler

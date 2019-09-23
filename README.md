@@ -10,9 +10,40 @@ for building event driven applications, enabling event sourcing, RPC over messag
 sagas and basically whatever else comes to your mind. You can use conventional pub/sub
 implementations like Kafka or RabbitMQ, but also HTTP or MySQL binlog if that fits your use case.
 
-Documentation: https://watermill.io/
+## Goals
 
-Getting started guide: https://watermill.io/docs/getting-started/
+* **Easy** to understand (see [Examples](/#examples)).
+* **Universal** - event-driven architecture, messaging, stream processing, CQRS - use it for whatever you need.
+* **Fast** (see [Benchmarks](/#benchmarks)).
+* **Flexible** with middlewares, plugins and Pub/Sub configurations.
+* **Resilient** - using proven technologies and passing stress tests (see [Stability](/#stability)).
+
+## Getting Started
+
+Pick what you like the best or see in order:
+
+1. Follow the [Getting Started guide](https://watermill.io/docs/getting-started/).
+2. See examples below.
+3. Read the full documentation: https://watermill.io/
+
+## Examples
+
+* Basic
+    * [Your first app](_examples/basic/1-your-first-app) - **start here!**
+    * [Realtime feed](_examples/basic/2-realtime-feed)
+    * [Router](_examples/basic/3-router)
+    * [Metrics](_examples/basic/4-metrics)
+    * [CQRS with protobuf](_examples/basic/5-cqrs-protobuf)
+* [Pub/Subs usage](_examples/pubsubs)
+    * These examples are part of the [Getting started guide](https://watermill.io/docs/getting-started/) and show usage of a single Pub/Sub at a time.
+* Real-world examples
+    * [Receiving webhooks](_examples/real-world-examples/receiving-webhooks)
+    * [Sending webhooks](_examples/real-world-examples/sending-webhooks)
+    * [Persistent Event Log](_examples/real-world-examples/persistent-event-log)
+    * [Transactional Events](_examples/real-world-examples/transactional-events)
+* Complete projects
+    * [NATS example with live code reloading](https://github.com/ThreeDotsLabs/nats-example)
+    * [RabbitMQ, webhooks and Kafka integration](https://github.com/ThreeDotsLabs/event-driven-example)
 
 ## Background
 
@@ -34,14 +65,6 @@ Your handler receives a message and decides whether to publish new message(s) or
 an error. What happens next is up to the middlewares you've chosen.
 
 You can find more about our motivations in our [*Introducing Watermill* blog post](https://threedots.tech/post/introducing-watermill/).
-
-## Features
-
-* **Easy** to understand (see examples below).
-* **Universal** - event-driven architecture, messaging, stream processing, CQRS - use it for whatever you need.
-* **Fast** - *(benchmarks coming soon)*
-* **Flexible** with middlewares and plugins.
-* **Resilient** - using proven technologies and passing stress tests *(results coming soon)*.
 
 ## Pub/Subs
 
@@ -73,14 +96,6 @@ Supported Pub/Subs:
 
 All Pub/Subs implementation documentation can be found in the [documentation](https://watermill.io/docs/pub-sub-implementations/).
 
-## Examples
-* [Your first app](_examples/basic/1-your-first-app) - start here!
-* [Simple application with publisher and subscriber](_examples/basic/2-realtime-feed)
-* [HTTP to Kafka](_examples/http-to-kafka)
-* [NATS example](https://github.com/ThreeDotsLabs/nats-example)
-* [RabbitMQ, webhooks and Kafka integration](https://github.com/ThreeDotsLabs/event-driven-example)
-* [...and more!](_examples/)
-
 ## Contributing
 
 Please check our [contributing guide](CONTRIBUTING.md).
@@ -93,6 +108,10 @@ To ensure that all Pub/Subs are stable and safe to use in production, we created
 All tests are also executed in [*stress*](https://github.com/ThreeDotsLabs/watermill/blob/master/pubsub/tests/test_pubsub.go#L171) mode - that means that we are running all the tests **20x** in parallel.
 
 All tests are run with the race condition detector enabled (`-race` flag in tests).
+
+## Benchmarks
+
+Coming soon!
 
 ## Support
 
