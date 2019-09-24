@@ -111,7 +111,24 @@ All tests are run with the race condition detector enabled (`-race` flag in test
 
 ## Benchmarks
 
-Coming soon!
+Initial tools for benchmarking Pub/Subs can be found in [watermill-benchmark](https://github.com/ThreeDotsLabs/watermill-benchmark).
+
+All benchmarks are being done on a single 16 CPU VM instance, running one binary and dependencies in Docker Compose.
+
+These numbers are meant to serve as a rough estimate of how fast messages can be processed by different Pub/Subs.
+Keep in mind that the results can be vastly different, depending on the setup and configuration (both much lower and higher).
+
+Here's the short version for message size of 16 bytes.
+
+| Pub/Sub              | Publish (messages / s) | Subscribe (messages / s) |
+| -------------------- | ---------------------- | ------------------------ |
+| Kafka (one node)     | 63506                  | 110811                   |
+| Kafka (5 nodes)      | 70252                  | 117529                   |
+| NATS                 | 76208                  | 38169                    |
+| SQL (MySQL)          | 6989                   | 143                      |
+| Google Cloud Pub/Sub | 7416                   | 39591                    |
+| AMQP                 | 2408                   | 10608                    |
+| GoChannel            | 272938                 | 101371                   |
 
 ## Support
 
