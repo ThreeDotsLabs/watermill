@@ -38,9 +38,9 @@ github.com/ThreeDotsLabs/watermill/pubsub/gochannel.(*GoChannel).sendMessage(0xc
 github.com/ThreeDotsLabs/watermill/pubsub/gochannel.(*GoChannel).Publish(0xc000024100, 0x7c5250, 0xd, 0xc000098530, 0x1, 0x1, 0x0, 0x0)
 	/home/example/go/src/github.com/ThreeDotsLabs/watermill/pubsub/gochannel/pubsub.go:53 +0x6d
 main.publishMessages(0x7fdf7a317000, 0xc000024100)
-	/home/example/go/src/github.com/ThreeDotsLabs/watermill/docs/content/docs/getting-started/go-channel/main.go:43 +0x1ec
+	/home/example/go/src/github.com/ThreeDotsLabs/watermill/docs/src-link/_examples/pubsubs/go-channel/main.go:43 +0x1ec
 main.main()
-	/home/example/go/src/github.com/ThreeDotsLabs/watermill/docs/content/docs/getting-started/go-channel/main.go:36 +0x20a
+	/home/example/go/src/github.com/ThreeDotsLabs/watermill/docs/src-link/_examples/pubsubs/go-channel/main.go:36 +0x20a
 
 // ...
 ```
@@ -57,8 +57,8 @@ goroutine profile: total 5
 #	0x6a8310	github.com/ThreeDotsLabs/watermill.LogFields.Add+0xd0							/home/example/go/src/github.com/ThreeDotsLabs/watermill/log.go:15
 #	0x6a9bca	github.com/ThreeDotsLabs/watermill/pubsub/gochannel.(*GoChannel).sendMessage+0x6fa	/home/example/go/src/github.com/ThreeDotsLabs/watermill/pubsub/gochannel/pubsub.go:75
 #	0x6a948c	github.com/ThreeDotsLabs/watermill/pubsub/gochannel.(*GoChannel).Publish+0x6c		/home/example/go/src/github.com/ThreeDotsLabs/watermill/pubsub/gochannel/pubsub.go:53
-#	0x7028bb	main.publishMessages+0x1eb										/home/example/go/src/github.com/ThreeDotsLabs/watermill/docs/content/docs/getting-started/go-channel/main.go:43
-#	0x702609	main.main+0x209												/home/example/go/src/github.com/ThreeDotsLabs/watermill/docs/content/docs/getting-started/go-channel/main.go:36
+#	0x7028bb	main.publishMessages+0x1eb										/home/example/go/src/github.com/ThreeDotsLabs/watermill/docs/src-link/_examples/pubsubs/go-channel/main.go:43
+#	0x702609	main.main+0x209												/home/example/go/src/github.com/ThreeDotsLabs/watermill/docs/src-link/_examples/pubsubs/go-channel/main.go:36
 #	0x42f186	runtime.main+0x206											/usr/lib/go/src/runtime/proc.go:201
 
 // ...

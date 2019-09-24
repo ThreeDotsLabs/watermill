@@ -23,7 +23,7 @@ var (
 	httpAddr  = flag.String("http", ":8080", "The address for the http subscriber")
 )
 
-type GitlabWebhook struct {
+type Webhook struct {
 	ObjectKind string `json:"object_kind"`
 }
 
@@ -76,22 +76,23 @@ func main() {
 
 	r.AddHandler(
 		"http_to_kafka",
-		"/gitlab-webhooks", // this is the URL of our API
+		"/webhooks", // this is the URL of our API
 		httpSubscriber,
-		"webhooks",
+		"webhooks", // this is the topic the message will be published to
 		kafkaPublisher,
 		func(msg *message.Message) ([]*message.Message, error) {
-			webhook := GitlabWebhook{}
+			webhook := Webhook{}
 
-			// simple validation
 			if err := json.Unmarshal(msg.Payload, &webhook); err != nil {
 				return nil, errors.Wrap(err, "cannot unmarshal message")
 			}
+
+			// Add simple validation
 			if webhook.ObjectKind == "" {
 				return nil, errors.New("empty object kind")
 			}
 
-			// just forward from http subscriber to kafka publisher
+			// Simply forward the message from HTTP Subscriber to Kafka Publisher
 			return []*message.Message{msg}, nil
 		},
 	)

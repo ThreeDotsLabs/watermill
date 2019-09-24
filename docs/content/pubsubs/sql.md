@@ -76,7 +76,7 @@ Note that you don't have to use the initialization queries provided by Watermill
 {{% load-snippet-partial file="src-link/watermill-sql/pkg/sql/publisher.go" first_line_contains="func NewPublisher" last_line_contains="func NewPublisher" %}}
 
 Example:
-{{% load-snippet-partial file="content/docs/getting-started/sql/main.go" first_line_contains="publisher, err :=" last_line_contains="panic(err)" padding_after="1" %}}
+{{% load-snippet-partial file="src-link/_examples/pubsubs/sql/main.go" first_line_contains="publisher, err :=" last_line_contains="panic(err)" padding_after="1" %}}
 {{% /render-md %}}
 
 {{% render-md %}}
@@ -90,7 +90,7 @@ constructor. You have to create one publisher for each transaction.
 
 Example:
 {{% render-md %}}
-{{% load-snippet-partial file="src-link/_examples/sql/transactional-events/main.go" first_line_contains="func simulateEvents" last_line_contains="return pub.Publish(" padding_after="3" %}}
+{{% load-snippet-partial file="src-link/_examples/real-world-examples/transactional-events/main.go" first_line_contains="func simulateEvents" last_line_contains="return pub.Publish(" padding_after="3" %}}
 {{% /render-md %}}
 
 #### Subscribing
@@ -99,7 +99,7 @@ Example:
 {{% load-snippet-partial file="src-link/watermill-sql/pkg/sql/subscriber.go" first_line_contains="func NewSubscriber" last_line_contains="func NewSubscriber" %}}
 
 Example:
-{{% load-snippet-partial file="content/docs/getting-started/sql/main.go" first_line_contains="subscriber, err :=" last_line_contains="panic(err)" padding_after="1" %}}
+{{% load-snippet-partial file="src-link/_examples/pubsubs/sql/main.go" first_line_contains="subscriber, err :=" last_line_contains="panic(err)" padding_after="1" %}}
 {{% /render-md %}}
 
 {{% render-md %}}
