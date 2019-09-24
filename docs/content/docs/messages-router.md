@@ -20,7 +20,7 @@ To handle these requirements, there is a component named **Router**.
 ### Configuration
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/router.go" first_line_contains="type RouterConfig struct {" last_line_contains="RouterConfig) Validate()" padding_after="2" %}}
+{{% load-snippet-partial file="src-link/message/router.go" first_line_contains="type RouterConfig struct {" last_line_contains="RouterConfig) Validate()" padding_after="2" %}}
 {{% /render-md %}}
 
 ### Handler
@@ -28,13 +28,13 @@ To handle these requirements, there is a component named **Router**.
 At the beginning you need to implement `HandlerFunc`:
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/router.go" first_line_contains="// HandlerFunc is" last_line_contains="type HandlerFunc func" padding_after="1" %}}
+{{% load-snippet-partial file="src-link/message/router.go" first_line_contains="// HandlerFunc is" last_line_contains="type HandlerFunc func" padding_after="1" %}}
 {{% /render-md %}}
 
 Next, you have to add a new handler with `Router.AddHandler`:
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/router.go" first_line_contains="// AddHandler" last_line_contains=") {" padding_after="0" %}}
+{{% load-snippet-partial file="src-link/message/router.go" first_line_contains="// AddHandler" last_line_contains=") {" padding_after="0" %}}
 {{% /render-md %}}
 
 See an example usage from [Getting Started]({{< ref "/docs/getting-started#using-messages-router" >}}):
@@ -47,7 +47,7 @@ See an example usage from [Getting Started]({{< ref "/docs/getting-started#using
 Not every handler will produce new messages. You can add this kind of handler by using `Router.AddNoPublisherHandler`:
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/router.go" first_line_contains="// AddNoPublisherHandler" last_line_contains=") {" padding_after="0" %}}
+{{% load-snippet-partial file="src-link/message/router.go" first_line_contains="// AddNoPublisherHandler" last_line_contains=") {" padding_after="0" %}}
 {{% /render-md %}}
 
 ### Ack
@@ -66,7 +66,7 @@ If it is an issue, consider publishing just one message with each handler.
 To run the Router, you need to call `Run()`.
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/router.go" first_line_contains="// Run" last_line_contains="func (r *Router) Run(ctx context.Context) (err error) {" padding_after="0" %}}
+{{% load-snippet-partial file="src-link/message/router.go" first_line_contains="// Run" last_line_contains="func (r *Router) Run(ctx context.Context) (err error) {" padding_after="0" %}}
 {{% /render-md %}}
 
 #### Ensuring that the Router is running
@@ -74,7 +74,7 @@ To run the Router, you need to call `Run()`.
 It can be useful to know if the router is running. You can use the `Running()` method for this.
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/router.go" first_line_contains="// Running" last_line_contains="func (r *Router) Running()" padding_after="0" %}}
+{{% load-snippet-partial file="src-link/message/router.go" first_line_contains="// Running" last_line_contains="func (r *Router) Running()" padding_after="0" %}}
 {{% /render-md %}}
 
 ### Execution models
@@ -92,7 +92,7 @@ See the chosen Pub/Sub documentation for supported execution models.
 ### Middleware
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/router.go" first_line_contains="// HandlerMiddleware" last_line_contains="type HandlerMiddleware" padding_after="1" %}}
+{{% load-snippet-partial file="src-link/message/router.go" first_line_contains="// HandlerMiddleware" last_line_contains="type HandlerMiddleware" padding_after="1" %}}
 {{% /render-md %}}
 
 A full list of standard middlewares can be found in [Middlewares]({{< ref "/docs/middlewares" >}}).
@@ -100,7 +100,7 @@ A full list of standard middlewares can be found in [Middlewares]({{< ref "/docs
 ### Plugin
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/router.go" first_line_contains="// RouterPlugin" last_line_contains="type RouterPlugin" padding_after="1" %}}
+{{% load-snippet-partial file="src-link/message/router.go" first_line_contains="// RouterPlugin" last_line_contains="type RouterPlugin" padding_after="1" %}}
 {{% /render-md %}}
 
 A full list of standard plugins can be found in [message/router/plugin](https://github.com/ThreeDotsLabs/watermill/tree/master/message/router/plugin).

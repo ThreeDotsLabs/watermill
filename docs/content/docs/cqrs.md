@@ -27,19 +27,19 @@ The command is a simple data structure, representing the request for executing s
 #### Command Bus
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/components/cqrs/command_bus.go" first_line_contains="// CommandBus" last_line_contains="type CommandBus" padding_after="0" %}}
+{{% load-snippet-partial file="src-link/components/cqrs/command_bus.go" first_line_contains="// CommandBus" last_line_contains="type CommandBus" padding_after="0" %}}
 {{% /render-md %}}
 
 #### Command Processor
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/components/cqrs/command_processor.go" first_line_contains="// CommandProcessor" last_line_contains="type CommandProcessor" padding_after="0" %}}
+{{% load-snippet-partial file="src-link/components/cqrs/command_processor.go" first_line_contains="// CommandProcessor" last_line_contains="type CommandProcessor" padding_after="0" %}}
 {{% /render-md %}}
 
 #### Command Handler
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/components/cqrs/command_processor.go" first_line_contains="// CommandHandler" last_line_contains="type CommandHandler" padding_after="0" %}}
+{{% load-snippet-partial file="src-link/components/cqrs/command_processor.go" first_line_contains="// CommandHandler" last_line_contains="type CommandHandler" padding_after="0" %}}
 {{% /render-md %}}
 
 #### Event
@@ -49,31 +49,31 @@ The event represents something that already took place. Events are immutable.
 #### Event Bus
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/components/cqrs/event_bus.go" first_line_contains="// EventBus" last_line_contains="type EventBus" padding_after="0" %}}
+{{% load-snippet-partial file="src-link/components/cqrs/event_bus.go" first_line_contains="// EventBus" last_line_contains="type EventBus" padding_after="0" %}}
 {{% /render-md %}}
 
 #### Event Processor
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/components/cqrs/event_processor.go" first_line_contains="// EventProcessor" last_line_contains="type EventProcessor" padding_after="0" %}}
+{{% load-snippet-partial file="src-link/components/cqrs/event_processor.go" first_line_contains="// EventProcessor" last_line_contains="type EventProcessor" padding_after="0" %}}
 {{% /render-md %}}
 
 #### Event Handler
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/components/cqrs/event_processor.go" first_line_contains="// EventHandler" last_line_contains="type EventHandler" padding_after="0" %}}
+{{% load-snippet-partial file="src-link/components/cqrs/event_processor.go" first_line_contains="// EventHandler" last_line_contains="type EventHandler" padding_after="0" %}}
 {{% /render-md %}}
 
 #### CQRS Facade
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/components/cqrs/cqrs.go" first_line_contains="// Facade" last_line_contains="type Facade" padding_after="0" %}}
+{{% load-snippet-partial file="src-link/components/cqrs/cqrs.go" first_line_contains="// Facade" last_line_contains="type Facade" padding_after="0" %}}
 {{% /render-md %}}
 
 #### Command and Event Marshaler
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/components/cqrs/marshaler.go" first_line_contains="// CommandEventMarshaler" last_line_contains="NameFromMessage(" padding_after="1" %}}
+{{% load-snippet-partial file="src-link/components/cqrs/marshaler.go" first_line_contains="// CommandEventMarshaler" last_line_contains="NameFromMessage(" padding_after="1" %}}
 {{% /render-md %}}
 
 ## Usage
@@ -107,7 +107,7 @@ The domain is simple:
 For the beginning, we need to simulate the guest's action.
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/_examples/basic/5-cqrs-protobuf/main.go" first_line_contains="bookRoomCmd := &BookRoom{" last_line_contains="panic(err)" padding_after="1" %}}
+{{% load-snippet-partial file="src-link/_examples/basic/5-cqrs-protobuf/main.go" first_line_contains="bookRoomCmd := &BookRoom{" last_line_contains="panic(err)" padding_after="1" %}}
 {{% /render-md %}}
 
 ### Command handler
@@ -115,7 +115,7 @@ For the beginning, we need to simulate the guest's action.
 `BookRoomHandler` will handle our command.
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/_examples/basic/5-cqrs-protobuf/main.go" first_line_contains="// BookRoomHandler is a command handler" last_line_contains="// OrderBeerOnRoomBooked is a event handler" padding_after="0" %}}
+{{% load-snippet-partial file="src-link/_examples/basic/5-cqrs-protobuf/main.go" first_line_contains="// BookRoomHandler is a command handler" last_line_contains="// OrderBeerOnRoomBooked is a event handler" padding_after="0" %}}
 {{% /render-md %}}
 
 ### Event handler
@@ -123,7 +123,7 @@ For the beginning, we need to simulate the guest's action.
 As mentioned before, we want to order a beer every time when a room is booked (*"Whenever a Room is booked"* post-it). We do it by using the `OrderBeer` command.
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/_examples/basic/5-cqrs-protobuf/main.go" first_line_contains="// OrderBeerOnRoomBooked is a event handler" last_line_contains="// OrderBeerHandler is a command handler" padding_after="0" %}}
+{{% load-snippet-partial file="src-link/_examples/basic/5-cqrs-protobuf/main.go" first_line_contains="// OrderBeerOnRoomBooked is a event handler" last_line_contains="// OrderBeerHandler is a command handler" padding_after="0" %}}
 {{% /render-md %}}
 
 `OrderBeerHandler` is very similar to `BookRoomHandler`. The only difference is, that it sometimes returns an error when there are not enough beers, which causes redelivery of the command.
@@ -132,7 +132,7 @@ You can find the entire implementation in the [example source code](https://gith
 ### Building a read model with the event handler
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/_examples/basic/5-cqrs-protobuf/main.go" first_line_contains="// BookingsFinancialReport is a read model" last_line_contains="func main() {" padding_after="0" %}}
+{{% load-snippet-partial file="src-link/_examples/basic/5-cqrs-protobuf/main.go" first_line_contains="// BookingsFinancialReport is a read model" last_line_contains="func main() {" padding_after="0" %}}
 {{% /render-md %}}
 
 ### Wiring it up - the CQRS facade
@@ -148,7 +148,7 @@ Let's go back to the CQRS. As you already know, CQRS is built from multiple comp
 To simplify creating all these building blocks, we created `cqrs.Facade`, which creates all of them.
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/_examples/basic/5-cqrs-protobuf/main.go" first_line_contains="main() {" last_line_contains="err := router.Run(" padding_after="3" %}}
+{{% load-snippet-partial file="src-link/_examples/basic/5-cqrs-protobuf/main.go" first_line_contains="main() {" last_line_contains="err := router.Run(" padding_after="3" %}}
 {{% /render-md %}}
 
 And that's all. We have a working CQRS application.

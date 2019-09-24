@@ -79,7 +79,7 @@ If you need to customize thing in `amqp.Delivery`, you can do it `PostprocessPub
 AMQP doesn't provide mechanism like Kafka's "consumer groups". You can still achieve similar behaviour with `GenerateQueueNameTopicNameWithSuffix` and `NewDurablePubSubConfig`.
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/docs/snippets/amqp-consumer-groups/main.go" first_line_contains="func createSubscriber(" last_line_contains="go process(\"subscriber_2\", messages2)" %}}
+{{% load-snippet-partial file="docs/snippets/amqp-consumer-groups/main.go" first_line_contains="func createSubscriber(" last_line_contains="go process(\"subscriber_2\", messages2)" %}}
 {{% /render-md %}}
 
 In this example both `pubSub1` and `pubSub2` will receive some messages independently.

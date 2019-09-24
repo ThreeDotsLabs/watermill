@@ -18,7 +18,7 @@ and capturing the stacktrace.
 Middlewares wrap the handler function like this:
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/router.go" first_line_contains="// HandlerMiddleware" last_line_contains="type HandlerMiddleware" %}}
+{{% load-snippet-partial file="src-link/message/router.go" first_line_contains="// HandlerMiddleware" last_line_contains="type HandlerMiddleware" %}}
 {{% /render-md %}}
 
 ## Available middlewares

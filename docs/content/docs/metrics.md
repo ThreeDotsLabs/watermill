@@ -16,7 +16,7 @@ We provide a default implementation using Prometheus, based on the official [Pro
 The `components/metrics` package exports `PrometheusMetricsBuilder`, which provides convenience functions to wrap publishers, subscribers and handlers so that they update the relevant Prometheus registry:
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/components/metrics/builder.go" first_line_contains="// PrometheusMetricsBuilder" last_line_contains="func (b PrometheusMetricsBuilder)" %}}
+{{% load-snippet-partial file="src-link/components/metrics/builder.go" first_line_contains="// PrometheusMetricsBuilder" last_line_contains="func (b PrometheusMetricsBuilder)" %}}
 {{% /render-md %}}
 
 ### Wrapping publishers, subscribers and handlers
@@ -24,13 +24,13 @@ The `components/metrics` package exports `PrometheusMetricsBuilder`, which provi
 If you are using Watermill's [router](/docs/messages-router) (which is recommended in most cases), you can use a single convenience function `AddPrometheusRouterMetrics` to ensure that all the handlers added to this router are wrapped to update the Prometheus registry, together with their publishers and subscribers:
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/components/metrics/builder.go" first_line_contains="// AddPrometheusRouterMetrics" last_line_contains="AddMiddleware" padding_after="1" %}}
+{{% load-snippet-partial file="src-link/components/metrics/builder.go" first_line_contains="// AddPrometheusRouterMetrics" last_line_contains="AddMiddleware" padding_after="1" %}}
 {{% /render-md %}}
 
 Example use of `AddPrometheusRouterMetrics`:
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/_examples/basic/4-metrics/main.go" first_line_contains="// we leave the namespace" last_line_contains="metricsBuilder.AddPrometheusRouterMetrics" %}}
+{{% load-snippet-partial file="src-link/_examples/basic/4-metrics/main.go" first_line_contains="// we leave the namespace" last_line_contains="metricsBuilder.AddPrometheusRouterMetrics" %}}
 {{% /render-md %}}
 
 In the snippet above, we have left the `namespace` and `subsystem` arguments empty. The Prometheus client library [uses these](https://godoc.org/github.com/prometheus/client_golang/prometheus#BuildFQName) to prefix the metric names. You may want to use namespace or subsystem, but be aware that this will impact the metric names and you will have to adjust the Grafana dashboard accordingly.
@@ -38,7 +38,7 @@ In the snippet above, we have left the `namespace` and `subsystem` arguments emp
 Standalone publishers and subscribers may also be decorated through the use of dedicated methods of `PrometheusMetricBuilder`:
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/_examples/basic/4-metrics/main.go" first_line_contains="subWithMetrics, err := " last_line_contains="pubWithMetrics, err := " padding_after="3" %}}
+{{% load-snippet-partial file="src-link/_examples/basic/4-metrics/main.go" first_line_contains="subWithMetrics, err := " last_line_contains="pubWithMetrics, err := " padding_after="3" %}}
 {{% /render-md %}}
 
 ### Exposing the /metrics endpoint
@@ -48,13 +48,13 @@ In accordance with how Prometheus works, the service needs to expose a HTTP endp
 To serve this endpoint, there are two convenience functions, one using a previously created Prometheus Registry, while the other also creates a new registry:
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/components/metrics/http.go" first_line_contains="// CreateRegistryAndServeHTTP" last_line_contains="func ServeHTTP(" %}}
+{{% load-snippet-partial file="src-link/components/metrics/http.go" first_line_contains="// CreateRegistryAndServeHTTP" last_line_contains="func ServeHTTP(" %}}
 {{% /render-md %}}
 
 Here is an example of its use in practice:
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/_examples/basic/4-metrics/main.go" first_line_contains="prometheusRegistry, closeMetricsServer :=" last_line_contains="metricsBuilder.AddPrometheusRouterMetrics" %}}
+{{% load-snippet-partial file="src-link/_examples/basic/4-metrics/main.go" first_line_contains="prometheusRegistry, closeMetricsServer :=" last_line_contains="metricsBuilder.AddPrometheusRouterMetrics" %}}
 {{% /render-md %}}
 
 ### Example application
@@ -142,7 +142,7 @@ If you feel like some metric is missing, you can easily expand this basic implem
 An elegant way to update these metrics would be through the use of decorators:
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/decorator.go" first_line_contains="// MessageTransformSubscriberDecorator" last_line_contains="type messageTransformSubscriberDecorator" %}}
+{{% load-snippet-partial file="src-link/message/decorator.go" first_line_contains="// MessageTransformSubscriberDecorator" last_line_contains="type messageTransformSubscriberDecorator" %}}
 {{% /render-md %}}
 
 and/or [router middlewares](/docs/messages-router/#middleware). 

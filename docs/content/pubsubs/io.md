@@ -48,7 +48,7 @@ The reading will continue even if the reads come up empty, but they will not be 
 The continuous reading may be used, for example, to emulate the behaviour of a `tail -f` command, like in this snippet:
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/docs/snippets/tail-log-file/main.go" first_line_contains="// this will" last_line_contains="return false" padding_after="1" %}}
+{{% load-snippet-partial file="docs/snippets/tail-log-file/main.go" first_line_contains="// this will" last_line_contains="return false" padding_after="1" %}}
 {{% /render-md %}}
 
 #### Marshaling/Unmarshaling
