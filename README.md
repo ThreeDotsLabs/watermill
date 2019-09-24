@@ -111,7 +111,19 @@ All tests are run with the race condition detector enabled (`-race` flag in test
 
 ## Benchmarks
 
-Coming soon!
+Initial tools for benchmarking Pub/Subs can be found in [watermill-benchmark](https://github.com/ThreeDotsLabs/watermill-benchmark).
+
+Here's the short version for message size of 16 bytes. Note that this is a rough estimate while we continue to develop better tooling.
+
+| Pub/Sub              | Publish (messages / s) | Subscribe (messages / s) |
+| -------------------- | ---------------------- | ------------------------ |
+| Kafka (one node)     | 63506                  | 110811                   |
+| Kafka (5 nodes)      | 70252                  | 117529                   |
+| NATS                 | 76208                  | 38169                    |
+| SQL (MySQL)          | 6989                   | 143                      |
+| Google Cloud Pub/Sub | 7416                   | 39591                    |
+| AMQP                 | 2408                   | 10608                    |
+| GoChannel            | 272938                 | 101371                   |
 
 ## Support
 
