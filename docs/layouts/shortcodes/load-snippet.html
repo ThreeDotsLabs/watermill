@@ -10,10 +10,16 @@
 {{ $lines := slice }}
 
 {{ $linkFile := $file }}
-{{ if in $file "content/src-link/" }}
-    {{ $linkFile = replace $linkFile "content/src-link/" "" }}
+{{ $repo := "watermill" }}
+
+{{ if in $file "src-link/watermill-" }}
+    {{ $repo = index (findRE "watermill-[a-z]+" $linkFile) 0 }}
+    {{ $linkFile = replace $linkFile $repo "" }}
+    {{ $linkFile = replace $linkFile "src-link//" "" }}
+{{ else if in $linkFile "src-link/" }}
+    {{ $linkFile = replace $linkFile "src-link/" "" }}
 {{ else }}
-    {{ $linkFile = print "docs/" $linkFile }}
+    {{ $linkFile = print "docs/content/" $linkFile }}
 {{ end }}
 
 <small class="smaller">Full source: [{{ $linkFile }}](https://github.com/ThreeDotsLabs/watermill/tree/master/{{ $linkFile }})</small>

@@ -16,7 +16,7 @@ When a message is processed, you should send an [`Ack()`]({{< ref "#ack" >}}) or
 `Acks` and `Nacks` are processed by Subscribers (in default implementations, the subscribers are waiting for an `Ack` or a `Nack`).
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/message.go" first_line_contains="type Message struct {" last_line_contains="ctx context.Context" padding_after="2" %}}
+{{% load-snippet-partial file="src-link/message/message.go" first_line_contains="type Message struct {" last_line_contains="ctx context.Context" padding_after="2" %}}
 {{% /render-md %}}
 
 ### Ack
@@ -24,20 +24,20 @@ When a message is processed, you should send an [`Ack()`]({{< ref "#ack" >}}) or
 #### Sending `Ack`
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/message.go" first_line_contains="// Ack" last_line_contains="func (m *Message) Ack() bool {" padding_after="0" %}}
+{{% load-snippet-partial file="src-link/message/message.go" first_line_contains="// Ack" last_line_contains="func (m *Message) Ack() bool {" padding_after="0" %}}
 {{% /render-md %}}
 
 
 ### Nack
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/message.go" first_line_contains="// Nack" last_line_contains="func (m *Message) Nack() bool {" padding_after="0" %}}
+{{% load-snippet-partial file="src-link/message/message.go" first_line_contains="// Nack" last_line_contains="func (m *Message) Nack() bool {" padding_after="0" %}}
 {{% /render-md %}}
 
 ### Receiving `Ack/Nack`
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/docs/message/receiving-ack.go" first_line_contains="select {" last_line_contains="}" padding_after="0" %}}
+{{% load-snippet-partial file="docs/message/receiving-ack.go" first_line_contains="select {" last_line_contains="}" padding_after="0" %}}
 {{% /render-md %}}
 
 
@@ -46,6 +46,6 @@ When a message is processed, you should send an [`Ack()`]({{< ref "#ack" >}}) or
 Message contains the standard library context, just like an HTTP request.
 
 {{% render-md %}}
-{{% load-snippet-partial file="content/src-link/message/message.go" first_line_contains="// Context" last_line_contains="func (m *Message) SetContext" padding_after="2" %}}
+{{% load-snippet-partial file="src-link/message/message.go" first_line_contains="// Context" last_line_contains="func (m *Message) SetContext" padding_after="2" %}}
 {{% /render-md %}}
 

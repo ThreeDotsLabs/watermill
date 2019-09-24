@@ -312,7 +312,7 @@ The second option is useful when your handler requires some dependencies like da
 
 You can run this example by `go run main.go`.
 
-You've just created your first application with Watermill. You can find the full source in [/docs/src-link/_examples/basic/3-router/main.go](https://github.com/ThreeDotsLabs/watermill/blob/master/docs/src-link/_examples/basic/3-router/main.go).
+You've just created your first application with Watermill. You can find the full source in [/_examples/basic/3-router/main.go](https://github.com/ThreeDotsLabs/watermill/blob/master/_examples/basic/3-router/main.go).
 
 ### Logging
 
@@ -337,7 +337,7 @@ For more detailed documentation check [documentation topics]({{< ref "/docs" >}}
 
 Check out the [examples](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples) that will show you how to start using Watermill.
 
-The recommended entry point is [Your first Watermill application](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/basic/1-your-first-app). 
+The recommended entry point is [Your first Watermill application](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/basic/1-your-first-app).
 It contains the entire environment in `docker-compose.yml`, including Golang and Kafka, which you can run with one command.
 
 After that, you can see the [Realtime feed](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/basic/2-realtime-feed) example.

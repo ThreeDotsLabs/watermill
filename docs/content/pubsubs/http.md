@@ -11,9 +11,9 @@ toc = false
 ### HTTP
 
 The HTTP subscriber listens to HTTP requests (for example - webhooks) and outputs them as messages.
-You can then post them to any Publisher. Here is an example with [sending HTTP messages to Kafka](https://github.com/ThreeDotsLabs/watermill/blob/master/_examples/http-to-kafka/main.go).
+You can then post them to any Publisher. Here is an example with [sending HTTP messages to Kafka](https://github.com/ThreeDotsLabs/watermill/blob/master/_examples/real-world-examples/receiving-webhooks/main.go).
 
-The HTTP publisher sends HTTP requests as specified in its configuration. Here is an example with [transforming Kafka messages into HTTP webhook requests](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/kafka-to-http).
+The HTTP publisher sends HTTP requests as specified in its configuration. Here is an example with [transforming Kafka messages into HTTP webhook requests](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/real-world-examples/sending-webhooks).
 
 #### Characteristics
 
