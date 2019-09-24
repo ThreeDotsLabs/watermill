@@ -22,8 +22,8 @@
     {{ $repo = index (findRE "watermill-[a-z]+" $linkFile) 0 }}
     {{ $linkFile = replace $linkFile $repo "" }}
     {{ $linkFile = replace $linkFile "src-link//" "" }}
-{{ else if in $file "src-link/" }}
-    {{ $linkFile = replace $linkFile "src-link/" "" }}
+{{ else if in $linkFile "content/src-link/" }}
+    {{ $linkFile = replace $linkFile "content/src-link/" "" }}
 {{ else }}
     {{ $linkFile = print "docs/" $linkFile }}
 {{ end }}
