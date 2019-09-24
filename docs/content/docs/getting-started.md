@@ -336,16 +336,16 @@ For more detailed documentation check [documentation topics]({{< ref "/docs" >}}
 #### Examples
 
 Check out the [examples](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples) that will show you how to start using Watermill.
-The recommended entry point is [Your first Watermill application](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/your-first-app). 
+
+The recommended entry point is [Your first Watermill application](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/basic/1-your-first-app). 
 It contains the entire environment in `docker-compose.yml`, including Golang and Kafka, which you can run with one command.
 
-After that, you can try the [Simple app](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/simple-app) example.
+After that, you can see the [Realtime feed](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/basic/2-realtime-feed) example.
 It uses more middlewares and contains two handlers. There is also a separate application for publishing messages.
 
-The [third example](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/http-to-kafka) showcases the use of a different Subscriber implementation, namely **HTTP**. 
-It is a very simple application, which can save GitLab webhooks to Kafka.
+For a different subscriber implementation, namely **HTTP**, refer to the [receiving-webhooks](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/real-world-examples/receiving-webhooks) example. It is a very simple application that saves webhooks to Kafka.
 
-Most recent information can be found in the project's [README](https://github.com/ThreeDotsLabs/watermill#readme).
+Full list of examples can be found in the project's [README](https://github.com/ThreeDotsLabs/watermill#examples).
 
 #### Support
 
