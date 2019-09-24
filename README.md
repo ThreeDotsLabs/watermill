@@ -113,7 +113,12 @@ All tests are run with the race condition detector enabled (`-race` flag in test
 
 Initial tools for benchmarking Pub/Subs can be found in [watermill-benchmark](https://github.com/ThreeDotsLabs/watermill-benchmark).
 
-Here's the short version for message size of 16 bytes. Note that this is a rough estimate while we continue to develop better tooling.
+All benchmarks are being done on a single 16 CPU VM instance, running one binary and dependencies in Docker Compose.
+
+These numbers are meant to serve as a rough estimate of how fast messages can be processed by different Pub/Subs.
+Keep in mind that the results can be vastly different, depending on the setup and configuration (both much lower and higher).
+
+Here's the short version for message size of 16 bytes.
 
 | Pub/Sub              | Publish (messages / s) | Subscribe (messages / s) |
 | -------------------- | ---------------------- | ------------------------ |
