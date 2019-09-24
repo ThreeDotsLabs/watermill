@@ -18,6 +18,8 @@
     {{ $linkFile = replace $linkFile "src-link//" "" }}
 {{ else if in $linkFile "src-link/" }}
     {{ $linkFile = replace $linkFile "src-link/" "" }}
+{{ else }}
+    {{ $linkFile = print "docs/content/" $linkFile }}
 {{ end }}
 
 <small class="smaller">Full source: [{{ $linkFile }}](https://github.com/ThreeDotsLabs/watermill/tree/master/{{ $linkFile }})</small>

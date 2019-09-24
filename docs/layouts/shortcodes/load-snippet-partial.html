@@ -24,6 +24,8 @@
     {{ $linkFile = replace $linkFile "src-link//" "" }}
 {{ else if in $linkFile "src-link/" }}
     {{ $linkFile = replace $linkFile "src-link/" "" }}
+{{ else }}
+    {{ $linkFile = print "docs/content/" $linkFile }}
 {{ end }}
 
 {{ $lines := slice }}
