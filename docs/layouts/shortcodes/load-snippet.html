@@ -10,8 +10,8 @@
 {{ $lines := slice }}
 
 {{ $linkFile := $file }}
-{{ if in $file "content/src-link/" }}
-    {{ $linkFile = replace $linkFile "content/src-link/" "" }}
+{{ if in $file "src-link/" }}
+    {{ $linkFile = replace $linkFile "src-link/" "" }}
 {{ else }}
     {{ $linkFile = print "docs/" $linkFile }}
 {{ end }}

@@ -312,7 +312,7 @@ The second option is useful when your handler requires some dependencies like da
 
 You can run this example by `go run main.go`.
 
-You've just created your first application with Watermill. You can find the full source in [/docs/src-link/_examples/basic/3-router/main.go](https://github.com/ThreeDotsLabs/watermill/blob/master/docs/src-link/_examples/basic/3-router/main.go).
+You've just created your first application with Watermill. You can find the full source in [/_examples/basic/3-router/main.go](https://github.com/ThreeDotsLabs/watermill/blob/master/_examples/basic/3-router/main.go).
 
 ### Logging
 
@@ -336,14 +336,13 @@ For more detailed documentation check [documentation topics]({{< ref "/docs" >}}
 #### Examples
 
 Check out the [examples](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples) that will show you how to start using Watermill.
-The recommended entry point is [Your first Watermill application](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/your-first-app). 
+The recommended entry point is [Your first Watermill application](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/basic/1-your-first-app).
 It contains the entire environment in `docker-compose.yml`, including Golang and Kafka, which you can run with one command.
 
-After that, you can try the [Simple app](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/simple-app) example.
+After that, you can try the [Simple app](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/basic/2-realtime-feed) example.
 It uses more middlewares and contains two handlers. There is also a separate application for publishing messages.
 
-The [third example](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/http-to-kafka) showcases the use of a different Subscriber implementation, namely **HTTP**. 
-It is a very simple application, which can save GitLab webhooks to Kafka.
+You can find all examples in [_examples directory](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples).
 
 Most recent information can be found in the project's [README](https://github.com/ThreeDotsLabs/watermill#readme).
 
