@@ -18,7 +18,7 @@ Apache Kafka is one of the most popular Pub/Subs. We are providing Pub/Sub imple
 | ------- | ---------- | ---- |
 | ConsumerGroups | yes | |
 | ExactlyOnceDelivery | no | in theory can be achieved with [Transactions](https://www.confluent.io/blog/transactions-apache-kafka/), currently no support for any Golang client  |
-| GuaranteedOrder | yes | require [paritition key usage](#partitioning)  |
+| GuaranteedOrder | yes | require [partition key usage](#partitioning)  |
 | Persistent | yes| |
 
 #### Configuration
