@@ -94,7 +94,7 @@ Supported Pub/Subs:
 - SQL Pub/Sub [(`github.com/ThreeDotsLabs/watermill-sql`)](https://github.com/ThreeDotsLabs/watermill-sql/)
 
 
-All Pub/Subs implementation documentation can be found in the [documentation](https://watermill.io/docs/pub-sub-implementations/).
+All Pub/Subs implementation documentation can be found in the [documentation](https://watermill.io/pubsubs/).
 
 ## Contributing
 
