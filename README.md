@@ -125,7 +125,8 @@ Here's the short version for message size of 16 bytes.
 | Kafka (one node)     | 63,506                 | 110,811                  |
 | Kafka (5 nodes)      | 70,252                 | 117,529                  |
 | NATS                 | 76,208                 | 38,169                   |
-| SQL (MySQL)          | 6,989                  | 143                      |
+| SQL (MySQL)          | 7,299                  | 154                      |
+| SQL (PostgreSQL)     | 4,142                  | 98                       |
 | Google Cloud Pub/Sub | 7,416                  | 39,591                   |
 | AMQP                 | 2,408                  | 10,608                   |
 | GoChannel            | 272,938                | 101,371                  |
