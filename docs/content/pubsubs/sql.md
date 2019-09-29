@@ -42,7 +42,7 @@ it to `SubscriberConfig` or `PublisherConfig`.
 {{% load-snippet-partial file="src-link/watermill-sql/pkg/sql/schema_adapter.go" first_line_contains="// SchemaAdapter" last_line_contains="// DefaultMySQLSchema" %}}
 {{% /render-md %}}
 
-There is a default schema provided for each supported engine (`DefaultMySQLSchema` and `DefaultPostgresSchema`).
+There is a default schema provided for each supported engine (`DefaultMySQLSchema` and `DefaultPostgreSQLSchema`).
 It supports the most common use case (storing events in a table). You can base your schema on one of these, extending only chosen methods.
 
 ##### Extending schema
@@ -98,7 +98,7 @@ Example:
 To create a subscriber, you need to pass not only proper schema adapter, but also an offsets adapter.
 
 * For MySQL schema use `DefaultMySQLOffsetsAdapter`
-* For PostgreSQL schema use `DefaultPostgresOffsetsAdapter`
+* For PostgreSQL schema use `DefaultPostgreSQLOffsetsAdapter`
 
 {{% render-md %}}
 {{% load-snippet-partial file="src-link/watermill-sql/pkg/sql/subscriber.go" first_line_contains="func NewSubscriber" last_line_contains="func NewSubscriber" %}}
