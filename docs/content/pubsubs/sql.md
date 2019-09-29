@@ -10,7 +10,7 @@ toc = false
 
 ### SQL
 
-SQL Pub/Sub executes queries on any SQL database, using it like a messaging system.
+SQL Pub/Sub executes queries on any SQL database, using it like a messaging system. At the moment, **MySQL** and **PostgreSQL** are supported.
 
 While the performance of this approach isn't the best, it fits many use cases, where eventual consistency is acceptable.
 It can also be useful for projects that are not using any specialized message queue at the moment, but have access to a SQL database.
@@ -39,11 +39,11 @@ SQL Pub/Sub uses user-defined schema to handle select and insert queries. You ne
 it to `SubscriberConfig` or `PublisherConfig`.
 
 {{% render-md %}}
-{{% load-snippet-partial file="src-link/watermill-sql/pkg/sql/schema_adapter.go" first_line_contains="// SchemaAdapter" last_line_contains="// DefaultSchema" %}}
+{{% load-snippet-partial file="src-link/watermill-sql/pkg/sql/schema_adapter.go" first_line_contains="// SchemaAdapter" last_line_contains="// DefaultMySQLSchema" %}}
 {{% /render-md %}}
 
-There is `DefaultSchema` defined for most common use case (storing events in a table). You can base your schema on this
-one, extending only chosen methods.
+There is a default schema provided for each supported engine (`DefaultMySQLSchema` and `DefaultPostgresSchema`).
+It supports the most common use case (storing events in a table). You can base your schema on one of these, extending only chosen methods.
 
 ##### Extending schema
 
@@ -57,7 +57,7 @@ Note that you don't have to use the initialization queries provided by Watermill
 `InitializeSchema` field to `true` in the config. Otherwise, you can use your own solution for database migrations.
 
 {{% render-md %}}
-{{% load-snippet-partial file="src-link/watermill-sql/pkg/sql/schema_adapter.go" first_line_contains="// DefaultSchema" last_line_contains="type DefaultSchema" %}}
+{{% load-snippet-partial file="src-link/watermill-sql/pkg/sql/schema_adapter.go" first_line_contains="// DefaultMySQLSchema" last_line_contains="type DefaultMySQLSchema" %}}
 {{% /render-md %}}
 
 #### Configuration
@@ -95,6 +95,11 @@ Example:
 
 #### Subscribing
 
+To create a subscriber, you need to pass not only proper schema adapter, but also an offsets adapter.
+
+* For MySQL schema use `DefaultMySQLOffsetsAdapter`
+* For PostgreSQL schema use `DefaultPostgresOffsetsAdapter`
+
 {{% render-md %}}
 {{% load-snippet-partial file="src-link/watermill-sql/pkg/sql/subscriber.go" first_line_contains="func NewSubscriber" last_line_contains="func NewSubscriber" %}}
 
@@ -108,7 +113,8 @@ Example:
 
 #### Offsets Adapter
 
-The logic for storing offsets of messages is provided by the `OffsetsAdapter`. The MySQL variant is defined and ready to use.
+The logic for storing offsets of messages is provided by the `OffsetsAdapter`. If your schema uses auto-incremented integer as the row ID,
+it should work out of the box with default offset adapters.
 
 {{% render-md %}}
 {{% load-snippet-partial file="src-link/watermill-sql/pkg/sql/offsets_adapter.go" first_line_contains="type OffsetsAdapter" last_line_contains="type DefaultMySQLOffsetsAdapter" %}}
