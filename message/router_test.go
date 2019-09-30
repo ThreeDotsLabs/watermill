@@ -430,32 +430,45 @@ func TestRouter_AddMiddlewareToHandler_success(t *testing.T) {
 	subscriber := &subscriberMock{
 		messages: make(chan *message.Message),
 	}
+
+	pub, sub := createPubSub()
+	defer func() {
+		assert.NoError(t, pub.Close())
+		assert.NoError(t, sub.Close())
+	}()
+
 	router, err := message.NewRouter(message.RouterConfig{
 		CloseTimeout: time.Second,
 	}, watermill.NewStdLogger(true, true))
 	require.NoError(t, err)
 
-	calls := []string{}
+	calls := map[string]int{}
 	handlerFunc := func(msg *message.Message) ([]*message.Message, error) {
 		return message.Messages{msg}, nil
 	}
 	firstGeneralMiddleware := func(h message.HandlerFunc) message.HandlerFunc {
-		calls = append(calls, "firstGeneralMiddleware")
+		calls["firstGeneralMiddleware"] += 1
 		return h
 	}
 
 	secondGeneralMiddleware := func(h message.HandlerFunc) message.HandlerFunc {
-		calls = append(calls, "secondGeneralMiddleware")
+		calls["secondGeneralMiddleware"] += 1
 		return h
 	}
 
 	firstHandlerMiddleware := func(h message.HandlerFunc) message.HandlerFunc {
-		calls = append(calls, "firstHandlerMiddleware")
+		calls["firstHandlerMiddleware"] += 1
+		return h
+	}
+
+	secondHandlerMiddleware := func(h message.HandlerFunc) message.HandlerFunc {
+		calls["secondHandlerMiddleware"] += 1
 		return h
 	}
 
 	topic := "some_topic"
 	handlerName := "some_topic_handler"
+	otherHandlerName := "other_handler"
 	router.AddHandler(
 		handlerName,
 		topic,
@@ -464,9 +477,18 @@ func TestRouter_AddMiddlewareToHandler_success(t *testing.T) {
 		publisher,
 		handlerFunc,
 	)
+	router.AddHandler(
+		otherHandlerName,
+		topic,
+		sub,
+		topic,
+		pub,
+		handlerFunc,
+	)
 	router.AddMiddleware(firstGeneralMiddleware)
 	router.AddMiddlewareToHandler(handlerName, firstHandlerMiddleware)
 	router.AddMiddleware(secondGeneralMiddleware)
+	router.AddMiddlewareToHandler(otherHandlerName, secondHandlerMiddleware)
 
 	go func() {
 		err := router.Run(context.Background())
@@ -489,10 +511,10 @@ func TestRouter_AddMiddlewareToHandler_success(t *testing.T) {
 	err = router.Close()
 	require.NoError(t, err)
 
-	require.Len(t, calls, 3)
-	require.Equal(t, "firstGeneralMiddleware", calls[0])
-	require.Equal(t, "firstHandlerMiddleware", calls[1])
-	require.Equal(t, "secondGeneralMiddleware", calls[2])
+	require.Equal(t, calls["firstGeneralMiddleware"], 2)
+	require.Equal(t, calls["secondGeneralMiddleware"], 2)
+	require.Equal(t, calls["firstHandlerMiddleware"], 1)
+	require.Equal(t, calls["secondHandlerMiddleware"], 1)
 }
 
 func TestRouter_AddMiddlewareToHandler_handler_not_exist(t *testing.T) {
