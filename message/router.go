@@ -453,7 +453,7 @@ func (h *handler) run(middlewares []Middleware) {
 	for i := 0; i < len(middlewares); i++ {
 		currentMiddleware := middlewares[i]
 		isGeneral := currentMiddleware.HandlerName == ""
-		isHandlerMiddleware := currentMiddleware.HandlerName == currentMiddleware.HandlerName
+		isHandlerMiddleware := currentMiddleware.HandlerName == h.name
 		if isGeneral || isHandlerMiddleware {
 			middlewareHandler = currentMiddleware.Handler(middlewareHandler)
 		}
