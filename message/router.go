@@ -99,10 +99,22 @@ func NewRouter(config RouterConfig, logger watermill.LoggerAdapter) (*Router, er
 	}, nil
 }
 
+type Middleware struct {
+	Handler     HandlerMiddleware
+	HandlerName string
+}
+
+func NewMiddleware(handler HandlerMiddleware, handlerName string) Middleware {
+	return Middleware{
+		Handler:     handler,
+		HandlerName: handlerName,
+	}
+}
+
 type Router struct {
 	config RouterConfig
 
-	middlewares []HandlerMiddleware
+	middlewares []Middleware
 
 	plugins []RouterPlugin
 
@@ -135,7 +147,10 @@ func (r *Router) Logger() watermill.LoggerAdapter {
 func (r *Router) AddMiddleware(m ...HandlerMiddleware) {
 	r.logger.Debug("Adding middlewares", watermill.LogFields{"count": fmt.Sprintf("%d", len(m))})
 
-	r.middlewares = append(r.middlewares, m...)
+	for _, handlerMiddleware := range m {
+		middleware := NewMiddleware(handlerMiddleware, "")
+		r.middlewares = append(r.middlewares, middleware)
+	}
 }
 
 func (r *Router) AddPlugin(p ...RouterPlugin) {
@@ -166,6 +181,14 @@ type DuplicateHandlerNameError struct {
 
 func (d DuplicateHandlerNameError) Error() string {
 	return fmt.Sprintf("handler with name %s already exists", d.HandlerName)
+}
+
+type HandlerNotExistError struct {
+	HandlerName string
+}
+
+func (d HandlerNotExistError) Error() string {
+	return fmt.Sprintf("handler with name %s not exists", d.HandlerName)
 }
 
 // AddHandler adds a new handler.
@@ -213,6 +236,27 @@ func (r *Router) AddHandler(
 		runningHandlersWg: r.runningHandlersWg,
 		messagesCh:        nil,
 		closeCh:           r.closeCh,
+	}
+}
+
+// AddMiddlewareToHandler adds a new middleware to specified handler in the router.
+//
+// The order of middlewares matters. Middleware added at the beginning is executed first.
+func (r *Router) AddMiddlewareToHandler(handlerName string, m ...HandlerMiddleware) {
+	r.logger.Debug("Adding middleware to handler", watermill.LogFields{
+		"count":       fmt.Sprintf("%d", len(m)),
+		"handlerName": handlerName,
+	})
+
+	_, ok := r.handlers[handlerName]
+
+	if !ok {
+		panic(HandlerNotExistError{handlerName})
+	}
+
+	for _, handlerMiddleware := range m {
+		middleware := NewMiddleware(handlerMiddleware, handlerName)
+		r.middlewares = append(r.middlewares, middleware)
 	}
 }
 
@@ -399,17 +443,20 @@ type handler struct {
 	closeCh chan struct{}
 }
 
-func (h *handler) run(middlewares []HandlerMiddleware) {
+func (h *handler) run(middlewares []Middleware) {
 	h.logger.Info("Starting handler", watermill.LogFields{
 		"subscriber_name": h.name,
 		"topic":           h.subscribeTopic,
 	})
 
 	middlewareHandler := h.handlerFunc
-
-	// first added middlewares should be executed first (so should be at the top of call stack)
-	for i := len(middlewares) - 1; i >= 0; i-- {
-		middlewareHandler = middlewares[i](middlewareHandler)
+	for i := 0; i < len(middlewares); i++ {
+		currentMiddleware := middlewares[i]
+		isGeneral := currentMiddleware.HandlerName == ""
+		isHandlerMiddleware := currentMiddleware.HandlerName == currentMiddleware.HandlerName
+		if isGeneral || isHandlerMiddleware {
+			middlewareHandler = currentMiddleware.Handler(middlewareHandler)
+		}
 	}
 
 	go h.handleClose()

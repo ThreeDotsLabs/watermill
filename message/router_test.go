@@ -357,6 +357,185 @@ func TestRouter_nack_on_handler_failure(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestRouter_AddMiddleware(t *testing.T) {
+	publisher := &failingPublisherMock{
+		shouldPanic: false,
+		shouldError: false,
+	}
+	subscriber := &subscriberMock{
+		messages: make(chan *message.Message),
+	}
+	router, err := message.NewRouter(message.RouterConfig{
+		CloseTimeout: time.Second,
+	}, watermill.NewStdLogger(true, true))
+	require.NoError(t, err)
+
+	var calls []string
+	handlerFunc := func(msg *message.Message) ([]*message.Message, error) {
+		return message.Messages{msg}, nil
+	}
+	firstGeneralMiddleware := func(h message.HandlerFunc) message.HandlerFunc {
+		calls = append(calls, "firstGeneralMiddleware")
+		return h
+	}
+
+	secondGeneralMiddleware := func(h message.HandlerFunc) message.HandlerFunc {
+		calls = append(calls, "secondGeneralMiddleware")
+		return h
+	}
+
+	topic := "some_topic"
+	router.AddHandler(
+		"some_topic_handler",
+		topic,
+		subscriber,
+		topic,
+		publisher,
+		handlerFunc,
+	)
+	router.AddMiddleware(firstGeneralMiddleware)
+	router.AddMiddleware(secondGeneralMiddleware)
+
+	go func() {
+		err := router.Run(context.Background())
+		require.NoError(t, err)
+	}()
+	<-router.Running()
+
+	msg := message.NewMessage("uuid", []byte{})
+	subscriber.messages <- msg
+
+	select {
+	case <-msg.Acked():
+		// ok
+	case <-msg.Nacked():
+		t.Fatal("did not expect the message to be nacked")
+	case <-time.After(5 * time.Second):
+		t.Fatal("expected the message to be acked")
+	}
+
+	err = router.Close()
+	require.NoError(t, err)
+
+	require.Len(t, calls, 2)
+	require.Equal(t, "firstGeneralMiddleware", calls[0])
+	require.Equal(t, "secondGeneralMiddleware", calls[1])
+}
+
+func TestRouter_AddMiddlewareToHandler_success(t *testing.T) {
+	publisher := &failingPublisherMock{
+		shouldPanic: false,
+		shouldError: false,
+	}
+	subscriber := &subscriberMock{
+		messages: make(chan *message.Message),
+	}
+	router, err := message.NewRouter(message.RouterConfig{
+		CloseTimeout: time.Second,
+	}, watermill.NewStdLogger(true, true))
+	require.NoError(t, err)
+
+	calls := []string{}
+	handlerFunc := func(msg *message.Message) ([]*message.Message, error) {
+		return message.Messages{msg}, nil
+	}
+	firstGeneralMiddleware := func(h message.HandlerFunc) message.HandlerFunc {
+		calls = append(calls, "firstGeneralMiddleware")
+		return h
+	}
+
+	secondGeneralMiddleware := func(h message.HandlerFunc) message.HandlerFunc {
+		calls = append(calls, "secondGeneralMiddleware")
+		return h
+	}
+
+	firstHandlerMiddleware := func(h message.HandlerFunc) message.HandlerFunc {
+		calls = append(calls, "firstHandlerMiddleware")
+		return h
+	}
+
+	topic := "some_topic"
+	handlerName := "some_topic_handler"
+	router.AddHandler(
+		handlerName,
+		topic,
+		subscriber,
+		topic,
+		publisher,
+		handlerFunc,
+	)
+	router.AddMiddleware(firstGeneralMiddleware)
+	router.AddMiddlewareToHandler(handlerName, firstHandlerMiddleware)
+	router.AddMiddleware(secondGeneralMiddleware)
+
+	go func() {
+		err := router.Run(context.Background())
+		require.NoError(t, err)
+	}()
+	<-router.Running()
+
+	msg := message.NewMessage("uuid", []byte{})
+	subscriber.messages <- msg
+
+	select {
+	case <-msg.Acked():
+		// ok
+	case <-msg.Nacked():
+		t.Fatal("did not expect the message to be nacked")
+	case <-time.After(5 * time.Second):
+		t.Fatal("expected the message to be acked")
+	}
+
+	err = router.Close()
+	require.NoError(t, err)
+
+	require.Len(t, calls, 3)
+	require.Equal(t, "firstGeneralMiddleware", calls[0])
+	require.Equal(t, "firstHandlerMiddleware", calls[1])
+	require.Equal(t, "secondGeneralMiddleware", calls[2])
+}
+
+func TestRouter_AddMiddlewareToHandler_handler_not_exist(t *testing.T) {
+	publisher := &failingPublisherMock{
+		shouldPanic: false,
+		shouldError: false,
+	}
+	subscriber := &subscriberMock{
+		messages: make(chan *message.Message),
+	}
+	router, err := message.NewRouter(message.RouterConfig{
+		CloseTimeout: time.Second,
+	}, watermill.NewStdLogger(true, true))
+	require.NoError(t, err)
+
+	calls := []string{}
+	handlerFunc := func(msg *message.Message) ([]*message.Message, error) {
+		return message.Messages{msg}, nil
+	}
+	firstGeneralMiddleware := func(h message.HandlerFunc) message.HandlerFunc {
+		calls = append(calls, "firstGeneralMiddleware")
+		return h
+	}
+
+	firstHandlerMiddleware := func(h message.HandlerFunc) message.HandlerFunc {
+		calls = append(calls, "firstHandlerMiddleware")
+		return h
+	}
+
+	topic := "some_topic"
+	router.AddHandler(
+		"some_topic_handler",
+		topic,
+		subscriber,
+		topic,
+		publisher,
+		handlerFunc,
+	)
+	router.AddMiddleware(firstGeneralMiddleware)
+
+	require.Panics(t, func() { router.AddMiddlewareToHandler("some_other_topic_handler", firstHandlerMiddleware) }, "should panic when trying add middleware to non existent handler")
+}
+
 type subscriberMock struct {
 	messages chan *message.Message
 }
