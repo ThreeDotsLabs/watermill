@@ -1,7 +1,7 @@
 github.com/ThreeDotsLabs/watermill v1.0.0 h1:jkKDp5aFz/m4eHr8kntbVxjOnseew6fv/nwE7VmFHmc=
 github.com/ThreeDotsLabs/watermill v1.0.0/go.mod h1:gjVFKc8aN+vmEHw3pA0kh4mmuwHe02nyfghb6IWWiKE=
-github.com/ThreeDotsLabs/watermill-sql v1.0.1-0.20190928111518-740b4815ee5e h1:kiPdmtQMXA52gV49PjC/nYGA17JQB1iySrGQ3nW+uWo=
-github.com/ThreeDotsLabs/watermill-sql v1.0.1-0.20190928111518-740b4815ee5e/go.mod h1:j3RIa3qPoanCwpNwvjO5xNqskIi71svSa4B/RoPzKgY=
+github.com/ThreeDotsLabs/watermill-sql v1.1.0 h1:bjHPbfr+gZ2N9NuTKcamHNPCSBp9ulG5mDsnuoIAgHM=
+github.com/ThreeDotsLabs/watermill-sql v1.1.0/go.mod h1:j3RIa3qPoanCwpNwvjO5xNqskIi71svSa4B/RoPzKgY=
 github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc/go.mod h1:LOuyumcjzFXgccqObfd/Ljyb9UuFJ6TxHnclSeseNhc=
 github.com/alecthomas/units v0.0.0-20151022065526-2efee857e7cf/go.mod h1:ybxpYRFXyAe+OPACYpWeL0wqObRcbAqCMya13uyzqw0=
 github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973/go.mod h1:Dwedo/Wpr24TaqPxmxbtue+5NUziq4I4S80YR8gNf3Q=
