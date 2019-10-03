@@ -104,7 +104,7 @@ func createPublisher(db *stdSQL.DB) message.Publisher {
 	pub, err := sql.NewPublisher(
 		db,
 		sql.PublisherConfig{
-			SchemaAdapter:        sql.DefaultSchema{},
+			SchemaAdapter:        sql.DefaultMySQLSchema{},
 			AutoInitializeSchema: true,
 		},
 		logger,

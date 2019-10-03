@@ -90,7 +90,7 @@ func createSubscriber(db *stdSQL.DB) message.Subscriber {
 	pub, err := sql.NewSubscriber(
 		db,
 		sql.SubscriberConfig{
-			SchemaAdapter:    sql.DefaultSchema{},
+			SchemaAdapter:    sql.DefaultMySQLSchema{},
 			OffsetsAdapter:   sql.DefaultMySQLOffsetsAdapter{},
 			InitializeSchema: true,
 		},
@@ -153,7 +153,7 @@ func simulateEvents(db *stdSQL.DB) {
 // has to be created each time, passing the proper transaction handle.
 func publishEvent(tx *stdSQL.Tx) error {
 	pub, err := sql.NewPublisher(tx, sql.PublisherConfig{
-		SchemaAdapter: sql.DefaultSchema{},
+		SchemaAdapter: sql.DefaultMySQLSchema{},
 	}, logger)
 	if err != nil {
 		return err
