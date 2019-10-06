@@ -522,8 +522,7 @@ func TestRouter_AddMiddleware_to_handler(t *testing.T) {
 	require.Equal(t, "fourthMiddleware", executedMiddleware[0])
 }
 
-/*
-func TestRouter_AddMiddleware_to_handler_many_handlers(t *testing.T) {
+func TestRouter_AddMiddleware_to_handler_many(t *testing.T) {
 	pub, sub := createPubSub()
 	defer func() {
 		assert.NoError(t, pub.Close())
@@ -534,31 +533,31 @@ func TestRouter_AddMiddleware_to_handler_many_handlers(t *testing.T) {
 	}, watermill.NewStdLogger(true, true))
 	require.NoError(t, err)
 
-	middlewareCh := make(chan string, 6)
-	allMiddlewareExecuted := make(chan struct{})
-	var executedHandlers []string
-	var firstMiddlewareExecutionCount,
-		secondMiddlewareExecutionCount,
-		thirdMiddlewareExecutionCount,
-		fourthMiddlewareExecutionCount int
+	middlewareCount := 6
+	middlewareCh := make(chan string, middlewareCount)
+	allMiddlewareExecuted := make(chan struct{}, 1)
+	var executedMiddleware []string
+
+	handlerFunc := func(msg *message.Message) ([]*message.Message, error) {
+		return message.Messages{msg}, nil
+	}
 	firstMiddleware := func(h message.HandlerFunc) message.HandlerFunc {
 		middlewareCh <- "firstMiddleware"
-		firstMiddlewareExecutionCount += 1
 		return h
 	}
+
 	secondMiddleware := func(h message.HandlerFunc) message.HandlerFunc {
 		middlewareCh <- "secondMiddleware"
-		secondMiddlewareExecutionCount += 1
 		return h
 	}
+
 	thirdMiddleware := func(h message.HandlerFunc) message.HandlerFunc {
 		middlewareCh <- "thirdMiddleware"
-		thirdMiddlewareExecutionCount += 1
 		return h
 	}
+
 	fourthMiddleware := func(h message.HandlerFunc) message.HandlerFunc {
-		middlewareCh <- "fourthMiddlewareExecutionCount"
-		fourthMiddlewareExecutionCount += 1
+		middlewareCh <- "fourthMiddleware"
 		return h
 	}
 
@@ -570,9 +569,7 @@ func TestRouter_AddMiddleware_to_handler_many_handlers(t *testing.T) {
 		sub,
 		topic,
 		pub,
-		func(msg *message.Message) ([]*message.Message, error) {
-			return message.Messages{msg}, nil
-		},
+		handlerFunc,
 	).AddMiddleware(secondMiddleware)
 	router.AddHandler(
 		"some_other_topic_handler",
@@ -585,31 +582,41 @@ func TestRouter_AddMiddleware_to_handler_many_handlers(t *testing.T) {
 		},
 	).AddMiddleware(thirdMiddleware)
 	router.AddMiddleware(fourthMiddleware)
+
+	go func() {
+		for middlewareName := range middlewareCh {
+			executedMiddleware = append(executedMiddleware, middlewareName)
+
+			if len(executedMiddleware) == middlewareCount {
+				allMiddlewareExecuted <- struct{}{}
+				break
+			}
+		}
+		// messagesCh closed
+		allMiddlewareExecuted <- struct{}{}
+	}()
+
 	go func() {
 		err := router.Run(context.Background())
 		require.NoError(t, err)
 	}()
 	<-router.Running()
-	go func() {
-		for h := range middlewareCh {
-			executedHandlers = append(executedHandlers, h)
-			if len(executedHandlers) == 6 {
-				allMiddlewareExecuted <- struct{}{}
-				break
-			}
-		}
-	}()
-
 	<-allMiddlewareExecuted
+
 	err = router.Close()
 	require.NoError(t, err)
 
-	require.Equal(t, 2, firstMiddlewareExecutionCount)
-	require.Equal(t, 1, secondMiddlewareExecutionCount)
-	require.Equal(t, 1, thirdMiddlewareExecutionCount)
-	require.Equal(t, 2, fourthMiddlewareExecutionCount)
+	require.Equal(t, 6, len(executedMiddleware))
+	counts := map[string]int{}
+	for _, m := range executedMiddleware {
+		counts[m] += 1
+	}
+	require.Equal(t, 2, counts["firstMiddleware"])
+	require.Equal(t, 1, counts["secondMiddleware"])
+	require.Equal(t, 1, counts["thirdMiddleware"])
+	require.Equal(t, 2, counts["fourthMiddleware"])
 }
-*/
+
 type subscriberMock struct {
 	messages chan *message.Message
 }
