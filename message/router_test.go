@@ -370,12 +370,10 @@ func TestRouter_AddMiddleware_to_router(t *testing.T) {
 
 	middlewareCount := 3
 	middlewareCh := make(chan string, middlewareCount)
-	handlerCh := make(chan string, 1)
 	allMiddlewareExecuted := make(chan struct{}, 1)
 	var executedMiddleware []string
 
 	handlerFunc := func(msg *message.Message) ([]*message.Message, error) {
-		handlerCh <- string(msg.Payload)
 		return message.Messages{msg}, nil
 	}
 	firstMiddleware := func(h message.HandlerFunc) message.HandlerFunc {
@@ -431,12 +429,10 @@ func TestRouter_AddMiddleware_to_router(t *testing.T) {
 	}()
 	<-router.Running()
 	<-allMiddlewareExecuted
-	payload := <-handlerCh
 
 	err = router.Close()
 	require.NoError(t, err)
 
-	require.Equal(t, "test_payload", payload)
 	require.Equal(t, "firstMiddleware", executedMiddleware[2])
 	require.Equal(t, "secondMiddleware", executedMiddleware[1])
 	require.Equal(t, "thirdMiddleware", executedMiddleware[0])
