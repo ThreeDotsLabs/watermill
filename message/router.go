@@ -208,7 +208,7 @@ func (r *Router) AddHandler(
 	publishTopic string,
 	publisher Publisher,
 	handlerFunc HandlerFunc,
-) {
+) *handler {
 	r.logger.Info("Adding handler", watermill.LogFields{
 		"handler_name": handlerName,
 		"topic":        subscribeTopic,
@@ -220,7 +220,7 @@ func (r *Router) AddHandler(
 
 	publisherName, subscriberName := internal.StructName(publisher), internal.StructName(subscriber)
 
-	r.handlers[handlerName] = &handler{
+	newHandler := &handler{
 		name:   handlerName,
 		logger: r.logger,
 
@@ -236,28 +236,12 @@ func (r *Router) AddHandler(
 		runningHandlersWg: r.runningHandlersWg,
 		messagesCh:        nil,
 		closeCh:           r.closeCh,
-	}
-}
-
-// AddMiddlewareToHandler adds a new middleware to specified handler in the router.
-//
-// The order of middlewares matters. Middleware added at the beginning is executed first.
-func (r *Router) AddMiddlewareToHandler(handlerName string, m ...HandlerMiddleware) {
-	r.logger.Debug("Adding middleware to handler", watermill.LogFields{
-		"count":       fmt.Sprintf("%d", len(m)),
-		"handlerName": handlerName,
-	})
-
-	_, ok := r.handlers[handlerName]
-
-	if !ok {
-		panic(HandlerNotExistError{handlerName})
+		router:            r,
 	}
 
-	for _, handlerMiddleware := range m {
-		middleware := NewMiddleware(handlerMiddleware, handlerName)
-		r.middlewares = append(r.middlewares, middleware)
-	}
+	r.handlers[handlerName] = newHandler
+
+	return newHandler
 }
 
 // AddNoPublisherHandler adds a new handler.
@@ -441,6 +425,8 @@ type handler struct {
 	messagesCh <-chan *Message
 
 	closeCh chan struct{}
+
+	router *Router
 }
 
 func (h *handler) run(middlewares []Middleware) {
@@ -450,7 +436,7 @@ func (h *handler) run(middlewares []Middleware) {
 	})
 
 	middlewareHandler := h.handlerFunc
-	for i := 0; i < len(middlewares); i++ {
+	for i := len(middlewares) - 1; i >= 0; i-- {
 		currentMiddleware := middlewares[i]
 		isGeneral := currentMiddleware.HandlerName == ""
 		isHandlerMiddleware := currentMiddleware.HandlerName == h.name
@@ -475,6 +461,21 @@ func (h *handler) run(middlewares []Middleware) {
 	}
 
 	h.logger.Debug("Router handler stopped", nil)
+}
+
+// AddMiddleware adds a new middleware to specified handler in the router.
+//
+// The order of middlewares matters. Middleware added at the beginning is executed first.
+func (h *handler) AddMiddleware(m ...HandlerMiddleware) {
+	h.logger.Debug("Adding middleware to handler", watermill.LogFields{
+		"count":       fmt.Sprintf("%d", len(m)),
+		"handlerName": h.name,
+	})
+
+	for _, handlerMiddleware := range m {
+		middleware := NewMiddleware(handlerMiddleware, h.name)
+		h.router.middlewares = append(h.router.middlewares, middleware)
+	}
 }
 
 // decorateHandlerPublisher applies the decorator chain to handler's publisher.
