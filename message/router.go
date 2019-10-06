@@ -183,14 +183,6 @@ func (d DuplicateHandlerNameError) Error() string {
 	return fmt.Sprintf("handler with name %s already exists", d.HandlerName)
 }
 
-type HandlerNotExistError struct {
-	HandlerName string
-}
-
-func (d HandlerNotExistError) Error() string {
-	return fmt.Sprintf("handler with name %s not exists", d.HandlerName)
-}
-
 // AddHandler adds a new handler.
 //
 // handlerName must be unique. For now, it is used only for debugging.
@@ -436,11 +428,12 @@ func (h *handler) run(middlewares []Middleware) {
 	})
 
 	middlewareHandler := h.handlerFunc
+	// first added middlewares should be executed first (so should be at the top of call stack)
 	for i := len(middlewares) - 1; i >= 0; i-- {
 		currentMiddleware := middlewares[i]
-		isGeneral := currentMiddleware.HandlerName == ""
-		isHandlerMiddleware := currentMiddleware.HandlerName == h.name
-		if isGeneral || isHandlerMiddleware {
+		isRouterMiddleware := currentMiddleware.HandlerName == ""
+		isValidHandlerMiddleware := currentMiddleware.HandlerName == h.name
+		if isRouterMiddleware || isValidHandlerMiddleware {
 			middlewareHandler = currentMiddleware.Handler(middlewareHandler)
 		}
 	}
