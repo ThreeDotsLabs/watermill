@@ -419,7 +419,6 @@ func TestRouter_AddMiddleware_to_router(t *testing.T) {
 				break
 			}
 		}
-		// messagesCh closed
 		allMiddlewareExecuted <- struct{}{}
 	}()
 
@@ -498,7 +497,6 @@ func TestRouter_AddMiddleware_to_handler(t *testing.T) {
 				break
 			}
 		}
-		// messagesCh closed
 		allMiddlewareExecuted <- struct{}{}
 	}()
 
@@ -588,7 +586,6 @@ func TestRouter_AddMiddleware_to_handler_many(t *testing.T) {
 				break
 			}
 		}
-		// messagesCh closed
 		allMiddlewareExecuted <- struct{}{}
 	}()
 
