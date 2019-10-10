@@ -17,7 +17,7 @@ The SQL subscriber listens for new records on a MySQL table. Each new record wil
 on the Kafka topic. Kafka Publisher is used just as an example and any other publisher can be used instead.
 
 The example uses `DefaultSchema` as the schema adapter, but you can define your own table definition and queries.
-See [SQL Pub/Sub documentation](https://watermill.io/pubsub/sql) for details.
+See [SQL Pub/Sub documentation](https://watermill.io/pubsubs/sql) for details.
 
 ## Requirements
 
