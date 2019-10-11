@@ -39,6 +39,7 @@ Pick what you like the best or see in order:
 * Real-world examples
     * [Receiving webhooks](_examples/real-world-examples/receiving-webhooks)
     * [Sending webhooks](_examples/real-world-examples/sending-webhooks)
+    * [Synchronizing Databases](_examples/real-world-examples/synchronizing-databases)
     * [Persistent Event Log](_examples/real-world-examples/persistent-event-log)
     * [Transactional Events](_examples/real-world-examples/transactional-events)
 * Complete projects
