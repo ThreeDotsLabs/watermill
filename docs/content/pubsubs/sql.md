@@ -39,7 +39,7 @@ SQL Pub/Sub uses user-defined schema to handle select and insert queries. You ne
 it to `SubscriberConfig` or `PublisherConfig`.
 
 {{% render-md %}}
-{{% load-snippet-partial file="src-link/watermill-sql/pkg/sql/schema_adapter.go" first_line_contains="// SchemaAdapter" last_line_contains="// DefaultMySQLSchema" %}}
+{{% load-snippet-partial file="src-link/watermill-sql/pkg/sql/schema_adapter_mysql.go" first_line_contains="// DefaultMySQLSchema" last_line_contains="type DefaultMySQLSchema" %}}
 {{% /render-md %}}
 
 There is a default schema provided for each supported engine (`DefaultMySQLSchema` and `DefaultPostgreSQLSchema`).
@@ -57,7 +57,7 @@ Note that you don't have to use the initialization queries provided by Watermill
 `InitializeSchema` field to `true` in the config. Otherwise, you can use your own solution for database migrations.
 
 {{% render-md %}}
-{{% load-snippet-partial file="src-link/watermill-sql/pkg/sql/schema_adapter.go" first_line_contains="// DefaultMySQLSchema" last_line_contains="type DefaultMySQLSchema" %}}
+{{% load-snippet-partial file="src-link/watermill-sql/pkg/sql/schema_adapter_mysql.go" first_line_contains="// DefaultMySQLSchema" last_line_contains="type DefaultMySQLSchema" %}}
 {{% /render-md %}}
 
 #### Configuration
@@ -117,5 +117,5 @@ The logic for storing offsets of messages is provided by the `OffsetsAdapter`. I
 it should work out of the box with default offset adapters.
 
 {{% render-md %}}
-{{% load-snippet-partial file="src-link/watermill-sql/pkg/sql/offsets_adapter.go" first_line_contains="type OffsetsAdapter" last_line_contains="type DefaultMySQLOffsetsAdapter" %}}
+{{% load-snippet-partial file="src-link/watermill-sql/pkg/sql/offsets_adapter.go" first_line_contains="type OffsetsAdapter" %}}
 {{% /render-md %}}
