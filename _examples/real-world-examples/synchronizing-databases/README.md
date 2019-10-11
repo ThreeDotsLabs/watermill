@@ -2,11 +2,19 @@
 
 This example shows how to use [SQL Pub/Sub](https://github.com/ThreeDotsLabs/watermill-sql) across two different databases.
 
+See also [SQL Pub/Sub documentation](https://watermill.io/pubsubs/sql).
+
 ## Background
 
 Synchronizing two databases can be a tough task, especially with different data formats.
+This example shows how to migrate a MySQL table to PostgreSQL table using watermill.
 
-This example shows how to synchronize a MySQL table to a PostgreSQL table using watermill.
+The application will first transfer all existing rows and then keep listening for any new inserts,
+copying them to the new table as soon, as they appear.
+
+The `main.go` file contains watermill-related setup, database connections and the handler translating events
+from one format to another. In `mysql.go` and `postgres.go` you will find definitions of `SchemaAdapters` for 
+each database.
 
 ## Requirements
 
@@ -14,9 +22,13 @@ To run this example you will need Docker and docker-compose installed. See insta
 
 ## Running
 
+Run the command and observe standard output. It should print out incoming users.
+
 ```bash
 docker-compose up
 ```
+
+Check what's inside MySQL by running:
 
 ```
 docker-compose exec mysql mysql -e 'select * from watermill.users;'
@@ -33,6 +45,8 @@ docker-compose exec mysql mysql -e 'select * from watermill.users;'
 |  5 | Reynolds7156     | Ariane     | Lebsack   | 2019-09-28 13:51:57 |
 +----+------------------+------------+-----------+---------------------+
 ```
+
+And the same for PostgreSQL:
 
 ```
 docker-compose exec postgres psql -U watermill -d watermill -c 'select * from users;'
