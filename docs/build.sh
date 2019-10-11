@@ -59,7 +59,7 @@ else
         DEST_DIR="docs/content/src-link/${DIR}"
 
         mkdir -p "${DEST_DIR}"
-        ln -rsf "./${i}" "./${DEST_DIR}"
+        ln -sf "$PWD/${i}" "$PWD/${DEST_DIR}"
     done
     popd
 fi
