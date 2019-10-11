@@ -130,6 +130,10 @@ func simulateEvents(db *stdSQL.DB) {
 			panic(err)
 		}
 
+		// In an actual application, this is the place where some aggreagte would be persisted
+		// using the same transaction.
+		// tx.Exec("INSERT INTO (...)")
+
 		err = publishEvent(tx)
 		if err != nil {
 			rollbackErr := tx.Rollback()
