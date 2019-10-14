@@ -105,14 +105,6 @@ type middleware struct {
 	IsRouterLevel bool
 }
 
-func newMiddleware(handler HandlerMiddleware, handlerName string, isRouterLevel bool) middleware {
-	return middleware{
-		Handler:       handler,
-		HandlerName:   handlerName,
-		IsRouterLevel: isRouterLevel,
-	}
-}
-
 type Router struct {
 	config RouterConfig
 
@@ -145,16 +137,31 @@ func (r *Router) Logger() watermill.LoggerAdapter {
 
 // AddMiddleware adds a new middleware to the router.
 //
-// The order of middlewares matters. middleware added at the beginning is executed first.
+// The order of middlewares matters. Middleware added at the beginning is executed first.
 func (r *Router) AddMiddleware(m ...HandlerMiddleware) {
 	r.logger.Debug("Adding middlewares", watermill.LogFields{"count": fmt.Sprintf("%d", len(m))})
 
-	r.addMiddleware("", true, m...)
+	r.addRouterLevelMiddleware(m...)
 }
 
-func (r *Router) addMiddleware(handlerName string, isRouterLevel bool, m ...HandlerMiddleware) {
+func (r *Router) addRouterLevelMiddleware(m ...HandlerMiddleware) {
 	for _, handlerMiddleware := range m {
-		middleware := newMiddleware(handlerMiddleware, handlerName, isRouterLevel)
+		middleware := middleware{
+			Handler:       handlerMiddleware,
+			HandlerName:   "",
+			IsRouterLevel: true,
+		}
+		r.middlewares = append(r.middlewares, middleware)
+	}
+}
+
+func (r *Router) addHandlerMiddleware(handlerName string, m ...HandlerMiddleware) {
+	for _, handlerMiddleware := range m {
+		middleware := middleware{
+			Handler:       handlerMiddleware,
+			HandlerName:   handlerName,
+			IsRouterLevel: false,
+		}
 		r.middlewares = append(r.middlewares, middleware)
 	}
 }
@@ -234,12 +241,14 @@ func (r *Router) AddHandler(
 		runningHandlersWg: r.runningHandlersWg,
 		messagesCh:        nil,
 		closeCh:           r.closeCh,
-		router:            r,
 	}
 
 	r.handlers[handlerName] = newHandler
 
-	return NewHandler(r, newHandler)
+	return &Handler{
+		router:  r,
+		handler: newHandler,
+	}
 }
 
 // AddNoPublisherHandler adds a new handler.
@@ -423,8 +432,6 @@ type handler struct {
 	messagesCh <-chan *Message
 
 	closeCh chan struct{}
-
-	router *Router
 }
 
 func (h *handler) run(middlewares []middleware) {
@@ -466,13 +473,6 @@ type Handler struct {
 	handler *handler
 }
 
-func NewHandler(router *Router, handler *handler) *Handler {
-	return &Handler{
-		router:  router,
-		handler: handler,
-	}
-}
-
 // AddMiddleware adds a new middleware to specified handler in the router.
 //
 // The order of middlewares matters. middleware added at the beginning is executed first.
@@ -483,7 +483,7 @@ func (h *Handler) AddMiddleware(m ...HandlerMiddleware) {
 		"handlerName": handler.name,
 	})
 
-	h.router.addMiddleware(handler.name, false, m...)
+	h.router.addHandlerMiddleware(handler.name, m...)
 }
 
 // decorateHandlerPublisher applies the decorator chain to handler's publisher.
