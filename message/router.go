@@ -137,9 +137,9 @@ func (r *Router) Logger() watermill.LoggerAdapter {
 
 // AddMiddleware adds a new middleware to the router.
 //
-// The order of middlewares matters. Middleware added at the beginning is executed first.
+// The order of middleware matters. Middleware added at the beginning is executed first.
 func (r *Router) AddMiddleware(m ...HandlerMiddleware) {
-	r.logger.Debug("Adding middlewares", watermill.LogFields{"count": fmt.Sprintf("%d", len(m))})
+	r.logger.Debug("Adding middleware", watermill.LogFields{"count": fmt.Sprintf("%d", len(m))})
 
 	r.addRouterLevelMiddleware(m...)
 }
@@ -155,7 +155,7 @@ func (r *Router) addRouterLevelMiddleware(m ...HandlerMiddleware) {
 	}
 }
 
-func (r *Router) addHandlerMiddleware(handlerName string, m ...HandlerMiddleware) {
+func (r *Router) addHandlerLevelMiddleware(handlerName string, m ...HandlerMiddleware) {
 	for _, handlerMiddleware := range m {
 		middleware := middleware{
 			Handler:       handlerMiddleware,
@@ -444,8 +444,8 @@ func (h *handler) run(middlewares []middleware) {
 	// first added middlewares should be executed first (so should be at the top of call stack)
 	for i := len(middlewares) - 1; i >= 0; i-- {
 		currentMiddleware := middlewares[i]
-		isValidHandlerMiddleware := currentMiddleware.HandlerName == h.name
-		if currentMiddleware.IsRouterLevel || isValidHandlerMiddleware {
+		isValidHandlerLevelMiddleware := currentMiddleware.HandlerName == h.name
+		if currentMiddleware.IsRouterLevel || isValidHandlerLevelMiddleware {
 			middlewareHandler = currentMiddleware.Handler(middlewareHandler)
 		}
 	}
@@ -473,9 +473,9 @@ type Handler struct {
 	handler *handler
 }
 
-// AddMiddleware adds a new middleware to specified handler in the router.
+// AddMiddleware adds new middleware to the specified handler in the router.
 //
-// The order of middlewares matters. middleware added at the beginning is executed first.
+// The order of middleware matters. Middleware added at the beginning is executed first.
 func (h *Handler) AddMiddleware(m ...HandlerMiddleware) {
 	handler := h.handler
 	handler.logger.Debug("Adding middleware to handler", watermill.LogFields{
@@ -483,7 +483,7 @@ func (h *Handler) AddMiddleware(m ...HandlerMiddleware) {
 		"handlerName": handler.name,
 	})
 
-	h.router.addHandlerMiddleware(handler.name, m...)
+	h.router.addHandlerLevelMiddleware(handler.name, m...)
 }
 
 // decorateHandlerPublisher applies the decorator chain to handler's publisher.
