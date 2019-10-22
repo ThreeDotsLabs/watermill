@@ -61,6 +61,7 @@ func TestPubSub(
 	}
 
 	for _, testFunc := range testFuncs {
+		testFunc := testFunc
 		runTest(
 			t,
 			getTestName(testFunc.Func),
