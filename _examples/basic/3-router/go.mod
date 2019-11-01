@@ -1,3 +1,3 @@
 module main.go
 
-require github.com/ThreeDotsLabs/watermill v1.0.0-rc.2
+require github.com/ThreeDotsLabs/watermill v1.0.1-0.20191022063524-9ce413590da0

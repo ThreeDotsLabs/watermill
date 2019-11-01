@@ -1,5 +1,5 @@
-github.com/ThreeDotsLabs/watermill v1.0.0-rc.2 h1:DCKR8kSLHUyZny6LiKtO7h+IZPMo0t9x786FOZmoAh4=
-github.com/ThreeDotsLabs/watermill v1.0.0-rc.2/go.mod h1:gjVFKc8aN+vmEHw3pA0kh4mmuwHe02nyfghb6IWWiKE=
+github.com/ThreeDotsLabs/watermill v1.0.1-0.20191022063524-9ce413590da0 h1:3Pf5VPjh+tigAZLhZgyZ4vHm23dZmVYAsy26qs8Zu28=
+github.com/ThreeDotsLabs/watermill v1.0.1-0.20191022063524-9ce413590da0/go.mod h1:gjVFKc8aN+vmEHw3pA0kh4mmuwHe02nyfghb6IWWiKE=
 github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc/go.mod h1:LOuyumcjzFXgccqObfd/Ljyb9UuFJ6TxHnclSeseNhc=
 github.com/alecthomas/units v0.0.0-20151022065526-2efee857e7cf/go.mod h1:ybxpYRFXyAe+OPACYpWeL0wqObRcbAqCMya13uyzqw0=
 github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973/go.mod h1:Dwedo/Wpr24TaqPxmxbtue+5NUziq4I4S80YR8gNf3Q=
