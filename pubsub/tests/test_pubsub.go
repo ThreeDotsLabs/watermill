@@ -60,7 +60,9 @@ func TestPubSub(
 		},
 	}
 
-	for _, testFunc := range testFuncs {
+	for i := range testFuncs {
+		testFunc := testFuncs[i]
+
 		runTest(
 			t,
 			getTestName(testFunc.Func),
@@ -166,7 +168,7 @@ func runTest(
 	})
 }
 
-var stressTestTestsCount = 20
+var stressTestTestsCount = 10
 
 func TestPubSubStressTest(
 	t *testing.T,
@@ -501,7 +503,7 @@ func TestContinueAfterSubscribeClose(
 		require.NoError(t, subscribeInitializer.SubscribeInitialize(topicName))
 	}
 
-	messagesToPublish := PublishSimpleMessages(t, totalMessagesCount, pub, topicName)
+	publishedMessages := PublishSimpleMessages(t, totalMessagesCount, pub, topicName)
 
 	receivedMessages := map[string]*message.Message{}
 	for i := 0; i < readAttempts; i++ {
@@ -522,13 +524,39 @@ func TestContinueAfterSubscribeClose(
 		}
 	}
 
+	// to make this test more robust - let's consume all missing messages
+	// (we care here if we didn't lost any message, not if we received duplicated)
+	missingMessagesCount := totalMessagesCount - len(receivedMessages)
+	if missingMessagesCount > 0 && !tCtx.Features.ExactlyOnceDelivery {
+		messages, err := sub.Subscribe(context.Background(), topicName)
+		require.NoError(t, err)
+		defer closePubSub(t, pub, sub)
+
+		timeout := time.After(defaultTimeout)
+
+	MessagesLoop:
+		for len(receivedMessages) < totalMessagesCount {
+			select {
+			case msg, ok := <-messages:
+				if !ok {
+					break MessagesLoop
+				}
+
+				receivedMessages[msg.UUID] = msg
+				msg.Ack()
+			case <-timeout:
+				break MessagesLoop
+			}
+		}
+	}
+
 	// we need to deduplicate messages, because bulkRead will deduplicate only per one batch
 	uniqueReceivedMessages := message.Messages{}
 	for _, msg := range receivedMessages {
 		uniqueReceivedMessages = append(uniqueReceivedMessages, msg)
 	}
 
-	AssertAllMessagesReceived(t, messagesToPublish, uniqueReceivedMessages)
+	AssertAllMessagesReceived(t, publishedMessages, uniqueReceivedMessages)
 }
 
 func TestConcurrentClose(

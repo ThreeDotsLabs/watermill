@@ -99,10 +99,16 @@ func NewRouter(config RouterConfig, logger watermill.LoggerAdapter) (*Router, er
 	}, nil
 }
 
+type middleware struct {
+	Handler       HandlerMiddleware
+	HandlerName   string
+	IsRouterLevel bool
+}
+
 type Router struct {
 	config RouterConfig
 
-	middlewares []HandlerMiddleware
+	middlewares []middleware
 
 	plugins []RouterPlugin
 
@@ -131,11 +137,33 @@ func (r *Router) Logger() watermill.LoggerAdapter {
 
 // AddMiddleware adds a new middleware to the router.
 //
-// The order of middlewares matters. Middleware added at the beginning is executed first.
+// The order of middleware matters. Middleware added at the beginning is executed first.
 func (r *Router) AddMiddleware(m ...HandlerMiddleware) {
-	r.logger.Debug("Adding middlewares", watermill.LogFields{"count": fmt.Sprintf("%d", len(m))})
+	r.logger.Debug("Adding middleware", watermill.LogFields{"count": fmt.Sprintf("%d", len(m))})
 
-	r.middlewares = append(r.middlewares, m...)
+	r.addRouterLevelMiddleware(m...)
+}
+
+func (r *Router) addRouterLevelMiddleware(m ...HandlerMiddleware) {
+	for _, handlerMiddleware := range m {
+		middleware := middleware{
+			Handler:       handlerMiddleware,
+			HandlerName:   "",
+			IsRouterLevel: true,
+		}
+		r.middlewares = append(r.middlewares, middleware)
+	}
+}
+
+func (r *Router) addHandlerLevelMiddleware(handlerName string, m ...HandlerMiddleware) {
+	for _, handlerMiddleware := range m {
+		middleware := middleware{
+			Handler:       handlerMiddleware,
+			HandlerName:   handlerName,
+			IsRouterLevel: false,
+		}
+		r.middlewares = append(r.middlewares, middleware)
+	}
 }
 
 func (r *Router) AddPlugin(p ...RouterPlugin) {
@@ -185,7 +213,7 @@ func (r *Router) AddHandler(
 	publishTopic string,
 	publisher Publisher,
 	handlerFunc HandlerFunc,
-) {
+) *Handler {
 	r.logger.Info("Adding handler", watermill.LogFields{
 		"handler_name": handlerName,
 		"topic":        subscribeTopic,
@@ -197,7 +225,7 @@ func (r *Router) AddHandler(
 
 	publisherName, subscriberName := internal.StructName(publisher), internal.StructName(subscriber)
 
-	r.handlers[handlerName] = &handler{
+	newHandler := &handler{
 		name:   handlerName,
 		logger: r.logger,
 
@@ -213,6 +241,13 @@ func (r *Router) AddHandler(
 		runningHandlersWg: r.runningHandlersWg,
 		messagesCh:        nil,
 		closeCh:           r.closeCh,
+	}
+
+	r.handlers[handlerName] = newHandler
+
+	return &Handler{
+		router:  r,
+		handler: newHandler,
 	}
 }
 
@@ -399,17 +434,20 @@ type handler struct {
 	closeCh chan struct{}
 }
 
-func (h *handler) run(middlewares []HandlerMiddleware) {
+func (h *handler) run(middlewares []middleware) {
 	h.logger.Info("Starting handler", watermill.LogFields{
 		"subscriber_name": h.name,
 		"topic":           h.subscribeTopic,
 	})
 
 	middlewareHandler := h.handlerFunc
-
 	// first added middlewares should be executed first (so should be at the top of call stack)
 	for i := len(middlewares) - 1; i >= 0; i-- {
-		middlewareHandler = middlewares[i](middlewareHandler)
+		currentMiddleware := middlewares[i]
+		isValidHandlerLevelMiddleware := currentMiddleware.HandlerName == h.name
+		if currentMiddleware.IsRouterLevel || isValidHandlerLevelMiddleware {
+			middlewareHandler = currentMiddleware.Handler(middlewareHandler)
+		}
 	}
 
 	go h.handleClose()
@@ -428,6 +466,24 @@ func (h *handler) run(middlewares []HandlerMiddleware) {
 	}
 
 	h.logger.Debug("Router handler stopped", nil)
+}
+
+type Handler struct {
+	router  *Router
+	handler *handler
+}
+
+// AddMiddleware adds new middleware to the specified handler in the router.
+//
+// The order of middleware matters. Middleware added at the beginning is executed first.
+func (h *Handler) AddMiddleware(m ...HandlerMiddleware) {
+	handler := h.handler
+	handler.logger.Debug("Adding middleware to handler", watermill.LogFields{
+		"count":       fmt.Sprintf("%d", len(m)),
+		"handlerName": handler.name,
+	})
+
+	h.router.addHandlerLevelMiddleware(handler.name, m...)
 }
 
 // decorateHandlerPublisher applies the decorator chain to handler's publisher.
