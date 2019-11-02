@@ -57,7 +57,7 @@ func (p postgresSchemaAdapter) InsertQuery(topic string, msgs message.Messages) 
 }
 
 func (p postgresSchemaAdapter) SelectQuery(topic string, consumerGroup string, offsetsAdapter sql.OffsetsAdapter) (string, []interface{}) {
-	// Not implemented
+	// No need to implement this method, as PostgreSQL subscriber is not used in this example.
 	return "", nil
 }
 
