@@ -10,7 +10,8 @@ Synchronizing two databases can be a tough task, especially with different data 
 This example shows how to migrate a MySQL table to PostgreSQL table using watermill.
 
 The application will first transfer all existing rows and then keep listening for any new inserts,
-copying them to the new table as soon, as they appear.
+copying them to the new table as soon, as they appear. Only new rows will be detected, there's no
+support for updates or deletes.
 
 The `main.go` file contains watermill-related setup, database connections and the handler translating events
 from one format to another. In `mysql.go` and `postgres.go` you will find definitions of `SchemaAdapters` for 
