@@ -7,10 +7,12 @@ github.com/Shopify/toxiproxy v2.1.4+incompatible h1:TKdv8HiTLgE5wdJuEML90aBgNWso
 github.com/Shopify/toxiproxy v2.1.4+incompatible/go.mod h1:OXgGpZ6Cli1/URJOF1DMxUHB2q5Ap20/P/eIdh4G0pI=
 github.com/ThreeDotsLabs/watermill v1.0.0-rc.2 h1:DCKR8kSLHUyZny6LiKtO7h+IZPMo0t9x786FOZmoAh4=
 github.com/ThreeDotsLabs/watermill v1.0.0-rc.2/go.mod h1:gjVFKc8aN+vmEHw3pA0kh4mmuwHe02nyfghb6IWWiKE=
+github.com/ThreeDotsLabs/watermill v1.0.0 h1:jkKDp5aFz/m4eHr8kntbVxjOnseew6fv/nwE7VmFHmc=
+github.com/ThreeDotsLabs/watermill v1.0.0/go.mod h1:gjVFKc8aN+vmEHw3pA0kh4mmuwHe02nyfghb6IWWiKE=
 github.com/ThreeDotsLabs/watermill-kafka/v2 v2.0.0 h1:+8FeCjF+BgW5b8L7TofMYw8eQUiITF/0evJh38wt3W0=
 github.com/ThreeDotsLabs/watermill-kafka/v2 v2.0.0/go.mod h1:0/RwtDh+LUbVawbSoN2ifZbqhbaW8OK5AJLZ6g7BESE=
-github.com/ThreeDotsLabs/watermill-sql v0.1.1 h1:OV6/At1Xr1UZh4AgRQ7TIjHKoS5UdENtsNcJwAdmOfM=
-github.com/ThreeDotsLabs/watermill-sql v0.1.1/go.mod h1:8+1e0mPYBfFZxVloUHgxDPoHXqtNKtVYHgGd3wZdhcs=
+github.com/ThreeDotsLabs/watermill-sql v1.1.0 h1:bjHPbfr+gZ2N9NuTKcamHNPCSBp9ulG5mDsnuoIAgHM=
+github.com/ThreeDotsLabs/watermill-sql v1.1.0/go.mod h1:j3RIa3qPoanCwpNwvjO5xNqskIi71svSa4B/RoPzKgY=
 github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc/go.mod h1:LOuyumcjzFXgccqObfd/Ljyb9UuFJ6TxHnclSeseNhc=
 github.com/alecthomas/units v0.0.0-20151022065526-2efee857e7cf/go.mod h1:ybxpYRFXyAe+OPACYpWeL0wqObRcbAqCMya13uyzqw0=
 github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973/go.mod h1:Dwedo/Wpr24TaqPxmxbtue+5NUziq4I4S80YR8gNf3Q=
@@ -66,6 +68,8 @@ github.com/kr/pretty v0.1.0/go.mod h1:dAy3ld7l9f0ibDNOQOHHMYYIIbhfbHSm3C4ZsoJORN
 github.com/kr/pty v1.1.1/go.mod h1:pFQYn66WHrOpPYNljwOMqo10TkYh1fy3cYio2l3bCsQ=
 github.com/kr/text v0.1.0 h1:45sCR5RtlFHMR4UwH9sdQ5TC8v0qDQCHnXt+kaKSTVE=
 github.com/kr/text v0.1.0/go.mod h1:4Jbv+DJW3UT/LiOwJeYQe1efqtUx/iVham/4vfdArNI=
+github.com/lib/pq v1.2.0 h1:LXpIM/LZ5xGFhOpXAQUIMM1HdyqzVYM13zNdjCEEcA0=
+github.com/lib/pq v1.2.0/go.mod h1:5WUZQaWbwv1U+lTReE5YruASi9Al49XbQIvNi/34Woo=
 github.com/matttproud/golang_protobuf_extensions v1.0.1/go.mod h1:D8He9yQNgCq6Z5Ld7szi9bcBfOoFv/3dc6xSMkL2PC0=
 github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd/go.mod h1:6dJC0mAP4ikYIbvyc7fijjWJddQyLn8Ig3JB5CqoB9Q=
 github.com/modern-go/reflect2 v1.0.1/go.mod h1:bx2lNnkwVCuqBIxFjflWJWanXIb3RllmbCylyMrvgv0=

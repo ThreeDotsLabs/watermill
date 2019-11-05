@@ -21,7 +21,7 @@ func main() {
 	subscriber, err := sql.NewSubscriber(
 		db,
 		sql.SubscriberConfig{
-			SchemaAdapter:    sql.DefaultSchema{},
+			SchemaAdapter:    sql.DefaultMySQLSchema{},
 			OffsetsAdapter:   sql.DefaultMySQLOffsetsAdapter{},
 			InitializeSchema: true,
 		},
@@ -41,7 +41,7 @@ func main() {
 	publisher, err := sql.NewPublisher(
 		db,
 		sql.PublisherConfig{
-			SchemaAdapter: sql.DefaultSchema{},
+			SchemaAdapter: sql.DefaultMySQLSchema{},
 		},
 		logger,
 	)
