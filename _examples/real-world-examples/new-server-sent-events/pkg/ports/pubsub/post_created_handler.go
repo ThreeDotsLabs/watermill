@@ -21,7 +21,7 @@ func (h PostCreatedHandler) NewEvent() interface{} {
 }
 
 func (h PostCreatedHandler) Handle(ctx context.Context, event interface{}) error {
-	e, ok := event.(model.PostCreated)
+	e, ok := event.(*model.PostCreated)
 	if !ok {
 		return errors.New("invalid event received")
 	}

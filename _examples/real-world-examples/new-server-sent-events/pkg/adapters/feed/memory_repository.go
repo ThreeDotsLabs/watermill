@@ -1,6 +1,8 @@
 package feed
 
-import "main.go/pkg/app/model"
+import (
+	"main.go/pkg/app/model"
+)
 
 type MemoryRepository struct {
 	feeds []model.Feed
@@ -8,6 +10,14 @@ type MemoryRepository struct {
 
 func (r *MemoryRepository) All() ([]model.Feed, error) {
 	return r.feeds, nil
+}
+
+func (r *MemoryRepository) ByID(feedID int) (model.Feed, error) {
+	index := feedID - 1
+
+	feed := r.feeds[index]
+
+	return feed, nil
 }
 
 func (r *MemoryRepository) Add(feed model.Feed) error {

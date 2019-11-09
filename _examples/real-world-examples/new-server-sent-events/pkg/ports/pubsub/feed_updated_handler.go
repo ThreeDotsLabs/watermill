@@ -8,6 +8,7 @@ import (
 )
 
 type FeedUpdatedHandler struct {
+	UpdatesChannel chan<- model.FeedUpdated
 }
 
 func (h FeedUpdatedHandler) HandlerName() string {
@@ -19,12 +20,12 @@ func (h FeedUpdatedHandler) NewEvent() interface{} {
 }
 
 func (h FeedUpdatedHandler) Handle(ctx context.Context, event interface{}) error {
-	e, ok := event.(model.FeedUpdated)
+	e, ok := event.(*model.FeedUpdated)
 	if !ok {
 		return errors.New("invalid event received")
 	}
 
-	_ = e
+	h.UpdatesChannel <- *e
 
 	return nil
 }
