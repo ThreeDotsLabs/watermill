@@ -5,6 +5,7 @@ import (
 )
 
 type CreatePost struct {
+	UUID    string
 	Title   string
 	Content string
 	Author  string
@@ -31,6 +32,7 @@ func NewCreatePostHandler(
 
 func (h CreatePostHandler) Execute(command CreatePost) error {
 	post := model.Post{
+		UUID:    command.UUID,
 		Title:   command.Title,
 		Content: command.Content,
 		Author:  command.Author,

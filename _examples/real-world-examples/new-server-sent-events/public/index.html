@@ -73,18 +73,18 @@
 <script type="text/x-template" id="wall-template">
     <div>
         <h2>Posts</h2>
-        <div v-for="post in posts">
+        <div v-for="post in feed.Posts">
             <div class="card">
                 <div class="card-body">
                     <h4 class="card-title">
-                    {{post.title}}
-                        <router-link :to="{ name: 'edit-post', params: { post_id: post.post_id }}"
+                    {{post.Title}}
+                        <router-link :to="{ name: 'edit-post', params: { post_id: post.ID }}"
                                      class="btn btn-light class-right btn-sm">Edit
                         </router-link>
                     </h4>
-                    <p class="card-text">{{post.content}}</p>
+                    <p class="card-text">{{post.Content}}</p>
                     <p class="card-text">
-                        <small class="text-muted">Author: {{post.author_name}}</small>
+                        <small class="text-muted">Author: {{post.Author}}</small>
                     </p>
                 </div>
             </div>
@@ -134,7 +134,7 @@
         template: '#wall-template',
         data: function () {
             return {
-                posts: [],
+                feed: {},
             }
         },
         created() {
@@ -150,11 +150,11 @@
             setupPosts() {
                 // todo - universal func for it
 
-                this.es = new EventSource('/posts')
+                this.es = new EventSource('/feeds/1')
 
                 this.es.addEventListener('data', event => {
                     let data = JSON.parse(event.data);
-                    this.posts = data;
+                    this.feed = data;
                 }, false);
 
                 this.es.addEventListener('error', function (e) {
@@ -223,31 +223,18 @@
         },
     };
 
-    // 2. Define some routes
-    // Each route should map to a component. The "component" can
-    // either be an actual component constructor created via
-    // `Vue.extend()`, or just a component options object.
-    // We'll talk about nested routes later.
     const routes = [
         {path: '/', component: Wall, name: 'wall'},
         {path: '/edit-profile', component: EditProfile, name: 'edit-profile'},
         {path: '/edit-post/:post_id', component: EditPost, name: 'edit-post'},
     ]
 
-    // 3. Create the router instance and pass the `routes` option
-    // You can pass in additional options here, but let's
-    // keep it simple for now.
     const router = new VueRouter({
-        routes // short for `routes: routes`
+        routes
     })
 
-    // 4. Create and mount the root instance.
-    // Make sure to inject the router with the router option to make the
-    // whole app router-aware.
     const app = new Vue({
         router
     }).$mount('#app')
-
-    // Now the app has started!
 </script>
 </html>

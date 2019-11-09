@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"log"
-	"main.go/pkg/app/query"
 	stdHTTP "net/http"
 	"time"
 
@@ -19,14 +18,15 @@ import (
 	"main.go/pkg/adapters/post"
 	"main.go/pkg/app/command"
 	"main.go/pkg/app/model"
+	"main.go/pkg/app/query"
 	"main.go/pkg/ports/http"
 	"main.go/pkg/ports/pubsub"
 )
 
 func main() {
-	logger := watermill.NewStdLogger(true, false)
+	logger := watermill.NewStdLogger(false, false)
 
-	feedUpdatesChannel := make(chan model.FeedUpdated)
+	internalPubSub := gochannel.NewGoChannel(gochannel.Config{}, logger)
 	goChannelPubSub := gochannel.NewGoChannel(gochannel.Config{}, logger)
 
 	router, err := message.NewRouter(message.RouterConfig{}, logger)
@@ -59,7 +59,6 @@ func main() {
 			return []cqrs.EventHandler{
 				pubsub.PostCreatedHandler{addPostToFeedsHandler},
 				pubsub.PostUpdatedHandler{updatePostInFeedsHandler},
-				pubsub.FeedUpdatedHandler{feedUpdatesChannel},
 			}
 		},
 		EventsPublisher: goChannelPubSub,
@@ -73,6 +72,22 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	topicFunc := func(event interface{}) string {
+		return cqrs.JSONMarshaler{}.Name(event)
+	}
+
+	topic := topicFunc(model.FeedUpdated{})
+	router.AddHandler(
+		"feed-updated",
+		topic,
+		goChannelPubSub,
+		topic,
+		internalPubSub,
+		func(msg *message.Message) ([]*message.Message, error) {
+			return []*message.Message{msg}, nil
+		},
+	)
 
 	publisher := events.Publisher{cqrsFacade.EventBus()}
 
@@ -94,8 +109,9 @@ func main() {
 	}
 
 	httpRouter := http.Router{
-		FeedUpdatedChannel: feedUpdatesChannel,
-		FeedByIDHandler:    feedByIDHandler,
+		Subscriber:      internalPubSub,
+		TopicFunc:       topicFunc,
+		FeedByIDHandler: feedByIDHandler,
 	}
 
 	go func() {
@@ -113,13 +129,14 @@ func runCommands(
 	createPostHandler command.CreatePostHandler,
 	updatePostHandler command.UpdatePostHandler,
 ) {
-	id := 1
 	for {
+		uuid := watermill.NewUUID()
 		title := gofakeit.Sentence(5)
 		content := gofakeit.Sentence(20)
 		author := gofakeit.Name()
 
 		err := createPostHandler.Execute(command.CreatePost{
+			UUID:    uuid,
 			Title:   title,
 			Content: content,
 			Author:  author,
@@ -129,10 +146,10 @@ func runCommands(
 			log.Println("Error creating post:", err)
 		}
 
-		time.Sleep(time.Second * 3)
+		time.Sleep(time.Second * 1)
 
 		err = updatePostHandler.Execute(command.UpdatePost{
-			ID:      id,
+			UUID:    uuid,
 			Title:   title + " (Updated)",
 			Content: content,
 			Author:  author,
@@ -142,8 +159,6 @@ func runCommands(
 			log.Println("Error updating post:", err)
 		}
 
-		time.Sleep(time.Second * 5)
-
-		id++
+		time.Sleep(time.Second * 3)
 	}
 }

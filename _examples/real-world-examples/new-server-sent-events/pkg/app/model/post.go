@@ -1,7 +1,7 @@
 package model
 
 type Post struct {
-	ID      int
+	UUID    string
 	Title   string
 	Content string
 	Author  string

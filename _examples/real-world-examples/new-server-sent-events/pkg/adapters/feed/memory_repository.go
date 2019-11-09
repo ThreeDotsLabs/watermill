@@ -30,7 +30,7 @@ func (r *MemoryRepository) Add(feed model.Feed) error {
 func (r *MemoryRepository) AddPostToFeed(feed model.Feed, post model.Post) error {
 	index := feed.ID - 1
 	feed = r.feeds[index]
-	feed.Posts = append(feed.Posts, post)
+	feed.Posts = append([]model.Post{post}, feed.Posts...)
 	r.feeds[index] = feed
 
 	return nil
@@ -41,14 +41,11 @@ func (r *MemoryRepository) UpdatePostInFeed(feed model.Feed, post model.Post) er
 	feed = r.feeds[index]
 
 	for i, p := range feed.Posts {
-		if p.ID == post.ID {
+		if p.UUID == post.UUID {
+			feed.Posts[i] = post
 			break
 		}
-
-		feed.Posts[i] = post
 	}
-
-	r.feeds[index] = feed
 
 	return nil
 }

@@ -3,7 +3,7 @@ package command
 import "main.go/pkg/app/model"
 
 type UpdatePost struct {
-	ID      int
+	UUID    string
 	Title   string
 	Content string
 	Author  string
@@ -30,7 +30,7 @@ func NewUpdatePostHandler(
 
 func (h UpdatePostHandler) Execute(command UpdatePost) error {
 	post := model.Post{
-		ID:      command.ID,
+		UUID:    command.UUID,
 		Title:   command.Title,
 		Content: command.Content,
 		Author:  command.Author,
