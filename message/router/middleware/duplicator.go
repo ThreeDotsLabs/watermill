@@ -7,16 +7,16 @@ import (
 // Duplicator sends message twice.
 func Duplicator(h message.HandlerFunc) message.HandlerFunc {
 	return func(msg *message.Message) ([]*message.Message, error) {
-		producedMessages, firstErr := h(msg)
+		firstProducedMessages, firstErr := h(msg)
 		if firstErr != nil {
 			return nil, firstErr
 		}
 
-		_, secondErr := h(msg)
+		secondProducedMessages, secondErr := h(msg)
 		if secondErr != nil {
 			return nil, secondErr
 		}
 
-		return producedMessages, nil
+		return append(firstProducedMessages, secondProducedMessages...), nil
 	}
 }

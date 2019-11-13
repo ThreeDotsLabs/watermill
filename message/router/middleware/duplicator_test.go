@@ -22,7 +22,9 @@ func TestDuplicator(t *testing.T) {
 	})(someMsg)
 
 	assert.NoError(t, err)
+	assert.Len(t, producedMessages, 2)
 	assert.Equal(t, "1", producedMessages[0].UUID)
+	assert.Equal(t, "1", producedMessages[1].UUID)
 	assert.Equal(t, 2, executionsCount)
 }
 
