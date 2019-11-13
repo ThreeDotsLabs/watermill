@@ -4,7 +4,7 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
-// Duplicator sends message twice.
+// Duplicator is processing messages twice, to ensure that the endpoint is idempotent.
 func Duplicator(h message.HandlerFunc) message.HandlerFunc {
 	return func(msg *message.Message) ([]*message.Message, error) {
 		producedMessages, firstErr := h(msg)
