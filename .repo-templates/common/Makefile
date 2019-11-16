@@ -14,7 +14,7 @@ test_race:
 	go test ./... -short -race
 
 test_stress:
-	go test -tags=stress -parallel 30 -timeout=15m ./...
+	go test -tags=stress -parallel 30 -timeout=45m ./...
 
 test_reconnect:
 	go test -tags=reconnect ./...
@@ -22,6 +22,13 @@ test_reconnect:
 fmt:
 	go fmt ./...
 	goimports -l -w .
+
+update_watermill:
+	go get -u github.com/ThreeDotsLabs/watermill
+	go mod tidy
+
+	sed -i '\|go 1\.|d' go.mod
+	go mod edit -fmt
 
 {{ if index . "MakefileCustom" -}}
     {{ .MakefileCustom }}

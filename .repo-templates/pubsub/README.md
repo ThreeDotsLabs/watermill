@@ -6,7 +6,7 @@
 
 This is Pub/Sub for the [Watermill](https://watermill.io/) project.
 
-All Pub/Sub implementations can be found in [https://watermill.io/docs/pub-sub-implementations/](https://watermill.io/docs/pub-sub-implementations/).
+All Pub/Sub implementations can be found at [https://watermill.io/pubsubs/](https://watermill.io/pubsubs/).
 
 Watermill is a Go library for working efficiently with message streams. It is intended
 for building event driven applications, enabling event sourcing, RPC over messages,

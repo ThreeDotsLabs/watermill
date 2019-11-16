@@ -125,6 +125,7 @@ Templates = ["license", "common", "pubsub"]
         GoPackage = "{{ .GoPackageTemplate }}"
         CircleCIDockerOverrideEnvs = '''
       WATERMILL_TEST_MYSQL_HOST: mysql:3306
+      WATERMILL_TEST_POSTGRES_HOST: postgres:5432
 '''
         MakefileCustom = '''
 mycli:

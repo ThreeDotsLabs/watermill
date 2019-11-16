@@ -72,7 +72,7 @@ Supported Pub/Subs:
 {{- end -}}
 {{- end }}
 
-All Pub/Subs implementation details can be found in the [documentation](https://watermill.io/pubsubs).
+All Pub/Sub implementations can be found at [https://watermill.io/pubsubs/](https://watermill.io/pubsubs/).
 
 ## Examples
 * [Your first app](_examples/your-first-app) - start here!
