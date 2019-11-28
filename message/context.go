@@ -10,6 +10,8 @@ const (
 	handlerNameKey    ctxKey = "handler_name"
 	publisherNameKey  ctxKey = "publisher_name"
 	subscriberNameKey ctxKey = "subscriber_name"
+	subscribeTopicKey ctxKey = "subscribe_topic"
+	publishTopicKey   ctxKey = "publish_topic"
 )
 
 func valFromCtx(ctx context.Context, key ctxKey) string {
@@ -30,4 +32,12 @@ func PublisherNameFromCtx(ctx context.Context) string {
 
 func SubscriberNameFromCtx(ctx context.Context) string {
 	return valFromCtx(ctx, subscriberNameKey)
+}
+
+func SubscribeTopicFromCtx(ctx context.Context) string {
+	return valFromCtx(ctx, subscribeTopicKey)
+}
+
+func PublishTopicFromCtx(ctx context.Context) string {
+	return valFromCtx(ctx, publishTopicKey)
 }

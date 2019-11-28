@@ -42,9 +42,9 @@ func TestRouter_Context_Stringer(t *testing.T) {
 	handlerName := "handler_name_stringer_test"
 	router.AddHandler(
 		handlerName,
-		"",
+		"sub-topic",
 		sub,
-		"",
+		"pub-topic",
 		pub,
 		handlerFunc,
 	)
@@ -71,6 +71,8 @@ func TestRouter_Context_Stringer(t *testing.T) {
 	require.Equal(t, handlerName, message.HandlerNameFromCtx(ctx))
 	require.Equal(t, sub.String(), message.SubscriberNameFromCtx(ctx))
 	require.Equal(t, pub.String(), message.PublisherNameFromCtx(ctx))
+	require.Equal(t, "sub-topic", message.SubscribeTopicFromCtx(ctx))
+	require.Equal(t, "pub-topic", message.PublishTopicFromCtx(ctx))
 }
 
 type unnamedMockPublisher struct{}
