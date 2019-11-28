@@ -34,6 +34,11 @@ type HandlerFunc func(msg *Message) ([]*Message, error)
 // NoPublishHandlerFunc is HandlerFunc alternative, which doesn't produce any messages.
 type NoPublishHandlerFunc func(msg *Message) error
 
+// ProxyHandler is a handler that passes the message unchanged from the subscriber to the publisher.
+var ProxyHandler HandlerFunc = func(msg *Message) ([]*Message, error) {
+	return []*Message{msg}, nil
+}
+
 // HandlerMiddleware allows us to write something like decorators to HandlerFunc.
 // It can execute something before handler (for example: modify consumed message)
 // or after (modify produced messages, ack/nack on consumed message, handle errors, logging, etc.).
