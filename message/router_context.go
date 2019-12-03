@@ -22,7 +22,7 @@ func valFromCtx(ctx context.Context, key ctxKey) string {
 	return val
 }
 
-// HandlerNameFromCtx returns name of message handler in the router which consumed message.
+// HandlerNameFromCtx returns name of message handler in the router which consumed the message.
 func HandlerNameFromCtx(ctx context.Context) string {
 	return valFromCtx(ctx, handlerNameKey)
 }
@@ -44,7 +44,7 @@ func SubscribeTopicFromCtx(ctx context.Context) string {
 	return valFromCtx(ctx, subscribeTopicKey)
 }
 
-// PublishTopicFromCtx returns topic to which message will be published by the router.
+// PublishTopicFromCtx returns the topic to which message will be published by the router.
 func PublishTopicFromCtx(ctx context.Context) string {
 	return valFromCtx(ctx, publishTopicKey)
 }
