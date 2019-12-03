@@ -107,6 +107,8 @@ A full list of standard plugins can be found in [message/router/plugin](https://
 
 ### Context
 
+Every message received by handler, have some extra useful values in the `context`:
+
 {{% render-md %}}
 {{% load-snippet-partial file="src-link/message/router_context.go" first_line_contains="// HandlerNameFromCtx" last_line_contains="func PublishTopicFromCtx" padding_after="2" %}}
 {{% /render-md %}}
