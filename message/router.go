@@ -544,6 +544,12 @@ func (h *handler) addHandlerContext(messages ...*Message) {
 		if h.subscriberName != "" {
 			ctx = context.WithValue(ctx, subscriberNameKey, h.subscriberName)
 		}
+		if h.subscribeTopic != "" {
+			ctx = context.WithValue(ctx, subscribeTopicKey, h.subscribeTopic)
+		}
+		if h.publishTopic != "" {
+			ctx = context.WithValue(ctx, publishTopicKey, h.publishTopic)
+		}
 		messages[i].SetContext(ctx)
 	}
 }
