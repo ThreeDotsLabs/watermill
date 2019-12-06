@@ -12,8 +12,8 @@ import (
 type FanOut struct {
 	pubSub *GoChannel
 
-	router     *message.Router
-	subscriber message.Subscriber
+	internalRouter     *message.Router
+	internalSubscriber message.Subscriber
 
 	logger watermill.LoggerAdapter
 }
@@ -36,8 +36,8 @@ func NewFanOut(
 	return FanOut{
 		pubSub: NewGoChannel(Config{}, logger),
 
-		router:     router,
-		subscriber: subscriber,
+		internalRouter:     router,
+		internalSubscriber: subscriber,
 
 		logger: logger,
 	}, nil
@@ -48,13 +48,13 @@ func (f FanOut) AddSubscription(topic string) {
 		"topic": topic,
 	})
 
-	f.router.AddHandler(
+	f.internalRouter.AddHandler(
 		fmt.Sprintf("fanout-%s", topic),
 		topic,
-		f.subscriber,
+		f.internalSubscriber,
 		topic,
 		f.pubSub,
-		message.ProxyHandler,
+		message.PassthroughHandler,
 	)
 }
 
