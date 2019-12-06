@@ -10,11 +10,21 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
+// FanOut is a component that receives messages from the subscriber and passes them
+// to all publishers. In effect, messages are "multiplied".
+//
+// A typical use case for using FanOut is having one external subscription and multiple workers
+// inside the process.
+//
+// You need to call AddSubscription method for all topics that you want to listen to.
+// This needs to be done *before* the router is started.
+//
+// FanOut exposes the standard Subscriber interface.
 type FanOut struct {
-	pubSub *GoChannel
+	internalPubSub *GoChannel
 
-	internalRouter     *message.Router
-	internalSubscriber message.Subscriber
+	router     *message.Router
+	subscriber message.Subscriber
 
 	logger watermill.LoggerAdapter
 
@@ -22,6 +32,8 @@ type FanOut struct {
 	subscribedLock   sync.Mutex
 }
 
+// NewFanOut creates new FanOut.
+// The passed router should not be running yet.
 func NewFanOut(
 	router *message.Router,
 	subscriber message.Subscriber,
@@ -38,10 +50,10 @@ func NewFanOut(
 	}
 
 	return &FanOut{
-		pubSub: NewGoChannel(Config{}, logger),
+		internalPubSub: NewGoChannel(Config{}, logger),
 
-		internalRouter:     router,
-		internalSubscriber: subscriber,
+		router:     router,
+		subscriber: subscriber,
 
 		logger: logger,
 
@@ -49,6 +61,9 @@ func NewFanOut(
 	}, nil
 }
 
+// AddSubscription add an internal subscription for the given topic.
+// You need to call this method with all topics that you want to listen to, before the router is started.
+// AddSubscription is idempotent.
 func (f *FanOut) AddSubscription(topic string) {
 	f.subscribedLock.Lock()
 	defer f.subscribedLock.Unlock()
@@ -63,12 +78,12 @@ func (f *FanOut) AddSubscription(topic string) {
 		"topic": topic,
 	})
 
-	f.internalRouter.AddHandler(
+	f.router.AddHandler(
 		fmt.Sprintf("fanout-%s", topic),
 		topic,
-		f.internalSubscriber,
+		f.subscriber,
 		topic,
-		f.pubSub,
+		f.internalPubSub,
 		message.PassthroughHandler,
 	)
 
@@ -76,9 +91,9 @@ func (f *FanOut) AddSubscription(topic string) {
 }
 
 func (f *FanOut) Subscribe(ctx context.Context, topic string) (<-chan *message.Message, error) {
-	return f.pubSub.Subscribe(ctx, topic)
+	return f.internalPubSub.Subscribe(ctx, topic)
 }
 
 func (f *FanOut) Close() error {
-	return f.pubSub.Close()
+	return f.internalPubSub.Close()
 }
