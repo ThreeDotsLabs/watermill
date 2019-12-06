@@ -26,18 +26,18 @@ func NewFanOut(
 	router *message.Router,
 	subscriber message.Subscriber,
 	logger watermill.LoggerAdapter,
-) (FanOut, error) {
+) (*FanOut, error) {
 	if router == nil {
-		return FanOut{}, errors.New("missing router")
+		return nil, errors.New("missing router")
 	}
 	if subscriber == nil {
-		return FanOut{}, errors.New("missing subscriber")
+		return nil, errors.New("missing subscriber")
 	}
 	if logger == nil {
 		logger = watermill.NopLogger{}
 	}
 
-	return FanOut{
+	return &FanOut{
 		pubSub: NewGoChannel(Config{}, logger),
 
 		internalRouter:     router,
@@ -49,7 +49,7 @@ func NewFanOut(
 	}, nil
 }
 
-func (f FanOut) AddSubscription(topic string) {
+func (f *FanOut) AddSubscription(topic string) {
 	f.subscribedLock.Lock()
 	defer f.subscribedLock.Unlock()
 
@@ -75,10 +75,10 @@ func (f FanOut) AddSubscription(topic string) {
 	f.subscribedTopics[topic] = struct{}{}
 }
 
-func (f FanOut) Subscribe(ctx context.Context, topic string) (<-chan *message.Message, error) {
+func (f *FanOut) Subscribe(ctx context.Context, topic string) (<-chan *message.Message, error) {
 	return f.pubSub.Subscribe(ctx, topic)
 }
 
-func (f FanOut) Close() error {
+func (f *FanOut) Close() error {
 	return f.pubSub.Close()
 }
