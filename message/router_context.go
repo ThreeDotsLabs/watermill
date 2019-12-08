@@ -39,7 +39,7 @@ func SubscriberNameFromCtx(ctx context.Context) string {
 	return valFromCtx(ctx, subscriberNameKey)
 }
 
-// SubscribeTopicFromCtx returns topic from which message was received in the router.
+// SubscribeTopicFromCtx returns the topic from which message was received in the router.
 func SubscribeTopicFromCtx(ctx context.Context) string {
 	return valFromCtx(ctx, subscribeTopicKey)
 }
