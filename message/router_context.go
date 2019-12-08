@@ -27,7 +27,7 @@ func HandlerNameFromCtx(ctx context.Context) string {
 	return valFromCtx(ctx, handlerNameKey)
 }
 
-// PublisherNameFromCtx returns name of message publisher type which published the message in the router.
+// PublisherNameFromCtx returns the name of the message publisher type that published the message in the router.
 // For example, for Kafka it will be `kafka.Publisher`.
 func PublisherNameFromCtx(ctx context.Context) string {
 	return valFromCtx(ctx, publisherNameKey)
