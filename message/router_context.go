@@ -33,7 +33,7 @@ func PublisherNameFromCtx(ctx context.Context) string {
 	return valFromCtx(ctx, publisherNameKey)
 }
 
-// SubscriberNameFromCtx returns name of message subscriber type which subscribed the message in the router.
+// SubscriberNameFromCtx returns the name of the message subscriber type that subscribed to the message in the router.
 // For example, for Kafka it will be `kafka.Subscriber`.
 func SubscriberNameFromCtx(ctx context.Context) string {
 	return valFromCtx(ctx, subscriberNameKey)
