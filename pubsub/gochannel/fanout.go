@@ -49,6 +49,12 @@ func NewFanOut(
 		logger = watermill.NopLogger{}
 	}
 
+	select {
+	case <-router.Running():
+		return nil, errors.New("the router is already running")
+	default:
+	}
+
 	return &FanOut{
 		internalPubSub: NewGoChannel(Config{}, logger),
 

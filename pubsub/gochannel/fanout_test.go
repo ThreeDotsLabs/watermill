@@ -69,3 +69,21 @@ func TestFanOut(t *testing.T) {
 
 	require.Equal(t, uint64(workersCount*messagesCount), counter)
 }
+
+func TestFanOut_RouterRunning(t *testing.T) {
+	logger := watermill.NopLogger{}
+	pubSub := gochannel.NewGoChannel(gochannel.Config{}, logger)
+
+	router, err := message.NewRouter(message.RouterConfig{}, logger)
+	require.NoError(t, err)
+
+	go func() {
+		err := router.Run(context.Background())
+		require.NoError(t, err)
+	}()
+
+	<-router.Running()
+
+	_, err = gochannel.NewFanOut(router, pubSub, logger)
+	require.Error(t, err)
+}
