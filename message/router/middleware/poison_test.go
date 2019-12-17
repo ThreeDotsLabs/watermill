@@ -130,7 +130,9 @@ func TestPoisonQueue_context_values(t *testing.T) {
 		return errors.New("error")
 	})
 
-	go router.Run(context.Background())
+	go func() {
+		require.NoError(t, router.Run(context.Background()))
+	}()
 	require.NoError(t, err)
 	defer router.Close()
 
