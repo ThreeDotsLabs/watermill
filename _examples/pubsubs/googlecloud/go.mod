@@ -6,3 +6,5 @@ require (
 	github.com/ThreeDotsLabs/watermill-googlecloud v1.0.1
 	google.golang.org/genproto v0.0.0-20190513181449-d00d292a067c // indirect
 )
+
+go 1.11
