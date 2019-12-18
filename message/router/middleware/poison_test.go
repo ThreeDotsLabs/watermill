@@ -1,7 +1,12 @@
 package middleware_test
 
 import (
+	"context"
+	"github.com/ThreeDotsLabs/watermill"
+	"github.com/ThreeDotsLabs/watermill/message/subscriber"
+	"github.com/ThreeDotsLabs/watermill/pubsub/gochannel"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/go-multierror"
 
@@ -104,6 +109,53 @@ func TestPoisonQueue_handler_failing(t *testing.T) {
 			assert.Equal(t, errFailed.Error(), poisonMsgs[0].Metadata.Get(middleware.ReasonForPoisonedKey))
 		})
 	}
+}
+
+func TestPoisonQueue_context_values(t *testing.T) {
+	pubSub := gochannel.NewGoChannel(
+		gochannel.Config{Persistent: true},
+		watermill.NewStdLogger(true, true),
+	)
+
+	logger := watermill.NewStdLogger(true, true)
+
+	router, err := message.NewRouter(message.RouterConfig{}, logger)
+	require.NoError(t, err)
+
+	pq, err := middleware.PoisonQueue(pubSub, "poison_queue")
+	require.NoError(t, err)
+	router.AddMiddleware(pq)
+
+	router.AddNoPublisherHandler("handler_name", "test", pubSub, func(msg *message.Message) error {
+		return errors.New("error")
+	})
+
+	go func() {
+		require.NoError(t, router.Run(context.Background()))
+	}()
+	require.NoError(t, err)
+	defer router.Close()
+
+	select {
+	case <-router.Running():
+	// ok
+	case <-time.After(time.Second):
+		t.Fatal("waiting for router timeout")
+	}
+
+	err = pubSub.Publish("test", message.NewMessage("1", nil))
+	require.NoError(t, err)
+
+	msgs, err := pubSub.Subscribe(context.Background(), "poison_queue")
+	require.NoError(t, err)
+
+	messages, all := subscriber.BulkRead(msgs, 1, time.Second)
+	require.True(t, all, "no messages received")
+
+	assert.Equal(t, "handler_name", messages[0].Metadata[middleware.PoisonedHandlerKey])
+	assert.Equal(t, "gochannel.GoChannel", messages[0].Metadata[middleware.PoisonedSubscriberKey])
+	assert.Equal(t, "test", messages[0].Metadata[middleware.PoisonedTopicKey])
+	assert.Equal(t, "error", messages[0].Metadata[middleware.ReasonForPoisonedKey])
 }
 
 func TestPoisonQueue_handler_failing_publisher_failing(t *testing.T) {

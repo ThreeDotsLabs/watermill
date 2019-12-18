@@ -9,8 +9,13 @@ import (
 // ErrInvalidPoisonQueueTopic occurs when the topic supplied to the PoisonQueue constructor is invalid.
 var ErrInvalidPoisonQueueTopic = errors.New("invalid poison queue topic")
 
-// ReasonForPoisonedKey is the metadata key which marks the reason (error) why the message was deemed poisoned.
-var ReasonForPoisonedKey = "reason_poisoned"
+// Metadata keys which marks the reason and context why the message was deemed poisoned.
+const (
+	ReasonForPoisonedKey  = "reason_poisoned"
+	PoisonedTopicKey      = "topic_poisoned"
+	PoisonedHandlerKey    = "handler_poisoned"
+	PoisonedSubscriberKey = "subscriber_poisoned"
+)
 
 type poisonQueue struct {
 	topic string
@@ -61,6 +66,9 @@ func (pq poisonQueue) publishPoisonMessage(msg *message.Message, err error) erro
 
 	// add context why it was poisoned
 	msg.Metadata.Set(ReasonForPoisonedKey, err.Error())
+	msg.Metadata.Set(PoisonedTopicKey, message.SubscribeTopicFromCtx(msg.Context()))
+	msg.Metadata.Set(PoisonedHandlerKey, message.HandlerNameFromCtx(msg.Context()))
+	msg.Metadata.Set(PoisonedSubscriberKey, message.SubscriberNameFromCtx(msg.Context()))
 
 	// don't intercept error from publish. Can't help you if the publisher is down as well.
 	return pq.pub.Publish(pq.topic, msg)
