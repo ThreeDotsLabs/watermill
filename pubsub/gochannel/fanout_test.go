@@ -23,7 +23,7 @@ func TestFanOut(t *testing.T) {
 	router, err := message.NewRouter(message.RouterConfig{}, logger)
 	require.NoError(t, err)
 
-	fanout, err := gochannel.NewFanOut(router, upstreamPubSub, logger)
+	fanout, err := gochannel.NewFanOut(upstreamPubSub, logger)
 	require.NoError(t, err)
 
 	fanout.AddSubscription(upstreamTopic)
@@ -53,7 +53,13 @@ func TestFanOut(t *testing.T) {
 		require.NoError(t, err)
 	}()
 
+	go func() {
+		err := fanout.Run(ctx)
+		require.NoError(t, err)
+	}()
+
 	<-router.Running()
+	<-fanout.Running()
 
 	go func() {
 		for i := 0; i < messagesCount; i++ {
@@ -70,20 +76,22 @@ func TestFanOut(t *testing.T) {
 	require.Equal(t, uint64(workersCount*messagesCount), counter)
 }
 
-func TestFanOut_RouterRunning(t *testing.T) {
+func TestFanOut_RouterClosed(t *testing.T) {
 	logger := watermill.NopLogger{}
 	pubSub := gochannel.NewGoChannel(gochannel.Config{}, logger)
 
-	router, err := message.NewRouter(message.RouterConfig{}, logger)
+	fanout, err := gochannel.NewFanOut(pubSub, logger)
 	require.NoError(t, err)
 
+	fanout.AddSubscription("some-topic")
+
 	go func() {
-		err := router.Run(context.Background())
+		err := fanout.Run(context.Background())
 		require.NoError(t, err)
 	}()
 
-	<-router.Running()
+	<-fanout.Running()
 
-	_, err = gochannel.NewFanOut(router, pubSub, logger)
-	require.Error(t, err)
+	err = fanout.Close()
+	require.NoError(t, err)
 }

@@ -17,13 +17,13 @@ import (
 // inside the process.
 //
 // You need to call AddSubscription method for all topics that you want to listen to.
-// This needs to be done *before* the router is started.
+// This needs to be done *before* starting the FanOut.
 //
 // FanOut exposes the standard Subscriber interface.
 type FanOut struct {
 	internalPubSub *GoChannel
+	internalRouter *message.Router
 
-	router     *message.Router
 	subscriber message.Subscriber
 
 	logger watermill.LoggerAdapter
@@ -32,16 +32,11 @@ type FanOut struct {
 	subscribedLock   sync.Mutex
 }
 
-// NewFanOut creates new FanOut.
-// The passed router should not be running yet.
+// NewFanOut creates a new FanOut.
 func NewFanOut(
-	router *message.Router,
 	subscriber message.Subscriber,
 	logger watermill.LoggerAdapter,
 ) (*FanOut, error) {
-	if router == nil {
-		return nil, errors.New("missing router")
-	}
 	if subscriber == nil {
 		return nil, errors.New("missing subscriber")
 	}
@@ -49,16 +44,15 @@ func NewFanOut(
 		logger = watermill.NopLogger{}
 	}
 
-	select {
-	case <-router.Running():
-		return nil, errors.New("the router is already running")
-	default:
+	router, err := message.NewRouter(message.RouterConfig{}, logger)
+	if err != nil {
+		return nil, err
 	}
 
 	return &FanOut{
 		internalPubSub: NewGoChannel(Config{}, logger),
+		internalRouter: router,
 
-		router:     router,
 		subscriber: subscriber,
 
 		logger: logger,
@@ -68,7 +62,7 @@ func NewFanOut(
 }
 
 // AddSubscription add an internal subscription for the given topic.
-// You need to call this method with all topics that you want to listen to, before the router is started.
+// You need to call this method with all topics that you want to listen to, before the FanOut is started.
 // AddSubscription is idempotent.
 func (f *FanOut) AddSubscription(topic string) {
 	f.subscribedLock.Lock()
@@ -84,7 +78,7 @@ func (f *FanOut) AddSubscription(topic string) {
 		"topic": topic,
 	})
 
-	f.router.AddHandler(
+	f.internalRouter.AddHandler(
 		fmt.Sprintf("fanout-%s", topic),
 		topic,
 		f.subscriber,
@@ -94,6 +88,16 @@ func (f *FanOut) AddSubscription(topic string) {
 	)
 
 	f.subscribedTopics[topic] = struct{}{}
+}
+
+// Run runs the FanOut.
+func (f *FanOut) Run(ctx context.Context) error {
+	return f.internalRouter.Run(ctx)
+}
+
+// Running is closed when FanOut is running.
+func (f *FanOut) Running() chan struct{} {
+	return f.internalRouter.Running()
 }
 
 func (f *FanOut) Subscribe(ctx context.Context, topic string) (<-chan *message.Message, error) {
