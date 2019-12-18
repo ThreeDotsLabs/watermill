@@ -5,3 +5,5 @@ require (
 	github.com/ThreeDotsLabs/watermill-kafka/v2 v2.0.0
 	github.com/brianvoe/gofakeit v3.18.0+incompatible
 )
+
+go 1.11
