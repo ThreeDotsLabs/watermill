@@ -7,4 +7,6 @@ require (
 )
 
 // uncomment to use local sources
-// replace github.com/ThreeDotsLabs/watermill => ../../../watermill
+// replace github.com/ThreeDotsLabs/watermill => ../../../../watermill
+
+go 1.11

@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/pkg/errors"
-	
+
 	"github.com/lithammer/shortuuid/v3"
 
 	"github.com/ThreeDotsLabs/watermill"

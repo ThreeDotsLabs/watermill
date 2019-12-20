@@ -5,3 +5,5 @@ require (
 	github.com/ThreeDotsLabs/watermill-kafka/v2 v2.0.0
 	github.com/pkg/errors v0.8.1
 )
+
+go 1.11
