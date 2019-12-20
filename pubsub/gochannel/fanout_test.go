@@ -79,7 +79,8 @@ loop:
 		select {
 		case <-receivedMessages:
 			counter += 1
-		default:
+		case <-time.After(time.Second):
+			close(receivedMessages)
 			break loop
 		}
 	}
