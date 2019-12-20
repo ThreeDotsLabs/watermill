@@ -3,7 +3,6 @@ package gochannel_test
 import (
 	"context"
 	"fmt"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -28,10 +27,10 @@ func TestFanOut(t *testing.T) {
 
 	fanout.AddSubscription(upstreamTopic)
 
-	var counter uint64
-
 	workersCount := 10
 	messagesCount := 100
+
+	receivedMessages := make(chan struct{}, workersCount*messagesCount*2)
 
 	for i := 0; i < workersCount; i++ {
 		router.AddNoPublisherHandler(
@@ -39,7 +38,7 @@ func TestFanOut(t *testing.T) {
 			upstreamTopic,
 			fanout,
 			func(msg *message.Message) error {
-				atomic.AddUint64(&counter, 1)
+				receivedMessages <- struct{}{}
 				return nil
 			},
 		)
@@ -73,7 +72,19 @@ func TestFanOut(t *testing.T) {
 
 	<-ctx.Done()
 
-	require.Equal(t, uint64(workersCount*messagesCount), counter)
+	counter := 0
+
+loop:
+	for {
+		select {
+		case <-receivedMessages:
+			counter += 1
+		default:
+			break loop
+		}
+	}
+
+	require.Equal(t, workersCount*messagesCount, counter)
 }
 
 func TestFanOut_RouterClosed(t *testing.T) {
