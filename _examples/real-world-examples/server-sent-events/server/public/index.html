@@ -1,14 +1,10 @@
 <!doctype html>
 <html lang="en">
 <head>
-    <title>Hello, world!</title>
-    <!-- Required meta tags -->
+    <title>Live Feed Demo</title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-
-    <!-- Bootstrap CSS -->
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/css/bootstrap.min.css"
-          integrity="sha384-PsH8R72JQ3SOdhVi3uxftmaW6Vc51MKb0q5P2rRUpPvrszuE4W1povHYgTpBfshb" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
 </head>
 <body>
 
@@ -16,15 +12,21 @@
     body {
         padding-top: 5rem;
     }
-
     .example {
         padding: 3rem 1.5rem;
     }
+    #feeds li {
+        display: inline;
+    }
+    .breadcrumb-item + .breadcrumb-item::before {
+        content: "|";
+    }
+
 </style>
 
 <div id="app">
     <nav class="navbar navbar-expand-md navbar-dark bg-dark fixed-top">
-        <a class="navbar-brand" href="#">Navbar</a>
+        <a class="navbar-brand" href="#">Home</a>
         <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarsExampleDefault"
                 aria-controls="navbarsExampleDefault" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
@@ -32,12 +34,7 @@
 
         <div class="collapse navbar-collapse" id="navbarsExampleDefault">
             <ul class="navbar-nav mr-auto">
-                <li class="nav-item">
-                    <router-link to="/" class="nav-link">Home</router-link>
-                </li>
-                <li class="nav-item">
-                    <router-link to="/edit-profile" class="nav-link">Edit profile</router-link>
-                </li>
+                <li class="nav-item"></li>
             </ul>
         </div>
     </nav>
@@ -52,58 +49,53 @@
 </div>
 </body>
 
-<!-- Optional JavaScript -->
-<!-- jQuery first, then Popper.js, then Bootstrap JS -->
-<script src="https://code.jquery.com/jquery-3.2.1.slim.min.js"
-        integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN"
-        crossorigin="anonymous"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.3/umd/popper.min.js"
-        integrity="sha384-vFJXuSJphROIrBnz7yo7oB41mKfc8JzQZiCq4NCceLEaO4IHwicKwpJf9c9IpFgh"
-        crossorigin="anonymous"></script>
-<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/js/bootstrap.min.js"
-        integrity="sha384-alpBpkh1PFOepccYVYDB4do5UnbKysX5WZXm3XxPqe5iKTfUKjNkCk9SaVuEZflJ"
-        crossorigin="anonymous"></script>
+<script src="https://code.jquery.com/jquery-3.4.1.slim.min.js" integrity="sha384-J6qa4849blE2+poT4WnyKhv5vZF5SrPo0iEjwBvKU7imGFAV0wwj1yYfoRSJoZ+n" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo" crossorigin="anonymous"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js" integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6" crossorigin="anonymous"></script>
 
 <!-- todo - cleanup -->
 <script src="https://unpkg.com/vue/dist/vue.js"></script>
 <script src="https://unpkg.com/vue-router/dist/vue-router.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/vue-resource@1.3.5"></script>
 
-
-<script type="text/x-template" id="wall-template">
+<script type="text/x-template" id="home-template">
     <div>
-        <h2>Posts</h2>
-        <div v-for="post in feed.Posts">
+        <h2>Feeds</h2>
+        <nav aria-label="breadcrumb">
+          <ol class="breadcrumb">
+            <li class="breadcrumb-item" v-for="feed in feeds">
+                <router-link :to="{ name: 'show-feed', params: { feed_name: feed }}">
+                    {{ feed }}
+                </router-link>
+            </li>
+              <!--
+            <li class="breadcrumb-item active" aria-current="page">Data</li>
+            -->
+          </ol>
+        </nav>
+    </div>
+</script>
+
+<script type="text/x-template" id="feed-template">
+    <div>
+        <h2>{{ feed }}</h2>
+        <div v-for="post in posts">
             <div class="card">
                 <div class="card-body">
                     <h4 class="card-title">
-                    {{post.Title}}
-                        <router-link :to="{ name: 'edit-post', params: { post_id: post.ID }}"
+                    {{post.title}}
+                        <router-link :to="{ name: 'edit-post', params: { post_id: post.id }}"
                                      class="btn btn-light class-right btn-sm">Edit
                         </router-link>
                     </h4>
-                    <p class="card-text">{{post.Content}}</p>
+                    <p class="card-text">{{post.content}}</p>
                     <p class="card-text">
-                        <small class="text-muted">Author: {{post.Author}}</small>
+                        <small class="text-muted">Author: {{post.author}}</small>
                     </p>
                 </div>
             </div>
             <br>
         </div>
-    </div>
-</script>
-
-<script type="text/x-template" id="profile-edit-template">
-    <div>
-        <h2>Edit profile</h2>
-        <form>
-            <div class="form-group row">
-                <label for="inputName" class="col-sm-2 col-form-label">Name</label>
-                <div class="col-sm-10">
-                    <input type="name" class="form-control" id="inputName" placeholder="Name">
-                </div>
-            </div>
-        </form>
     </div>
 </script>
 
@@ -130,15 +122,52 @@
 </script>
 
 <script>
-    const Wall = {
-        template: '#wall-template',
+    const Home = {
+        template: '#home-template',
         data: function () {
             return {
-                feed: {},
+                feeds: {},
             }
         },
         created() {
-            this.setupPosts();
+            /*
+            Vue.http.get('/api/feeds').then(response => {
+                this.feeds = response.body.feeds;
+            }, response => {
+                console.log('error', response);
+            });
+            */
+            this.es = new EventSource('/api/feeds')
+
+            this.es.addEventListener('data', event => {
+                let data = JSON.parse(event.data);
+                this.feeds = data.feeds;
+            }, false);
+        },
+    };
+    const ShowFeed = {
+        template: '#feed-template',
+        data: function () {
+            return {
+                feed: this.$route.params.feed_name,
+                posts: {},
+            }
+        },
+        created() {
+            /*
+            Vue.http.get('/api/feeds/' + this.feed).then(response => {
+                this.posts = response.body.posts;
+            }, response => {
+                console.log('error', response);
+            });
+            */
+
+            this.es = new EventSource('/api/feeds/' + this.feed)
+
+            this.es.addEventListener('data', event => {
+                let data = JSON.parse(event.data);
+                this.feed = data.posts;
+            }, false);
         },
         destroyed() {
             if (this.es) {
@@ -148,8 +177,6 @@
         },
         methods: {
             setupPosts() {
-                // todo - universal func for it
-
                 this.es = new EventSource('/feeds/1')
 
                 this.es.addEventListener('data', event => {
@@ -166,14 +193,6 @@
                 }, false);
             }
         },
-    };
-    const EditProfile = {
-        template: "#profile-edit-template",
-        data: function () {
-            return {
-                name: ""
-            }
-        }
     };
     const EditPost = {
         template: "#post-edit-template",
@@ -224,14 +243,14 @@
     };
 
     const routes = [
-        {path: '/', component: Wall, name: 'wall'},
-        {path: '/edit-profile', component: EditProfile, name: 'edit-profile'},
+        {path: '/', component: Home, name: 'home'},
         {path: '/edit-post/:post_id', component: EditPost, name: 'edit-post'},
-    ]
+        {path: '/feed/:feed_name', component: ShowFeed, name: 'show-feed'},
+    ];
 
     const router = new VueRouter({
         routes
-    })
+    });
 
     const app = new Vue({
         router

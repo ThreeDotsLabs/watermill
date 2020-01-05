@@ -43,8 +43,9 @@ func (s FeedsStorage) Add(ctx context.Context, name string) error {
 
 	_, err := s.collection.InsertOne(ctx, feed)
 	if err != nil {
-		// TODO check if duplicate error
-		return err
+		if !isDuplicateError(err) {
+			return err
+		}
 	}
 
 	return nil
@@ -65,7 +66,7 @@ func (s FeedsStorage) AllNames(ctx context.Context) ([]string, error) {
 	}
 
 	var names []Names
-	err = cursor.Decode(&names)
+	err = cursor.All(ctx, &names)
 	if err != nil {
 		return nil, err
 	}
@@ -130,4 +131,13 @@ func (s FeedsStorage) UpdatePost(ctx context.Context, post Post) error {
 	}
 
 	return nil
+}
+
+func isDuplicateError(err error) bool {
+	mErr, ok := err.(mongo.WriteException)
+	if !ok {
+		return false
+	}
+
+	return mErr.WriteErrors[0].Code == 11000
 }

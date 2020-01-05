@@ -41,15 +41,19 @@ func (router Router) Mux() *chi.Mux {
 
 	postStream := postStreamAdapter{storage: router.PostsStorage}
 	feedStream := feedStreamAdapter{storage: router.FeedsStorage}
+    allFeedsStream := allFeedsStreamAdapter{storage: router.FeedsStorage}
 
 	postHandler := sseRouter.AddHandler(PostUpdatedTopic, postStream)
 	feedHandler := sseRouter.AddHandler(FeedUpdatedTopic, feedStream)
+    allFeedsHandler := sseRouter.AddHandler(FeedUpdatedTopic, allFeedsStream)
 
-	r.Get("/posts/{id}", postHandler)
-	r.Post("/posts", router.CreatePost)
-	r.Patch("/posts/{id}", router.UpdatePost)
-	r.Get("/feeds/{name}", feedHandler)
-	r.Get("/feeds", router.AllFeeds)
+	r.Route("/api", func(r chi.Router) {
+		r.Get("/posts/{id}", postHandler)
+		r.Post("/posts", router.CreatePost)
+		r.Patch("/posts/{id}", router.UpdatePost)
+		r.Get("/feeds/{name}", feedHandler)
+		r.Get("/feeds", allFeedsHandler)
+	})
 
 	return r
 }
@@ -58,18 +62,25 @@ type AllFeedsResponse struct {
 	Feeds []string `json:"feeds"`
 }
 
-func (router Router) AllFeeds(w http.ResponseWriter, r *http.Request) {
-	names, err := router.FeedsStorage.AllNames(r.Context())
+type allFeedsStreamAdapter struct {
+	storage FeedsStorage
+}
+
+func (f allFeedsStreamAdapter) GetResponse(w http.ResponseWriter, r *http.Request) (interface{}, bool) {
+	names, err := f.storage.AllNames(r.Context())
 	if err != nil {
-		router.logError(w, err)
-		return
+		return nil, false
 	}
 
 	response := AllFeedsResponse{
 		Feeds: names,
 	}
 
-	render.Respond(w, r, response)
+    return response, true
+}
+
+func (f allFeedsStreamAdapter) Validate(r *http.Request, msg *message.Message) (ok bool) {
+	return true
 }
 
 type CreatePostRequest struct {

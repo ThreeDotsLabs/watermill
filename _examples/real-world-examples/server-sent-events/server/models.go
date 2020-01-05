@@ -11,7 +11,7 @@ type Post struct {
 	Title   string   `json:"title" bson:"title"`
 	Content string   `json:"content" bson:"content"`
 	Author  string   `json:"author" bson:"author"`
-	Tags    []string `json:"-" bson:"-"`
+	Tags    []string `json:"tags" bson:"tags"`
 }
 
 func NewPost(id, title, content, author string) Post {
