@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-chi/render"
 	"github.com/go-chi/chi"
+	"github.com/go-chi/render"
 
 	"github.com/ThreeDotsLabs/watermill"
 	http2 "github.com/ThreeDotsLabs/watermill-http/pkg/http"
@@ -41,11 +41,11 @@ func (router Router) Mux() *chi.Mux {
 
 	postStream := postStreamAdapter{storage: router.PostsStorage}
 	feedStream := feedStreamAdapter{storage: router.FeedsStorage}
-    allFeedsStream := allFeedsStreamAdapter{storage: router.FeedsStorage}
+	allFeedsStream := allFeedsStreamAdapter{storage: router.FeedsStorage}
 
 	postHandler := sseRouter.AddHandler(PostUpdatedTopic, postStream)
 	feedHandler := sseRouter.AddHandler(FeedUpdatedTopic, feedStream)
-    allFeedsHandler := sseRouter.AddHandler(FeedUpdatedTopic, allFeedsStream)
+	allFeedsHandler := sseRouter.AddHandler(FeedUpdatedTopic, allFeedsStream)
 
 	r.Route("/api", func(r chi.Router) {
 		r.Get("/posts/{id}", postHandler)
@@ -76,7 +76,7 @@ func (f allFeedsStreamAdapter) GetResponse(w http.ResponseWriter, r *http.Reques
 		Feeds: names,
 	}
 
-    return response, true
+	return response, true
 }
 
 func (f allFeedsStreamAdapter) Validate(r *http.Request, msg *message.Message) (ok bool) {
