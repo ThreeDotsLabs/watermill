@@ -19,9 +19,18 @@ func NewPost(id, title, content, author string) Post {
 	matches := pattern.FindAllStringSubmatch(content, -1)
 
 	var tags []string
-	// Could use deduplication here
+	tagsMap := map[string]struct{}{}
+
 	for _, tag := range matches {
-		tags = append(tags, strings.ToLower(tag[1]))
+		tagSlug := strings.ToLower(tag[1])
+
+		_, ok := tagsMap[tagSlug]
+		if ok {
+			continue
+		}
+
+		tagsMap[tagSlug] = struct{}{}
+		tags = append(tags, tagSlug)
 	}
 
 	return Post{

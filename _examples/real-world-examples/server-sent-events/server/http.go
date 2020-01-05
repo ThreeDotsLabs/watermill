@@ -7,11 +7,11 @@ import (
 	"time"
 
 	"github.com/go-chi/render"
+	"github.com/go-chi/chi"
 
 	"github.com/ThreeDotsLabs/watermill"
 	http2 "github.com/ThreeDotsLabs/watermill-http/pkg/http"
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/go-chi/chi"
 )
 
 type Router struct {

@@ -130,13 +130,6 @@
             }
         },
         created() {
-            /*
-            Vue.http.get('/api/feeds').then(response => {
-                this.feeds = response.body.feeds;
-            }, response => {
-                console.log('error', response);
-            });
-            */
             this.es = new EventSource('/api/feeds')
 
             this.es.addEventListener('data', event => {
@@ -154,14 +147,6 @@
             }
         },
         created() {
-            /*
-            Vue.http.get('/api/feeds/' + this.feed).then(response => {
-                this.posts = response.body.posts;
-            }, response => {
-                console.log('error', response);
-            });
-            */
-
             this.es = new EventSource('/api/feeds/' + this.feed)
 
             this.es.addEventListener('data', event => {
@@ -218,12 +203,6 @@
                 this.$http.patch('/posts', JSON.stringify(postData))
             },
             setupPost() {
-                // Vue.http.get('/posts/'+this.$route.params.post_id).then(response => {
-                //     this.post = response.body;
-                // }, response => {
-                //     console.log('error', response);
-                // });
-
                 this.es = new EventSource('/posts/' + this.$route.params.post_id)
 
                 this.es.addEventListener('data', event => {
