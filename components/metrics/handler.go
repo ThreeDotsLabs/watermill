@@ -32,7 +32,7 @@ var (
 	}
 )
 
-// HandlerPrometheusMetricsMiddleware is middleware which capture Prometheus metrics.
+// HandlerPrometheusMetricsMiddleware is a middleware that captures Prometheus metrics.
 type HandlerPrometheusMetricsMiddleware struct {
 	handlerExecutionTimeSeconds *prometheus.HistogramVec
 }

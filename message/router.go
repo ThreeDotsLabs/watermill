@@ -176,9 +176,9 @@ func (r *Router) addHandlerLevelMiddleware(handlerName string, m ...HandlerMiddl
 }
 
 // AddPlugin adds a new plugin to the router.
-// Plugins are executing during startup of the router.
+// Plugins are executed during startup of the router.
 //
-// Plugin can for example close the router after SIGINT or SIGTERM is sent to the process (SignalsHandler plugin).
+// A plugin can, for example, close the router after SIGINT or SIGTERM is sent to the process (SignalsHandler plugin).
 func (r *Router) AddPlugin(p ...RouterPlugin) {
 	r.logger.Debug("Adding plugins", watermill.LogFields{"count": fmt.Sprintf("%d", len(p))})
 
@@ -201,7 +201,7 @@ func (r *Router) AddSubscriberDecorators(dec ...SubscriberDecorator) {
 	r.subscriberDecorators = append(r.subscriberDecorators, dec...)
 }
 
-// DuplicateHandlerNameError is sent in panic when you are trying to add the second handler with the same name.
+// DuplicateHandlerNameError is sent in a panic when you try to add a second handler with the same name.
 type DuplicateHandlerNameError struct {
 	HandlerName string
 }
@@ -397,7 +397,7 @@ func (r *Router) Running() chan struct{} {
 	return r.running
 }
 
-// Close gracefully closes the router, with timeout provided in the configuration.
+// Close gracefully closes the router with a timeout provided in the configuration.
 func (r *Router) Close() error {
 	r.closedLock.Lock()
 	defer r.closedLock.Unlock()

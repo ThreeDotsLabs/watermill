@@ -31,8 +31,8 @@ func init() {
 	rand.Seed(3)
 }
 
-// TestPubSub is universal test suite, which should be passed by any Pub/Sub implementation
-// before considering it as production ready.
+// TestPubSub is a universal test suite. Every Pub/Sub implementation should pass it
+// before it's considered production ready.
 //
 // Execution of the tests may be a bit different for every Pub/Sub. You can configure it by changing provided Features.
 func TestPubSub(
@@ -105,23 +105,23 @@ type Features struct {
 	// GuaranteedOrder should be true, if order of messages is guaranteed.
 	GuaranteedOrder bool
 
-	// Some Pub/Subs guarantees the order only when one subscriber is subscribing.
+	// Some Pub/Subs guarantee the order only when one subscriber is subscribed at a time.
 	GuaranteedOrderWithSingleSubscriber bool
 
-	// Persistent should be true, if messages are persistent between multiple objects of Pub/Sub
+	// Persistent should be true, if messages are persistent between multiple instancees of a Pub/Sub
 	// (in practice, only GoChannel doesn't support that).
 	Persistent bool
 
-	// RestartServiceCommand is command to test reconnects, and should restart message broker.
+	// RestartServiceCommand is a command to test reconnects. It should restart the message broker.
 	// Example: []string{"docker", "restart", "rabbitmq"}
 	RestartServiceCommand []string
 
-	// RequireSingleInstance must be true, if PubSub requires single instance to work properly
-	// (for example: channel implementation).
+	// RequireSingleInstance must be true,if a PubSub requires a single instance to work properly
+	// (for example: GoChannel implementation).
 	RequireSingleInstance bool
 
-	// NewSubscriberReceivesOldMessages should be set to true,
-	// if messages are persisted even if they are already consumed (for example like in Kafka).
+	// NewSubscriberReceivesOldMessages should be set to true if messages are persisted even
+    // if they are already consumed (for example, like in Kafka).
 	NewSubscriberReceivesOldMessages bool
 }
 
@@ -1122,7 +1122,7 @@ func generateConsumerGroup(t *testing.T, pubSubConstructor ConsumerGroupPubSubCo
 	return groupName
 }
 
-// PublishSimpleMessages publishes provided count of simple messages without payload.
+// PublishSimpleMessages publishes provided number of simple messages without a payload.
 func PublishSimpleMessages(t *testing.T, messagesCount int, publisher message.Publisher, topicName string) message.Messages {
 	var messagesToPublish []*message.Message
 
@@ -1139,8 +1139,8 @@ func PublishSimpleMessages(t *testing.T, messagesCount int, publisher message.Pu
 	return messagesToPublish
 }
 
-// AddSimpleMessagesParallel publishes provided count of simple messages without payload
-// with using the provided count of publishers (goroutines).
+// AddSimpleMessagesParallel publishes provided number of simple messages without a payload
+// using the provided number of publishers (goroutines).
 func AddSimpleMessagesParallel(t *testing.T, messagesCount int, publisher message.Publisher, topicName string, publishers int) message.Messages {
 	var messagesToPublish []*message.Message
 	publishMsg := make(chan *message.Message)

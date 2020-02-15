@@ -22,7 +22,7 @@ func difference(a, b []string) []string {
 	return ab
 }
 
-// MissingMessages returns list of missing messages UUIDs.
+// MissingMessages returns a list of missing messages UUIDs.
 func MissingMessages(expected message.Messages, received message.Messages) []string {
 	sentIDs := expected.IDs()
 	receivedIDs := received.IDs()
@@ -33,8 +33,8 @@ func MissingMessages(expected message.Messages, received message.Messages) []str
 	return difference(sentIDs, receivedIDs)
 }
 
-// AssertAllMessagesReceived checks if all messages were received
-// with ignoring the order and assuming that they are already deduplicated.
+// AssertAllMessagesReceived checks if all messages were received,
+// ignoring the order and assuming that they are already deduplicated.
 func AssertAllMessagesReceived(t *testing.T, sent message.Messages, received message.Messages) bool {
 	sentIDs := sent.IDs()
 	receivedIDs := received.IDs()

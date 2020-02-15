@@ -46,7 +46,7 @@ func (c RetryPublisherConfig) validate() error {
 	return nil
 }
 
-// RetryPublisher is a decorator to the publisher, which can retry message publishing after failure.
+// RetryPublisher is a decorator for a publisher that retries message publishing after a failure.
 type RetryPublisher struct {
 	pub    message.Publisher
 	config RetryPublisherConfig
