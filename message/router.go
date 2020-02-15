@@ -110,6 +110,10 @@ type middleware struct {
 	IsRouterLevel bool
 }
 
+// Router is responsible for handling messages from subscribers using provided handler functions.
+//
+// If the handler function returns a message, the message is published with the publisher.
+// You can use middlewares to wrap handlers with common logic like logging, instrumentation, etc.
 type Router struct {
 	config RouterConfig
 
@@ -171,6 +175,10 @@ func (r *Router) addHandlerLevelMiddleware(handlerName string, m ...HandlerMiddl
 	}
 }
 
+// AddPlugin adds a new plugin to the router.
+// Plugins are executed during startup of the router.
+//
+// A plugin can, for example, close the router after SIGINT or SIGTERM is sent to the process (SignalsHandler plugin).
 func (r *Router) AddPlugin(p ...RouterPlugin) {
 	r.logger.Debug("Adding plugins", watermill.LogFields{"count": fmt.Sprintf("%d", len(p))})
 
@@ -193,6 +201,7 @@ func (r *Router) AddSubscriberDecorators(dec ...SubscriberDecorator) {
 	r.subscriberDecorators = append(r.subscriberDecorators, dec...)
 }
 
+// DuplicateHandlerNameError is sent in a panic when you try to add a second handler with the same name.
 type DuplicateHandlerNameError struct {
 	HandlerName string
 }
@@ -388,6 +397,7 @@ func (r *Router) Running() chan struct{} {
 	return r.running
 }
 
+// Close gracefully closes the router with a timeout provided in the configuration.
 func (r *Router) Close() error {
 	r.closedLock.Lock()
 	defer r.closedLock.Unlock()
