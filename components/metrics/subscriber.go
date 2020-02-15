@@ -12,6 +12,7 @@ var (
 	}
 )
 
+// SubscriberPrometheusMetricsDecorator decorates subscriber to capture Prometheus metrics.
 type SubscriberPrometheusMetricsDecorator struct {
 	message.Subscriber
 	subscriberName                  string

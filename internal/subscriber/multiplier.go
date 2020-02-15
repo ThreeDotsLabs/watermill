@@ -17,6 +17,8 @@ type multiplier struct {
 	subscribers           []message.Subscriber
 }
 
+// NewMultiplier returns multiplier subscriber decorator,
+// which under the hood is calling subscribe multiple times to increase throughput.
 func NewMultiplier(constructor Constructor, subscribersCount int) message.Subscriber {
 	return &multiplier{
 		subscriberConstructor: constructor,

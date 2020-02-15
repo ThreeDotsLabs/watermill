@@ -22,6 +22,7 @@ func difference(a, b []string) []string {
 	return ab
 }
 
+// MissingMessages returns list of missing messages UUIDs.
 func MissingMessages(expected message.Messages, received message.Messages) []string {
 	sentIDs := expected.IDs()
 	receivedIDs := received.IDs()
@@ -32,6 +33,8 @@ func MissingMessages(expected message.Messages, received message.Messages) []str
 	return difference(sentIDs, receivedIDs)
 }
 
+// AssertAllMessagesReceived checks if all messages were received
+// with ignoring the order and assuming that they are already deduplicated.
 func AssertAllMessagesReceived(t *testing.T, sent message.Messages, received message.Messages) bool {
 	sentIDs := sent.IDs()
 	receivedIDs := received.IDs()
@@ -53,9 +56,10 @@ func AssertAllMessagesReceived(t *testing.T, sent message.Messages, received mes
 	)
 }
 
+// AssertMessagesPayloads check if received messages have the same payload as expected in expectedPayloads.
 func AssertMessagesPayloads(
 	t *testing.T,
-	expectedPayloads map[string]interface{},
+	expectedPayloads map[string][]byte,
 	received []*message.Message,
 ) bool {
 	assert.Len(t, received, len(expectedPayloads))
@@ -75,6 +79,7 @@ func AssertMessagesPayloads(
 	return ok
 }
 
+// AssertMessagesMetadata checks if metadata of all received messages is the same as in expectedValues.
 func AssertMessagesMetadata(t *testing.T, key string, expectedValues map[string]string, received []*message.Message) bool {
 	assert.Len(t, received, len(expectedValues))
 

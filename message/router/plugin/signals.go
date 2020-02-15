@@ -9,6 +9,7 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
+// SignalsHandler is a plugin that kills the router after SIGINT or SIGTERM is sent to the process.
 func SignalsHandler(r *message.Router) error {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)

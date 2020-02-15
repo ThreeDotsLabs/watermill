@@ -1,5 +1,6 @@
 package message
 
+// Metadata is sent with every message to provide extra context without unmarshaling the message payload.
 type Metadata map[string]string
 
 func (m Metadata) Get(key string) string {

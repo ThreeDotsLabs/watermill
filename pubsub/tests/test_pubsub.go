@@ -31,6 +31,10 @@ func init() {
 	rand.Seed(3)
 }
 
+// TestPubSub is universal test suite, which should be passed by any Pub/Sub implementation
+// before considering it as production ready.
+//
+// Execution of the tests may be a bit different for every Pub/Sub. You can configure it by changing provided Features.
 func TestPubSub(
 	t *testing.T,
 	features Features,
@@ -92,21 +96,32 @@ func TestPubSub(
 // Features are used to configure Pub/Subs implementations behaviour.
 // Different features set decides also which, and how tests should be run.
 type Features struct {
-	ConsumerGroups      bool
+	// ConsumerGroups should be true, if consumer groups are supported.
+	ConsumerGroups bool
+
+	// ExactlyOnceDelivery should be true, if exactly-once delivery is supported.
 	ExactlyOnceDelivery bool
 
+	// GuaranteedOrder should be true, if order of messages is guaranteed.
 	GuaranteedOrder bool
-	// Some Pub/Subs guarantees order only when one subscriber is subscribing.
+
+	// Some Pub/Subs guarantees the order only when one subscriber is subscribing.
 	GuaranteedOrderWithSingleSubscriber bool
 
+	// Persistent should be true, if messages are persistent between multiple objects of Pub/Sub
+	// (in practice, only GoChannel doesn't support that).
 	Persistent bool
 
+	// RestartServiceCommand is command to test reconnects, and should restart message broker.
+	// Example: []string{"docker", "restart", "rabbitmq"}
 	RestartServiceCommand []string
 
 	// RequireSingleInstance must be true, if PubSub requires single instance to work properly
 	// (for example: channel implementation).
 	RequireSingleInstance bool
 
+	// NewSubscriberReceivesOldMessages should be set to true,
+	// if messages are persisted even if they are already consumed (for example like in Kafka).
 	NewSubscriberReceivesOldMessages bool
 }
 
@@ -119,6 +134,7 @@ func RunOnlyFastTests() bool {
 type PubSubConstructor func(t *testing.T) (message.Publisher, message.Subscriber)
 type ConsumerGroupPubSubConstructor func(t *testing.T, consumerGroup string) (message.Publisher, message.Subscriber)
 
+// deprecated: not used anywhere internally
 type SimpleMessage struct {
 	Num int `json:"num"`
 }
@@ -198,7 +214,7 @@ func TestPublishSubscribe(
 	}
 
 	var messagesToPublish []*message.Message
-	messagesPayloads := map[string]interface{}{}
+	messagesPayloads := map[string][]byte{}
 	messagesTestMetadata := map[string]string{}
 
 	for i := 0; i < 100; i++ {
@@ -1106,6 +1122,7 @@ func generateConsumerGroup(t *testing.T, pubSubConstructor ConsumerGroupPubSubCo
 	return groupName
 }
 
+// PublishSimpleMessages publishes provided count of simple messages without payload.
 func PublishSimpleMessages(t *testing.T, messagesCount int, publisher message.Publisher, topicName string) message.Messages {
 	var messagesToPublish []*message.Message
 
@@ -1122,6 +1139,8 @@ func PublishSimpleMessages(t *testing.T, messagesCount int, publisher message.Pu
 	return messagesToPublish
 }
 
+// AddSimpleMessagesParallel publishes provided count of simple messages without payload
+// with using the provided count of publishers (goroutines).
 func AddSimpleMessagesParallel(t *testing.T, messagesCount int, publisher message.Publisher, topicName string, publishers int) message.Messages {
 	var messagesToPublish []*message.Message
 	publishMsg := make(chan *message.Message)
