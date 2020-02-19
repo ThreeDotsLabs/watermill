@@ -287,6 +287,8 @@ func TestConcurrentSubscribe(
 		sub = createMultipliedSubscriber(t, pubSubConstructor, subscribersCount)
 	}
 
+	defer closePubSub(t, pub, sub)
+
 	messages, err := sub.Subscribe(context.Background(), topicName)
 	require.NoError(t, err)
 
