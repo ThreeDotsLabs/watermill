@@ -31,14 +31,14 @@ func TestCreateRegistryAndServeHTTP_metrics_endpoint(t *testing.T) {
 }
 
 func TestCreateRegistryAndServeHTTP_unknown_endpoint(t *testing.T) {
-	reg, cancel := metrics.CreateRegistryAndServeHTTP(":8090")
+	reg, cancel := metrics.CreateRegistryAndServeHTTP(":8091")
 	defer cancel()
 	err := reg.Register(prometheus.NewBuildInfoCollector())
 	if err != nil {
 		t.Error(errors.Wrap(err, "registration of prometheus build info collector failed"))
 	}
 
-	resp, err := http.DefaultClient.Get("http://localhost:8090/unknown")
+	resp, err := http.DefaultClient.Get("http://localhost:8091/unknown")
 	if resp != nil {
 		defer resp.Body.Close()
 	}
