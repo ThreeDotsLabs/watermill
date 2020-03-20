@@ -36,11 +36,5 @@ func ServeHTTP(addr string, registry *prometheus.Registry) (cancel func()) {
 		}
 	}()
 
-	wait := make(chan struct{})
-	go func() {
-		<-wait
-		server.Close()
-	}()
-
-	return func() { close(wait) }
+	return func() { _ = server.Close() }
 }
