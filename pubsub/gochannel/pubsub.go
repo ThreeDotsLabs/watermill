@@ -328,7 +328,7 @@ func (s *subscriber) sendMessageToSubscriber(msg *message.Message, logFields wat
 	s.sending.Lock()
 	defer s.sending.Unlock()
 
-	ctx, cancelCtx := context.WithCancel(s.ctx)
+	ctx, cancelCtx := context.WithCancel(msg.Context())
 	defer cancelCtx()
 
 SendToSubscriber:
