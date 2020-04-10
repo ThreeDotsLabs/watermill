@@ -180,5 +180,8 @@ func (m *Message) Copy() *Message {
 	for k, v := range m.Metadata {
 		msg.Metadata.Set(k, v)
 	}
+
+	msg.ctx = m.ctx
+
 	return msg
 }

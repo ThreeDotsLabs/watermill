@@ -6,8 +6,12 @@ github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc/go.mod h1:LOuy
 github.com/alecthomas/units v0.0.0-20151022065526-2efee857e7cf/go.mod h1:ybxpYRFXyAe+OPACYpWeL0wqObRcbAqCMya13uyzqw0=
 github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973/go.mod h1:Dwedo/Wpr24TaqPxmxbtue+5NUziq4I4S80YR8gNf3Q=
 github.com/beorn7/perks v1.0.0/go.mod h1:KWe93zE9D1o94FZ5RNwFwVgaQK1VOXiVxmqh+CedLV8=
+github.com/brianvoe/gofakeit v1.2.0 h1:GGbzCqQx9ync4ObAUhRa3F/M73eL9VZL3X09WoTwphM=
+github.com/brianvoe/gofakeit v3.18.0+incompatible h1:wDOmHc9DLG4nRjUVVaxA+CEglKOW72Y5+4WNxUIkjM8=
 github.com/brianvoe/gofakeit v3.19.1+incompatible h1:Ml1Y/1edTpz8Ehs4UmqbTls/IswtYyZZf7JV5UxiVUQ=
 github.com/brianvoe/gofakeit v3.19.1+incompatible/go.mod h1:8WhrFWLx5svQrZpAq+kYvjRWdRcLj12T1jqy1AHAKZ0=
+github.com/brianvoe/gofakeit/v3 v3.20.4 h1:mdeyt3NoR2KarQ1CnKG+PgQz0FHAEnTUGxoczZT8gs8=
+github.com/brianvoe/gofakeit/v3 v3.20.4/go.mod h1:8YiCfJDEZmA/I2cxkMtsflqB3/3/EyeZKM0/uPotucE=
 github.com/cenkalti/backoff/v3 v3.0.0 h1:ske+9nBpD9qZsTBoF41nW5L+AIuFBKMeze18XQ3eG1c=
 github.com/cenkalti/backoff/v3 v3.0.0/go.mod h1:cIeZDE3IrqwwJl6VUwCN6trj1oXrTS4rc0ij+ULvLYs=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
