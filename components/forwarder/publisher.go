@@ -2,7 +2,6 @@ package forwarder
 
 import (
 	"github.com/ThreeDotsLabs/watermill/message"
-
 	"github.com/pkg/errors"
 )
 
