@@ -12,6 +12,7 @@ import (
 type Forwarder struct {
 	router    *message.Router
 	publisher message.Publisher
+	logger    watermill.LoggerAdapter
 	config    Config
 }
 
@@ -27,7 +28,7 @@ func NewForwarder(subscriberIn message.Subscriber, publisherOut message.Publishe
 		return nil, err
 	}
 
-	f := &Forwarder{router, publisherOut, config}
+	f := &Forwarder{router, publisherOut, logger, config}
 
 	router.AddNoPublisherHandler(
 		"events_forwarder",
@@ -66,6 +67,11 @@ func (f *Forwarder) Running() chan struct{} {
 // by the forwarder to forward it to a specific topic.
 func (f *Forwarder) DecoratePublisher(publisher message.Publisher) message.Publisher {
 	return NewPublisherDecorator(publisher, f.config)
+}
+
+// AddSubscriberDecorators wraps the forwarder's Subscriber.
+func (f *Forwarder) AddSubscriberDecorators(dec ...message.SubscriberDecorator) {
+	f.router.AddSubscriberDecorators(dec...)
 }
 
 func (f *Forwarder) forwardMessage(msg *message.Message) error {
