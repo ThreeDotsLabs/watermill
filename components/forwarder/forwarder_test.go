@@ -39,8 +39,7 @@ func TestForwarder(t *testing.T) {
 	}()
 
 	// Decorate publisherIn so it envelopes messages and publishes them to the forwarder topic.
-	decoratedPublisherIn, err := f.DecoratePublisher(publisherIn)
-	require.NoError(t, err)
+	decoratedPublisherIn := f.DecoratePublisher(publisherIn)
 
 	outTopic := "out_topic"
 	outMessages := listenOnOutTopic(t, ctx, subscriberOut, outTopic)
@@ -48,7 +47,7 @@ func TestForwarder(t *testing.T) {
 	// Send a message using decorated publisher.
 	sentMessage := message.NewMessage(watermill.NewUUID(), message.Payload("message payload"))
 	sentMessage.Metadata = message.Metadata{"key": "value"}
-	err = decoratedPublisherIn.Publish(outTopic, sentMessage)
+	err := decoratedPublisherIn.Publish(outTopic, sentMessage)
 	require.NoError(t, err)
 
 	// Wait for a message sent using publisherIn on subscriberOut.

@@ -19,18 +19,20 @@ type Forwarder struct {
 // It will publish messages received on this subscription to the destination topic embedded in the enveloped message using the provided publisher.
 //
 // Provided subscriber and publisher can be from different Watermill Pub/Sub implementations, i.e. MySQL subscriber and Google Pub/Sub publisher.
-func NewForwarder(subscriber message.Subscriber, publisher message.Publisher, logger watermill.LoggerAdapter, config Config) (*Forwarder, error) {
+func NewForwarder(subscriberIn message.Subscriber, publisherOut message.Publisher, logger watermill.LoggerAdapter, config Config) (*Forwarder, error) {
+	config.setDefaults()
+
 	router, err := message.NewRouter(message.RouterConfig{}, logger)
 	if err != nil {
 		return nil, err
 	}
 
-	f := &Forwarder{router, publisher, config}
+	f := &Forwarder{router, publisherOut, config}
 
 	router.AddNoPublisherHandler(
 		"events_forwarder",
 		config.ForwarderTopic,
-		subscriber,
+		subscriberIn,
 		f.forwardMessage,
 	)
 
@@ -62,8 +64,8 @@ func (f *Forwarder) Running() chan struct{} {
 // Enveloping means that the message is put into the generic envelope containing the original message
 // and a destination topic taken from publisher `Publish` method. The destination topic is used later
 // by the forwarder to forward it to a specific topic.
-func (f *Forwarder) DecoratePublisher(publisher message.Publisher) (message.Publisher, error) {
-	return NewPublisherDecorator(publisher, f.config), nil
+func (f *Forwarder) DecoratePublisher(publisher message.Publisher) message.Publisher {
+	return NewPublisherDecorator(publisher, f.config)
 }
 
 func (f *Forwarder) forwardMessage(msg *message.Message) error {
