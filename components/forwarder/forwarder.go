@@ -21,6 +21,9 @@ type Config struct {
 
 	// CloseTimeout determines how long router should work for handlers when closing.
 	CloseTimeout time.Duration
+
+	// AckWhenCannotUnwrap enables acking of messages which cannot be unwrapped from an envelope.
+	AckWhenCannotUnwrap bool
 }
 
 func (c *Config) setDefaults() {
@@ -116,6 +119,16 @@ func (f *Forwarder) DecoratePublisher(publisherIn message.Publisher) message.Pub
 func (f *Forwarder) forwardMessage(msg *message.Message) error {
 	destTopic, unwrappedMsg, err := unwrapMessageFromEnvelope(msg)
 	if err != nil {
+		f.logger.Error("Could not unwrap a message from an envelope", err, watermill.LogFields{
+			"uuid":     msg.UUID,
+			"payload":  msg.Payload,
+			"metadata": msg.Metadata,
+			"acked":    f.config.AckWhenCannotUnwrap,
+		})
+
+		if f.config.AckWhenCannotUnwrap {
+			return nil
+		}
 		return errors.Wrap(err, "cannot unwrap message from an envelope")
 	}
 
