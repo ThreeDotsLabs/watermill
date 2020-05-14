@@ -36,9 +36,6 @@ func (e *messageEnvelope) validate() error {
 	if e.DestinationTopic == "" {
 		return errors.New("unknown destination topic")
 	}
-	if e.UUID == "" {
-		return errors.New("unknown message uuid")
-	}
 
 	return nil
 }

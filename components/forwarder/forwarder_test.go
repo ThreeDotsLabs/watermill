@@ -61,9 +61,9 @@ func TestForwarder(t *testing.T) {
 		require.NoError(t, err)
 
 		// Wait for a message sent using publisherIn on subscriberOut.
-		requireMessage(t, sentMessage, outMessages)
+		requireFirstMessage(t, sentMessage, outMessages)
 
-		wasMessageForwarded := requireForwardingResult(t, messageForwardedCh)
+		wasMessageForwarded := requireFirstForwardingResult(t, messageForwardedCh)
 		require.True(t, wasMessageForwarded, "message expected to be forwarded correctly")
 	})
 
@@ -74,7 +74,7 @@ func TestForwarder(t *testing.T) {
 		err := publisherIn.Publish(forwarderTopic, sentMessage)
 		require.NoError(t, err)
 
-		wasMessageForwarded := requireForwardingResult(t, messageForwardedCh)
+		wasMessageForwarded := requireFirstForwardingResult(t, messageForwardedCh)
 		require.False(t, wasMessageForwarded, "message expected to be not forwarded correctly")
 	})
 
@@ -82,13 +82,6 @@ func TestForwarder(t *testing.T) {
 		sentMessage := message.NewMessage(watermill.NewUUID(), message.Payload("message payload"))
 		sentMessage.Metadata = message.Metadata{"key": "value"}
 		err := decoratedPublisherIn.Publish("", sentMessage)
-		require.Error(t, err)
-	})
-
-	t.Run("publish_with_empty_uuid", func(t *testing.T) {
-		sentMessage := message.NewMessage("", message.Payload("message payload"))
-		sentMessage.Metadata = message.Metadata{"key": "value"}
-		err := decoratedPublisherIn.Publish(outTopic, sentMessage)
 		require.Error(t, err)
 	})
 }
@@ -149,7 +142,7 @@ func setupMessageForwardedDetectorMiddleware() (message.HandlerMiddleware, <-cha
 	return messageForwardedDetector, messageForwardedCh
 }
 
-func requireForwardingResult(t *testing.T, messageForwardedCh <-chan bool) bool {
+func requireFirstForwardingResult(t *testing.T, messageForwardedCh <-chan bool) bool {
 	select {
 	case wasMessageForwarded := <-messageForwardedCh:
 		return wasMessageForwarded
@@ -167,7 +160,7 @@ func listenOnOutTopic(t *testing.T, ctx context.Context, subscriberOut PubSubOut
 	return messagesCh
 }
 
-func requireMessage(t *testing.T, expectedMessage *message.Message, ch <-chan *message.Message) {
+func requireFirstMessage(t *testing.T, expectedMessage *message.Message, ch <-chan *message.Message) {
 	select {
 	case receivedMessage := <-ch:
 		require.NotNil(t, receivedMessage)
