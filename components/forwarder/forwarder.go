@@ -104,18 +104,6 @@ func (f *Forwarder) Running() chan struct{} {
 	return f.router.Running()
 }
 
-// DecoratePublisher is a helper method which decorates a given publisher so when it publishes messages,
-// it envelopes them and publish directly to the forwarder's topic provided in the forwarder's config.
-//
-// Enveloping means that the message is put into the generic envelope containing the original message
-// and a destination topic taken from publisher `Publish` method. The destination topic is used later
-// by the forwarder to forward it to a specific topic.
-func (f *Forwarder) DecoratePublisher(publisherIn message.Publisher) message.Publisher {
-	return NewPublisherDecorator(publisherIn, PublisherConfig{
-		ForwarderTopic: f.config.ForwarderTopic,
-	})
-}
-
 func (f *Forwarder) forwardMessage(msg *message.Message) error {
 	destTopic, unwrappedMsg, err := unwrapMessageFromEnvelope(msg)
 	if err != nil {

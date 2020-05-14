@@ -32,7 +32,7 @@ type Publisher struct {
 	config           PublisherConfig
 }
 
-func NewPublisherDecorator(publisher message.Publisher, config PublisherConfig) *Publisher {
+func NewPublisher(publisher message.Publisher, config PublisherConfig) *Publisher {
 	config.setDefaults()
 
 	return &Publisher{

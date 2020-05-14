@@ -51,7 +51,7 @@ func TestForwarder(t *testing.T) {
 	outMessages := listenOnOutTopic(t, ctx, subscriberOut, outTopic)
 
 	// Decorate publisherIn so it envelopes messages and publishes them to the forwarder's topic.
-	decoratedPublisherIn := f.DecoratePublisher(publisherIn)
+	decoratedPublisherIn := forwarder.NewPublisher(publisherIn, forwarder.PublisherConfig{ForwarderTopic: forwarderTopic})
 
 	t.Run("publish_using_decorated_publisher", func(t *testing.T) {
 		sentMessage := message.NewMessage(watermill.NewUUID(), message.Payload("message payload"))
