@@ -83,7 +83,6 @@ func TestForwarder(t *testing.T) {
 		sentMessage.Metadata = message.Metadata{"key": "value"}
 		err := decoratedPublisherIn.Publish("", sentMessage)
 		require.Error(t, err)
-		t.Logf("error: %s", err)
 	})
 
 	t.Run("publish_with_empty_uuid", func(t *testing.T) {
@@ -91,7 +90,6 @@ func TestForwarder(t *testing.T) {
 		sentMessage.Metadata = message.Metadata{"key": "value"}
 		err := decoratedPublisherIn.Publish(outTopic, sentMessage)
 		require.Error(t, err)
-		t.Logf("error: %s", err)
 	})
 }
 
