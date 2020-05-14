@@ -36,11 +36,11 @@ func TestForwarder(t *testing.T) {
 	ctx, cancelCtx := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancelCtx()
 
-	messageForwardedDetector, messageForwardedCh := setupMessageForwardedDetectorMiddleware()
+	messageAckedDetector, messageAckedCh := setupMessageAckedDetectorMiddleware()
 	forwarderConfig := forwarder.Config{
 		ForwarderTopic: forwarderTopic,
-		// Use a middleware to detect if the message was forwarded correctly by the forwarder.
-		Middlewares: []message.HandlerMiddleware{messageForwardedDetector},
+		// Use a middleware to detect if the message was acked by the forwarder.
+		Middlewares: []message.HandlerMiddleware{messageAckedDetector},
 	}
 	// Setup a forwarder to forward messages from Pub/Sub In to Out by passing subscriberIn and publisherOut.
 	f := setupForwarder(t, ctx, subscriberIn, publisherOut, logger, forwarderConfig)
@@ -62,7 +62,7 @@ func TestForwarder(t *testing.T) {
 		// Wait for a message sent using publisherIn on subscriberOut.
 		requireFirstMessage(t, sentMessage, outMessages)
 
-		wasMessageForwarded := requireFirstForwardingResult(t, messageForwardedCh)
+		wasMessageForwarded := requireFirstForwardingResult(t, messageAckedCh)
 		require.True(t, wasMessageForwarded, "message expected to be forwarded correctly")
 	})
 
@@ -73,7 +73,7 @@ func TestForwarder(t *testing.T) {
 		err := publisherIn.Publish(forwarderTopic, sentMessage)
 		require.NoError(t, err)
 
-		wasMessageForwarded := requireFirstForwardingResult(t, messageForwardedCh)
+		wasMessageForwarded := requireFirstForwardingResult(t, messageAckedCh)
 		require.False(t, wasMessageForwarded, "message expected to be not forwarded correctly")
 	})
 
@@ -126,19 +126,19 @@ func setupForwarder(t *testing.T, ctx context.Context, subscriberIn PubSubInSubs
 	return f
 }
 
-func setupMessageForwardedDetectorMiddleware() (message.HandlerMiddleware, <-chan bool) {
-	messageForwardedCh := make(chan bool, 1)
-	messageForwardedDetector := func(handlerFunc message.HandlerFunc) message.HandlerFunc {
+func setupMessageAckedDetectorMiddleware() (message.HandlerMiddleware, <-chan bool) {
+	messageAckedCh := make(chan bool, 1)
+	messageAckedDetector := func(handlerFunc message.HandlerFunc) message.HandlerFunc {
 		return func(msg *message.Message) ([]*message.Message, error) {
 			msgs, err := handlerFunc(msg)
-			messageForwardedCh <- err == nil
+			messageAckedCh <- err == nil
 
 			// Always return nil as we don't want to nack the message in tests.
 			return msgs, nil
 		}
 	}
 
-	return messageForwardedDetector, messageForwardedCh
+	return messageAckedDetector, messageAckedCh
 }
 
 func requireFirstForwardingResult(t *testing.T, messageForwardedCh <-chan bool) bool {
