@@ -53,7 +53,7 @@ type Forwarder struct {
 //
 // Provided subscriber and publisher can be from different Watermill Pub/Sub implementations, i.e. MySQL subscriber and Google Pub/Sub publisher.
 //
-// Note: Keep in mind that by default the forwarder will unack all messages which weren't sent using a decorated publisher.
+// Note: Keep in mind that by default the forwarder will nack all messages which weren't sent using a decorated publisher.
 // You can change this behavior by passing a middleware which will ack them instead.
 func NewForwarder(subscriberIn message.Subscriber, publisherOut message.Publisher, logger watermill.LoggerAdapter, config Config) (*Forwarder, error) {
 	config.setDefaults()
