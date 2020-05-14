@@ -9,7 +9,6 @@ import (
 	"github.com/ThreeDotsLabs/watermill/components/forwarder"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/pubsub/gochannel"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -164,11 +163,7 @@ func requireFirstMessage(t *testing.T, expectedMessage *message.Message, ch <-ch
 	select {
 	case receivedMessage := <-ch:
 		require.NotNil(t, receivedMessage)
-
-		assert.Equal(t, expectedMessage.UUID, receivedMessage.UUID)
-		assert.Equal(t, expectedMessage.Payload, receivedMessage.Payload)
-		assert.Equal(t, expectedMessage.Metadata, receivedMessage.Metadata)
-
+		require.Truef(t, receivedMessage.Equals(expectedMessage), "received message: '%s', expected: '%s'", receivedMessage, expectedMessage)
 		receivedMessage.Ack()
 	case <-time.After(time.Second):
 		t.Fatal("didn't receive any message after 1 sec")
