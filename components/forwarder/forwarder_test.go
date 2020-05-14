@@ -13,10 +13,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var (
+	logger = watermill.NewStdLogger(true, true)
+
+	forwarderTopic = "forwarder_topic"
+	outTopic       = "out_topic"
+)
+
 // TestForwarder tests forwarding messages from PubSubIn to PubSubOut (which are GoChannel implementation underneath).
 func TestForwarder(t *testing.T) {
-	logger := watermill.NewStdLogger(true, true)
-
 	// Create a set of publisher and subscribers for both In and Out Pub/Subs.
 	publisherIn, subscriberIn := newPubSubIn(logger)
 	publisherOut, subscriberOut := newPubSubOut(logger)
@@ -32,32 +37,62 @@ func TestForwarder(t *testing.T) {
 	ctx, cancelCtx := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancelCtx()
 
+	messageForwardedDetector, messageForwardedCh := setupMessageForwardedDetectorMiddleware()
+	forwarderConfig := forwarder.Config{
+		ForwarderTopic: forwarderTopic,
+		// Use a middleware to detect if the message was forwarded correctly by the forwarder.
+		Middlewares: []message.HandlerMiddleware{messageForwardedDetector},
+	}
 	// Setup a forwarder to forward messages from Pub/Sub In to Out by passing subscriberIn and publisherOut.
-	f := setupForwarder(t, ctx, subscriberIn, publisherOut, logger)
+	f := setupForwarder(t, ctx, subscriberIn, publisherOut, logger, forwarderConfig)
 	defer func() {
 		require.NoError(t, f.Close())
 	}()
 
-	// Decorate publisherIn so it envelopes messages and publishes them to the forwarder topic.
-	decoratedPublisherIn := f.DecoratePublisher(publisherIn)
-
-	outTopic := "out_topic"
 	outMessages := listenOnOutTopic(t, ctx, subscriberOut, outTopic)
 
-	// Send a message using decorated publisher.
-	sentMessage := message.NewMessage(watermill.NewUUID(), message.Payload("message payload"))
-	sentMessage.Metadata = message.Metadata{"key": "value"}
-	err := decoratedPublisherIn.Publish(outTopic, sentMessage)
-	require.NoError(t, err)
+	// Decorate publisherIn so it envelopes messages and publishes them to the forwarder's topic.
+	decoratedPublisherIn := f.DecoratePublisher(publisherIn)
 
-	// Wait for a message sent using publisherIn on subscriberOut.
-	receivedMessage := <-outMessages
-	require.NotNil(t, receivedMessage)
-	receivedMessage.Ack()
+	t.Run("publish_using_decorated_publisher", func(t *testing.T) {
+		sentMessage := message.NewMessage(watermill.NewUUID(), message.Payload("message payload"))
+		sentMessage.Metadata = message.Metadata{"key": "value"}
+		err := decoratedPublisherIn.Publish(outTopic, sentMessage)
+		require.NoError(t, err)
 
-	assert.Equal(t, sentMessage.UUID, receivedMessage.UUID)
-	assert.Equal(t, sentMessage.Payload, receivedMessage.Payload)
-	assert.Equal(t, sentMessage.Metadata, receivedMessage.Metadata)
+		// Wait for a message sent using publisherIn on subscriberOut.
+		requireMessage(t, sentMessage, outMessages)
+
+		wasMessageForwarded := requireForwardingResult(t, messageForwardedCh)
+		require.True(t, wasMessageForwarded, "message expected to be forwarded correctly")
+	})
+
+	t.Run("publish_using_non_decorated_publisher", func(t *testing.T) {
+		// Send a non-enveloped message directly to the forwarder's topic.
+		sentMessage := message.NewMessage(watermill.NewUUID(), message.Payload("message payload"))
+		sentMessage.Metadata = message.Metadata{"key": "value"}
+		err := publisherIn.Publish(forwarderTopic, sentMessage)
+		require.NoError(t, err)
+
+		wasMessageForwarded := requireForwardingResult(t, messageForwardedCh)
+		require.False(t, wasMessageForwarded, "message expected to be not forwarded correctly")
+	})
+
+	t.Run("publish_to_empty_topic", func(t *testing.T) {
+		sentMessage := message.NewMessage(watermill.NewUUID(), message.Payload("message payload"))
+		sentMessage.Metadata = message.Metadata{"key": "value"}
+		err := decoratedPublisherIn.Publish("", sentMessage)
+		require.Error(t, err)
+		t.Logf("error: %s", err)
+	})
+
+	t.Run("publish_with_empty_uuid", func(t *testing.T) {
+		sentMessage := message.NewMessage("", message.Payload("message payload"))
+		sentMessage.Metadata = message.Metadata{"key": "value"}
+		err := decoratedPublisherIn.Publish(outTopic, sentMessage)
+		require.Error(t, err)
+		t.Logf("error: %s", err)
+	})
 }
 
 type PubSubInPublisher struct {
@@ -84,9 +119,8 @@ func newPubSubOut(logger watermill.LoggerAdapter) (PubSubOutPublisher, PubSubOut
 	return PubSubOutPublisher{channelPubSub}, PubSubOutSubscriber{channelPubSub}
 }
 
-func setupForwarder(t *testing.T, ctx context.Context, subscriberIn PubSubInSubscriber, publisherOut PubSubOutPublisher, logger watermill.LoggerAdapter) *forwarder.Forwarder {
-	forwarderConfig := forwarder.Config{ForwarderTopic: "forwarder_topic"}
-	f, err := forwarder.NewForwarder(subscriberIn, publisherOut, logger, forwarderConfig)
+func setupForwarder(t *testing.T, ctx context.Context, subscriberIn PubSubInSubscriber, publisherOut PubSubOutPublisher, logger watermill.LoggerAdapter, config forwarder.Config) *forwarder.Forwarder {
+	f, err := forwarder.NewForwarder(subscriberIn, publisherOut, logger, config)
 	require.NoError(t, err)
 
 	go func() {
@@ -102,9 +136,50 @@ func setupForwarder(t *testing.T, ctx context.Context, subscriberIn PubSubInSubs
 	return f
 }
 
+func setupMessageForwardedDetectorMiddleware() (message.HandlerMiddleware, <-chan bool) {
+	messageForwardedCh := make(chan bool, 1)
+	messageForwardedDetector := func(handlerFunc message.HandlerFunc) message.HandlerFunc {
+		return func(msg *message.Message) ([]*message.Message, error) {
+			msgs, err := handlerFunc(msg)
+			messageForwardedCh <- err == nil
+
+			// Always return nil as we don't want to nack the message in tests.
+			return msgs, nil
+		}
+	}
+
+	return messageForwardedDetector, messageForwardedCh
+}
+
+func requireForwardingResult(t *testing.T, messageForwardedCh <-chan bool) bool {
+	select {
+	case wasMessageForwarded := <-messageForwardedCh:
+		return wasMessageForwarded
+	case <-time.After(time.Second):
+		t.Fatal("forwarding result not received after 1 sec")
+	}
+
+	return false
+}
+
 func listenOnOutTopic(t *testing.T, ctx context.Context, subscriberOut PubSubOutSubscriber, outTopic string) <-chan *message.Message {
 	messagesCh, err := subscriberOut.Subscribe(ctx, outTopic)
 	require.NoError(t, err)
 
 	return messagesCh
+}
+
+func requireMessage(t *testing.T, expectedMessage *message.Message, ch <-chan *message.Message) {
+	select {
+	case receivedMessage := <-ch:
+		require.NotNil(t, receivedMessage)
+
+		assert.Equal(t, expectedMessage.UUID, receivedMessage.UUID)
+		assert.Equal(t, expectedMessage.Payload, receivedMessage.Payload)
+		assert.Equal(t, expectedMessage.Metadata, receivedMessage.Metadata)
+
+		receivedMessage.Ack()
+	case <-time.After(time.Second):
+		t.Fatal("didn't receive any message after 1 sec")
+	}
 }

@@ -2,11 +2,43 @@ package forwarder
 
 import (
 	"context"
+	"time"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/pkg/errors"
 )
+
+const defaultForwarderTopic = "forwarder_topic"
+
+type Config struct {
+	// ForwarderTopic is a topic on which the forwarder will be listening to enveloped messages to forward.
+	// Defaults to `forwarder_topic`.
+	ForwarderTopic string
+
+	// Middlewares are used to decorate forwarder's handler function.
+	Middlewares []message.HandlerMiddleware
+
+	// CloseTimeout determines how long router should work for handlers when closing.
+	CloseTimeout time.Duration
+}
+
+func (c *Config) setDefaults() {
+	if c.CloseTimeout == 0 {
+		c.CloseTimeout = time.Second * 30
+	}
+	if c.ForwarderTopic == "" {
+		c.ForwarderTopic = defaultForwarderTopic
+	}
+}
+
+func (c *Config) Validate() error {
+	if c.ForwarderTopic == "" {
+		return errors.New("empty forwarder topic")
+	}
+
+	return nil
+}
 
 // Forwarder subscribes to the topic provided in the config and publishes them to the destination topic embedded in the enveloped message.
 type Forwarder struct {
@@ -16,16 +48,24 @@ type Forwarder struct {
 	config    Config
 }
 
-// NewForwarder creates a forwarder which will subscribe to the topic provided in the provided config using the provided subscriber.
+// NewForwarder creates a forwarder which will subscribe to the topic provided in the config using the provided subscriber.
 // It will publish messages received on this subscription to the destination topic embedded in the enveloped message using the provided publisher.
 //
 // Provided subscriber and publisher can be from different Watermill Pub/Sub implementations, i.e. MySQL subscriber and Google Pub/Sub publisher.
+//
+// Note: Keep in mind that by default the forwarder will unack all messages which weren't sent using a decorated publisher.
+// You can change this behavior by passing a middleware which will ack them instead.
 func NewForwarder(subscriberIn message.Subscriber, publisherOut message.Publisher, logger watermill.LoggerAdapter, config Config) (*Forwarder, error) {
 	config.setDefaults()
 
-	router, err := message.NewRouter(message.RouterConfig{}, logger)
+	routerConfig := message.RouterConfig{CloseTimeout: config.CloseTimeout}
+	if err := routerConfig.Validate(); err != nil {
+		return nil, errors.Wrap(err, "invalid router config")
+	}
+
+	router, err := message.NewRouter(routerConfig, logger)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "cannot create a router")
 	}
 
 	f := &Forwarder{router, publisherOut, logger, config}
@@ -36,6 +76,8 @@ func NewForwarder(subscriberIn message.Subscriber, publisherOut message.Publishe
 		subscriberIn,
 		f.forwardMessage,
 	)
+
+	router.AddMiddleware(config.Middlewares...)
 
 	return f, nil
 }
@@ -65,23 +107,20 @@ func (f *Forwarder) Running() chan struct{} {
 // Enveloping means that the message is put into the generic envelope containing the original message
 // and a destination topic taken from publisher `Publish` method. The destination topic is used later
 // by the forwarder to forward it to a specific topic.
-func (f *Forwarder) DecoratePublisher(publisher message.Publisher) message.Publisher {
-	return NewPublisherDecorator(publisher, f.config)
-}
-
-// AddSubscriberDecorators wraps the forwarder's Subscriber.
-func (f *Forwarder) AddSubscriberDecorators(dec ...message.SubscriberDecorator) {
-	f.router.AddSubscriberDecorators(dec...)
+func (f *Forwarder) DecoratePublisher(publisherIn message.Publisher) message.Publisher {
+	return NewPublisherDecorator(publisherIn, PublisherConfig{
+		ForwarderTopic: f.config.ForwarderTopic,
+	})
 }
 
 func (f *Forwarder) forwardMessage(msg *message.Message) error {
 	destTopic, unwrappedMsg, err := unwrapMessageFromEnvelope(msg)
 	if err != nil {
-		return errors.Wrap(err, "cannot unwrap message from envelope")
+		return errors.Wrap(err, "cannot unwrap message from an envelope")
 	}
 
 	if err := f.publisher.Publish(destTopic, unwrappedMsg); err != nil {
-		return errors.Wrap(err, "cannot publish message")
+		return errors.Wrap(err, "cannot publish a message")
 	}
 
 	return nil

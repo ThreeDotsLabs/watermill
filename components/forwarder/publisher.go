@@ -5,14 +5,36 @@ import (
 	"github.com/pkg/errors"
 )
 
+type PublisherConfig struct {
+	// ForwarderTopic is a topic which the forwarder is listening to. Publisher will send enveloped messages to this topic.
+	// Defaults to `forwarder_topic`.
+	ForwarderTopic string
+}
+
+func (c *PublisherConfig) setDefaults() {
+	if c.ForwarderTopic == "" {
+		c.ForwarderTopic = defaultForwarderTopic
+	}
+}
+
+func (c *PublisherConfig) Validate() error {
+	if c.ForwarderTopic == "" {
+		return errors.New("empty forwarder topic")
+	}
+
+	return nil
+}
+
 // PublisherDecorator changes `Publish` method behavior so it wraps a sent message in an envelope
 // and sends it to the forwarder topic provided in the config.
 type PublisherDecorator struct {
 	wrappedPublisher message.Publisher
-	config           Config
+	config           PublisherConfig
 }
 
-func NewPublisherDecorator(publisher message.Publisher, config Config) *PublisherDecorator {
+func NewPublisherDecorator(publisher message.Publisher, config PublisherConfig) *PublisherDecorator {
+	config.setDefaults()
+
 	return &PublisherDecorator{
 		wrappedPublisher: publisher,
 		config:           config,

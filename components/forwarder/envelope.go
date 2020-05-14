@@ -17,17 +17,41 @@ type messageEnvelope struct {
 	Metadata map[string]string `json:"metadata"`
 }
 
+func newMessageEnvelope(destTopic string, uuid string, payload []byte, metadata map[string]string) (*messageEnvelope, error) {
+	e := &messageEnvelope{
+		DestinationTopic: destTopic,
+		UUID:             uuid,
+		Payload:          payload,
+		Metadata:         metadata,
+	}
+
+	if err := e.validate(); err != nil {
+		return nil, errors.Wrap(err, "cannot create a message envelope")
+	}
+
+	return e, nil
+}
+
+func (e *messageEnvelope) validate() error {
+	if e.DestinationTopic == "" {
+		return errors.New("unknown destination topic")
+	}
+	if e.UUID == "" {
+		return errors.New("unknown message uuid")
+	}
+
+	return nil
+}
+
 func wrapMessageInEnvelope(destinationTopic string, msg *message.Message) (*message.Message, error) {
-	envelope := messageEnvelope{
-		DestinationTopic: destinationTopic,
-		UUID:             msg.UUID,
-		Payload:          msg.Payload,
-		Metadata:         msg.Metadata,
+	envelope, err := newMessageEnvelope(destinationTopic, msg.UUID, msg.Payload, msg.Metadata)
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot envelope a message")
 	}
 
 	envelopedMessage, err := json.Marshal(envelope)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to marshal message")
+		return nil, errors.Wrap(err, "cannot marshal a message")
 	}
 
 	return message.NewMessage(watermill.NewUUID(), envelopedMessage), nil
@@ -36,7 +60,11 @@ func wrapMessageInEnvelope(destinationTopic string, msg *message.Message) (*mess
 func unwrapMessageFromEnvelope(msg *message.Message) (destinationTopic string, unwrappedMsg *message.Message, err error) {
 	envelopedMsg := messageEnvelope{}
 	if err := json.Unmarshal(msg.Payload, &envelopedMsg); err != nil {
-		return "", nil, errors.Wrap(err, "cannot unmarshal message wrapped in envelope")
+		return "", nil, errors.Wrap(err, "cannot unmarshal message wrapped in an envelope")
+	}
+
+	if err := envelopedMsg.validate(); err != nil {
+		return "", nil, errors.Wrap(err, "an unmarshalled message envelope is invalid")
 	}
 
 	watermillMessage := message.NewMessage(envelopedMsg.UUID, envelopedMsg.Payload)
