@@ -5,11 +5,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/suite"
+
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/components/forwarder"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/pubsub/gochannel"
-	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -19,70 +20,94 @@ var (
 	outTopic       = "out_topic"
 )
 
-// TestForwarder tests forwarding messages from PubSubIn to PubSubOut (which are GoChannel implementation underneath).
 func TestForwarder(t *testing.T) {
-	// Create a set of publisher and subscribers for both In and Out Pub/Subs.
-	publisherIn, subscriberIn := newPubSubIn(logger)
-	publisherOut, subscriberOut := newPubSubOut(logger)
-	defer func() {
-		require.NoError(t, publisherIn.Close())
-		require.NoError(t, subscriberIn.Close())
-		require.NoError(t, publisherOut.Close())
-		require.NoError(t, subscriberOut.Close())
-	}()
+	suite.Run(t, new(ForwarderSuite))
+}
 
+// ForwarderSuite tests forwarding messages from PubSubIn to PubSubOut (which are GoChannel implementation underneath).
+type ForwarderSuite struct {
+	suite.Suite
+	ctx       context.Context
+	cancelCtx func()
+
+	publisherIn  PubSubInPublisher
+	subscriberIn PubSubInSubscriber
+
+	publisherOut  PubSubOutPublisher
+	subscriberOut PubSubOutSubscriber
+
+	decoratedPublisherIn *forwarder.Publisher
+
+	outMessagesCh <-chan *message.Message
+}
+
+func (s *ForwarderSuite) SetupTest() {
 	// Create test context with a 5 seconds timeout so it will close any subscriptions/handlers running in the background
 	// in case of too long test execution.
-	ctx, cancelCtx := context.WithTimeout(context.Background(), time.Second*5)
-	defer cancelCtx()
+	s.ctx, s.cancelCtx = context.WithTimeout(context.Background(), time.Second*5)
 
-	messageAckedDetector, messageAckedCh := setupMessageAckedDetectorMiddleware()
-	forwarderConfig := forwarder.Config{
-		ForwarderTopic: forwarderTopic,
-		// Use a middleware to detect if the message was acked by the forwarder.
-		Middlewares: []message.HandlerMiddleware{messageAckedDetector},
-	}
-	// Setup a forwarder to forward messages from Pub/Sub In to Out by passing subscriberIn and publisherOut.
-	f := setupForwarder(t, ctx, subscriberIn, publisherOut, logger, forwarderConfig)
+	// Create a set of publisher and subscribers for both In and Out Pub/Subs.
+	s.publisherIn, s.subscriberIn = newPubSubIn()
+	s.publisherOut, s.subscriberOut = newPubSubOut()
+
+	s.decoratedPublisherIn = forwarder.NewPublisher(s.publisherIn, forwarder.PublisherConfig{ForwarderTopic: forwarderTopic})
+	s.listenOnOutTopic()
+}
+
+func (s *ForwarderSuite) TearDownTest() {
+	s.NoError(s.publisherIn.Close())
+	s.NoError(s.subscriberIn.Close())
+	s.NoError(s.publisherOut.Close())
+	s.NoError(s.subscriberOut.Close())
+	s.cancelCtx()
+}
+
+func (s *ForwarderSuite) TestForwarder_publish_using_decorated_publisher() {
+	fwd := s.setupForwarder(forwarder.Config{ForwarderTopic: forwarderTopic})
 	defer func() {
-		require.NoError(t, f.Close())
+		s.NoError(fwd.Close())
 	}()
 
-	outMessages := listenOnOutTopic(t, ctx, subscriberOut, outTopic)
+	sentMsg := s.sampleMessage()
+	err := s.decoratedPublisherIn.Publish(outTopic, sentMsg)
+	s.Require().NoError(err)
 
-	// Decorate publisherIn so it envelopes messages and publishes them to the forwarder's topic.
-	decoratedPublisherIn := forwarder.NewPublisher(publisherIn, forwarder.PublisherConfig{ForwarderTopic: forwarderTopic})
+	s.requireFirstMessage(sentMsg)
+}
 
-	t.Run("publish_using_decorated_publisher", func(t *testing.T) {
-		sentMessage := message.NewMessage(watermill.NewUUID(), message.Payload("message payload"))
-		sentMessage.Metadata = message.Metadata{"key": "value"}
-		err := decoratedPublisherIn.Publish(outTopic, sentMessage)
-		require.NoError(t, err)
-
-		// Wait for a message sent using publisherIn on subscriberOut.
-		requireFirstMessage(t, sentMessage, outMessages)
-
-		wasMessageForwarded := requireFirstForwardingResult(t, messageAckedCh)
-		require.True(t, wasMessageForwarded, "message expected to be forwarded correctly")
+func (s *ForwarderSuite) TestForwarder_publish_using_non_decorated_publisher() {
+	msgAckedDetectorMiddleware, msgAckedCh := s.setupMessageAckedDetectorMiddleware()
+	fwd := s.setupForwarder(forwarder.Config{
+		ForwarderTopic: forwarderTopic,
+		Middlewares:    []message.HandlerMiddleware{msgAckedDetectorMiddleware},
 	})
+	defer func() {
+		s.NoError(fwd.Close())
+	}()
 
-	t.Run("publish_using_non_decorated_publisher", func(t *testing.T) {
-		// Send a non-enveloped message directly to the forwarder's topic.
-		sentMessage := message.NewMessage(watermill.NewUUID(), message.Payload("message payload"))
-		sentMessage.Metadata = message.Metadata{"key": "value"}
-		err := publisherIn.Publish(forwarderTopic, sentMessage)
-		require.NoError(t, err)
+	sentMsg := s.sampleMessage()
+	err := s.publisherIn.Publish(forwarderTopic, sentMsg)
+	s.Require().NoError(err)
 
-		wasMessageForwarded := requireFirstForwardingResult(t, messageAckedCh)
-		require.False(t, wasMessageForwarded, "message expected to be not forwarded correctly")
+	s.requireFirstAckingResult(msgAckedCh, false)
+}
+
+func (s *ForwarderSuite) TestForwarder_publish_using_non_decorated_publisher_acking_enabled() {
+	msgAckedDetectorMiddleware, msgAckedCh := s.setupMessageAckedDetectorMiddleware()
+	fwd := s.setupForwarder(forwarder.Config{
+		ForwarderTopic:      forwarderTopic,
+		Middlewares:         []message.HandlerMiddleware{msgAckedDetectorMiddleware},
+		AckWhenCannotUnwrap: true,
 	})
+	defer func() {
+		s.NoError(fwd.Close())
+	}()
 
-	t.Run("publish_to_empty_topic", func(t *testing.T) {
-		sentMessage := message.NewMessage(watermill.NewUUID(), message.Payload("message payload"))
-		sentMessage.Metadata = message.Metadata{"key": "value"}
-		err := decoratedPublisherIn.Publish("", sentMessage)
-		require.Error(t, err)
-	})
+	sentMsg := s.sampleMessage()
+	err := s.publisherIn.Publish(forwarderTopic, sentMsg)
+	s.Require().NoError(err)
+
+	s.requireFirstAckingResult(msgAckedCh, true)
 }
 
 type PubSubInPublisher struct {
@@ -99,34 +124,51 @@ type PubSubOutSubscriber struct {
 	message.Subscriber
 }
 
-func newPubSubIn(logger watermill.LoggerAdapter) (PubSubInPublisher, PubSubInSubscriber) {
+func newPubSubIn() (PubSubInPublisher, PubSubInSubscriber) {
 	channelPubSub := gochannel.NewGoChannel(gochannel.Config{}, logger)
 	return PubSubInPublisher{channelPubSub}, PubSubInSubscriber{channelPubSub}
 }
 
-func newPubSubOut(logger watermill.LoggerAdapter) (PubSubOutPublisher, PubSubOutSubscriber) {
+func newPubSubOut() (PubSubOutPublisher, PubSubOutSubscriber) {
 	channelPubSub := gochannel.NewGoChannel(gochannel.Config{}, logger)
 	return PubSubOutPublisher{channelPubSub}, PubSubOutSubscriber{channelPubSub}
 }
 
-func setupForwarder(t *testing.T, ctx context.Context, subscriberIn PubSubInSubscriber, publisherOut PubSubOutPublisher, logger watermill.LoggerAdapter, config forwarder.Config) *forwarder.Forwarder {
-	f, err := forwarder.NewForwarder(subscriberIn, publisherOut, logger, config)
-	require.NoError(t, err)
+func (s *ForwarderSuite) setupForwarder(config forwarder.Config) *forwarder.Forwarder {
+	f, err := forwarder.NewForwarder(s.subscriberIn, s.publisherOut, logger, config)
+	s.Require().NoError(err)
 
 	go func() {
-		require.NoError(t, f.Run(ctx))
+		s.Require().NoError(f.Run(s.ctx))
 	}()
 
 	select {
 	case <-f.Running():
-	case <-ctx.Done():
-		t.Error("forwarder not running")
+	case <-s.ctx.Done():
+		s.T().Fatal("forwarder not running")
 	}
 
 	return f
 }
 
-func setupMessageAckedDetectorMiddleware() (message.HandlerMiddleware, <-chan bool) {
+func (s *ForwarderSuite) listenOnOutTopic() {
+	var err error
+	s.outMessagesCh, err = s.subscriberOut.Subscribe(s.ctx, outTopic)
+	s.Require().NoError(err)
+}
+
+func (s *ForwarderSuite) requireFirstMessage(expectedMessage *message.Message) {
+	select {
+	case receivedMessage := <-s.outMessagesCh:
+		s.Require().NotNil(receivedMessage)
+		s.Require().Truef(receivedMessage.Equals(expectedMessage), "received message: '%s', expected: '%s'", receivedMessage, expectedMessage)
+		receivedMessage.Ack()
+	case <-time.After(time.Second):
+		s.T().Fatal("didn't receive any message after 1 sec")
+	}
+}
+
+func (s *ForwarderSuite) setupMessageAckedDetectorMiddleware() (message.HandlerMiddleware, <-chan bool) {
 	messageAckedCh := make(chan bool, 1)
 	messageAckedDetector := func(handlerFunc message.HandlerFunc) message.HandlerFunc {
 		return func(msg *message.Message) ([]*message.Message, error) {
@@ -141,31 +183,17 @@ func setupMessageAckedDetectorMiddleware() (message.HandlerMiddleware, <-chan bo
 	return messageAckedDetector, messageAckedCh
 }
 
-func requireFirstForwardingResult(t *testing.T, messageForwardedCh <-chan bool) bool {
+func (s *ForwarderSuite) requireFirstAckingResult(msgAckedCh <-chan bool, expected bool) {
 	select {
-	case wasMessageForwarded := <-messageForwardedCh:
-		return wasMessageForwarded
+	case msgAcked := <-msgAckedCh:
+		s.Require().Equal(expected, msgAcked)
 	case <-time.After(time.Second):
-		t.Fatal("forwarding result not received after 1 sec")
+		s.T().Fatal("acking result not received after 1 sec")
 	}
-
-	return false
 }
 
-func listenOnOutTopic(t *testing.T, ctx context.Context, subscriberOut PubSubOutSubscriber, outTopic string) <-chan *message.Message {
-	messagesCh, err := subscriberOut.Subscribe(ctx, outTopic)
-	require.NoError(t, err)
-
-	return messagesCh
-}
-
-func requireFirstMessage(t *testing.T, expectedMessage *message.Message, ch <-chan *message.Message) {
-	select {
-	case receivedMessage := <-ch:
-		require.NotNil(t, receivedMessage)
-		require.Truef(t, receivedMessage.Equals(expectedMessage), "received message: '%s', expected: '%s'", receivedMessage, expectedMessage)
-		receivedMessage.Ack()
-	case <-time.After(time.Second):
-		t.Fatal("didn't receive any message after 1 sec")
-	}
+func (s *ForwarderSuite) sampleMessage() *message.Message {
+	msg := message.NewMessage(watermill.NewUUID(), message.Payload("message payload"))
+	msg.Metadata = message.Metadata{"key": "value"}
+	return msg
 }
