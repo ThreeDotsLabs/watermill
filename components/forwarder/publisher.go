@@ -25,23 +25,23 @@ func (c *PublisherConfig) Validate() error {
 	return nil
 }
 
-// PublisherDecorator changes `Publish` method behavior so it wraps a sent message in an envelope
+// Publisher changes `Publish` method behavior so it wraps a sent message in an envelope
 // and sends it to the forwarder topic provided in the config.
-type PublisherDecorator struct {
+type Publisher struct {
 	wrappedPublisher message.Publisher
 	config           PublisherConfig
 }
 
-func NewPublisherDecorator(publisher message.Publisher, config PublisherConfig) *PublisherDecorator {
+func NewPublisherDecorator(publisher message.Publisher, config PublisherConfig) *Publisher {
 	config.setDefaults()
 
-	return &PublisherDecorator{
+	return &Publisher{
 		wrappedPublisher: publisher,
 		config:           config,
 	}
 }
 
-func (p *PublisherDecorator) Publish(topic string, messages ...*message.Message) error {
+func (p *Publisher) Publish(topic string, messages ...*message.Message) error {
 	envelopedMessages := make([]*message.Message, 0, len(messages))
 	for _, msg := range messages {
 		envelopedMsg, err := wrapMessageInEnvelope(topic, msg)
@@ -59,6 +59,6 @@ func (p *PublisherDecorator) Publish(topic string, messages ...*message.Message)
 	return nil
 }
 
-func (p *PublisherDecorator) Close() error {
+func (p *Publisher) Close() error {
 	return p.wrappedPublisher.Close()
 }
