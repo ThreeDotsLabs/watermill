@@ -17,12 +17,12 @@ type messageEnvelope struct {
 	Metadata map[string]string `json:"metadata"`
 }
 
-func newMessageEnvelope(destTopic string, uuid string, payload []byte, metadata map[string]string) (*messageEnvelope, error) {
+func newMessageEnvelope(destTopic string, msg *message.Message) (*messageEnvelope, error) {
 	e := &messageEnvelope{
 		DestinationTopic: destTopic,
-		UUID:             uuid,
-		Payload:          payload,
-		Metadata:         metadata,
+		UUID:             msg.UUID,
+		Payload:          msg.Payload,
+		Metadata:         msg.Metadata,
 	}
 
 	if err := e.validate(); err != nil {
@@ -44,7 +44,7 @@ func (e *messageEnvelope) validate() error {
 }
 
 func wrapMessageInEnvelope(destinationTopic string, msg *message.Message) (*message.Message, error) {
-	envelope, err := newMessageEnvelope(destinationTopic, msg.UUID, msg.Payload, msg.Metadata)
+	envelope, err := newMessageEnvelope(destinationTopic, msg)
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot envelope a message")
 	}
