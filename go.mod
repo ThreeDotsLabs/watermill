@@ -4,14 +4,15 @@ require (
 	github.com/cenkalti/backoff/v3 v3.0.0
 	github.com/go-chi/chi v4.0.2+incompatible
 	github.com/gogo/protobuf v1.2.1
-	github.com/golang/protobuf v1.3.1
+	github.com/golang/protobuf v1.3.2
 	github.com/google/uuid v1.1.1
 	github.com/hashicorp/go-multierror v1.0.0
 	github.com/lithammer/shortuuid/v3 v3.0.4
 	github.com/oklog/ulid v1.3.1
 	github.com/pkg/errors v0.8.1
 	github.com/prometheus/client_golang v1.0.0
-	github.com/stretchr/testify v1.3.0
+	github.com/stretchr/testify v1.4.0
+	golang.org/x/sys v0.0.0-20190804053845-51ab0e2deafa // indirect
 )
 
 go 1.11
