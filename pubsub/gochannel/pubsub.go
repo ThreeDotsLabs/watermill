@@ -85,8 +85,9 @@ func (g *GoChannel) Publish(topic string, messages ...*message.Message) error {
 		return errors.New("Pub/Sub closed")
 	}
 
+	messagesToPublish := make(message.Messages, len(messages))
 	for i, msg := range messages {
-		messages[i] = msg.Copy()
+		messagesToPublish[i] = msg.Copy()
 	}
 
 	g.subscribersLock.RLock()
@@ -101,12 +102,12 @@ func (g *GoChannel) Publish(topic string, messages ...*message.Message) error {
 		if _, ok := g.persistedMessages[topic]; !ok {
 			g.persistedMessages[topic] = make([]*message.Message, 0)
 		}
-		g.persistedMessages[topic] = append(g.persistedMessages[topic], messages...)
+		g.persistedMessages[topic] = append(g.persistedMessages[topic], messagesToPublish...)
 		g.persistedMessagesLock.Unlock()
 	}
 
-	for i := range messages {
-		msg := messages[i]
+	for i := range messagesToPublish {
+		msg := messagesToPublish[i]
 
 		ackedBySubscribers, err := g.sendMessage(topic, msg)
 		if err != nil {
