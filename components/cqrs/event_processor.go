@@ -14,6 +14,10 @@ import (
 // It can also invoke a process manager, a saga or just build a read model.
 //
 // In contrast to CommandHandler, every Event can have multiple EventHandlers.
+//
+// One instance of EventHandler is used during handling messages.
+// When multiple events are delivered at the same time, Handle method can be executed multiple times at the same time.
+// Because of that, Handle method needs to be thread safe!
 type EventHandler interface {
 	// HandlerName is the name used in message.Router while creating handler.
 	//
