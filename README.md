@@ -110,6 +110,8 @@ All tests are also executed in [*stress*](https://github.com/ThreeDotsLabs/water
 
 All tests are run with the race condition detector enabled (`-race` flag in tests).
 
+For more information about debugging tests, you should check [tests troubleshooting guide](http://watermill.io/docs/troubleshooting/#debugging-pubsub-tests).
+
 ## Benchmarks
 
 Initial tools for benchmarking Pub/Subs can be found in [watermill-benchmark](https://github.com/ThreeDotsLabs/watermill-benchmark).

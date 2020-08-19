@@ -19,6 +19,45 @@ If you are using `StdLoggerAdapter`, just change `debug`, and `trace` options to
 logger := watermill.NewStdLogger(true, true)
 {{< /highlight >}}
 
+### Debugging Pub/Sub tests
+
+#### Running single tests
+
+{{< highlight >}}
+make up
+go test -v ./... -run TestPublishSubscribe/TestContinueAfterSubscribeClose
+{{< /highlight >}}
+
+#### grep is your friend
+
+Every test case that is executed, have a unique UUID of the test case. It is used in the topic name.
+Thanks to that, you can easily grep the output of the test.
+It gives you very detailed information about test execution.
+
+{{< highlight >}}
+> go test -v ./... > test.out
+
+> less test.out
+
+// ...
+
+--- PASS: TestPublishSubscribe (0.00s)
+    --- PASS: TestPublishSubscribe/TestPublishSubscribe (2.38s)
+        --- PASS: TestPublishSubscribe/TestPublishSubscribe/81eeb56c-3336-4eb9-a0ac-13abda6f38ff (2.38s)
+{{< /highlight >}}
+
+
+{{< highlight >}}
+cat test.out | grep 81eeb56c-3336-4eb9-a0ac-13abda6f38ff | less
+
+[watermill] 2020/08/18 14:51:46.283366 subscriber.go:300:       level=TRACE msg="Msg acked" message_uuid=5c920330-5075-4870-8d86-9013771eee78 provider=google_cloud_pubsub subscription_name=topic_81eeb56c-3336-4eb9-a0ac-13abda6f38ff topic=topic_81eeb56c-3336-4eb9-a0ac-13abda6f38ff
+[watermill] 2020/08/18 14:51:46.283405 subscriber.go:300:       level=TRACE msg="Msg acked" message_uuid=46e04a08-994e-4c04-afff-7fd42fd67f95 provider=google_cloud_pubsub subscription_name=topic_81eeb56c-3336-4eb9-a0ac-13abda6f38ff topic=topic_81eeb56c-3336-4eb9-a0ac-13abda6f38ff
+2020/08/18 14:51:46 all messages (100/100) received in bulk read after 110.04155ms of 45s (test ID: 81eeb56c-3336-4eb9-a0ac-13abda6f38ff)
+[watermill] 2020/08/18 14:51:46.284569 subscriber.go:186:       level=DEBUG msg="Closing message consumer" provider=google_cloud_pubsub subscription_name=topic_81eeb56c-3336-4eb9-a0ac-13abda6f38ff topic=topic_81eeb56c-3336-4eb9-a0ac-13abda6f38ff
+[watermill] 2020/08/18 14:51:46.284828 subscriber.go:300:       level=TRACE msg="Msg acked" message_uuid=2f409208-d4d2-46f6-b6b9-afb1aea0e59f provider=google_cloud_pubsub subscription_name=topic_81eeb56c-3336-4eb9-a0ac-13abda6f38ff topic=topic_81eeb56c-3336-4eb9-a0ac-13abda6f38ff
+        --- PASS: TestPublishSubscribe/TestPublishSubscribe/81eeb56c-3336-4eb9-a0ac-13abda6f38ff (2.38s)
+{{< /highlight >}}
+
 ### I have a deadlock
 
 When running locally, you can send a `SIGQUIT` to the running process:
