@@ -5,6 +5,11 @@ github.com/ThreeDotsLabs/watermill v1.1.0 h1:RWVfySGHEaK4TZhr8L/rKkYkSbyzWRzE8ut
 github.com/ThreeDotsLabs/watermill v1.1.0/go.mod h1:Qd1xNFxolCAHCzcMrm6RnjW0manbvN+DJVWc1MWRFlI=
 github.com/ThreeDotsLabs/watermill-http v1.0.3-0.20200105133234-ee44eaacedc6 h1:ydTgCShg5Qhl+KoB0HrBl78amLMi0adEvYn/VwqSDZg=
 github.com/ThreeDotsLabs/watermill-http v1.0.3-0.20200105133234-ee44eaacedc6/go.mod h1:mkQ9CC0pxTZerNwr281rBoOy355vYt/lePkmYSX/BRg=
+github.com/ThreeDotsLabs/watermill-http v1.0.3-0.20200105182411-2bc3fb13f9dd h1:ohBtmySTvktle/ph64UffnHTWGVC+MskLvcmPGqw+g8=
+github.com/ThreeDotsLabs/watermill-http v1.0.3-0.20200105182411-2bc3fb13f9dd/go.mod h1:mkQ9CC0pxTZerNwr281rBoOy355vYt/lePkmYSX/BRg=
+github.com/ThreeDotsLabs/watermill-http v1.0.3-0.20200105182644-460e77f2b727 h1:hT9hKgLGCGKO3Aa01lV2JJwMcoQn8Lgg/gqmrAaISqE=
+github.com/ThreeDotsLabs/watermill-http v1.0.3-0.20200105182644-460e77f2b727/go.mod h1:mkQ9CC0pxTZerNwr281rBoOy355vYt/lePkmYSX/BRg=
+github.com/ThreeDotsLabs/watermill-http v1.0.3 h1:dBmi63ExEDUirqD2OhS4lugDKsqxeU+C0utGvlJ1k1M=
 github.com/ThreeDotsLabs/watermill-nats v1.0.5 h1:gSNhUrqklzDQzKamZ9SPRF913vak82Dbotfe8zvDcTU=
 github.com/ThreeDotsLabs/watermill-nats v1.0.5/go.mod h1:tvw3O3tal2fMzL1Rv0w+bUhk4cUvT8sFFJRQ9aewTTU=
 github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc/go.mod h1:LOuyumcjzFXgccqObfd/Ljyb9UuFJ6TxHnclSeseNhc=

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strings"
@@ -15,12 +16,11 @@ import (
 )
 
 type Router struct {
-	MessageRouter *message.Router
-	Subscriber    message.Subscriber
-	Publisher     Publisher
-	PostsStorage  PostsStorage
-	FeedsStorage  FeedsStorage
-	Logger        watermill.LoggerAdapter
+	Subscriber   message.Subscriber
+	Publisher    Publisher
+	PostsStorage PostsStorage
+	FeedsStorage FeedsStorage
+	Logger       watermill.LoggerAdapter
 }
 
 func (router Router) Mux() *chi.Mux {
@@ -30,7 +30,6 @@ func (router Router) Mux() *chi.Mux {
 	FileServer(r, "/", root)
 
 	sseRouter, err := http2.NewSSERouter(
-		router.MessageRouter,
 		router.Subscriber,
 		http2.DefaultErrorHandler,
 		router.Logger,
@@ -54,6 +53,15 @@ func (router Router) Mux() *chi.Mux {
 		r.Get("/feeds/{name}", feedHandler)
 		r.Get("/feeds", allFeedsHandler)
 	})
+
+	go func() {
+		err = sseRouter.Run(context.Background())
+		if err != nil {
+			panic(err)
+		}
+	}()
+
+	<-sseRouter.Running()
 
 	return r
 }

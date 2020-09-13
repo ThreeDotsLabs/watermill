@@ -4,7 +4,7 @@ go 1.12
 
 require (
 	github.com/ThreeDotsLabs/watermill v1.1.0
-	github.com/ThreeDotsLabs/watermill-http v1.0.3-0.20200105133234-ee44eaacedc6
+	github.com/ThreeDotsLabs/watermill-http v1.0.3-0.20200105182644-460e77f2b727
 	github.com/ThreeDotsLabs/watermill-nats v1.0.5
 	github.com/brianvoe/gofakeit v3.18.0+incompatible
 	github.com/cenkalti/backoff/v3 v3.1.1 // indirect

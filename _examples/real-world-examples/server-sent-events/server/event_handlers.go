@@ -22,10 +22,10 @@ const (
 func SetupMessageRouter(
 	feedsStorage FeedsStorage,
 	logger watermill.LoggerAdapter,
-) (*message.Router, message.Publisher, message.Subscriber, error) {
+) (message.Publisher, message.Subscriber, error) {
 	router, err := message.NewRouter(message.RouterConfig{}, logger)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 	router.AddMiddleware(middleware.Recoverer)
 
@@ -38,7 +38,7 @@ func SetupMessageRouter(
 		Marshaler: nats.GobMarshaler{},
 	}, logger)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 
 	sub, err := nats.NewStreamingSubscriber(nats.StreamingSubscriberConfig{
@@ -52,7 +52,7 @@ func SetupMessageRouter(
 		Unmarshaler: nats.GobMarshaler{},
 	}, logger)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 
 	publishEvents := func(ctx context.Context, tags []string) (messages []*message.Message, err error) {
@@ -155,7 +155,7 @@ func SetupMessageRouter(
 
 	<-router.Running()
 
-	return router, pub, sub, nil
+	return pub, sub, nil
 }
 
 type Publisher struct {

@@ -16,18 +16,17 @@ func main() {
 	postsStorage := NewPostsStorage()
 	feedsStorage := NewFeedsStorage()
 
-	router, pub, sub, err := SetupMessageRouter(feedsStorage, logger)
+	pub, sub, err := SetupMessageRouter(feedsStorage, logger)
 	if err != nil {
 		panic(err)
 	}
 
 	httpRouter := Router{
-		MessageRouter: router,
-		Subscriber:    sub,
-		Publisher:     Publisher{publisher: pub},
-		PostsStorage:  postsStorage,
-		FeedsStorage:  feedsStorage,
-		Logger:        logger,
+		Subscriber:   sub,
+		Publisher:    Publisher{publisher: pub},
+		PostsStorage: postsStorage,
+		FeedsStorage: feedsStorage,
+		Logger:       logger,
 	}
 
 	mux := httpRouter.Mux()
