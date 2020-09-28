@@ -16,7 +16,7 @@ type Retry struct {
 	// MaxRetries is maximum number of times a retry will be attempted.
 	MaxRetries int
 
-	// InitalInterval is the first interval between retries. Subsequent intervals will be scaled by Multiplier.
+	// InitialInterval is the first interval between retries. Subsequent intervals will be scaled by Multiplier.
 	InitialInterval time.Duration
 	// MaxInterval sets the limit for the exponential backoff of retries. The interval will not be increased beyond MaxInterval.
 	MaxInterval time.Duration
