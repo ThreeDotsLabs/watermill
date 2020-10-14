@@ -21,7 +21,7 @@ func main() {
 		// It works as a simple queue.
 		//
 		// If you want to implement a Pub/Sub style service instead, check
-		// https://watermill.io/docs/pub-sub-implementations/#amqp-consumer-groups
+		// https://watermill.io/pubsubs/amqp/#amqp-consumer-groups
 		amqpConfig,
 		watermill.NewStdLogger(false, false),
 	)
