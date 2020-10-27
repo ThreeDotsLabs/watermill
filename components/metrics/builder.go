@@ -7,7 +7,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-func NewPrometheusMetricsBuilder(prometheusRegistry *prometheus.Registry, namespace string, subsystem string) PrometheusMetricsBuilder {
+func NewPrometheusMetricsBuilder(prometheusRegistry prometheus.Registerer, namespace string, subsystem string) PrometheusMetricsBuilder {
 	return PrometheusMetricsBuilder{
 		Namespace:          namespace,
 		Subsystem:          subsystem,
@@ -18,7 +18,7 @@ func NewPrometheusMetricsBuilder(prometheusRegistry *prometheus.Registry, namesp
 // PrometheusMetricsBuilder provides methods to decorate publishers, subscribers and handlers.
 type PrometheusMetricsBuilder struct {
 	// PrometheusRegistry may be filled with a pre-existing Prometheus registry, or left empty for the default registry.
-	PrometheusRegistry *prometheus.Registry
+	PrometheusRegistry prometheus.Registerer
 
 	Namespace string
 	Subsystem string
