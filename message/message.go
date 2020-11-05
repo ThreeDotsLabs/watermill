@@ -32,6 +32,9 @@ type Message struct {
 	// Payload is message's payload.
 	Payload Payload
 
+	// Interface to store user data.
+	UserData interface{}
+
 	// ack is closed, when acknowledge is received.
 	ack chan struct{}
 	// noACk is closed, when negative acknowledge is received.
@@ -180,5 +183,10 @@ func (m *Message) Copy() *Message {
 	for k, v := range m.Metadata {
 		msg.Metadata.Set(k, v)
 	}
+
+	// Copy the user data to the message passed to the next
+	// handler
+	msg.UserData = m.UserData
+
 	return msg
 }
