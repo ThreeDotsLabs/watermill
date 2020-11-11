@@ -30,8 +30,10 @@ func (router Router) Mux() *chi.Mux {
 	FileServer(r, "/", root)
 
 	sseRouter, err := http2.NewSSERouter(
-		router.Subscriber,
-		http2.DefaultErrorHandler,
+		http2.SSERouterConfig{
+			UpstreamSubscriber: router.Subscriber,
+			ErrorHandler:       http2.DefaultErrorHandler,
+		},
 		router.Logger,
 	)
 	if err != nil {
