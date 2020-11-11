@@ -6,7 +6,7 @@ The docker-compose bundle contains the following services:
 
 #### Golang
 
-A [Golang](https://hub.docker.com/_/golang) image which runs the [example code](https://github.com/ThreeDotsLabs/watermill/blob/master/_examples/metrics/main.go). t consists of a router with a single handler. 
+A [Golang](https://hub.docker.com/_/golang) image which runs the [example code](https://github.com/ThreeDotsLabs/watermill/blob/master/_examples/basic/4-metrics/main.go). t consists of a router with a single handler. 
  
 The handler consumes messages from a [Gochannel PubSub](https://github.com/ThreeDotsLabs/watermill/tree/master/message/infrastructure/gochannel), and publishes 0-4 copies of the message with a preconfigured random delay.
 
@@ -15,7 +15,7 @@ Additionally, there is one goroutine which produces messages incoming to the han
 The router, the standalone publisher and the standalone subscriber are all decorated with the metrics code and their statistics will appear in the dashboard.
 
 #### Prometheus
-[Prometheus](https://hub.docker.com/r/prom/prometheus/), to scrape the metrics which the golang application exposes at `:8081/metrics` by default. It is configured by a [prometheus.yml](https://github.com/ThreeDotsLabs/watermill/blob/master/_examples/metrics/prometheus.yml) file, which declares the endpoints that Prometheus will scrape.
+[Prometheus](https://hub.docker.com/r/prom/prometheus/), to scrape the metrics which the golang application exposes at `:8081/metrics` by default. It is configured by a [prometheus.yml](https://github.com/ThreeDotsLabs/watermill/blob/master/_examples/basic/4-metrics/prometheus.yml) file, which declares the endpoints that Prometheus will scrape.
 
 #### Grafana
 [Grafana](https://hub.docker.com/r/grafana/grafana), to visualize the metrics in a dashboard.
