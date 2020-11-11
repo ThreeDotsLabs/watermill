@@ -130,7 +130,7 @@ func simulateEvents(db *stdSQL.DB) {
 			panic(err)
 		}
 
-		// In an actual application, this is the place where some aggreagte would be persisted
+		// In an actual application, this is the place where some aggregate would be persisted
 		// using the same transaction.
 		// tx.Exec("INSERT INTO (...)")
 
