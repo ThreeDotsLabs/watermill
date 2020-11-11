@@ -6,6 +6,9 @@ import (
 	"time"
 )
 
+// Note that in a real application using both "json" and "bson" tags in the same structure is strongly discouraged.
+// We use common models for database storage and HTTP API just to make this example simple and easy to grasp.
+
 type Post struct {
 	ID      string   `json:"id" bson:"id"`
 	Title   string   `json:"title" bson:"title"`

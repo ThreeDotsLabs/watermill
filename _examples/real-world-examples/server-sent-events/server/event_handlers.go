@@ -90,24 +90,37 @@ func SetupMessageRouter(
 		sub,
 		FeedUpdatedTopic,
 		pub,
-		func(msg *message.Message) ([]*message.Message, error) {
+		func(msg *message.Message) (messages []*message.Message, err error) {
+			defer func() {
+				if err == nil {
+					logger.Info("Event handler on-post-created executed successfully", nil)
+				} else {
+					logger.Error("Error in on-post-created event handler", err, nil)
+				}
+			}()
+
 			event := PostCreated{}
-			err := json.Unmarshal(msg.Payload, &event)
+			err = json.Unmarshal(msg.Payload, &event)
 			if err != nil {
 				return nil, err
 			}
 
-			for _, tag := range event.Post.Tags {
-				logger.Info("Adding tag", watermill.LogFields{"tag": tag})
-				err = feedsStorage.Add(msg.Context(), tag)
+			logger.Info("Adding post", watermill.LogFields{"post": event.Post})
+
+			if len(event.Post.Tags) > 0 {
+				for _, tag := range event.Post.Tags {
+					logger.Info("Adding tag", watermill.LogFields{"tag": tag})
+					err = feedsStorage.Add(msg.Context(), tag)
+					if err != nil {
+						return nil, err
+					}
+
+				}
+
+				err = feedsStorage.AppendPost(msg.Context(), event.Post)
 				if err != nil {
 					return nil, err
 				}
-			}
-
-			err = feedsStorage.AppendPost(msg.Context(), event.Post)
-			if err != nil {
-				return nil, err
 			}
 
 			return publishEvents(msg.Context(), event.Post.Tags)
@@ -120,7 +133,15 @@ func SetupMessageRouter(
 		sub,
 		FeedUpdatedTopic,
 		pub,
-		func(msg *message.Message) ([]*message.Message, error) {
+		func(msg *message.Message) (messages []*message.Message, error error) {
+			defer func() {
+				if err == nil {
+					logger.Info("Event handler on-post-updated executed successfully", nil)
+				} else {
+					logger.Error("Error in on-post-updated event handler", err, nil)
+				}
+			}()
+
 			event := PostUpdated{}
 			err := json.Unmarshal(msg.Payload, &event)
 			if err != nil {
@@ -135,7 +156,7 @@ func SetupMessageRouter(
 				}
 			}
 
-			// TODO handle post removal
+			// TOOD remove post from tags
 
 			err = feedsStorage.UpdatePost(msg.Context(), event.NewPost)
 			if err != nil {

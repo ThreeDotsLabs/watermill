@@ -10,6 +10,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
+const collectionName = "feeds"
+
 type FeedsStorage struct {
 	collection *mongo.Collection
 }
@@ -28,10 +30,29 @@ func NewFeedsStorage() FeedsStorage {
 		panic(err)
 	}
 
-	collection := client.Database("example").Collection("feeds")
+	db := client.Database("example")
+	names, err := db.ListCollectionNames(ctx, bson.M{})
+	if err != nil {
+		panic(err)
+	}
+
+	found := false
+	for _, n := range names {
+		if n == collectionName {
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		err := db.CreateCollection(ctx, collectionName)
+		if err != nil {
+			panic(err)
+		}
+	}
 
 	return FeedsStorage{
-		collection: collection,
+		collection: db.Collection(collectionName),
 	}
 }
 
@@ -51,32 +72,20 @@ func (s FeedsStorage) Add(ctx context.Context, name string) error {
 	return nil
 }
 
-func (s FeedsStorage) AllNames(ctx context.Context) ([]string, error) {
-	opts := &options.FindOptions{
-		Projection: bson.M{"_id": 1},
-	}
-
-	cursor, err := s.collection.Find(ctx, bson.M{}, opts)
+func (s FeedsStorage) All(ctx context.Context) ([]Feed, error) {
+	cursor, err := s.collection.Find(ctx, bson.M{})
 	if err != nil {
 		return nil, err
 	}
 
-	type Names struct {
-		Name string `bson:"_id"`
-	}
+	var feeds []Feed
 
-	var names []Names
-	err = cursor.All(ctx, &names)
+	err = cursor.All(ctx, &feeds)
 	if err != nil {
 		return nil, err
 	}
 
-	var namesList []string
-	for _, n := range names {
-		namesList = append(namesList, n.Name)
-	}
-
-	return namesList, nil
+	return feeds, nil
 }
 
 func (s FeedsStorage) ByName(ctx context.Context, name string) (Feed, error) {

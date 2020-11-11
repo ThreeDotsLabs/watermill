@@ -3,6 +3,9 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"github.com/brianvoe/gofakeit/v5"
+	"math/rand"
 	"net/http"
 	"strings"
 	"time"
@@ -11,9 +14,11 @@ import (
 	"github.com/go-chi/render"
 
 	"github.com/ThreeDotsLabs/watermill"
-	http2 "github.com/ThreeDotsLabs/watermill-http/pkg/http"
+	watermillHTTP "github.com/ThreeDotsLabs/watermill-http/pkg/http"
 	"github.com/ThreeDotsLabs/watermill/message"
 )
+
+var generatedTags = []string{"watermill", "golang", "pubsub", "unicorn", "HelloWorld", "example", "ThreeDotsLabs"}
 
 type Router struct {
 	Subscriber   message.Subscriber
@@ -29,10 +34,10 @@ func (router Router) Mux() *chi.Mux {
 	root := http.Dir("./public")
 	FileServer(r, "/", root)
 
-	sseRouter, err := http2.NewSSERouter(
-		http2.SSERouterConfig{
+	sseRouter, err := watermillHTTP.NewSSERouter(
+		watermillHTTP.SSERouterConfig{
 			UpstreamSubscriber: router.Subscriber,
-			ErrorHandler:       http2.DefaultErrorHandler,
+			ErrorHandler:       watermillHTTP.DefaultErrorHandler,
 		},
 		router.Logger,
 	)
@@ -40,9 +45,9 @@ func (router Router) Mux() *chi.Mux {
 		panic(err)
 	}
 
-	postStream := postStreamAdapter{storage: router.PostsStorage}
-	feedStream := feedStreamAdapter{storage: router.FeedsStorage}
-	allFeedsStream := allFeedsStreamAdapter{storage: router.FeedsStorage}
+	postStream := postStreamAdapter{storage: router.PostsStorage, logger: router.Logger}
+	feedStream := feedStreamAdapter{storage: router.FeedsStorage, logger: router.Logger}
+	allFeedsStream := allFeedsStreamAdapter{storage: router.FeedsStorage, logger: router.Logger}
 
 	postHandler := sseRouter.AddHandler(PostUpdatedTopic, postStream)
 	feedHandler := sseRouter.AddHandler(FeedUpdatedTopic, feedStream)
@@ -51,6 +56,7 @@ func (router Router) Mux() *chi.Mux {
 	r.Route("/api", func(r chi.Router) {
 		r.Get("/posts/{id}", postHandler)
 		r.Post("/posts", router.CreatePost)
+		r.Post("/generate/post", router.GeneratePost)
 		r.Patch("/posts/{id}", router.UpdatePost)
 		r.Get("/feeds/{name}", feedHandler)
 		r.Get("/feeds", allFeedsHandler)
@@ -68,22 +74,34 @@ func (router Router) Mux() *chi.Mux {
 	return r
 }
 
+type feedSummary struct {
+	Name  string `json:"name"`
+	Posts int    `json:"posts"`
+}
+
 type AllFeedsResponse struct {
-	Feeds []string `json:"feeds"`
+	Feeds []feedSummary `json:"feeds"`
 }
 
 type allFeedsStreamAdapter struct {
 	storage FeedsStorage
+	logger  watermill.LoggerAdapter
 }
 
 func (f allFeedsStreamAdapter) GetResponse(w http.ResponseWriter, r *http.Request) (interface{}, bool) {
-	names, err := f.storage.AllNames(r.Context())
+	feeds, err := f.storage.All(r.Context())
 	if err != nil {
+		logAndWriteError(f.logger, w, err)
 		return nil, false
 	}
 
-	response := AllFeedsResponse{
-		Feeds: names,
+	response := AllFeedsResponse{}
+
+	for _, f := range feeds {
+		response.Feeds = append(response.Feeds, feedSummary{
+			Name:  f.Name,
+			Posts: len(f.Posts),
+		})
 	}
 
 	return response, true
@@ -103,7 +121,7 @@ func (router Router) CreatePost(w http.ResponseWriter, r *http.Request) {
 	req := CreatePostRequest{}
 	err := render.Decode(r, &req)
 	if err != nil {
-		router.logError(w, err)
+		logAndWriteError(router.Logger, w, err)
 		return
 	}
 
@@ -114,10 +132,45 @@ func (router Router) CreatePost(w http.ResponseWriter, r *http.Request) {
 		req.Author,
 	)
 
-	err = router.PostsStorage.Add(r.Context(), post)
+	err = router.addPost(r.Context(), post)
 	if err != nil {
-		router.logError(w, err)
+		logAndWriteError(router.Logger, w, err)
 		return
+	}
+
+	w.WriteHeader(204)
+}
+
+func (router Router) GeneratePost(w http.ResponseWriter, r *http.Request) {
+	title := gofakeit.Sentence(5)
+	content := gofakeit.Sentence(20)
+	author := gofakeit.Name()
+
+	tagsCount := rand.Intn(3) + 1
+	for i := 0; i < tagsCount; i++ {
+		content += fmt.Sprintf(" #%v", generatedTags[rand.Intn(len(generatedTags))])
+	}
+
+	post := NewPost(
+		watermill.NewUUID(),
+		title,
+		content,
+		author,
+	)
+
+	err := router.addPost(r.Context(), post)
+	if err != nil {
+		logAndWriteError(router.Logger, w, err)
+		return
+	}
+
+	w.WriteHeader(204)
+}
+
+func (router Router) addPost(ctx context.Context, post Post) error {
+	err := router.PostsStorage.Add(ctx, post)
+	if err != nil {
+		return err
 	}
 
 	event := PostCreated{
@@ -127,11 +180,10 @@ func (router Router) CreatePost(w http.ResponseWriter, r *http.Request) {
 
 	err = router.Publisher.Publish(PostCreatedTopic, event)
 	if err != nil {
-		router.logError(w, err)
-		return
+		return err
 	}
 
-	w.WriteHeader(204)
+	return nil
 }
 
 type UpdatePostRequest struct {
@@ -144,13 +196,13 @@ func (router Router) UpdatePost(w http.ResponseWriter, r *http.Request) {
 	req := UpdatePostRequest{}
 	err := render.Decode(r, &req)
 	if err != nil {
-		router.logError(w, err)
+		logAndWriteError(router.Logger, w, err)
 		return
 	}
 
 	post, err := router.PostsStorage.ByID(r.Context(), req.ID)
 	if err != nil {
-		router.logError(w, err)
+		logAndWriteError(router.Logger, w, err)
 		return
 	}
 
@@ -163,7 +215,7 @@ func (router Router) UpdatePost(w http.ResponseWriter, r *http.Request) {
 
 	err = router.PostsStorage.Update(r.Context(), newPost)
 	if err != nil {
-		router.logError(w, err)
+		logAndWriteError(router.Logger, w, err)
 		return
 	}
 
@@ -175,20 +227,16 @@ func (router Router) UpdatePost(w http.ResponseWriter, r *http.Request) {
 
 	err = router.Publisher.Publish(PostUpdatedTopic, event)
 	if err != nil {
-		router.logError(w, err)
+		logAndWriteError(router.Logger, w, err)
 		return
 	}
 
 	w.WriteHeader(204)
 }
 
-func (router Router) logError(w http.ResponseWriter, err error) {
-	router.Logger.Error("Error", err, nil)
-	w.WriteHeader(500)
-}
-
 type feedStreamAdapter struct {
 	storage FeedsStorage
+	logger  watermill.LoggerAdapter
 }
 
 func (f feedStreamAdapter) GetResponse(w http.ResponseWriter, r *http.Request) (response interface{}, ok bool) {
@@ -196,7 +244,7 @@ func (f feedStreamAdapter) GetResponse(w http.ResponseWriter, r *http.Request) (
 
 	feed, err := f.storage.ByName(r.Context(), feedName)
 	if err != nil {
-		w.WriteHeader(500)
+		logAndWriteError(f.logger, w, err)
 		return nil, false
 	}
 
@@ -218,6 +266,7 @@ func (f feedStreamAdapter) Validate(r *http.Request, msg *message.Message) (ok b
 
 type postStreamAdapter struct {
 	storage PostsStorage
+	logger  watermill.LoggerAdapter
 }
 
 func (p postStreamAdapter) GetResponse(w http.ResponseWriter, r *http.Request) (response interface{}, ok bool) {
@@ -225,7 +274,7 @@ func (p postStreamAdapter) GetResponse(w http.ResponseWriter, r *http.Request) (
 
 	post, err := p.storage.ByID(r.Context(), postID)
 	if err != nil {
-		w.WriteHeader(500)
+		logAndWriteError(p.logger, w, err)
 		return nil, false
 	}
 
@@ -261,4 +310,9 @@ func FileServer(r chi.Router, path string, root http.FileSystem) {
 	r.Get(path, func(w http.ResponseWriter, r *http.Request) {
 		fs.ServeHTTP(w, r)
 	})
+}
+
+func logAndWriteError(logger watermill.LoggerAdapter, w http.ResponseWriter, err error) {
+	logger.Error("Error", err, nil)
+	w.WriteHeader(500)
 }

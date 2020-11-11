@@ -7,7 +7,7 @@ require (
 	github.com/ThreeDotsLabs/watermill-http v1.1.3
 	github.com/ThreeDotsLabs/watermill-nats v1.0.5
 	github.com/aws/aws-sdk-go v1.35.25 // indirect
-	github.com/brianvoe/gofakeit v3.18.0+incompatible
+	github.com/brianvoe/gofakeit/v5 v5.10.1
 	github.com/cenkalti/backoff/v3 v3.2.2 // indirect
 	github.com/go-chi/chi v4.1.2+incompatible
 	github.com/go-chi/render v1.0.1
