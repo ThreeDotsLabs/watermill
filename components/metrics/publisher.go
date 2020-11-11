@@ -15,6 +15,7 @@ var (
 	}
 )
 
+// PublisherPrometheusMetricsDecorator decorates a publisher to capture Prometheus metrics.
 type PublisherPrometheusMetricsDecorator struct {
 	pub                message.Publisher
 	publisherName      string

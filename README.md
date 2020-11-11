@@ -39,6 +39,7 @@ Pick what you like the best or see in order:
 * Real-world examples
     * [Receiving webhooks](_examples/real-world-examples/receiving-webhooks)
     * [Sending webhooks](_examples/real-world-examples/sending-webhooks)
+    * [Synchronizing Databases](_examples/real-world-examples/synchronizing-databases)
     * [Persistent Event Log](_examples/real-world-examples/persistent-event-log)
     * [Transactional Events](_examples/real-world-examples/transactional-events)
 * Complete projects
@@ -109,6 +110,8 @@ All tests are also executed in [*stress*](https://github.com/ThreeDotsLabs/water
 
 All tests are run with the race condition detector enabled (`-race` flag in tests).
 
+For more information about debugging tests, you should check [tests troubleshooting guide](http://watermill.io/docs/troubleshooting/#debugging-pubsub-tests).
+
 ## Benchmarks
 
 Initial tools for benchmarking Pub/Subs can be found in [watermill-benchmark](https://github.com/ThreeDotsLabs/watermill-benchmark).
@@ -125,7 +128,8 @@ Here's the short version for message size of 16 bytes.
 | Kafka (one node)     | 63,506                 | 110,811                  |
 | Kafka (5 nodes)      | 70,252                 | 117,529                  |
 | NATS                 | 76,208                 | 38,169                   |
-| SQL (MySQL)          | 6,989                  | 143                      |
+| SQL (MySQL)          | 7,299                  | 154                      |
+| SQL (PostgreSQL)     | 4,142                  | 98                       |
 | Google Cloud Pub/Sub | 7,416                  | 39,591                   |
 | AMQP                 | 2,408                  | 10,608                   |
 | GoChannel            | 272,938                | 101,371                  |

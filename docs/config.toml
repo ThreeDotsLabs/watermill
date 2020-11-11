@@ -16,6 +16,7 @@ googleAnalytics = "UA-128588911-2"
   author = "Three Dots Labs"
   github = "https://github.com/ThreeDotsLabs/"
   email = "robert.laszczak@threedotslabs.com"
+  images = ["https://threedots.tech/watermill-io/watermill-logo.png"]
 
 [[menu.main]]
     name = "Getting Started"

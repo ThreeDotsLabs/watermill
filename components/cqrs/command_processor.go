@@ -14,6 +14,10 @@ import (
 // If using DDD, CommandHandler may modify and persist the aggregate.
 //
 // In contrast to EvenHandler, every Command must have only one CommandHandler.
+//
+// One instance of CommandHandler is used during handling messages.
+// When multiple commands are delivered at the same time, Handle method can be executed multiple times at the same time.
+// Because of that, Handle method needs to be thread safe!
 type CommandHandler interface {
 	// HandlerName is the name used in message.Router while creating handler.
 	//

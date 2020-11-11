@@ -10,7 +10,7 @@ toc = false
 
 ### SQL
 
-SQL Pub/Sub executes queries on any SQL database, using it like a messaging system.
+SQL Pub/Sub executes queries on any SQL database, using it like a messaging system. At the moment, **MySQL** and **PostgreSQL** are supported.
 
 While the performance of this approach isn't the best, it fits many use cases, where eventual consistency is acceptable.
 It can also be useful for projects that are not using any specialized message queue at the moment, but have access to a SQL database.
@@ -42,8 +42,8 @@ it to `SubscriberConfig` or `PublisherConfig`.
 {{% load-snippet-partial file="src-link/watermill-sql/pkg/sql/schema_adapter_mysql.go" first_line_contains="// DefaultMySQLSchema" last_line_contains="type DefaultMySQLSchema" %}}
 {{% /render-md %}}
 
-There is `DefaultSchema` defined for most common use case (storing events in a table). You can base your schema on this
-one, extending only chosen methods.
+There is a default schema provided for each supported engine (`DefaultMySQLSchema` and `DefaultPostgreSQLSchema`).
+It supports the most common use case (storing events in a table). You can base your schema on one of these, extending only chosen methods.
 
 ##### Extending schema
 
@@ -95,6 +95,11 @@ Example:
 
 #### Subscribing
 
+To create a subscriber, you need to pass not only proper schema adapter, but also an offsets adapter.
+
+* For MySQL schema use `DefaultMySQLOffsetsAdapter`
+* For PostgreSQL schema use `DefaultPostgreSQLOffsetsAdapter`
+
 {{% render-md %}}
 {{% load-snippet-partial file="src-link/watermill-sql/pkg/sql/subscriber.go" first_line_contains="func NewSubscriber" last_line_contains="func NewSubscriber" %}}
 
@@ -108,7 +113,8 @@ Example:
 
 #### Offsets Adapter
 
-The logic for storing offsets of messages is provided by the `OffsetsAdapter`. The MySQL variant is defined and ready to use.
+The logic for storing offsets of messages is provided by the `OffsetsAdapter`. If your schema uses auto-incremented integer as the row ID,
+it should work out of the box with default offset adapters.
 
 {{% render-md %}}
 {{% load-snippet-partial file="src-link/watermill-sql/pkg/sql/offsets_adapter.go" first_line_contains="type OffsetsAdapter" %}}

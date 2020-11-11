@@ -4,8 +4,8 @@ import (
 	"crypto/rand"
 
 	"github.com/google/uuid"
+	"github.com/lithammer/shortuuid/v3"
 	"github.com/oklog/ulid"
-	"github.com/renstrom/shortuuid"
 )
 
 func NewUUID() string {

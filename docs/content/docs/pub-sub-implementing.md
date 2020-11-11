@@ -28,7 +28,7 @@ Here are a few things you shouldn't forget about:
     - working correctly when the subscriber output channel is blocked (because nothing is listening on it).
 4. `Ack()` **and** `Nack()` support for consumed messages.
 5. Redelivery on `Nack()` for a consumed message.
-6. Use [Universal Pub/Sub tests]({{< ref "/docs/pub-sub#universal-tests" >}})
+6. Use [Universal Pub/Sub tests]({{< ref "/docs/pub-sub#universal-tests" >}}). For debugging tips, you should check [tests troubleshooting guide](/docs/troubleshooting/#debugging-pubsub-tests).
 7. Performance optimizations.
 8. GoDocs, [Markdown docs]({{< ref "/pubsubs" >}}) and [Getting Started examples](/docs/getting-started).
 

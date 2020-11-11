@@ -71,7 +71,7 @@ Marshaller can be changed via the Configuration.
 If you need to customize thing in `amqp.Delivery`, you can do it `PostprocessPublishing` function.
 
 {{% render-md %}}
-{{% load-snippet-partial file="src-link/watermill-amqp/pkg/amqp/marshaler.go" first_line_contains="// Marshaler" last_line_contains="func (DefaultMarshaler)" padding_after="0" %}}
+{{% load-snippet-partial file="src-link/watermill-amqp/pkg/amqp/marshaler.go" first_line_contains="// Marshaler" last_line_contains="func (d DefaultMarshaler)" padding_after="0" %}}
 {{% /render-md %}}
 
 #### AMQP "Consumer Groups"

@@ -26,21 +26,15 @@ func ServeHTTP(addr string, registry *prometheus.Registry) (cancel func()) {
 	})
 	server := http.Server{
 		Addr:    addr,
-		Handler: handler,
+		Handler: router,
 	}
 
 	go func() {
 		err := server.ListenAndServe()
-		if err != nil {
+		if err != http.ErrServerClosed {
 			panic(err)
 		}
 	}()
 
-	wait := make(chan struct{})
-	go func() {
-		<-wait
-		server.Close()
-	}()
-
-	return func() { close(wait) }
+	return func() { _ = server.Close() }
 }

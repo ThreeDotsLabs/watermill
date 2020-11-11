@@ -30,6 +30,7 @@ func main() {
 	// You can also close the router by just calling `r.Close()`.
 	router.AddPlugin(plugin.SignalsHandler)
 
+	// Router level middleware are executed for every message sent to the router
 	router.AddMiddleware(
 		// CorrelationID will copy the correlation id from the incoming message's metadata to the produced messages
 		middleware.CorrelationID,
@@ -54,7 +55,8 @@ func main() {
 	// Producing some incoming messages in background
 	go publishMessages(pubSub)
 
-	router.AddHandler(
+	// AddHandler returns a handler which can be used to add handler level middleware
+	handler := router.AddHandler(
 		"struct_handler",          // handler name, must be unique
 		"incoming_messages_topic", // topic from which we will read events
 		pubSub,
@@ -62,6 +64,16 @@ func main() {
 		pubSub,
 		structHandler{}.Handler,
 	)
+
+	// Handler level middleware is only executed for a specific handler
+	// Such middleware can be added the same way the router level ones
+	handler.AddMiddleware(func(h message.HandlerFunc) message.HandlerFunc {
+		return func(message *message.Message) ([]*message.Message, error) {
+			log.Println("executing handler specific middleware for ", message.UUID)
+
+			return h(message)
+		}
+	})
 
 	// just for debug, we are printing all messages received on `incoming_messages_topic`
 	router.AddNoPublisherHandler(

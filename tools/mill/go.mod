@@ -8,7 +8,6 @@ require (
 	github.com/ThreeDotsLabs/watermill-googlecloud v1.0.1
 	github.com/ThreeDotsLabs/watermill-io v1.0.1
 	github.com/ThreeDotsLabs/watermill-kafka/v2 v2.0.0
-	github.com/go-logfmt/logfmt v0.4.0 // indirect
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/pkg/errors v0.8.1
 	github.com/spf13/cobra v0.0.5
@@ -16,3 +15,5 @@ require (
 	github.com/spf13/viper v1.4.0
 	gopkg.in/yaml.v2 v2.2.2
 )
+
+go 1.11

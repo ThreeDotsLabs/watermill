@@ -1,4 +1,4 @@
-# Persistent Event log (Kafka to MySQL)
+# Persistent Event Log (Google Cloud Pub/Sub to MySQL)
 
 This example shows how to use the SQL Publisher from [SQL Pub/Sub](https://github.com/ThreeDotsLabs/watermill-sql).
 
@@ -17,7 +17,7 @@ Google Cloud Pub/Sub subscriber consumes events from a topic and inserts them in
 PubSub doesn't guarantee proper order of messages, you can use `OccurredAt` field of the payload for sorting.
 Google Cloud Pub/Sub is used just as an example and any other subscriber can be used instead.
 
-The example uses `DefaultSchema`, but you can define your own table definition and queries.
+The example uses `DefaultMySQLSchema`, but you can define your own table definition and queries.
 See [SQL Pub/Sub documentation](https://watermill.io/pubsubs/sql) for details.
 
 ## Requirements

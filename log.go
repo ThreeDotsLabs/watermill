@@ -45,6 +45,7 @@ type LoggerAdapter interface {
 	With(fields LogFields) LoggerAdapter
 }
 
+// NopLogger is a logger which discards all logs.
 type NopLogger struct{}
 
 func (NopLogger) Error(msg string, err error, fields LogFields) {}
@@ -53,6 +54,7 @@ func (NopLogger) Debug(msg string, fields LogFields)            {}
 func (NopLogger) Trace(msg string, fields LogFields)            {}
 func (l NopLogger) With(fields LogFields) LoggerAdapter         { return l }
 
+// StdLoggerAdapter is a logger implementation, which sends al logs to provided standard output.
 type StdLoggerAdapter struct {
 	ErrorLogger *log.Logger
 	InfoLogger  *log.Logger
@@ -62,10 +64,12 @@ type StdLoggerAdapter struct {
 	fields LogFields
 }
 
+// NewStdLogger creates StdLoggerAdapter which sends al logs to stderr.
 func NewStdLogger(debug, trace bool) LoggerAdapter {
 	return NewStdLoggerWithOut(os.Stderr, debug, trace)
 }
 
+// NewStdLoggerWithOut creates StdLoggerAdapter which sends all logs to provided io.Writer.
 func NewStdLoggerWithOut(out io.Writer, debug bool, trace bool) LoggerAdapter {
 	l := log.New(out, "[watermill] ", log.LstdFlags|log.Lmicroseconds|log.Lshortfile)
 	a := &StdLoggerAdapter{InfoLogger: l, ErrorLogger: l}
@@ -160,6 +164,8 @@ type CapturedMessage struct {
 	Err    error
 }
 
+// CaptureLoggerAdapter is a logger which captures all logs.
+// This logger is mostly useful for testing logging.
 type CaptureLoggerAdapter struct {
 	captured map[LogLevel][]CapturedMessage
 	fields   LogFields
