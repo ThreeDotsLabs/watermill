@@ -3,12 +3,10 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"github.com/ThreeDotsLabs/watermill/pubsub/gochannel"
 	"time"
 
-	"github.com/nats-io/stan.go"
-
 	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill-nats/pkg/nats"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
 )
@@ -29,31 +27,7 @@ func SetupMessageRouter(
 	}
 	router.AddMiddleware(middleware.Recoverer)
 
-	pub, err := nats.NewStreamingPublisher(nats.StreamingPublisherConfig{
-		ClusterID: "test-cluster",
-		ClientID:  "publisher",
-		StanOptions: []stan.Option{
-			stan.NatsURL("nats://nats-streaming:4222"),
-		},
-		Marshaler: nats.GobMarshaler{},
-	}, logger)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	sub, err := nats.NewStreamingSubscriber(nats.StreamingSubscriberConfig{
-		ClusterID:  "test-cluster",
-		ClientID:   "subscriber",
-		QueueGroup: "example",
-		StanOptions: []stan.Option{
-			stan.NatsURL("nats://nats-streaming:4222"),
-		},
-		DurableName: "durable",
-		Unmarshaler: nats.GobMarshaler{},
-	}, logger)
-	if err != nil {
-		return nil, nil, err
-	}
+	pubsub := gochannel.NewGoChannel(gochannel.Config{}, logger)
 
 	publishEvents := func(ctx context.Context, tags []string) (messages []*message.Message, err error) {
 		defer func() {
@@ -87,9 +61,9 @@ func SetupMessageRouter(
 	router.AddHandler(
 		"on-post-created",
 		PostCreatedTopic,
-		sub,
+		pubsub,
 		FeedUpdatedTopic,
-		pub,
+		pubsub,
 		func(msg *message.Message) (messages []*message.Message, err error) {
 			defer func() {
 				if err == nil {
@@ -130,10 +104,10 @@ func SetupMessageRouter(
 	router.AddHandler(
 		"on-post-updated",
 		PostUpdatedTopic,
-		sub,
+		pubsub,
 		FeedUpdatedTopic,
-		pub,
-		func(msg *message.Message) (messages []*message.Message, error error) {
+		pubsub,
+		func(msg *message.Message) (messages []*message.Message, err error) {
 			defer func() {
 				if err == nil {
 					logger.Info("Event handler on-post-updated executed successfully", nil)
@@ -143,7 +117,7 @@ func SetupMessageRouter(
 			}()
 
 			event := PostUpdated{}
-			err := json.Unmarshal(msg.Payload, &event)
+			err = json.Unmarshal(msg.Payload, &event)
 			if err != nil {
 				return nil, err
 			}
@@ -157,6 +131,7 @@ func SetupMessageRouter(
 			}
 
 			// TOOD remove post from tags
+			// TOOD add  post to tag if doesn't exist
 
 			err = feedsStorage.UpdatePost(msg.Context(), event.NewPost)
 			if err != nil {
@@ -176,7 +151,7 @@ func SetupMessageRouter(
 
 	<-router.Running()
 
-	return pub, sub, nil
+	return pubsub, pubsub, nil
 }
 
 type Publisher struct {

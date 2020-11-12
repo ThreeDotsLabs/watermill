@@ -4,12 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/brianvoe/gofakeit/v5"
 	"math/rand"
 	"net/http"
 	"strings"
 	"time"
 
+	"github.com/brianvoe/gofakeit/v5"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/render"
 
