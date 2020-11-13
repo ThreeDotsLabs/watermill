@@ -103,19 +103,21 @@ func (s FeedsStorage) ByName(ctx context.Context, name string) (Feed, error) {
 }
 
 func (s FeedsStorage) AppendPost(ctx context.Context, post Post) error {
-	filter := bson.M{
-		"_id": bson.M{
-			"$in": post.Tags,
-		},
+	return s.appendPostIfNotPresent(ctx, post)
+}
+
+func (s FeedsStorage) UpdatePost(ctx context.Context, post Post) error {
+	err := s.updatePostIfPresent(ctx, post)
+	if err != nil {
+		return err
 	}
 
-	update := bson.M{
-		"$push": bson.M{
-			"posts": post,
-		},
+	err = s.appendPostIfNotPresent(ctx, post)
+	if err != nil {
+		return err
 	}
 
-	_, err := s.collection.UpdateMany(ctx, filter, update)
+	err = s.removePostIfNotInFeed(ctx, post)
 	if err != nil {
 		return err
 	}
@@ -123,14 +125,60 @@ func (s FeedsStorage) AppendPost(ctx context.Context, post Post) error {
 	return nil
 }
 
-func (s FeedsStorage) UpdatePost(ctx context.Context, post Post) error {
+func (s FeedsStorage) updatePostIfPresent(ctx context.Context, post Post) error {
 	filter := bson.M{
+		"_id": bson.M{
+			"$in": post.Tags,
+		},
 		"posts.id": post.ID,
 	}
 
 	update := bson.M{
 		"$set": bson.M{
 			"posts.$": post,
+		},
+	}
+
+	_, err := s.collection.UpdateMany(ctx, filter, update)
+	return err
+}
+
+func (s FeedsStorage) appendPostIfNotPresent(ctx context.Context, post Post) error {
+	filter := bson.M{
+		"_id": bson.M{
+			"$in": post.Tags,
+		},
+		"posts.id": bson.M{
+			"$ne": post.ID,
+		},
+	}
+
+	update := bson.M{
+		"$push": bson.M{
+			"posts": bson.M{
+				"$each":     bson.A{post},
+				"$position": 0,
+			},
+		},
+	}
+
+	_, err := s.collection.UpdateMany(ctx, filter, update)
+	return err
+}
+
+func (s FeedsStorage) removePostIfNotInFeed(ctx context.Context, post Post) error {
+	filter := bson.M{
+		"_id": bson.M{
+			"$nin": post.Tags,
+		},
+		"posts.id": post.ID,
+	}
+
+	update := bson.M{
+		"$pull": bson.M{
+			"posts": bson.M{
+				"id": post.ID,
+			},
 		},
 	}
 

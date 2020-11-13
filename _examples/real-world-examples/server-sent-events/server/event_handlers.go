@@ -130,9 +130,6 @@ func SetupMessageRouter(
 				}
 			}
 
-			// TOOD remove post from tags
-			// TOOD add  post to tag if doesn't exist
-
 			err = feedsStorage.UpdatePost(msg.Context(), event.NewPost)
 			if err != nil {
 				return nil, err
