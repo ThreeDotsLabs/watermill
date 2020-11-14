@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
-    <title>Live Feed Demo</title>
+    <title>Watermill Server-Sent Events Example</title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
@@ -140,23 +140,30 @@
 <script type="text/x-template" id="post-edit-template">
     <div>
         <h2>Edit post</h2>
-        <form v-on:submit.prevent="submitData">
-            <div class="form-group row">
-                <label for="inputTitle" class="col-sm-2 col-form-label">Title</label>
-                <div class="col-sm-10">
-                    <input type="title" class="form-control" id="inputTitle" placeholder="Title" v-model="post.title">
-                </div>
+        <div class="card">
+            <div class="card-body">
+                <form v-on:submit.prevent="submitData">
+                    <div class="form-group row">
+                        <label for="inputTitle" class="col-sm-2 col-form-label">Title</label>
+                        <div class="col-sm-10">
+                            <input type="title" class="form-control" id="inputTitle" placeholder="Title" v-model="post.title">
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label for="inputContent" class="col-sm-2 col-form-label">Content</label>
+                        <div class="col-sm-10">
+                            <textarea class="form-control" id="inputContent" rows="3" v-model="post.content"></textarea>
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <div class="col-sm-2"></div>
+                        <div class="col-sm-10">
+                            <input type="submit" class="btn btn-success" value="Update post" />
+                        </div>
+                    </div>
+                </form>
             </div>
-            <div class="form-group row">
-                <label for="inputContent" class="col-sm-2 col-form-label">Content</label>
-                <div class="col-sm-10">
-                    <textarea class="form-control" id="inputContent" rows="3" v-model="post.content"></textarea>
-                </div>
-            </div>
-            <div class="form-group row">
-                <input type="submit" value="Update post" />
-            </div>
-        </form>
+        </div>
     </div>
 </script>
 
@@ -188,8 +195,7 @@
         },
         computed: {
             feeds: function (){
-                var a = this.feeds_stream.map(f => ({text: `${f.name} (${f.posts})`, name: f.name, active: f.name === this.current_feed}))
-                return a
+                return this.feeds_stream.map(f => ({text: `${f.name} (${f.posts})`, name: f.name, active: f.name === this.current_feed}));
             },
         },
     });
@@ -232,21 +238,25 @@
         },
         watch: {
             $route(to, from) {
-                this.setupFeed();
+                console.log(to)
+                this.setupFeed(to.params.feed_name);
             }
         },
         created() {
-            this.setupFeed();
+            this.setupFeed(this.$route.params.feed_name);
         },
         destroyed() {
             if (this.es) {
-                console.log("closing")
                 this.es.close();
             }
         },
         methods: {
-            setupFeed: function() {
-                this.feed = this.$route.params.feed_name;
+            setupFeed: function(feed_name) {
+                this.feed = feed_name;
+
+                if (this.es) {
+                    this.es.close();
+                }
                 this.es = new EventSource('/api/feeds/' + this.feed)
 
                 this.es.addEventListener('data', event => {
