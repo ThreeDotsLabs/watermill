@@ -24,6 +24,8 @@ Either way, the feeds list and posts in a feed should be always up-to-date. Try 
 * All posts are stored in MySQL. This is the Write Model.
 * All feeds are updated asynchronously and stored in MongoDB. This is the Read Model.
 
+![](./diagram.jpg)
+
 ### SSE Router
 
 The `SSERouter` comes from [watermill-http](https://github.com/ThreeDotsLabs/watermill-http).
