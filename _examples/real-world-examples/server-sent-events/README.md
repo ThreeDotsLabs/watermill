@@ -2,6 +2,16 @@
 
 This example is a Twitter-like web application using [Server-Sent Events](https://en.wikipedia.org/wiki/Server-sent_events) to support real-time refreshing.
 
+![](./screenshot.png)
+
+## Running
+
+```
+docker-compose up
+```
+
+Then, open  http://localhost:8080
+
 ## How it works
 
 * Posts can be created and updated.
