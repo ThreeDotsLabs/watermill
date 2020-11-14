@@ -12,6 +12,10 @@ docker-compose up
 
 Then, open  http://localhost:8080
 
+You can add your own post or click the button to get randomly generated posts.
+
+Either way, the feeds list and posts in a feed should be always up-to-date. Try using a second browser window to see the update.
+
 ## How it works
 
 * Posts can be created and updated.
