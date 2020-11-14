@@ -126,6 +126,10 @@ func (s FeedsStorage) UpdatePost(ctx context.Context, post Post) error {
 }
 
 func (s FeedsStorage) updatePostIfPresent(ctx context.Context, post Post) error {
+	if len(post.Tags) == 0 {
+		return nil
+	}
+
 	filter := bson.M{
 		"_id": bson.M{
 			"$in": post.Tags,
@@ -144,6 +148,10 @@ func (s FeedsStorage) updatePostIfPresent(ctx context.Context, post Post) error 
 }
 
 func (s FeedsStorage) appendPostIfNotPresent(ctx context.Context, post Post) error {
+	if len(post.Tags) == 0 {
+		return nil
+	}
+
 	filter := bson.M{
 		"_id": bson.M{
 			"$in": post.Tags,
@@ -167,9 +175,14 @@ func (s FeedsStorage) appendPostIfNotPresent(ctx context.Context, post Post) err
 }
 
 func (s FeedsStorage) removePostIfNotInFeed(ctx context.Context, post Post) error {
+	tags := post.Tags
+	if tags == nil {
+		tags = []string{}
+	}
+
 	filter := bson.M{
 		"_id": bson.M{
-			"$nin": post.Tags,
+			"$nin": tags,
 		},
 		"posts.id": post.ID,
 	}
