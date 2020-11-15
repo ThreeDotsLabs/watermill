@@ -29,37 +29,8 @@ func SetupMessageRouter(
 
 	pubsub := gochannel.NewGoChannel(gochannel.Config{}, logger)
 
-	publishEvents := func(ctx context.Context, tags []string) (messages []*message.Message, err error) {
-		defer func() {
-			if err == nil {
-				logger.Info("Updated posts in feeds", nil)
-			} else {
-				logger.Error("Error in handler", err, nil)
-			}
-		}()
-
-		for _, tag := range tags {
-			logger.Info("Producing event", watermill.LogFields{"tag": tag})
-			event := FeedUpdated{
-				Name:       tag,
-				OccurredAt: time.Now().UTC(),
-			}
-
-			payload, err := json.Marshal(event)
-			if err != nil {
-				return nil, err
-			}
-
-			newMessage := message.NewMessage(watermill.NewUUID(), payload)
-
-			messages = append(messages, newMessage)
-		}
-
-		return messages, nil
-	}
-
 	router.AddHandler(
-		"on-post-created",
+		"update-feeds-on-post-created",
 		PostCreatedTopic,
 		pubsub,
 		FeedUpdatedTopic,
@@ -67,9 +38,9 @@ func SetupMessageRouter(
 		func(msg *message.Message) (messages []*message.Message, err error) {
 			defer func() {
 				if err == nil {
-					logger.Info("Event handler on-post-created executed successfully", nil)
+					logger.Info("Successfully updated feeds on new post created", nil)
 				} else {
-					logger.Error("Error in on-post-created event handler", err, nil)
+					logger.Error("Error while updating feeds on new post created", err, nil)
 				}
 			}()
 
@@ -97,12 +68,12 @@ func SetupMessageRouter(
 				}
 			}
 
-			return publishEvents(msg.Context(), event.Post.Tags)
+			return createFeedUpdatedEvents(event.Post.Tags)
 		},
 	)
 
 	router.AddHandler(
-		"on-post-updated",
+		"update-feeds-on-post-updated",
 		PostUpdatedTopic,
 		pubsub,
 		FeedUpdatedTopic,
@@ -110,9 +81,9 @@ func SetupMessageRouter(
 		func(msg *message.Message) (messages []*message.Message, err error) {
 			defer func() {
 				if err == nil {
-					logger.Info("Event handler on-post-updated executed successfully", nil)
+					logger.Info("Successfully updated feeds on post updated", nil)
 				} else {
-					logger.Error("Error in on-post-updated event handler", err, nil)
+					logger.Error("Error while updating feeds on post updated", err, nil)
 				}
 			}()
 
@@ -135,7 +106,7 @@ func SetupMessageRouter(
 				return nil, err
 			}
 
-			return publishEvents(msg.Context(), append(event.NewPost.Tags, event.OriginalPost.Tags...))
+			return createFeedUpdatedEvents(append(event.NewPost.Tags, event.OriginalPost.Tags...))
 		},
 	)
 
@@ -149,6 +120,28 @@ func SetupMessageRouter(
 	<-router.Running()
 
 	return pubsub, pubsub, nil
+}
+
+func createFeedUpdatedEvents(tags []string) ([]*message.Message, error) {
+	var messages []*message.Message
+
+	for _, tag := range tags {
+		event := FeedUpdated{
+			Name:       tag,
+			OccurredAt: time.Now().UTC(),
+		}
+
+		payload, err := json.Marshal(event)
+		if err != nil {
+			return nil, err
+		}
+
+		msg := message.NewMessage(watermill.NewUUID(), payload)
+
+		messages = append(messages, msg)
+	}
+
+	return messages, nil
 }
 
 type Publisher struct {
