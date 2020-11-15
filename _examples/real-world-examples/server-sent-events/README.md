@@ -24,6 +24,19 @@ Either way, the feeds list and posts in a feed should be always up-to-date. Try 
 * All posts are stored in MySQL. This is the Write Model.
 * All feeds are updated asynchronously and stored in MongoDB. This is the Read Model.
 
+### Why use separate write and read models? 
+
+For this example application, using polyglot persistence (two database engines) is, of course, an overkill.
+We did it to showcase this technique and how easy it is to apply it with Watermill.
+
+A dedicated read model is a useful pattern for applications with high read/write ratio. All writes are applied atomically
+to the write model (MySQL in our case). Event handlers asynchronously update the read model (we use Mongo).
+
+The data in the read model is ready to serve as it is. It can also be scaled independently of the write model.
+
+Keep in mind that eventual consistency has to be acceptable in your application to use this pattern.
+Also, you probably won't need to use it for most use cases. Be pragmatic!
+
 ![](./diagram.jpg)
 
 ### SSE Router
