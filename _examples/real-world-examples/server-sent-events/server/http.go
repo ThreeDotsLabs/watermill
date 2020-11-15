@@ -95,7 +95,9 @@ func (f allFeedsStreamAdapter) GetResponse(w http.ResponseWriter, r *http.Reques
 		return nil, false
 	}
 
-	response := AllFeedsResponse{}
+	response := AllFeedsResponse{
+		Feeds: []feedSummary{},
+	}
 
 	for _, f := range feeds {
 		response.Feeds = append(response.Feeds, feedSummary{
