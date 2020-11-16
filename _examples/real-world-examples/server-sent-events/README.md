@@ -1,4 +1,4 @@
-# Server-Sent Events
+# HTTP Server push using SSE (Server-Sent Events)
 
 This example is a Twitter-like web application using [Server-Sent Events](https://en.wikipedia.org/wiki/Server-sent_events) to support real-time refreshing.
 
