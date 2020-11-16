@@ -14,8 +14,6 @@ services:
   mysql:
     image: mysql:8.0
     restart: unless-stopped
-    logging:
-      driver: none
     environment:
       MYSQL_DATABASE: example
       MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
@@ -25,8 +23,12 @@ services:
   mongo:
     image: mongo:3.6
     restart: unless-stopped
-    logging:
-      driver: none
     environment:
       MONGO_INITDB_ROOT_USERNAME: root
       MONGO_INITDB_ROOT_PASSWORD: password
+
+  nats-streaming:
+    image: nats-streaming:0.11.2
+    restart: unless-stopped
+    logging:
+      driver: none

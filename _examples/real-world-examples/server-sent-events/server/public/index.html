@@ -108,9 +108,10 @@
     </div>
 </script>
 
-<script type="text/x-template" id="home-template">
+<script type="text/x-template" id="home">
     <div>
-
+        <h3>1. Add some posts using the buttons above (use #hashtags).</h3>
+        <h3>2. Click one of feeds to see a live stream.</h3>
     </div>
 </script>
 
@@ -201,7 +202,7 @@
     });
 
     const Home = {
-        template: '<div></div>',
+        template: '#home',
     }
 
     Vue.component('add-post', {

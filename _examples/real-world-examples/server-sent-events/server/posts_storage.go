@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"database/sql"
+	"fmt"
+	"time"
 
 	"github.com/go-sql-driver/mysql"
 )
@@ -23,9 +25,14 @@ func NewPostsStorage() PostsStorage {
 		panic(err)
 	}
 
-	err = db.Ping()
-	if err != nil {
-		panic(err)
+	for {
+		err = db.Ping()
+		if err == nil {
+			break
+		} else {
+			fmt.Println("Could not connect to MySQL, retrying...")
+			time.Sleep(time.Second * 3)
+		}
 	}
 
 	return PostsStorage{

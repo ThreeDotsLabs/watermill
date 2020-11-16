@@ -6,9 +6,10 @@ import (
 	"time"
 
 	"github.com/ThreeDotsLabs/watermill"
+	"github.com/ThreeDotsLabs/watermill-nats/pkg/nats"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
-	"github.com/ThreeDotsLabs/watermill/pubsub/gochannel"
+	"github.com/nats-io/stan.go"
 )
 
 const (
@@ -27,14 +28,33 @@ func SetupMessageRouter(
 	}
 	router.AddMiddleware(middleware.Recoverer)
 
-	pubsub := gochannel.NewGoChannel(gochannel.Config{}, logger)
+	natsURL := stan.NatsURL("nats://nats-streaming:4222")
+	pub, err := nats.NewStreamingPublisher(nats.StreamingPublisherConfig{
+		ClusterID:   "test-cluster",
+		ClientID:    "publisher",
+		StanOptions: []stan.Option{natsURL},
+		Marshaler:   nats.GobMarshaler{},
+	}, logger)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	sub, err := nats.NewStreamingSubscriber(nats.StreamingSubscriberConfig{
+		ClusterID:   "test-cluster",
+		ClientID:    "subscriber",
+		StanOptions: []stan.Option{natsURL},
+		Unmarshaler: nats.GobMarshaler{},
+	}, logger)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	router.AddHandler(
 		"update-feeds-on-post-created",
 		PostCreatedTopic,
-		pubsub,
+		sub,
 		FeedUpdatedTopic,
-		pubsub,
+		pub,
 		func(msg *message.Message) (messages []*message.Message, err error) {
 			defer func() {
 				if err == nil {
@@ -75,9 +95,9 @@ func SetupMessageRouter(
 	router.AddHandler(
 		"update-feeds-on-post-updated",
 		PostUpdatedTopic,
-		pubsub,
+		sub,
 		FeedUpdatedTopic,
-		pubsub,
+		pub,
 		func(msg *message.Message) (messages []*message.Message, err error) {
 			defer func() {
 				if err == nil {
@@ -119,7 +139,7 @@ func SetupMessageRouter(
 
 	<-router.Running()
 
-	return pubsub, pubsub, nil
+	return pub, sub, nil
 }
 
 func createFeedUpdatedEvents(tags []string) ([]*message.Message, error) {
