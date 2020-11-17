@@ -42,6 +42,7 @@ Pick what you like the best or see in order:
     * [Synchronizing Databases](_examples/real-world-examples/synchronizing-databases)
     * [Persistent Event Log](_examples/real-world-examples/persistent-event-log)
     * [Transactional Events](_examples/real-world-examples/transactional-events)
+    * [Real-time HTTP updates with Server-Sent Events](_examples/real-world-examples/server-sent-events)
 * Complete projects
     * [NATS example with live code reloading](https://github.com/ThreeDotsLabs/nats-example)
     * [RabbitMQ, webhooks and Kafka integration](https://github.com/ThreeDotsLabs/event-driven-example)

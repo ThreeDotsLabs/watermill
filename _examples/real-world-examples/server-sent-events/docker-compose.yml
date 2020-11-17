@@ -1,0 +1,34 @@
+version: '3'
+services:
+  server:
+    image: golang:1.15
+    restart: unless-stopped
+    ports:
+      - 8080:8080
+    volumes:
+      - ./server:/app
+      - $GOPATH/pkg/mod:/go/pkg/mod
+    working_dir: /app
+    command: 'go run .'
+
+  mysql:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: example
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+    volumes:
+      - ./schema.sql:/docker-entrypoint-initdb.d/schema.sql
+
+  mongo:
+    image: mongo:3.6
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: password
+
+  nats-streaming:
+    image: nats-streaming:0.11.2
+    restart: unless-stopped
+    logging:
+      driver: none
