@@ -44,7 +44,7 @@ Also, you probably won't need to use it for most use cases. Be pragmatic!
 The `SSERouter` comes from [watermill-http](https://github.com/ThreeDotsLabs/watermill-http).
 When creating a new router, you pass an upstream subscriber. Messages coming from that subscriber will trigger pushing updates over HTTP.
 
-In this example, we use a simple in-process GoChannel as Pub/Sub, but this can be any Pub/Sub supported by Watermill.
+In this example, we use [NATS](https://nats.io/) as Pub/Sub, but this can be any Pub/Sub supported by Watermill.
 
 ```go
 sseRouter, err := watermillHTTP.NewSSERouter(
