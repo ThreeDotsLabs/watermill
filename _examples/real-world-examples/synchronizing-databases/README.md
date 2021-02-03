@@ -17,6 +17,8 @@ The `main.go` file contains watermill-related setup, database connections and th
 from one format to another. In `mysql.go` and `postgres.go` you will find definitions of `SchemaAdapters` for 
 each database.
 
+For more detailed description, see [When an SQL database makes a great Pub/Sub](https://threedots.tech/post/when-sql-database-makes-great-pub-sub/).
+
 ## Requirements
 
 To run this example you will need Docker and docker-compose installed. See installation guide at https://docs.docker.com/compose/install/

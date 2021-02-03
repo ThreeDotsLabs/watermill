@@ -8,6 +8,8 @@ Some PubSubs (e.g. Kafka) come with support for storing processed messages, poss
 This can be useful for audit purposes or to reply selected messages again in the future. But what if you'd like to use
 a PubSub that offers no storage and an event log is needed?
 
+For more detailed description, see [When an SQL database makes a great Pub/Sub](https://threedots.tech/post/when-sql-database-makes-great-pub-sub/).
+
 ## Solution
 
 Plugging a pair of a publisher and a subscriber into Watermill's `Router` can work as a proxy from one PubSub to another.
