@@ -97,10 +97,6 @@ var googleCloudSubscriptionAddCmd = &cobra.Command{
 		subID := args[0]
 
 		topic := viper.GetString("googlecloud.subscription.add.topic")
-		if topic == "" {
-			return errors.New("topic is required")
-		}
-
 		ackDeadline := viper.GetDuration("googlecloud.subscription.add.ackDeadline")
 		retainAcked := viper.GetBool("googlecloud.subscription.add.retainAcked")
 		retentionDuration := viper.GetDuration("googlecloud.subscription.add.retentionDuration")
