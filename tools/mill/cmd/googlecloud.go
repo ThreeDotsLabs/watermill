@@ -7,19 +7,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ThreeDotsLabs/watermill/tools/mill/cmd/internal"
-
-	"gopkg.in/yaml.v2"
-
-	"google.golang.org/api/iterator"
-
 	"cloud.google.com/go/pubsub"
+	"github.com/ThreeDotsLabs/watermill"
+	"github.com/ThreeDotsLabs/watermill-googlecloud/pkg/googlecloud"
+	"github.com/ThreeDotsLabs/watermill/tools/mill/cmd/internal"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-
-	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill-googlecloud/pkg/googlecloud"
+	"google.golang.org/api/iterator"
+	"gopkg.in/yaml.v2"
 )
 
 var googleCloudTempSubscriptionID string
