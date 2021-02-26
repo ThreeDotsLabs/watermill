@@ -37,13 +37,6 @@ For the configuration of consuming/producing of the messages, check the help of 
 		}
 
 		logger.Debug("Using Google Cloud Pub/Sub", nil)
-		topic := viper.GetString("googlecloud.topic")
-		if cmd.Use == "consume" || cmd.Use == "produce" {
-			if topic == "" {
-				return errors.New("topic is required")
-			}
-		}
-
 		if cmd.Use == "consume" {
 			subName := viper.GetString("googlecloud.consume.subscription")
 			if subName == "" {
@@ -304,7 +297,7 @@ func listSubscriptions(topic string, adapter watermill.LoggerAdapter, verbose bo
 
 	if topic != "" {
 		topic := client.Topic(topic)
-		return listSubscriptionsForTopic(ctx, client, topic, nil, verbose)
+		return listSubscriptionsForTopic(ctx, client, topic, logger, verbose)
 	}
 
 	it := client.Topics(ctx)
@@ -333,6 +326,15 @@ func listSubscriptions(topic string, adapter watermill.LoggerAdapter, verbose bo
 
 func listSubscriptionsForTopic(ctx context.Context, client *pubsub.Client, topic *pubsub.Topic, logger watermill.LoggerAdapter, verbose bool) error {
 	noSubs := true
+	exists, err := topic.Exists(ctx)
+	if err != nil {
+		return errors.Wrap(err, "could not check if topic exists")
+	}
+	if !exists {
+		logger.Info("Topic does not exist", watermill.LogFields{"topic": topic.String()})
+		return nil
+	}
+
 	it := topic.Subscriptions(ctx)
 	for {
 		sub, err := it.Next()
@@ -417,6 +419,7 @@ func init() {
 		"The topic to produce messages to (produce), consume message from (consume), list from (ls) or the topic for the newly created subscription (subscription.add)",
 	)
 	ensure(viper.BindPFlag("googlecloud.topic", googleCloudCmd.PersistentFlags().Lookup("topic")))
+	ensure(googleCloudCmd.MarkPersistentFlagRequired("topic"))
 
 	consumeCmd := addConsumeCmd(googleCloudCmd, "googlecloud.topic")
 	addProduceCmd(googleCloudCmd, "googlecloud.topic")
