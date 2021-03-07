@@ -111,14 +111,19 @@ loop:
 }
 
 func TestFanIn_AddSubscription_idempotency(t *testing.T) {
+	const (
+		fromTopic1 = "from-topic-1"
+		fromTopic2 = "from-topic-2"
+	)
 	logger := watermill.NopLogger{}
 	pubSub := gochannel.NewGoChannel(gochannel.Config{}, logger)
 
 	fanin, err := gochannel.NewFanIn(pubSub, logger)
 	require.NoError(t, err)
 
-	fanin.AddSubscription([]string{"from-topic-1", "from-topic-2"}, "to-topic-1")
-	fanin.AddSubscription([]string{"from-topic-1", "from-topic-2"}, "to-topic-1")
+	fanin.AddSubscription([]string{fromTopic1, fromTopic2}, "to-topic-1")
+	fanin.AddSubscription([]string{fromTopic2, fromTopic1, fromTopic2}, "to-topic-1")
+	// no panic(DuplicateHandlerNameError{handlerName})
 
 	go func() {
 		err := fanin.Run(context.Background())

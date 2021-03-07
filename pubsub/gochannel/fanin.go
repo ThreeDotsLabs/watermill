@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
+	"strings"
 	"sync"
 
 	"github.com/ThreeDotsLabs/watermill"
@@ -26,6 +28,7 @@ type FanIn struct {
 
 	logger watermill.LoggerAdapter
 
+	subscribtions  map[string]struct{}
 	subscribedLock sync.Mutex
 }
 
@@ -49,8 +52,9 @@ func NewFanIn(
 	return &FanIn{
 		internalPubSub: NewGoChannel(Config{}, logger),
 		internalRouter: router,
-		subscriber:     subscriber,
 		logger:         logger,
+		subscriber:     subscriber,
+		subscribtions:  map[string]struct{}{},
 	}, nil
 }
 
@@ -60,6 +64,13 @@ func NewFanIn(
 func (f *FanIn) AddSubscription(fromTopics []string, toTopic string) {
 	f.subscribedLock.Lock()
 	defer f.subscribedLock.Unlock()
+
+	key := createKey(fromTopics, toTopic)
+	_, ok := f.subscribtions[key]
+	if ok {
+		// Subscription already exists
+		return
+	}
 
 	f.logger.Trace("Adding fan-in subscription for topics", watermill.LogFields{
 		"fromTopics": fromTopics,
@@ -76,6 +87,8 @@ func (f *FanIn) AddSubscription(fromTopics []string, toTopic string) {
 			message.PassthroughHandler,
 		)
 	}
+
+	f.subscribtions[key] = struct{}{}
 }
 
 // Run runs the FanIn.
@@ -95,4 +108,28 @@ func (f *FanIn) Subscribe(ctx context.Context, topic string) (<-chan *message.Me
 
 func (f *FanIn) Close() error {
 	return f.internalPubSub.Close()
+}
+
+func createKey(fromTopics []string, toTopic string) string {
+	fromMap := map[string]struct{}{}
+	for _, t := range fromTopics {
+		fromMap[t] = struct{}{}
+	}
+
+	deduplicatedFromTopics := make([]string, 0, len(fromMap))
+	for fromTopic := range fromMap {
+		deduplicatedFromTopics = append(deduplicatedFromTopics, fromTopic)
+	}
+
+	sort.Strings(deduplicatedFromTopics)
+
+	var sb strings.Builder
+	for _, topic := range deduplicatedFromTopics {
+		sb.WriteString(topic)
+		sb.WriteRune(',')
+	}
+	sb.WriteRune('>')
+	sb.WriteString(toTopic)
+
+	return sb.String()
 }
