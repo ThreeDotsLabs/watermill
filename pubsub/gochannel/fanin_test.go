@@ -35,12 +35,10 @@ func TestFanIn(t *testing.T) {
 
 	upstreamPubSub := gochannel.NewGoChannel(gochannel.Config{}, logger)
 
-	fanin, err := gochannel.NewFanIn(upstreamPubSub, downstreamTopic, logger)
+	fanin, err := gochannel.NewFanIn(upstreamPubSub, logger)
 	require.NoError(t, err)
 
-	for _, topic := range upstreamTopics {
-		fanin.AddSubscription(topic)
-	}
+	fanin.AddSubscription(upstreamTopics, downstreamTopic)
 
 	router, err := message.NewRouter(message.RouterConfig{}, logger)
 	require.NoError(t, err)
@@ -112,15 +110,36 @@ loop:
 	require.Equal(t, expectedNumberOfMessages, sum)
 }
 
+func TestFanIn_AddSubscription_idempotency(t *testing.T) {
+	logger := watermill.NopLogger{}
+	pubSub := gochannel.NewGoChannel(gochannel.Config{}, logger)
+
+	fanin, err := gochannel.NewFanIn(pubSub, logger)
+	require.NoError(t, err)
+
+	fanin.AddSubscription([]string{"from-topic-1", "from-topic-2"}, "to-topic-1")
+	fanin.AddSubscription([]string{"from-topic-1", "from-topic-2"}, "to-topic-1")
+
+	go func() {
+		err := fanin.Run(context.Background())
+		require.NoError(t, err)
+	}()
+
+	<-fanin.Running()
+
+	err = fanin.Close()
+	require.NoError(t, err)
+}
+
 func TestFanIn_RouterClosed(t *testing.T) {
 	logger := watermill.NopLogger{}
 	pubSub := gochannel.NewGoChannel(gochannel.Config{}, logger)
 
-	fanin, err := gochannel.NewFanIn(pubSub, "public-topic", logger)
+	fanin, err := gochannel.NewFanIn(pubSub, logger)
 	require.NoError(t, err)
 
-	fanin.AddSubscription("some-topic")
-	fanin.AddSubscription("some-other-topic")
+	fanin.AddSubscription([]string{"from-topic-1", "from-topic-2"}, "to-topic-1")
+	fanin.AddSubscription([]string{"from-topic-1", "from-topic-2"}, "to-topic-2")
 
 	go func() {
 		err := fanin.Run(context.Background())

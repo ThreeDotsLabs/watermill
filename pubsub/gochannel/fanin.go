@@ -10,16 +10,14 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
-// FanIn is a component that receives messages from the subscriber and publishes them
+// FanIn is a component that receives messages from the subscribers and publishes them
 // on a specified topic. In effect, messages are "multiplexed".
 //
-// A typical use case for using FanIn is having events from many subscriptions published on one topic.
-//
-// You need to call AddSubscription method for all topics that you want to listen to.
+// You need to call AddSubscription method with a slice of topics that you want to
+// listen on and a topic you want them published to.
 // This needs to be done *before* starting the FanIn.
 //
-// FanIn exposes the standard Subscriber interface, however events are published
-// on the topic defined in the constructor. The `topic` value provided when calling Subscribe is ignored.
+// FanIn exposes the standard Subscriber interface.
 type FanIn struct {
 	internalPubSub *GoChannel
 	internalRouter *message.Router
@@ -28,23 +26,16 @@ type FanIn struct {
 
 	logger watermill.LoggerAdapter
 
-	subscribedTopics map[string]struct{}
-	subscribedLock   sync.Mutex
-
-	publisherTopic string
+	subscribedLock sync.Mutex
 }
 
 // NewFanIn creates a new FanIn.
 func NewFanIn(
 	subscriber message.Subscriber,
-	publisherTopic string,
 	logger watermill.LoggerAdapter,
 ) (*FanIn, error) {
 	if subscriber == nil {
 		return nil, errors.New("missing subscriber")
-	}
-	if publisherTopic == "" {
-		return nil, errors.New("missing publisher topic")
 	}
 	if logger == nil {
 		logger = watermill.NopLogger{}
@@ -58,43 +49,33 @@ func NewFanIn(
 	return &FanIn{
 		internalPubSub: NewGoChannel(Config{}, logger),
 		internalRouter: router,
-
-		subscriber: subscriber,
-
-		logger: logger,
-
-		subscribedTopics: map[string]struct{}{},
-		publisherTopic:   publisherTopic,
+		subscriber:     subscriber,
+		logger:         logger,
 	}, nil
 }
 
-// AddSubscription add an internal subscription for the given topic.
-// You need to call this method with all topics that you want to listen to, before the FanIn is started.
+// AddSubscription adds an internal subscriptions.
+// You need to call this method with slice of `fromTopics` and `toTopic` before the FanIn is started.
 // AddSubscription is idempotent.
-func (f *FanIn) AddSubscription(topic string) {
+func (f *FanIn) AddSubscription(fromTopics []string, toTopic string) {
 	f.subscribedLock.Lock()
 	defer f.subscribedLock.Unlock()
 
-	_, ok := f.subscribedTopics[topic]
-	if ok {
-		// Subscription already exists
-		return
-	}
-
-	f.logger.Trace("Adding fan-in subscription for topic", watermill.LogFields{
-		"topic": topic,
+	f.logger.Trace("Adding fan-in subscription for topics", watermill.LogFields{
+		"fromTopics": fromTopics,
+		"toTopic":    toTopic,
 	})
 
-	f.internalRouter.AddHandler(
-		fmt.Sprintf("fanin-%s", topic),
-		topic,
-		f.subscriber,
-		f.publisherTopic,
-		f.internalPubSub,
-		message.PassthroughHandler,
-	)
-
-	f.subscribedTopics[topic] = struct{}{}
+	for _, fromTopic := range fromTopics {
+		f.internalRouter.AddHandler(
+			fmt.Sprintf("fanin-from-%s-to-%s", fromTopic, toTopic),
+			fromTopic,
+			f.subscriber,
+			toTopic,
+			f.internalPubSub,
+			message.PassthroughHandler,
+		)
+	}
 }
 
 // Run runs the FanIn.
@@ -108,9 +89,8 @@ func (f *FanIn) Running() chan struct{} {
 }
 
 // Subscribe implements the standard Subscriber interface.
-// The topic argument is ignored
-func (f *FanIn) Subscribe(ctx context.Context, _ string) (<-chan *message.Message, error) {
-	return f.internalPubSub.Subscribe(ctx, f.publisherTopic)
+func (f *FanIn) Subscribe(ctx context.Context, topic string) (<-chan *message.Message, error) {
+	return f.internalPubSub.Subscribe(ctx, topic)
 }
 
 func (f *FanIn) Close() error {
