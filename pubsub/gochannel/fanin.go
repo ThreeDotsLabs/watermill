@@ -2,21 +2,22 @@ package gochannel
 
 import (
 	"context"
+	"crypto/md5"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"sort"
-	"strings"
 	"sync"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
-// FanIn is a component that receives messages from the subscribers and publishes them
+// FanIn is a component that receives messages from 1..N topics from a subscriber and publishes them
 // on a specified topic. In effect, messages are "multiplexed".
 //
 // You need to call AddSubscription method with a slice of topics that you want to
-// listen on and a topic you want them published to.
+// listen to and a topic you want them to be published to.
 // This needs to be done *before* starting the FanIn.
 //
 // FanIn exposes the standard Subscriber interface.
@@ -28,7 +29,7 @@ type FanIn struct {
 
 	logger watermill.LoggerAdapter
 
-	subscribtions  map[string]struct{}
+	subscriptions  map[string]struct{}
 	subscribedLock sync.Mutex
 }
 
@@ -54,7 +55,7 @@ func NewFanIn(
 		internalRouter: router,
 		logger:         logger,
 		subscriber:     subscriber,
-		subscribtions:  map[string]struct{}{},
+		subscriptions:  map[string]struct{}{},
 	}, nil
 }
 
@@ -65,8 +66,12 @@ func (f *FanIn) AddSubscription(fromTopics []string, toTopic string) {
 	f.subscribedLock.Lock()
 	defer f.subscribedLock.Unlock()
 
+	if len(fromTopics) == 0 {
+		return
+	}
+
 	key := createKey(fromTopics, toTopic)
-	_, ok := f.subscribtions[key]
+	_, ok := f.subscriptions[key]
 	if ok {
 		// Subscription already exists
 		return
@@ -88,7 +93,7 @@ func (f *FanIn) AddSubscription(fromTopics []string, toTopic string) {
 		)
 	}
 
-	f.subscribtions[key] = struct{}{}
+	f.subscriptions[key] = struct{}{}
 }
 
 // Run runs the FanIn.
@@ -111,25 +116,23 @@ func (f *FanIn) Close() error {
 }
 
 func createKey(fromTopics []string, toTopic string) string {
-	fromMap := map[string]struct{}{}
+	fromTopicsMap := map[string]struct{}{}
 	for _, t := range fromTopics {
-		fromMap[t] = struct{}{}
+		fromTopicsMap[t] = struct{}{}
 	}
 
-	deduplicatedFromTopics := make([]string, 0, len(fromMap))
-	for fromTopic := range fromMap {
+	deduplicatedFromTopics := make([]string, 0, len(fromTopicsMap))
+	for fromTopic := range fromTopicsMap {
 		deduplicatedFromTopics = append(deduplicatedFromTopics, fromTopic)
 	}
 
 	sort.Strings(deduplicatedFromTopics)
 
-	var sb strings.Builder
+	hasher := md5.New()
 	for _, topic := range deduplicatedFromTopics {
-		sb.WriteString(topic)
-		sb.WriteRune(',')
+		hasher.Write([]byte(topic + " "))
 	}
-	sb.WriteRune('>')
-	sb.WriteString(toTopic)
+	hasher.Write([]byte(">" + toTopic))
 
-	return sb.String()
+	return hex.EncodeToString(hasher.Sum(nil))
 }
