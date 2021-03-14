@@ -2,11 +2,10 @@ package gochannel
 
 import (
 	"context"
-	"crypto/md5"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 	"sync"
 
 	"github.com/ThreeDotsLabs/watermill"
@@ -128,11 +127,13 @@ func createKey(fromTopics []string, toTopic string) string {
 
 	sort.Strings(deduplicatedFromTopics)
 
-	hasher := md5.New()
+	var sb strings.Builder
 	for _, topic := range deduplicatedFromTopics {
-		hasher.Write([]byte(topic + " "))
+		sb.WriteString(topic)
+		sb.WriteRune(',')
 	}
-	hasher.Write([]byte(">" + toTopic))
+	sb.WriteRune('>')
+	sb.WriteString(toTopic)
 
-	return hex.EncodeToString(hasher.Sum(nil))
+	return sb.String()
 }
