@@ -1189,6 +1189,9 @@ func generateConsumerGroup(t *testing.T, pubSubConstructor ConsumerGroupPubSubCo
 	// create a pubsub to ensure that the consumer group exists
 	// for those providers that require subscription before publishing messages (e.g. Google Cloud PubSub)
 	pub, sub := pubSubConstructor(t, groupName)
+	if subInitializer, ok := sub.(message.SubscribeInitializer); ok {
+		require.NoError(t, subInitializer.SubscribeInitialize(topicName))
+	}
 	_, err := sub.Subscribe(context.Background(), topicName)
 	require.NoError(t, err)
 	closePubSub(t, pub, sub)
