@@ -94,7 +94,7 @@ func (m *Message) Ack() bool {
 	}
 
 	m.ackSentType = ack
-	if m.noAck == nil {
+	if m.ack == nil {
 		m.ack = closedchan
 	} else {
 		close(m.ack)
