@@ -21,6 +21,8 @@ Later, the message is consumed by [worker/main.go](worker/main.go). The only res
 **Counter update is done in the same transaction as message consumption.**
 Thanks to that fact and [A.C.I.D](https://en.wikipedia.org/wiki/ACID) even if server, worker or network failure due to the processing our data will stay consistent.
 
+To check if the created code works, I created a small `run.go` program, that sends 10k requests to the server and verifies if the count at the end is equal to 10k.
+But to not make it too easy, I'm restarting the worker and MySQL a couple of times. I also forgot about graceful shutdown in my worker ;-)
 
 ![](./architecture.jpg)
 *Exactly-once delivery*
