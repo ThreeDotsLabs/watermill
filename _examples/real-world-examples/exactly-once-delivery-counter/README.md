@@ -6,7 +6,7 @@ I'll say more, it's even possible with Watermill!
 
 ![](./at-least-once-delivery.jpg)
 
-*At-least once delivery*
+*At-least once delivery - this is not what we want!*
 
 There are just two constraints:
 1. you need to use a Pub/Sub implementation that does support exactly-once delivery (only [MySQL/PostgreSQL](https://github.com/ThreeDotsLabs/watermill-sql) for now),
@@ -20,14 +20,19 @@ The endpoint is provided by [server/main.go](server/main.go).
 
 Later, the message is consumed by [worker/main.go](worker/main.go). The only responsibility of the worker is to update the counter in the MySQL database.
 **Counter update is done in the same transaction as message consumption.**
-Thanks to that fact and [A.C.I.D](https://en.wikipedia.org/wiki/ACID) even if server, worker or network failure happens during processing our data will stay consistent.
+
+Normally, we would need to de-duplicate messages. 
+But thanks to that fact and [A.C.I.D](https://en.wikipedia.org/wiki/ACID) even if server, worker or network failure happens during processing our data will stay consistent.
+
+![](./architecture.jpg)
+
+*Watermill's exactly-once delivery*
 
 To check if the created code works, I've created a small `run.go` program, that sends 10k requests to the server and verifies if the count at the end is equal to 10k.
 But to not make it too easy, I'm restarting the worker and MySQL a couple of times. I also forgot about graceful shutdown in my worker. ;-)
 
-![](./architecture.jpg)
-
-*Exactly-once delivery*
+The biggest downside of this approach is performance. Due to [our benchmark](https://github.com/ThreeDotsLabs/watermill-benchmark#sql-mysql), MySQL subscriber can consume up to 154 messages per second.
+Fortunately, it's still 13,305,600 messages per day. It's more than enough for a lot of systems.
 
 ## Running
 
