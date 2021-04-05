@@ -1,10 +1,11 @@
 # Exactly-once delivery counter
 
-IS exactly-once delivery impossible? Well, it depends a lot on the definition of exactly-once delivery.
+Is exactly-once delivery impossible? Well, it depends a lot on the definition of exactly-once delivery.
 When we will assume that we want to avoid the situation when a message is delivered more than once when our broker or worker died -- it's possible.
 I'll say more, it's even possible with Watermill!
 
 ![](./at-least-once-delivery.jpg)
+*At-least once delivery*
 
 They are just two constraints:
 1. you need to use Pub/Sub implementation that does support exactly-once delivery (only [MySQL/PostgreSQL](https://github.com/ThreeDotsLabs/watermill-sql) for now),
@@ -22,7 +23,7 @@ Thanks to that fact and [A.C.I.D](https://en.wikipedia.org/wiki/ACID) even if se
 
 
 ![](./architecture.jpg)
-
+*Exactly-once delivery*
 
 ## Running
 
