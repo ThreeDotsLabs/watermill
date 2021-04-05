@@ -4,7 +4,7 @@ Is exactly-once delivery impossible? Well, it depends a lot on the definition of
 When we will assume that we want to avoid the situation when a message is delivered more than once when our broker or worker died -- it's possible.
 I'll say more, it's even possible with Watermill!
 
-![](./at-least-once-delivery.jpg)
+![](./at-least-once-delivery.jpg)  
 *At-least once delivery*
 
 They are just two constraints:
