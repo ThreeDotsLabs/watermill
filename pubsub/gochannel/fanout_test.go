@@ -14,13 +14,13 @@ import (
 )
 
 func TestFanOut(t *testing.T) {
+	const (
+		upstreamTopic = "upstream-topic"
+	)
+
 	logger := watermill.NopLogger{}
 
 	upstreamPubSub := gochannel.NewGoChannel(gochannel.Config{}, logger)
-	upstreamTopic := "upstream-topic"
-
-	router, err := message.NewRouter(message.RouterConfig{}, logger)
-	require.NoError(t, err)
 
 	fanout, err := gochannel.NewFanOut(upstreamPubSub, logger)
 	require.NoError(t, err)
@@ -30,7 +30,12 @@ func TestFanOut(t *testing.T) {
 	workersCount := 10
 	messagesCount := 100
 
-	receivedMessages := make(chan struct{}, workersCount*messagesCount*2)
+	router, err := message.NewRouter(message.RouterConfig{}, logger)
+	require.NoError(t, err)
+
+	expectedNumberOfMessages := workersCount * messagesCount
+
+	receivedMessages := make(chan struct{}, expectedNumberOfMessages)
 
 	for i := 0; i < workersCount; i++ {
 		router.AddNoPublisherHandler(
@@ -44,7 +49,7 @@ func TestFanOut(t *testing.T) {
 		)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*1)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
 	go func() {
@@ -85,7 +90,7 @@ loop:
 		}
 	}
 
-	require.Equal(t, workersCount*messagesCount, counter)
+	require.Equal(t, expectedNumberOfMessages, counter)
 }
 
 func TestFanOut_RouterClosed(t *testing.T) {
