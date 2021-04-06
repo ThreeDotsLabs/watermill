@@ -37,6 +37,7 @@ Pick what you like the best or see in order:
 * [Pub/Subs usage](_examples/pubsubs)
     * These examples are part of the [Getting started guide](https://watermill.io/docs/getting-started/) and show usage of a single Pub/Sub at a time.
 * Real-world examples
+    * [Exactly-once delivery counter](_examples/real-world-examples/exactly-once-delivery-counter)
     * [Receiving webhooks](_examples/real-world-examples/receiving-webhooks)
     * [Sending webhooks](_examples/real-world-examples/sending-webhooks)
     * [Synchronizing Databases](_examples/real-world-examples/synchronizing-databases)
