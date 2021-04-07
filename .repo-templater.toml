@@ -1,0 +1,134 @@
+[CommonVariables]
+GithubOrg = "ThreeDotsLabs"
+URLTemplate = "git@github.com:{{ .GithubOrg }}/{{ .Name }}.git"
+GoPackageTemplate = "github.com/{{ .GithubOrg }}/{{ .Name }}"
+CircleCIDockerOverride = '''version: '3'
+services:
+  watermill:
+    image: golang:1.12
+    command: /bin/true
+    volumes:
+      - .:/app
+      - .mod-cache:/go/pkg/mod
+    working_dir: /app
+{{ if (.CircleCIDckerExtraOptions) ne "" }}
+{{ .CircleCIDckerExtraOptions }}
+{{ end -}}
+{{ if (.CircleCIDockerOverrideEnvs) ne "" }}
+    environment:
+{{ .CircleCIDockerOverrideEnvs }}
+{{ end -}}
+{{ .CircleCIDockerOverrideServices }}
+'''
+CircleCIDockerOverrideEnvs = ''
+CircleCIDockerOverrideServices = ''
+CircleCIWaitForServices = ''
+CircleCIDckerExtraOptions = ''
+
+[[repositories]]
+Name = "watermill"
+HumanName = "Watermill"
+URL = "{{ .URLTemplate }}"
+Templates = ["license", "common", "watermill"]
+
+    [repositories.Variables]
+        GoPackage = "{{ .GoPackageTemplate }}"
+        LastRelease = "v0.4.0"
+        MakefileCustom = '''
+validate_examples:
+	go run dev/update-examples-deps/main.go
+	bash dev/validate_examples.sh
+'''
+
+[[repositories]]
+Name = "watermill-amqp"
+HumanName = "AMQP Pub/Sub"
+URL = "{{ .URLTemplate }}"
+Templates = ["license", "common", "pubsub"]
+
+    [repositories.Variables]
+        GoPackage = "{{ .GoPackageTemplate }}"
+        CircleCIDockerOverrideEnvs = '''
+      WATERMILL_TEST_AMQP_URI: amqp://guest:guest@rabbitmq:5672
+'''
+        CircleCIWaitForServices = 'rabbitmq:5672'
+
+[[repositories]]
+Name = "watermill-googlecloud"
+HumanName = "Google Cloud Pub/Sub"
+URL = "{{ .URLTemplate }}"
+Templates = ["license", "common", "pubsub"]
+
+    [repositories.Variables]
+        GoPackage = "{{ .GoPackageTemplate }}"
+        CircleCIDockerOverrideEnvs = '''
+      PUBSUB_EMULATOR_HOST: googlecloud:8085
+'''
+        CircleCIDockerOverrideServices = '''
+  googlecloud:
+    entrypoint: gcloud --quiet beta emulators pubsub start --host-port=googlecloud:8085 --verbosity=debug --log-http
+'''
+        CircleCIWaitForServices = 'googlecloud:8085'
+
+[[repositories]]
+Name = "watermill-http"
+HumanName = "HTTP Pub/Sub"
+URL = "{{ .URLTemplate }}"
+Templates = ["license", "common", "pubsub"]
+
+    [repositories.Variables]
+        GoPackage = "{{ .GoPackageTemplate }}"
+
+[[repositories]]
+Name = "watermill-io"
+HumanName = "io.Reader/io.Writer Pub/Sub"
+URL = "{{ .URLTemplate }}"
+Templates = ["license", "common", "pubsub"]
+
+    [repositories.Variables]
+        GoPackage = "{{ .GoPackageTemplate }}"
+
+[[repositories]]
+Name = "watermill-kafka"
+HumanName = "Kafka Pub/Sub"
+URL = "{{ .URLTemplate }}"
+Templates = ["license", "common", "pubsub"]
+
+    [repositories.Variables]
+        GoPackage = "{{ .GoPackageTemplate }}"
+        CircleCIDockerOverrideEnvs = '''
+      WATERMILL_TEST_KAFKA_BROKERS: localhost:9091,localhost:9092,localhost:9093,localhost:9094,localhost:9095
+'''
+        CircleCIWaitForServices = 'localhost:9091 localhost:9092 localhost:9093 localhost:9094 localhost:9095'
+        CircleCIDckerExtraOptions = '''    network_mode: "host"'''
+
+[[repositories]]
+Name = "watermill-nats"
+HumanName = "NATS Pub/Sub"
+URL = "{{ .URLTemplate }}"
+Templates = ["license", "common", "pubsub"]
+
+    [repositories.Variables]
+        GoPackage = "{{ .GoPackageTemplate }}"
+        CircleCIDockerOverrideEnvs = '''
+      WATERMILL_TEST_NATS_URL: nats://nats-streaming:4222
+'''
+        CircleCIWaitForServices = 'nats-streaming:4222'
+
+[[repositories]]
+Name = "watermill-sql"
+HumanName = "SQL Pub/Sub"
+URL = "{{ .URLTemplate }}"
+Templates = ["license", "common", "pubsub"]
+
+    [repositories.Variables]
+        GoPackage = "{{ .GoPackageTemplate }}"
+        CircleCIDockerOverrideEnvs = '''
+      WATERMILL_TEST_MYSQL_HOST: mysql:3306
+      WATERMILL_TEST_POSTGRES_HOST: postgres:5432
+'''
+        MakefileCustom = '''
+mycli:
+	@mycli -h 127.0.0.1 -u root -p secret
+'''
+        CircleCIWaitForServices = "mysql:3306"

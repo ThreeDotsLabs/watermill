@@ -1,0 +1,8 @@
+.idea
+vendor
+docs/themes/
+docs/public/
+docs/content/src-link
+*.out
+*.log
+.mod-cache
