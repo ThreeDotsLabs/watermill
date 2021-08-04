@@ -38,3 +38,7 @@ googleAnalytics = "UA-128588911-2"
     name = "Support"
     weight = 0
     url = "/support/"
+
+[markup]
+defaultMarkdownHandler = 'blackfriday'
+
