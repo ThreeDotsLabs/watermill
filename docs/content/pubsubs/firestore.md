@@ -13,9 +13,17 @@ toc = false
 Cloud Firestore is a cloud-hosted, NoSQL database from Google.
 
 This Pub/Sub comes with two publishers. To publish messages in a transaction
-(for example while at the same time saving other data) use the
-`TransactionalPublisher`. If you do not want to publish messages in transaction
-use the normal `Publisher`.
+use the `TransactionalPublisher`. If you do not want to publish messages in
+transaction use the normal `Publisher`.
+
+Using Firestore as a Pub/Sub instead of using a dedicated Pub/Sub system can be
+useful to publish messages in transaction while at the same time saving other
+data in Firestore. Thanks to that the data and the messages can be consistently
+persisted. If the messages and the data weren't being published transactionally
+you could end up in situations where messages were emitted even though the data
+wasn't saved or messages weren't emitted even though the data was saved. After
+transactionally publishing messages in Firestore you can then subscribe to them
+and relay them to a different Pub/Sub system.
 
 Godoc: <https://pkg.go.dev/github.com/ThreeDotsLabs/watermill-firestore>
 
