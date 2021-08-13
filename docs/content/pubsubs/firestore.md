@@ -25,7 +25,7 @@ Firestore documentation: <https://firebase.google.com/docs/firestore/>
 
 | Feature             | Implements | Note |
 | -------             | ---------- | ---- |
-| ConsumerGroups      | yes        |      |
+| ConsumerGroups      | no         |      |
 | ExactlyOnceDelivery | no         |      |
 | GuaranteedOrder     | no         |      |
 | Persistent          | yes        |      |
