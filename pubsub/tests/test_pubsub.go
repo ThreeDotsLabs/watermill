@@ -388,7 +388,7 @@ func TestPublishSubscribeInOrder(
 
 	for i := 0; i < messagesCount; i++ {
 		id := watermill.NewUUID()
-		msgType := string(i % 16)
+		msgType := fmt.Sprintf("%d", i%16)
 
 		msg := message.NewMessage(id, []byte(msgType))
 
