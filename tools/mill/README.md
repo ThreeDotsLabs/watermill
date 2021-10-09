@@ -88,3 +88,13 @@ mill googlecloud subscription rm <subscription_id>
 ```
 
 Additional flags are available for `subscription add` to regulate the newly created subscription's settings.
+
+#### Listing subscriptions
+
+You can use `mill` to list existings subscriptions:
+
+```bash
+mill googlecloud subscription ls [-t topic]
+```
+
+The topic is optional. If omitted, all topics will be listed with their subscriptions.
