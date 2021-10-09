@@ -185,7 +185,7 @@ func runTest(
 	})
 }
 
-var stressTestTestsCount = 10
+var stressTestTestsCount = 5
 
 func TestPubSubStressTest(
 	t *testing.T,
@@ -782,8 +782,8 @@ func TestConsumerGroups(
 
 	messagesToPublish := PublishSimpleMessages(t, totalMessagesCount, publisherPub, topicName)
 
-	assertConsumerGroupReceivedMessages(t, pubSubConstructor, group1, topicName, messagesToPublish)
-	assertConsumerGroupReceivedMessages(t, pubSubConstructor, group2, topicName, messagesToPublish)
+	assertConsumerGroupReceivedMessages(t, tCtx, pubSubConstructor, group1, topicName, messagesToPublish)
+	assertConsumerGroupReceivedMessages(t, tCtx, pubSubConstructor, group2, topicName, messagesToPublish)
 }
 
 // TestPublisherClose sends big amount of messages and them run close to ensure that messages are not lost during adding.
@@ -1154,6 +1154,7 @@ func restartServer(t *testing.T, features Features) {
 
 func assertConsumerGroupReceivedMessages(
 	t *testing.T,
+	tCtx TestContext,
 	pubSubConstructor ConsumerGroupPubSubConstructor,
 	consumerGroup string,
 	topicName string,
@@ -1165,7 +1166,7 @@ func assertConsumerGroupReceivedMessages(
 	messages, err := sub.Subscribe(context.Background(), topicName)
 	require.NoError(t, err)
 
-	receivedMessages, all := subscriber.BulkRead(messages, len(expectedMessages), defaultTimeout)
+	receivedMessages, all := bulkRead(tCtx, messages, len(expectedMessages), defaultTimeout)
 	assert.True(t, all)
 
 	AssertAllMessagesReceived(t, expectedMessages, receivedMessages)
