@@ -3,6 +3,7 @@
 
 {{ $first_line_contains := (.Get "first_line_contains") }}
 {{ $last_line_contains := (.Get "last_line_contains") }}
+{{ $last_line_equals := (.Get "last_line_equals") }}
 
 {{ $show_line := false }}
 
@@ -48,6 +49,10 @@
     {{ end }}
 
     {{ if and ($first_line_found) (in $elem_val $last_line_contains) (ne $last_line_contains "") }}
+        {{ $last_line_found = true }}
+    {{ end }}
+
+    {{ if and ($first_line_found) (eq $elem_val $last_line_equals) (ne $last_line_equals "") }}
         {{ $last_line_found = true }}
     {{ end }}
 
