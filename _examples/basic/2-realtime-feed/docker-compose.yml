@@ -1,7 +1,7 @@
 version: '3'
 services:
   producer:
-    image: golang:1.12
+    image: golang:1.17
     restart: unless-stopped
     depends_on:
     - kafka
@@ -12,7 +12,7 @@ services:
     command: go run main.go
 
   consumer:
-    image: golang:1.12
+    image: golang:1.17
     restart: unless-stopped
     depends_on:
     - kafka

@@ -1,7 +1,7 @@
 version: '3'
 services:
   server:
-    image: golang:1.12
+    image: golang:1.17
     restart: unless-stopped
     depends_on:
       - mysql
