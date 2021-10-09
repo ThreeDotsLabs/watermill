@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"reflect"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -185,7 +186,7 @@ func runTest(
 	})
 }
 
-var stressTestTestsCount = 5
+const defaultStressTestTestsCount = 10
 
 func TestPubSubStressTest(
 	t *testing.T,
@@ -193,7 +194,12 @@ func TestPubSubStressTest(
 	pubSubConstructor PubSubConstructor,
 	consumerGroupPubSubConstructor ConsumerGroupPubSubConstructor,
 ) {
-	for i := 0; i < stressTestTestsCount; i++ {
+	stressTestsCount, _ := strconv.ParseInt(os.Getenv("STRESS_TEST_COUNT"), 10, 64)
+	if stressTestsCount == 0 {
+		stressTestsCount = defaultStressTestTestsCount
+	}
+
+	for i := 0; i < int(stressTestsCount); i++ {
 		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
 			t.Parallel()
 			TestPubSub(t, features, pubSubConstructor, consumerGroupPubSubConstructor)
