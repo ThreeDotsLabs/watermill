@@ -2,17 +2,20 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"strings"
 	"time"
 
 	"cloud.google.com/go/pubsub"
+	"github.com/ThreeDotsLabs/watermill"
+	"github.com/ThreeDotsLabs/watermill-googlecloud/pkg/googlecloud"
+	"github.com/ThreeDotsLabs/watermill/tools/mill/cmd/internal"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-
-	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill-googlecloud/pkg/googlecloud"
+	"google.golang.org/api/iterator"
+	"gopkg.in/yaml.v2"
 )
 
 var googleCloudTempSubscriptionID string
@@ -30,7 +33,6 @@ For the configuration of consuming/producing of the messages, check the help of 
 		}
 
 		logger.Debug("Using Google Cloud Pub/Sub", nil)
-
 		if cmd.Use == "consume" {
 			subName := viper.GetString("googlecloud.consume.subscription")
 			if subName == "" {
@@ -94,7 +96,7 @@ var googleCloudSubscriptionAddCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
 		subID := args[0]
 
-		topic := viper.GetString("googlecloud..topic")
+		topic := viper.GetString("googlecloud.subscription.add.topic")
 		ackDeadline := viper.GetDuration("googlecloud.subscription.add.ackDeadline")
 		retainAcked := viper.GetBool("googlecloud.subscription.add.retainAcked")
 		retentionDuration := viper.GetDuration("googlecloud.subscription.add.retentionDuration")
@@ -157,6 +159,26 @@ var googleCloudSubscriptionRmCmd = &cobra.Command{
 		}()
 
 		return removeSubscription(subID)
+	},
+}
+
+var googleCloudSubscriptionLsCmd = &cobra.Command{
+	Use:   "ls",
+	Short: "List subscriptions in Google Cloud Pub/Sub. Topic may be provided optionally to filter subscriptions by topic.",
+	Args:  cobra.NoArgs,
+	RunE: func(cmd *cobra.Command, args []string) (err error) {
+		topic := viper.GetString("googlecloud.subscription.ls.topic")
+		verbose := viper.GetBool("googlecloud.subscription.ls.verbose")
+
+		logger := logger
+		if topic != "" {
+			logger = logger.With(watermill.LogFields{
+				"topic": topic,
+			})
+		}
+		logger.Info("Listing all subscriptions", nil)
+
+		return listSubscriptions(topic, logger, verbose)
 	},
 }
 
@@ -256,6 +278,120 @@ func removeSubscription(id string) error {
 	return sub.Delete(ctx)
 }
 
+func listSubscriptions(topic string, adapter watermill.LoggerAdapter, verbose bool) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	client, err := pubsub.NewClient(ctx, projectID())
+	if err != nil {
+		return errors.Wrap(err, "could not create pubsub client")
+	}
+
+	if topic != "" {
+		topic := client.Topic(topic)
+		return listSubscriptionsForTopic(ctx, client, topic, logger, verbose)
+	}
+
+	it := client.Topics(ctx)
+	noTopics := true
+	for {
+		topic, err := it.Next()
+		if err == iterator.Done {
+			if noTopics {
+				logger.Info("No topics in project", nil)
+			}
+			return nil
+		}
+		if err != nil {
+			return errors.Wrap(err, "could not retrieve next subscription")
+		}
+
+		noTopics = false
+		err = listSubscriptionsForTopic(ctx, client, topic, logger, verbose)
+		if err != nil {
+			return errors.Wrap(err, "error listing subscriptions for topic")
+		}
+	}
+
+	return nil
+}
+
+func listSubscriptionsForTopic(ctx context.Context, client *pubsub.Client, topic *pubsub.Topic, logger watermill.LoggerAdapter, verbose bool) error {
+	noSubs := true
+	exists, err := topic.Exists(ctx)
+	if err != nil {
+		return errors.Wrap(err, "could not check if topic exists")
+	}
+	if !exists {
+		logger.Info("Topic does not exist", watermill.LogFields{"topic": topic.String()})
+		return nil
+	}
+
+	it := topic.Subscriptions(ctx)
+	for {
+		sub, err := it.Next()
+		if err == iterator.Done {
+			if noSubs {
+				logger.Info("No subscriptions for the topic", watermill.LogFields{"topic": topic.String()})
+			}
+			return nil
+		}
+		if err != nil {
+			return errors.Wrap(err, "could not retrieve next subscription")
+		}
+
+		if noSubs {
+			noSubs = false
+			fmt.Printf("Topic %s:\n", topic.String())
+		}
+		name := sub.String()
+		config, err := sub.Config(ctx)
+		if err != nil {
+			return errors.Wrapf(err, "could not retrieve subscription config for subscription '%s'", name)
+		}
+
+		err = printSubscriptionInfo(name, config)
+		if err != nil {
+			return errors.Wrapf(err, "error printing subscription '%s'", name)
+		}
+	}
+}
+
+func printSubscriptionInfo(name string, config pubsub.SubscriptionConfig) error {
+	b, err := yaml.Marshal(subscriptionConfig{
+		Name: name,
+		PushConfig: subscriptionConfigPushConfig{
+			Endpoint:   config.PushConfig.Endpoint,
+			Attributes: config.PushConfig.Attributes,
+		},
+		AckDeadline:         config.AckDeadline,
+		RetainAckedMessages: config.RetainAckedMessages,
+		RetentionDuration:   config.RetentionDuration,
+		Labels:              config.Labels,
+	})
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf(internal.Indent(string(b), "  "))
+	return nil
+}
+
+// subscriptionConfig provides a marshallable form to pubsub.SubscriptionConfig
+type subscriptionConfig struct {
+	Name                string
+	PushConfig          subscriptionConfigPushConfig `yaml:"push_config"`
+	AckDeadline         time.Duration                `yaml:"ack_deadline"`
+	RetainAckedMessages bool                         `yaml:"retain_acked_messages"`
+	RetentionDuration   time.Duration                `yaml:"retention_duration"`
+	Labels              map[string]string            `yaml:"labels"`
+}
+
+type subscriptionConfigPushConfig struct {
+	Endpoint   string
+	Attributes map[string]string
+}
+
 func projectID() string {
 	projectID := viper.GetString("googlecloud.projectID")
 	if projectID == "" {
@@ -272,10 +408,10 @@ func init() {
 		"topic",
 		"t",
 		"",
-		"The topic to produce messages to (produce), consume message from (consume) or the topic for the newly created subscription (subscription.add)",
+		"The topic to produce messages to (produce), consume message from (consume), list from (ls) or the topic for the newly created subscription (subscription.add)",
 	)
-	ensure(googleCloudCmd.MarkPersistentFlagRequired("topic"))
 	ensure(viper.BindPFlag("googlecloud.topic", googleCloudCmd.PersistentFlags().Lookup("topic")))
+	ensure(googleCloudCmd.MarkPersistentFlagRequired("topic"))
 
 	consumeCmd := addConsumeCmd(googleCloudCmd, "googlecloud.topic")
 	addProduceCmd(googleCloudCmd, "googlecloud.topic")
@@ -295,7 +431,6 @@ func init() {
 
 	googleCloudCmd.AddCommand(googleCloudSubscriptionCmd)
 	googleCloudSubscriptionCmd.AddCommand(googleCloudSubscriptionAddCmd)
-	googleCloudSubscriptionCmd.AddCommand(googleCloudSubscriptionRmCmd)
 
 	googleCloudSubscriptionAddCmd.Flags().StringP("topic", "t", "", "The topic for the new subscription (required)")
 	ensure(googleCloudSubscriptionAddCmd.MarkFlagRequired("topic"))
@@ -330,4 +465,23 @@ func init() {
 		"The set of labels for the subscription. Format: '--labels key1=value1,key2=value2,...'",
 	)
 	ensure(viper.BindPFlag("googlecloud.subscription.add.labels", googleCloudSubscriptionAddCmd.Flags().Lookup("labels")))
+
+	googleCloudSubscriptionCmd.AddCommand(googleCloudSubscriptionRmCmd)
+
+	googleCloudSubscriptionCmd.AddCommand(googleCloudSubscriptionLsCmd)
+	googleCloudSubscriptionLsCmd.Flags().StringP(
+		"topic",
+		"t",
+		"",
+		"The topic for the new subscription (optional, will list subscriptions for all topics if omitted)",
+	)
+	ensure(viper.BindPFlag("googlecloud.subscription.ls.topic", googleCloudSubscriptionLsCmd.Flags().Lookup("topic")))
+
+	googleCloudSubscriptionLsCmd.Flags().BoolP(
+		"verbose",
+		"v",
+		false,
+		"will print more information, including the subscription config",
+	)
+	ensure(viper.BindPFlag("googlecloud.subscription.ls.verbose", googleCloudSubscriptionLsCmd.Flags().Lookup("verbose")))
 }
