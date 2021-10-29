@@ -33,7 +33,7 @@ Firestore documentation: <https://firebase.google.com/docs/firestore/>
 
 | Feature             | Implements | Note |
 | -------             | ---------- | ---- |
-| ConsumerGroups      | no         |      |
+| ConsumerGroups      | yes        |      |
 | ExactlyOnceDelivery | no         |      |
 | GuaranteedOrder     | no         |      |
 | Persistent          | yes        |      |
