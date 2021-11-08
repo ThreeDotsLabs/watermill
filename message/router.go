@@ -287,6 +287,73 @@ func (r *Router) AddNoPublisherHandler(
 	return r.AddHandler(handlerName, subscribeTopic, subscriber, "", disabledPublisher{}, handlerFuncAdapter)
 }
 
+// AddAndRunNoPublisherHandler adds a new handler and subscribes it to provided topics.
+// This adds a new handler to the call blocking the router that's running.
+// This handler cannot return messages.
+// When message is returned it will occur an error and Nack will be sent.
+//
+// handlerName must be unique. For now, it is used only for debugging.
+//
+// subscribeTopic is a topic from which handler will receive messages.
+//
+// subscriber is Subscriber from which messages will be consumed.
+// ctx will be propagated to all subscribers.
+func (r *Router) AddAndRunNoPublisherHandler(
+       ctx context.Context,
+       handlerName string,
+       subscribeTopic string,
+       subscriber DynamicSubscriber,
+       handlerFunc NoPublishHandlerFunc,
+) (err error) {
+
+       // To add and run a dynamic handler, router should have been running previously
+       if !r.isRunning {
+               return errors.New("router is not running")
+       }
+
+       if _, ok := r.handlers[handlerName]; ok {
+               return errors.Wrapf(err, "unable to add existing handler %s", handlerName)
+       }
+
+       r.AddNoPublisherHandler(handlerName, subscribeTopic, subscriber, handlerFunc)
+
+       handler, ok := r.handlers[handlerName]
+       if !ok {
+               return errors.Wrapf(err, "unable to get handler %s", handlerName)
+       }
+
+       r.logger.Debug("Applying decorators", nil)
+       if err := r.decorateHandler(handlerName, handler); err != nil {
+               delete(r.handlers, handlerName)
+               return err
+       }
+
+       r.logger.Debug("Subscribing to topic", watermill.LogFields{
+               "subscriber_name": handlerName,
+               "topic":           subscribeTopic,
+       })
+
+       ctx, cancel := context.WithCancel(ctx)
+       close, messages, err := subscriber.DynamicSubscribe(ctx, subscribeTopic)
+       if err != nil {
+               cancel()
+               delete(r.handlers, handlerName)
+               return errors.Wrapf(
+                       err,
+                       "cannot subscribe topic %s for handler %s",
+                       subscribeTopic,
+                       handlerName,
+               )
+       }
+
+       handler.messagesCh = messages
+       handler.unsubscribeCh = close
+
+       r.runHandler(handler)
+
+       return nil
+}
+
 // Run runs all plugins and handlers and starts subscribing to provided topics.
 // This call is blocking while the router is running.
 //
@@ -315,11 +382,8 @@ func (r *Router) Run(ctx context.Context) (err error) {
 
 	r.logger.Debug("Applying decorators", nil)
 	for name, h := range r.handlers {
-		if err = r.decorateHandlerPublisher(h); err != nil {
-			return errors.Wrapf(err, "could not decorate publisher of handler %s", name)
-		}
-		if err = r.decorateHandlerSubscriber(h); err != nil {
-			return errors.Wrapf(err, "could not decorate subscriber of handler %s", name)
+		if err = r.decorateHandler(name, h); err != nil {
+			return err
 		}
 	}
 
@@ -340,17 +404,7 @@ func (r *Router) Run(ctx context.Context) (err error) {
 	for i := range r.handlers {
 		handler := r.handlers[i]
 
-		r.handlersWg.Add(1)
-
-		go func() {
-			handler.run(r.middlewares)
-
-			r.handlersWg.Done()
-			r.logger.Info("Subscriber stopped", watermill.LogFields{
-				"subscriber_name": handler.name,
-				"topic":           handler.subscribeTopic,
-			})
-		}()
+		r.runHandler(handler)
 	}
 
 	close(r.running)
@@ -369,6 +423,33 @@ func (r *Router) Run(ctx context.Context) (err error) {
 	r.logger.Info("All messages processed", nil)
 
 	return nil
+}
+
+
+// Decorates a handler with router decorators.
+func (router *Router) decorateHandler(handlerName string, handler *handler) (err error) {
+	if err := router.decorateHandlerPublisher(handler); err != nil {
+		return errors.Wrapf(err, "could not decorate publisher of handler %s", handlerName)
+	}
+	if err = router.decorateHandlerSubscriber(handler); err != nil {
+		return errors.Wrapf(err, "could not decorate subscriber of handler %s", handlerName)
+	}
+	return nil
+}
+
+// Runs the router middlewares of a handler, and adds a new element to handlers wait group.
+func (router *Router) runHandler(handler *handler) {
+	router.handlersWg.Add(1)
+
+	go func() {
+		handler.run(router.middlewares)
+
+		router.handlersWg.Done()
+		router.logger.Info("Subscriber stopped", watermill.LogFields{
+			"subscriber_name": handler.name,
+			"topic":           handler.subscribeTopic,
+		})
+	}()
 }
 
 // closeWhenAllHandlersStopped closed router, when all handlers has stopped,
@@ -421,6 +502,26 @@ func (r *Router) Close() error {
 	return nil
 }
 
+// StopAndRemoveHandler stops the subscriber associated with the given handler,
+// and removes it from the handlers managed by the router.
+func (r *Router) StopAndRemoveHandler(handlerName string) (err error) {
+	if r.closed {
+		return nil
+	}
+
+	handler, ok := r.handlers[handlerName]
+	if !ok {
+		return errors.Wrapf(err, "invalid handler %s", handlerName)
+	}
+
+	if err = handler.unsubscribe(); err != nil {
+		return err
+	}
+
+	delete(r.handlers, handlerName)
+	return nil
+}
+
 func (r *Router) isClosed() bool {
 	r.closedLock.Lock()
 	defer r.closedLock.Unlock()
@@ -445,6 +546,7 @@ type handler struct {
 	runningHandlersWg *sync.WaitGroup
 
 	messagesCh <-chan *Message
+	unsubscribeCh chan bool
 
 	closeCh chan struct{}
 }
@@ -499,6 +601,21 @@ func (h *Handler) AddMiddleware(m ...HandlerMiddleware) {
 	})
 
 	h.router.addHandlerLevelMiddleware(handler.name, m...)
+}
+
+// unsubscribe closes the unsubscribe channel, thus unsubscribing the handler subscriber.
+func (h *handler) unsubscribe() (err error) {
+	if h.unsubscribeCh == nil {
+		return errors.Wrap(err, "invalid dynamic handler")
+	}
+
+	h.logger.Debug("Waiting for subscriber to unsubscribe", nil)
+
+	close(h.unsubscribeCh)
+
+	h.logger.Debug("Subscriber unsubscribed", nil)
+
+	return nil
 }
 
 // decorateHandlerPublisher applies the decorator chain to handler's publisher.

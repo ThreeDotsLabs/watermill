@@ -171,11 +171,6 @@ func (g *GoChannel) Subscribe(ctx context.Context, topic string) (<-chan *messag
 	g.subscribersWg.Add(1)
 	g.closedLock.Unlock()
 
-	g.subscribersLock.Lock()
-
-	subLock, _ := g.subscribersByTopicLock.LoadOrStore(topic, &sync.Mutex{})
-	subLock.(*sync.Mutex).Lock()
-
 	s := &subscriber{
 		ctx:           ctx,
 		uuid:          watermill.NewUUID(),
@@ -184,11 +179,49 @@ func (g *GoChannel) Subscribe(ctx context.Context, topic string) (<-chan *messag
 		closing:       make(chan struct{}),
 	}
 
+	return subscribe(ctx, s, g, topic), nil
+}
+
+// Dynamic subscribe returns channel to which all published messages are sent, and a channel to close it.
+// Messages are not persisted. If there are no subscribers and message is produced it will be gone.
+//
+// There are no consumer groups support etc. Every consumer will receive every produced message.
+func (g *GoChannel) DynamicSubscribe(ctx context.Context, topic string) (chan bool, <-chan *message.Message, error) {
+	g.closedLock.Lock()
+
+	if g.closed {
+		return nil, nil, errors.New("Pub/Sub closed")
+	}
+
+	g.subscribersWg.Add(1)
+	g.closedLock.Unlock()
+
+	s := &subscriber{
+		ctx:           ctx,
+		uuid:          watermill.NewUUID(),
+		outputChannel: make(chan *message.Message, g.config.OutputChannelBuffer),
+		logger:        g.logger,
+		closing:       make(chan struct{}),
+		close:         make(chan bool),
+	}
+
+	return s.close, subscribe(ctx, s, g, topic), nil
+}
+
+func subscribe(ctx context.Context, s *subscriber, g *GoChannel, topic string) <-chan *message.Message {
+
+	g.subscribersLock.Lock()
+
+	subLock, _ := g.subscribersByTopicLock.LoadOrStore(topic, &sync.Mutex{})
+	subLock.(*sync.Mutex).Lock()
+
 	go func(s *subscriber, g *GoChannel) {
 		select {
 		case <-ctx.Done():
 			// unblock
 		case <-g.closing:
+			// unblock
+		case <-s.close:
 			// unblock
 		}
 
@@ -211,7 +244,7 @@ func (g *GoChannel) Subscribe(ctx context.Context, topic string) (<-chan *messag
 
 		g.addSubscriber(topic, s)
 
-		return s.outputChannel, nil
+		return s.outputChannel
 	}
 
 	go func(s *subscriber) {
@@ -234,7 +267,7 @@ func (g *GoChannel) Subscribe(ctx context.Context, topic string) (<-chan *messag
 		g.addSubscriber(topic, s)
 	}(s)
 
-	return s.outputChannel, nil
+	return s.outputChannel
 }
 
 func (g *GoChannel) addSubscriber(topic string, s *subscriber) {
@@ -305,6 +338,7 @@ type subscriber struct {
 	logger  watermill.LoggerAdapter
 	closed  bool
 	closing chan struct{}
+	close   chan bool
 }
 
 func (s *subscriber) Close() {

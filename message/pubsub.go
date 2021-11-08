@@ -33,6 +33,15 @@ type Subscriber interface {
 	Close() error
 }
 
+type DynamicSubscriber interface {
+	// Embeds subscriber interface
+	Subscriber
+	// DynamicSubscribe returns output channel with messages from provided topic,
+	// and also returns close channel to stop subscription from a topic.
+	// Implements same Subscribe functionality present in Subscriber interface
+	DynamicSubscribe(ctx context.Context, topic string) (chan bool, <-chan *Message, error)
+}
+
 type SubscribeInitializer interface {
 	// SubscribeInitialize can be called to initialize subscribe before consume.
 	// When calling Subscribe before Publish, SubscribeInitialize should be not required.
