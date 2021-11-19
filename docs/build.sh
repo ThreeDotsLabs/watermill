@@ -73,6 +73,7 @@ cloneOrPull "https://github.com/ThreeDotsLabs/watermill-kafka.git" content/src-l
 cloneOrPull "https://github.com/ThreeDotsLabs/watermill-nats.git" content/src-link/watermill-nats
 cloneOrPull "https://github.com/ThreeDotsLabs/watermill-sql.git" content/src-link/watermill-sql
 cloneOrPull "https://github.com/ThreeDotsLabs/watermill-firestore.git" content/src-link/watermill-firestore
+cloneOrPull "https://github.com/ThreeDotsLabs/watermill-bolt.git" content/src-link/watermill-bolt
 
 
 python3 ./extract_middleware_godocs.py > content/src-link/middleware-defs.md
