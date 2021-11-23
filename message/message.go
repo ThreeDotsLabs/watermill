@@ -12,8 +12,11 @@ func init() {
 	close(closedchan)
 }
 
+// Payload is the Message's payload.
 type Payload []byte
 
+// Message is the basic transfer unit.
+// Messages are emitted by Publishers and received by Subscribers.
 type Message struct {
 	// UUID is an unique identifier of message.
 	//
@@ -23,13 +26,13 @@ type Message struct {
 
 	// Metadata contains the message metadata.
 	//
-	// Can be used to store data which doesn't require unmarshaling entire payload.
+	// Can be used to store data which doesn't require unmarshaling the entire payload.
 	// It is something similar to HTTP request's headers.
 	//
-	// Metadata is marshaled and will be saved to PubSub.
+	// Metadata is marshaled and will be saved to the PubSub.
 	Metadata Metadata
 
-	// Payload is message's payload.
+	// Payload is the message's payload.
 	Payload Payload
 
 	// ack is closed, when acknowledge is received.
@@ -43,6 +46,7 @@ type Message struct {
 	ctx context.Context
 }
 
+// NewMessage creates a new Message with given uuid and payload.
 func NewMessage(uuid string, payload Payload) *Message {
 	return &Message{
 		UUID:     uuid,

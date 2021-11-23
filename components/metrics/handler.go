@@ -37,6 +37,7 @@ type HandlerPrometheusMetricsMiddleware struct {
 	handlerExecutionTimeSeconds *prometheus.HistogramVec
 }
 
+// Middleware returns the middleware ready to be used with watermill's Router.
 func (m HandlerPrometheusMetricsMiddleware) Middleware(h message.HandlerFunc) message.HandlerFunc {
 	return func(msg *message.Message) (msgs []*message.Message, err error) {
 		now := time.Now()
@@ -58,6 +59,7 @@ func (m HandlerPrometheusMetricsMiddleware) Middleware(h message.HandlerFunc) me
 	}
 }
 
+// NewRouterMiddleware returns new middleware.
 func (b PrometheusMetricsBuilder) NewRouterMiddleware() HandlerPrometheusMetricsMiddleware {
 	var err error
 	m := HandlerPrometheusMetricsMiddleware{}

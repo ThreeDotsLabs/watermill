@@ -10,11 +10,13 @@ import (
 	"github.com/pkg/errors"
 )
 
+// ProtobufMarshaler is the default Protocol Buffers marshaler.
 type ProtobufMarshaler struct {
 	NewUUID      func() string
 	GenerateName func(v interface{}) string
 }
 
+// NoProtoMessageError is returned when the given value does not implement proto.Message.
 type NoProtoMessageError struct {
 	v interface{}
 }
@@ -28,6 +30,7 @@ func (e NoProtoMessageError) Error() string {
 	return "v is not proto.Message"
 }
 
+// Marshal marshals the given protobuf's message into watermill's Message.
 func (m ProtobufMarshaler) Marshal(v interface{}) (*message.Message, error) {
 	protoMsg, ok := v.(proto.Message)
 	if !ok {
@@ -57,10 +60,12 @@ func (m ProtobufMarshaler) newUUID() string {
 	return watermill.NewUUID()
 }
 
+// Unmarshal unmarshals given watermill's Message into protobuf's message.
 func (ProtobufMarshaler) Unmarshal(msg *message.Message, v interface{}) (err error) {
 	return proto.Unmarshal(msg.Payload, v.(proto.Message))
 }
 
+// Name returns the command or event's name.
 func (m ProtobufMarshaler) Name(cmdOrEvent interface{}) string {
 	if m.GenerateName != nil {
 		return m.GenerateName(cmdOrEvent)
@@ -69,6 +74,7 @@ func (m ProtobufMarshaler) Name(cmdOrEvent interface{}) string {
 	return FullyQualifiedStructName(cmdOrEvent)
 }
 
+// NameFromMessage returns the metadata name value for a given Message.
 func (m ProtobufMarshaler) NameFromMessage(msg *message.Message) string {
 	return msg.Metadata.Get("name")
 }
