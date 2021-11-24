@@ -11,8 +11,10 @@ import (
 	"sync"
 )
 
+// LogFields is the logger's key-value list of fields.
 type LogFields map[string]interface{}
 
+// Add adds new fields to the list of LogFields.
 func (l LogFields) Add(newFields LogFields) LogFields {
 	resultFields := make(LogFields, len(l)+len(newFields))
 
@@ -26,6 +28,7 @@ func (l LogFields) Add(newFields LogFields) LogFields {
 	return resultFields
 }
 
+// Copy copies the LogFields.
 func (l LogFields) Copy() LogFields {
 	cpy := make(LogFields, len(l))
 	for k, v := range l {
