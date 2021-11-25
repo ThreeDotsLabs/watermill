@@ -5,10 +5,10 @@ import (
 	"time"
 
 	"github.com/ThreeDotsLabs/watermill/pubsub/tests"
-
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/subscriber"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -71,13 +71,10 @@ func TestBulkRead_timeout(t *testing.T) {
 			messagesCount := 100
 			sendLimit := 90
 
-			var messages []*message.Message
 			messagesCh := make(chan *message.Message, messagesCount)
 
 			for i := 0; i < messagesCount; i++ {
 				msg := message.NewMessage(watermill.NewUUID(), nil)
-
-				messages = append(messages, msg)
 
 				if i < sendLimit {
 					messagesCh <- msg
@@ -114,13 +111,11 @@ func TestBulkRead_with_limit(t *testing.T) {
 			messagesCount := 110
 			limit := 100
 
-			var messages []*message.Message
 			messagesCh := make(chan *message.Message, messagesCount)
 
 			for i := 0; i < messagesCount; i++ {
 				msg := message.NewMessage(watermill.NewUUID(), nil)
 
-				messages = append(messages, msg)
 				messagesCh <- msg
 			}
 
@@ -151,13 +146,11 @@ func TestBulkRead_return_on_channel_close(t *testing.T) {
 			messagesCount := 100
 			sendLimit := 90
 
-			var messages []*message.Message
 			messagesCh := make(chan *message.Message, messagesCount)
 			messagesChClosed := false
 
 			for i := 0; i < messagesCount; i++ {
 				msg := message.NewMessage(watermill.NewUUID(), nil)
-				messages = append(messages, msg)
 
 				if i < sendLimit {
 					messagesCh <- msg
