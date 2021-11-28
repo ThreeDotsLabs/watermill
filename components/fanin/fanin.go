@@ -26,7 +26,6 @@ type Config struct {
 // on a specified topic in the publisher. In effect, messages are "multiplexed".
 type FanIn struct {
 	router    *message.Router
-	publisher message.Publisher
 	config    Config
 	logger    watermill.LoggerAdapter
 }
@@ -108,7 +107,6 @@ func NewFanIn(
 
 	return &FanIn{
 		router:    router,
-		publisher: publisher,
 		config:    config,
 		logger:    logger,
 	}, nil
