@@ -48,6 +48,7 @@ type CommandProcessor struct {
 	logger    watermill.LoggerAdapter
 }
 
+// NewCommandProcessor creates a new CommandProcessor.
 func NewCommandProcessor(
 	handlers []CommandHandler,
 	generateTopic func(commandName string) string,
@@ -80,6 +81,7 @@ func NewCommandProcessor(
 	}, nil
 }
 
+// DuplicateCommandHandlerError occurs when a handler with the same name already exists.
 type DuplicateCommandHandlerError struct {
 	CommandName string
 }
@@ -88,6 +90,7 @@ func (d DuplicateCommandHandlerError) Error() string {
 	return fmt.Sprintf("command handler for command %s already exists", d.CommandName)
 }
 
+// AddHandlersToRouter adds the CommandProcessor's handlers to the given router.
 func (p CommandProcessor) AddHandlersToRouter(r *message.Router) error {
 	handledCommands := map[string]struct{}{}
 
@@ -130,6 +133,7 @@ func (p CommandProcessor) AddHandlersToRouter(r *message.Router) error {
 	return nil
 }
 
+// Handlers returns the CommandProcessor's handlers.
 func (p CommandProcessor) Handlers() []CommandHandler {
 	return p.handlers
 }

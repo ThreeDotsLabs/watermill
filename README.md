@@ -37,6 +37,7 @@ Pick what you like the best or see in order:
 * [Pub/Subs usage](_examples/pubsubs)
     * These examples are part of the [Getting started guide](https://watermill.io/docs/getting-started/) and show usage of a single Pub/Sub at a time.
 * Real-world examples
+    * [Exactly-once delivery counter](_examples/real-world-examples/exactly-once-delivery-counter)
     * [Receiving webhooks](_examples/real-world-examples/receiving-webhooks)
     * [Sending webhooks](_examples/real-world-examples/sending-webhooks)
     * [Synchronizing Databases](_examples/real-world-examples/synchronizing-databases)
@@ -88,6 +89,8 @@ Supported Pub/Subs:
 
 
 - AMQP Pub/Sub [(`github.com/ThreeDotsLabs/watermill-amqp`)](https://github.com/ThreeDotsLabs/watermill-amqp/)
+- Bolt Pub/Sub [(`github.com/ThreeDotsLabs/watermill-bolt`)](https://github.com/ThreeDotsLabs/watermill-bolt/)
+- Firestore Pub/Sub [(`github.com/ThreeDotsLabs/watermill-firestore`)](https://github.com/ThreeDotsLabs/watermill-firestore/)
 - Google Cloud Pub/Sub [(`github.com/ThreeDotsLabs/watermill-googlecloud`)](https://github.com/ThreeDotsLabs/watermill-googlecloud/)
 - HTTP Pub/Sub [(`github.com/ThreeDotsLabs/watermill-http`)](https://github.com/ThreeDotsLabs/watermill-http/)
 - io.Reader/io.Writer Pub/Sub [(`github.com/ThreeDotsLabs/watermill-io`)](https://github.com/ThreeDotsLabs/watermill-io/)
@@ -139,7 +142,7 @@ Here's the short version for message size of 16 bytes.
 
 If you didn't find the answer to your question in [the documentation](https://watermill.io/), feel free to ask us directly!
 
-Please join us on the `#watermill` channel on the [Gophers slack](https://gophers.slack.com/): You can get an invite [here](https://gophersinvite.herokuapp.com/).
+Please join us on the `#watermill` channel on the [Three Dots Labs Discord](https://discord.gg/QV6VFg4YQE).
 
 Every bit of feedback is very welcome and appreciated. Please submit it using [the survey](https://www.surveymonkey.com/r/WZXD392).
 

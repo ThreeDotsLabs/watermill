@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"reflect"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -185,7 +186,7 @@ func runTest(
 	})
 }
 
-var stressTestTestsCount = 10
+const defaultStressTestTestsCount = 10
 
 func TestPubSubStressTest(
 	t *testing.T,
@@ -193,7 +194,12 @@ func TestPubSubStressTest(
 	pubSubConstructor PubSubConstructor,
 	consumerGroupPubSubConstructor ConsumerGroupPubSubConstructor,
 ) {
-	for i := 0; i < stressTestTestsCount; i++ {
+	stressTestsCount, _ := strconv.ParseInt(os.Getenv("STRESS_TEST_COUNT"), 10, 64)
+	if stressTestsCount == 0 {
+		stressTestsCount = defaultStressTestTestsCount
+	}
+
+	for i := 0; i < int(stressTestsCount); i++ {
 		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
 			t.Parallel()
 			TestPubSub(t, features, pubSubConstructor, consumerGroupPubSubConstructor)
@@ -388,7 +394,7 @@ func TestPublishSubscribeInOrder(
 
 	for i := 0; i < messagesCount; i++ {
 		id := watermill.NewUUID()
-		msgType := fmt.Sprint(i % 16)
+		msgType := fmt.Sprintf("%d", i%16)
 
 		msg := message.NewMessage(id, []byte(msgType))
 
@@ -782,8 +788,8 @@ func TestConsumerGroups(
 
 	messagesToPublish := PublishSimpleMessages(t, totalMessagesCount, publisherPub, topicName)
 
-	assertConsumerGroupReceivedMessages(t, pubSubConstructor, group1, topicName, messagesToPublish)
-	assertConsumerGroupReceivedMessages(t, pubSubConstructor, group2, topicName, messagesToPublish)
+	assertConsumerGroupReceivedMessages(t, tCtx, pubSubConstructor, group1, topicName, messagesToPublish)
+	assertConsumerGroupReceivedMessages(t, tCtx, pubSubConstructor, group2, topicName, messagesToPublish)
 }
 
 // TestPublisherClose sends big amount of messages and them run close to ensure that messages are not lost during adding.
@@ -1154,6 +1160,7 @@ func restartServer(t *testing.T, features Features) {
 
 func assertConsumerGroupReceivedMessages(
 	t *testing.T,
+	tCtx TestContext,
 	pubSubConstructor ConsumerGroupPubSubConstructor,
 	consumerGroup string,
 	topicName string,
@@ -1165,7 +1172,7 @@ func assertConsumerGroupReceivedMessages(
 	messages, err := sub.Subscribe(context.Background(), topicName)
 	require.NoError(t, err)
 
-	receivedMessages, all := subscriber.BulkRead(messages, len(expectedMessages), defaultTimeout)
+	receivedMessages, all := bulkRead(tCtx, messages, len(expectedMessages), defaultTimeout)
 	assert.True(t, all)
 
 	AssertAllMessagesReceived(t, expectedMessages, receivedMessages)
@@ -1189,6 +1196,9 @@ func generateConsumerGroup(t *testing.T, pubSubConstructor ConsumerGroupPubSubCo
 	// create a pubsub to ensure that the consumer group exists
 	// for those providers that require subscription before publishing messages (e.g. Google Cloud PubSub)
 	pub, sub := pubSubConstructor(t, groupName)
+	if subInitializer, ok := sub.(message.SubscribeInitializer); ok {
+		require.NoError(t, subInitializer.SubscribeInitialize(topicName))
+	}
 	_, err := sub.Subscribe(context.Background(), topicName)
 	require.NoError(t, err)
 	closePubSub(t, pub, sub)

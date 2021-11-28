@@ -2,7 +2,7 @@
 
 ## How can I help?
 
-We are always happy to help you in contributing to Watermill. If you have any ideas, please let us know on our [Slack channel](https://github.com/ThreeDotsLabs/watermill#support).
+We are always happy to help you in contributing to Watermill. If you have any ideas, please let us know on our [Discord server](https://watermill.io/support/).
 
 There are multiple ways in which you can help us.
 
@@ -25,7 +25,7 @@ When adding a new Pub/Sub implementation, you should start with this guide: [htt
 ### New ideas
 
 If you have any idea that is not covered in the issues list, please post a new issue describing it. 
-It's recommended to discuss your idea on Slack/GitHub before creating production-ready implementation - in some situations, it may save a lot of your time before implementing something that can be simplified or done more easily. :)
+It's recommended to discuss your idea on [Discord](https://discord.gg/QV6VFg4YQE)/GitHub before creating production-ready implementation - in some situations, it may save a lot of your time before implementing something that can be simplified or done more easily. :)
 
 In general, it's helpful to discuss a Proof of Concept to align with the idea.
 

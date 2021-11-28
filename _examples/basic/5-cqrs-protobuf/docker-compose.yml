@@ -1,7 +1,7 @@
 version: '3'
 services:
   golang:
-    image: golang:1.12
+    image: golang:1.17
     restart: unless-stopped
     ports:
     - 8080:8080

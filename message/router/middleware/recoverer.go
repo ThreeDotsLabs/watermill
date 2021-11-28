@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+// RecoveredPanicError holds the recovered panic's error along with the stacktrace.
 type RecoveredPanicError struct {
 	V          interface{}
 	Stacktrace string
