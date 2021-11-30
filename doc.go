@@ -1,4 +1,4 @@
-// Watermill is a Golang library for working efficiently with message streams.
+// Package watermill is a Golang library for working efficiently with message streams.
 //
 // It is intended for building event driven applications,
 // enabling event sourcing, RPC over messages, sagas

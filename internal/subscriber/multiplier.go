@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+// Constructor is a function that creates a subscriber.
 type Constructor func() (message.Subscriber, error)
 
 type multiplier struct {
