@@ -133,10 +133,12 @@ func RunOnlyFastTests() bool {
 	return testing.Short() && !internal.RaceEnabled
 }
 
+// PubSubConstructor is a function that creates a Publisher and a Subscriber.
 type PubSubConstructor func(t *testing.T) (message.Publisher, message.Subscriber)
+// ConsumerGroupPubSubConstructor is a function that creates a Publisher and a Subscriber that use given consumer group.
 type ConsumerGroupPubSubConstructor func(t *testing.T, consumerGroup string) (message.Publisher, message.Subscriber)
 
-// deprecated: not used anywhere internally
+// SimpleMessage is deprecated: not used anywhere internally
 type SimpleMessage struct {
 	Num int `json:"num"`
 }
@@ -148,12 +150,15 @@ func getTestName(testFunc interface{}) string {
 	return nameSliced[len(nameSliced)-1]
 }
 
+// TestID is a unique ID of a test.
 type TestID string
 
+// NewTestID returns a new unique TestID.
 func NewTestID() TestID {
 	return TestID(watermill.NewUUID())
 }
 
+// TestContext is a collection of values that belong to a single test.
 type TestContext struct {
 	// Unique ID of the test
 	TestID TestID
@@ -188,6 +193,7 @@ func runTest(
 
 const defaultStressTestTestsCount = 10
 
+// TestPubSubStressTest runs stress tests on a chosen Pub/Sub.
 func TestPubSubStressTest(
 	t *testing.T,
 	features Features,
@@ -207,6 +213,7 @@ func TestPubSubStressTest(
 	}
 }
 
+// TestPublishSubscribe runs basic publish and subscribe tests on a chosen Pub/Sub.
 func TestPublishSubscribe(
 	t *testing.T,
 	tCtx TestContext,
@@ -254,6 +261,7 @@ func TestPublishSubscribe(
 	assertMessagesChannelClosed(t, messages)
 }
 
+// TestConcurrentSubscribe tests subscribing to messages by multiple concurrent subscribers.
 func TestConcurrentSubscribe(
 	t *testing.T,
 	tCtx TestContext,
@@ -296,6 +304,7 @@ func TestConcurrentSubscribe(
 	AssertAllMessagesReceived(t, publishedMessages, receivedMessages)
 }
 
+// TestConcurrentSubscribeMultipleTopics tests subscribing to messages by concurrent subscribers on multiple topics.
 func TestConcurrentSubscribeMultipleTopics(
 	t *testing.T,
 	tCtx TestContext,
@@ -366,6 +375,8 @@ func TestConcurrentSubscribeMultipleTopics(
 	assert.Equal(t, topicsCount, topicsReceivedMessages)
 }
 
+// TestPublishSubscribeInOrder tests if published messages are received in a proper order.
+// This test is skipped for Pub/Subs that don't support GuaranteedOrder feature.
 func TestPublishSubscribeInOrder(
 	t *testing.T,
 	tCtx TestContext,
@@ -444,6 +455,7 @@ func TestPublishSubscribeInOrder(
 	}
 }
 
+// TestResendOnError tests if messages are re-delivered after the subscriber fails to process them.
 func TestResendOnError(
 	t *testing.T,
 	tCtx TestContext,
@@ -491,6 +503,8 @@ NackLoop:
 	AssertAllMessagesReceived(t, publishedMessages, receivedMessages)
 }
 
+// TestNoAck tests if no new messages are received by the subscriber until the previous message is acknowledged.
+// This test is skipped for Pub/Subs that don't support GuaranteedOrder feature.
 func TestNoAck(
 	t *testing.T,
 	tCtx TestContext,
@@ -655,6 +669,7 @@ func TestContinueAfterSubscribeClose(
 	AssertAllMessagesReceived(t, publishedMessages, uniqueReceivedMessages)
 }
 
+// TestConcurrentClose tests if the Pub/Sub works correctly when subscribers are being closed concurrently.
 func TestConcurrentClose(
 	t *testing.T,
 	tCtx TestContext,
@@ -705,6 +720,7 @@ func TestConcurrentClose(
 	closePubSub(t, pub, sub)
 }
 
+// TestContinueAfterErrors tests if messages are processed again after an initial failure.
 func TestContinueAfterErrors(
 	t *testing.T,
 	tCtx TestContext,
@@ -765,6 +781,8 @@ func TestContinueAfterErrors(
 	AssertAllMessagesReceived(t, messagesToPublish, receivedMessages)
 }
 
+// TestConsumerGroups tests if the consumer groups feature behaves correctly.
+// This test is skipped for Pub/Sub that don't support ConsumerGroups feature.
 func TestConsumerGroups(
 	t *testing.T,
 	tCtx TestContext,
@@ -820,6 +838,7 @@ func TestPublisherClose(
 	AssertAllMessagesReceived(t, producedMessages, receivedMessages)
 }
 
+// TestTopic tests if different topics work correctly in a Pub/Sub.
 func TestTopic(
 	t *testing.T,
 	tCtx TestContext,
@@ -860,6 +879,7 @@ func TestTopic(
 	assert.Equal(t, messagesConsumedTopic2.IDs()[0], topic2Msg.UUID)
 }
 
+// TestMessageCtx tests if the Message's Context works correctly.
 func TestMessageCtx(
 	t *testing.T,
 	tCtx TestContext,
@@ -934,6 +954,7 @@ func TestMessageCtx(
 	}
 }
 
+// TestSubscribeCtx tests if the Subscriber's Context works correctly.
 func TestSubscribeCtx(
 	t *testing.T,
 	tCtx TestContext,
@@ -986,6 +1007,7 @@ ClosedLoop:
 	}
 }
 
+// TestReconnect tests if reconnecting to a Pub/Sub works correctly.
 func TestReconnect(
 	t *testing.T,
 	tCtx TestContext,
@@ -1069,6 +1091,7 @@ func TestReconnect(
 	closePubSub(t, pub, sub)
 }
 
+// TestNewSubscriberReceivesOldMessages tests if a new subscriber receives previously published messages.
 func TestNewSubscriberReceivesOldMessages(
 	t *testing.T,
 	tCtx TestContext,

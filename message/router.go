@@ -66,6 +66,7 @@ type PublisherDecorator func(pub Publisher) (Publisher, error)
 // SubscriberDecorator wraps the underlying Subscriber, adding some functionality.
 type SubscriberDecorator func(sub Subscriber) (Subscriber, error)
 
+// RouterConfig holds the Router's configuration options.
 type RouterConfig struct {
 	// CloseTimeout determines how long router should work for handlers when closing.
 	CloseTimeout time.Duration
@@ -77,10 +78,12 @@ func (c *RouterConfig) setDefaults() {
 	}
 }
 
+// Validate returns Router configuration error, if any.
 func (c RouterConfig) Validate() error {
 	return nil
 }
 
+// NewRouter creates a new Router with given configuration.
 func NewRouter(config RouterConfig, logger watermill.LoggerAdapter) (*Router, error) {
 	config.setDefaults()
 	if err := config.Validate(); err != nil {
@@ -140,6 +143,7 @@ type Router struct {
 	running   chan struct{}
 }
 
+// Logger returns the Router's logger.
 func (r *Router) Logger() watermill.LoggerAdapter {
 	return r.logger
 }
@@ -483,6 +487,7 @@ func (h *handler) run(middlewares []middleware) {
 	h.logger.Debug("Router handler stopped", nil)
 }
 
+// Handler handles Messages.
 type Handler struct {
 	router  *Router
 	handler *handler
