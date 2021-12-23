@@ -125,10 +125,9 @@ Effectively, this means you can process one message at a time.
 
 Some Pub/Subs support this way of working only for a single subscriber.
 
-It’s a rare feature overall, as it means you can’t scale your message handlers horizontally.
+It’s a rare feature overall, as it means you can’t scale your message handlers horizontally if they use a single partition.
 In most cases, you would instead make your handlers ready to handle messages out of order, e.g.,
 rely on a version or a timestamp field in the messages’s payload or metadata instead of the order they are delivered.
-
 
 #### Persistent
 
