@@ -8,6 +8,17 @@ bref = "When something goes wrong"
 type = "docs"
 +++
 
+### Handling Errors
+
+The router's message handlers return an `error`. If a `nil` is returned, the default behavior is to acknowledge the message (ack).
+Doing this removes the message from the Pub/Sub.
+
+If an error is returned, Watermill sends a negative acknowledge (nack). This puts the message back into the Pub/Sub.
+The message is then re-delivered, possibly with a slight delay, depending on the Pub/Sub implementation.
+
+Most of the time, this is exactly what you want. But it can be confusing when you see it for the first time,
+as the output of your servie is an infinite list of errors being logged. 
+
 ### Logging
 
 In most cases, you will find the answer to your problem in the logs.
