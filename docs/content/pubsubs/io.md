@@ -18,6 +18,10 @@ Note that these aren't full-fledged Pub/Subs like Kafka, RabbitMQ, or the likes,
 * Subscribing for data on a file or stdin and packaging it as messages
 * Interfacing with third-party libraries that implement `io.Writer` or `io.Reader`, like [github.com/colinmarc/hdfs](https://github.com/colinmarc/hdfs) or [github.com/mholt/archiver](https://github.com/mholt/archiver).
 
+### Installation
+
+    go get github.com/ThreeDotsLabs/watermill-io
+
 #### Characteristics
 
 This is a very bare-bones implementation for now, so no extra features are supported. However, it is still sufficient for applications like a [CLI producer/consumer](https://github.com/ThreeDotsLabs/watermill/tree/master/tools/mill).

@@ -87,14 +87,13 @@ type Subscriber interface {
 
 Supported Pub/Subs:
 
-
-- AMQP Pub/Sub [(`github.com/ThreeDotsLabs/watermill-amqp`)](https://github.com/ThreeDotsLabs/watermill-amqp/)
+- AMQP Pub/Sub [(`github.com/ThreeDotsLabs/watermill-amqp/v2`)](https://github.com/ThreeDotsLabs/watermill-amqp/)
 - Bolt Pub/Sub [(`github.com/ThreeDotsLabs/watermill-bolt`)](https://github.com/ThreeDotsLabs/watermill-bolt/)
 - Firestore Pub/Sub [(`github.com/ThreeDotsLabs/watermill-firestore`)](https://github.com/ThreeDotsLabs/watermill-firestore/)
 - Google Cloud Pub/Sub [(`github.com/ThreeDotsLabs/watermill-googlecloud`)](https://github.com/ThreeDotsLabs/watermill-googlecloud/)
 - HTTP Pub/Sub [(`github.com/ThreeDotsLabs/watermill-http`)](https://github.com/ThreeDotsLabs/watermill-http/)
 - io.Reader/io.Writer Pub/Sub [(`github.com/ThreeDotsLabs/watermill-io`)](https://github.com/ThreeDotsLabs/watermill-io/)
-- Kafka Pub/Sub [(`github.com/ThreeDotsLabs/watermill-kafka`)](https://github.com/ThreeDotsLabs/watermill-kafka/)
+- Kafka Pub/Sub [(`github.com/ThreeDotsLabs/watermill-kafka/v2`)](https://github.com/ThreeDotsLabs/watermill-kafka/)
 - NATS Pub/Sub [(`github.com/ThreeDotsLabs/watermill-nats`)](https://github.com/ThreeDotsLabs/watermill-nats/)
 - SQL Pub/Sub [(`github.com/ThreeDotsLabs/watermill-sql`)](https://github.com/ThreeDotsLabs/watermill-sql/)
 

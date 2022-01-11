@@ -12,6 +12,10 @@ toc = false
 
 Apache Kafka is one of the most popular Pub/Subs. We are providing Pub/Sub implementation based on [Shopify's Sarama](https://github.com/Shopify/sarama).
 
+### Installation
+
+    go get github.com/ThreeDotsLabs/watermill-kafka/v2
+
 #### Characteristics
 
 | Feature | Implements | Note |
