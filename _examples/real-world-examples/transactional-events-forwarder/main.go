@@ -156,16 +156,14 @@ func publishEventAndPersistData(lotteryID int, pickedUser string, logger watermi
 		return err
 	}
 
-	// In case this fails, we have an event emitted, but no data persisted.
+	// In case this fails, we have an event emitted, but no data persisted yet.
 	if err = simulateError(); err != nil {
 		logger.Error("Failed to persist data", err, nil)
 		return err
 	}
 
 	_, err = db.Exec(`INSERT INTO lotteries (lottery_id, winner) VALUES(?, ?)`, lotteryID, pickedUser)
-	// In case this fails, we have an event emitted, but no data persisted.
 	if err != nil {
-		logger.Error("Failed to persist data", err, nil)
 		return err
 	}
 
@@ -203,7 +201,6 @@ func persistDataAndPublishEvent(lotteryID int, pickedUser string, logger watermi
 	}
 
 	err = publisher.Publish(googleCloudEventTopic, message.NewMessage(watermill.NewULID(), payload))
-	// In case this fails, we have data persisted, but no event emitted.
 	if err != nil {
 		return err
 	}
