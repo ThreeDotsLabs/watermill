@@ -20,7 +20,7 @@ import (
 const (
 	projectID             = "transactional-events"
 	forwarderSQLTopic     = "events-to-forward"
-	googleCloudEventTopic = "user-won-lottery"
+	googleCloudEventTopic = "lottery-concluded"
 
 	simulatedErrorProbability = 0.5
 )
@@ -30,41 +30,8 @@ var (
 	db     = createDB()
 )
 
-func createDB() *stdSQL.DB {
-	conf := driver.NewConfig()
-	conf.Net = "tcp"
-	conf.User = "root"
-	conf.Addr = "mysql"
-	conf.DBName = "watermill"
-
-	db, err := stdSQL.Open("mysql", conf.FormatDSN())
-	expectNoErr(err)
-
-	err = db.Ping()
-	expectNoErr(err)
-
-	_, err = db.Exec(`DROP TABLE IF EXISTS lotteries`)
-	expectNoErr(err)
-
-	_, err = db.Exec(`
-CREATE TABLE IF NOT EXISTS lotteries (
-    lottery_id INT NOT NULL PRIMARY KEY,
-	winner VARCHAR(255) NOT NULL 
-) ENGINE=INNODB;
-`)
-	expectNoErr(err)
-
-	return db
-}
-
-type LotteryConcluded struct {
+type LotteryConcludedEvent struct {
 	LotteryID int `json:"lottery_id"`
-}
-
-func expectNoErr(err error) {
-	if err != nil {
-		log.Fatalf("expected no error, got: %s", err)
-	}
 }
 
 func main() {
@@ -145,7 +112,7 @@ func publishEventAndPersistData(lotteryID int, pickedUser string, logger watermi
 	if err != nil {
 		return err
 	}
-	event := LotteryConcluded{LotteryID: lotteryID}
+	event := LotteryConcludedEvent{LotteryID: lotteryID}
 	payload, err := json.Marshal(event)
 	if err != nil {
 		return err
@@ -188,7 +155,7 @@ func persistDataAndPublishEvent(lotteryID int, pickedUser string, logger watermi
 		return err
 	}
 
-	event := LotteryConcluded{LotteryID: lotteryID}
+	event := LotteryConcludedEvent{LotteryID: lotteryID}
 	payload, err := json.Marshal(event)
 	if err != nil {
 		return err
@@ -250,8 +217,8 @@ func persistDataAndPublishEventInTransaction(lotteryID int, pickedUser string, l
 	})
 
 	// Publish an event announcing the lottery winner. Please note we're publishing to a Google Cloud topic here,
-	// while using decorated Firestore publisher.
-	event := LotteryConcluded{LotteryID: lotteryID}
+	// while using decorated MySQL publisher.
+	event := LotteryConcludedEvent{LotteryID: lotteryID}
 	payload, err := json.Marshal(event)
 	if err != nil {
 		return err
@@ -265,7 +232,7 @@ func persistDataAndPublishEventInTransaction(lotteryID int, pickedUser string, l
 	return nil
 }
 
-// PrizeSender service listens to UserWonLottery events and sends a prize straight to the user which has won.
+// PrizeSender service listens to UserWonLottery events and sends a prize straight to the user that has won.
 func runPrizeSenderService(logger watermill.LoggerAdapter) {
 	logger = logger.With(watermill.LogFields{"service": "prize_sender"})
 	ctx := context.Background()
@@ -279,7 +246,7 @@ func runPrizeSenderService(logger watermill.LoggerAdapter) {
 
 	events, err := googleCloudSubscriber.Subscribe(ctx, googleCloudEventTopic)
 	for rawEvent := range events {
-		event := LotteryConcluded{}
+		event := LotteryConcludedEvent{}
 		err := json.Unmarshal(rawEvent.Payload, &event)
 		expectNoErr(err)
 
@@ -299,10 +266,43 @@ func runPrizeSenderService(logger watermill.LoggerAdapter) {
 	}
 }
 
+func expectNoErr(err error) {
+	if err != nil {
+		log.Fatalf("expected no error, got: %s", err)
+	}
+}
+
 func simulateError() error {
 	if simulatedErrorProbability >= rand.Float64() {
 		return errors.New("simulated error occurred")
 	}
 
 	return nil
+}
+
+func createDB() *stdSQL.DB {
+	conf := driver.NewConfig()
+	conf.Net = "tcp"
+	conf.User = "root"
+	conf.Addr = "mysql"
+	conf.DBName = "watermill"
+
+	db, err := stdSQL.Open("mysql", conf.FormatDSN())
+	expectNoErr(err)
+
+	err = db.Ping()
+	expectNoErr(err)
+
+	_, err = db.Exec(`DROP TABLE IF EXISTS lotteries`)
+	expectNoErr(err)
+
+	_, err = db.Exec(`
+CREATE TABLE IF NOT EXISTS lotteries (
+    lottery_id INT NOT NULL PRIMARY KEY,
+	winner VARCHAR(255) NOT NULL 
+) ENGINE=INNODB;
+`)
+	expectNoErr(err)
+
+	return db
 }

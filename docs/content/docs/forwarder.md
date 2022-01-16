@@ -105,3 +105,5 @@ you'd have to set it up as follows:
 {{% render-md %}}
 {{% load-snippet-partial file="src-link/_examples/real-world-examples/transactional-events-forwarder/main.go" first_line_contains="// Setup the Forwarder " last_line_contains="err := fwd.Run" padding_after="3" %}}
 {{% /render-md %}}
+
+If you wish to explore the example, you can find it implemented in `_examples/real-world-examples/transactional-events-forwarder`.
