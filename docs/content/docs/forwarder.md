@@ -85,13 +85,13 @@ messages to MySQL. Because we don't want to change our message broker to be back
 we have to find a way to do that differently. 
 
 There's a good news: Watermill provides all the tools straight away! In case the database you're using is one among MySQL,
-PostgreSQL (or any other SQL), Firestore or Bolt, you can publish messages to them. `Forwarder` component will help 
+PostgreSQL (or any other SQL), Firestore or Bolt, you can publish messages to them. **Forwarder** component will help 
 you with picking all the messages you publish to the database and forwarding them to a message broker of yours. 
 
 Everything you have to do is to make sure that:
 
 1. Your command uses a publisher working in a context of a database transaction.
-2. `Forwarder` component is running, using a database subscriber, and a message broker publisher.  
+2. **Forwarder** component is running, using a database subscriber, and a message broker publisher.  
 
 The command could look like following in this case:
 
@@ -99,11 +99,11 @@ The command could look like following in this case:
 {{% load-snippet-partial file="src-link/_examples/real-world-examples/transactional-events-forwarder/main.go" first_line_contains="// 3. Persists data" last_line_contains="err = publisher.Publish(googleCloudEventTopic" padding_after="5" %}}
 {{% /render-md %}}
 
-In order to make the `Forwarder` component work in background for you and forward messages from MySQL to Google Pub/Sub,
+In order to make the **Forwarder** component work in background for you and forward messages from MySQL to Google Pub/Sub,
 you'd have to set it up as follows:
 
 {{% render-md %}}
 {{% load-snippet-partial file="src-link/_examples/real-world-examples/transactional-events-forwarder/main.go" first_line_contains="// Setup the Forwarder " last_line_contains="err := fwd.Run" padding_after="3" %}}
 {{% /render-md %}}
 
-If you wish to explore the example, you can find it implemented in `_examples/real-world-examples/transactional-events-forwarder`.
+If you wish to explore the example more, you can find it implemented [here](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/real-world-examples/transactional-events-forwarder/main.go).
