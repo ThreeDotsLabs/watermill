@@ -76,7 +76,7 @@ That probably can be fixed by some manual action as well, i.e., emitting the eve
 
 ### Storing data and publishing an event in one transaction
 Let's imagine our command could do the 2nd, and the 3rd point at the same time. They would be committed atomically, 
-meaning that any of them can succeed having the other failed. This can be achieved by leveraging a transaction 
+meaning that any of them can't succeed having the other failed. This can be achieved by leveraging a transaction
 mechanism which happens to be implemented by most of the databases in today's world. One of them is MySQL used in our 
 example. 
 
