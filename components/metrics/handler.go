@@ -1,7 +1,6 @@
 package metrics
 
 import (
-	"context"
 	"time"
 
 	"github.com/pkg/errors"
@@ -47,8 +46,8 @@ func (m HandlerPrometheusMetricsMiddleware) Middleware(h message.HandlerFunc) me
 			labelKeyHandlerName: message.HandlerNameFromCtx(ctx),
 		}
 
-		defer func(ctx context.Context) {
-			if message.MessageIsIgnoredFromCtx(ctx) {
+		defer func(msg *message.Message) {
+			if message.MessageIsIgnoredFromCtx(msg.Context()) {
 				return
 			}
 			if err != nil {
@@ -57,7 +56,7 @@ func (m HandlerPrometheusMetricsMiddleware) Middleware(h message.HandlerFunc) me
 				labels[labelSuccess] = "true"
 			}
 			m.handlerExecutionTimeSeconds.With(labels).Observe(time.Since(now).Seconds())
-		}(ctx)
+		}(msg)
 
 		return h(msg)
 	}
