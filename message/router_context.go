@@ -30,7 +30,7 @@ func HandlerNameFromCtx(ctx context.Context) string {
 
 // MessageIsIgnoredFromCtx gets the sign if the message was ignored.
 func MessageIsIgnoredFromCtx(ctx context.Context) bool {
-	return valFromCtx(ctx, messageIsIgnoredKey) == "true"
+	return ctx.Value(messageIsIgnoredKey) != nil
 }
 
 // PublisherNameFromCtx returns the name of the message publisher type that published the message in the router.

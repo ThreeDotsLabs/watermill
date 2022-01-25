@@ -660,9 +660,7 @@ func (disabledPublisher) Close() error {
 	return nil
 }
 
-// SetMessageIgnoredCtx mark the message as ignored.
-func SetMessageIgnoredCtx(msg *Message) {
-	ctx := msg.Context()
-	ctx = context.WithValue(ctx, messageIsIgnoredKey, "true")
-	msg.SetContext(ctx)
+// SetMessageIgnoredToCtx mark the message as ignored.
+func SetMessageIgnoredToCtx(ctx context.Context) context.Context {
+	return context.WithValue(ctx, messageIsIgnoredKey, true)
 }
