@@ -7,11 +7,12 @@ import (
 type ctxKey string
 
 const (
-	handlerNameKey    ctxKey = "handler_name"
-	publisherNameKey  ctxKey = "publisher_name"
-	subscriberNameKey ctxKey = "subscriber_name"
-	subscribeTopicKey ctxKey = "subscribe_topic"
-	publishTopicKey   ctxKey = "publish_topic"
+	handlerNameKey      ctxKey = "handler_name"
+	messageIsIgnoredKey ctxKey = "msg_is_ignored"
+	publisherNameKey    ctxKey = "publisher_name"
+	subscriberNameKey   ctxKey = "subscriber_name"
+	subscribeTopicKey   ctxKey = "subscribe_topic"
+	publishTopicKey     ctxKey = "publish_topic"
 )
 
 func valFromCtx(ctx context.Context, key ctxKey) string {
@@ -25,6 +26,11 @@ func valFromCtx(ctx context.Context, key ctxKey) string {
 // HandlerNameFromCtx returns the name of the message handler in the router that consumed the message.
 func HandlerNameFromCtx(ctx context.Context) string {
 	return valFromCtx(ctx, handlerNameKey)
+}
+
+// MessageIsIgnoredFromCtx gets the sign if the message was ignored.
+func MessageIsIgnoredFromCtx(ctx context.Context) bool {
+	return valFromCtx(ctx, messageIsIgnoredKey) == "true"
 }
 
 // PublisherNameFromCtx returns the name of the message publisher type that published the message in the router.

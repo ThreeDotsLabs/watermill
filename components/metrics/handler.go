@@ -47,6 +47,9 @@ func (m HandlerPrometheusMetricsMiddleware) Middleware(h message.HandlerFunc) me
 		}
 
 		defer func() {
+			if message.MessageIsIgnoredFromCtx(ctx) {
+				return
+			}
 			if err != nil {
 				labels[labelSuccess] = "false"
 			} else {

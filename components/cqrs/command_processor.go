@@ -151,6 +151,7 @@ func (p CommandProcessor) routerHandlerFunc(handler CommandHandler, logger water
 		messageCmdName := p.marshaler.NameFromMessage(msg)
 
 		if messageCmdName != cmdName {
+			message.SetMessageIgnoredCtx(msg)
 			logger.Trace("Received different command type than expected, ignoring", watermill.LogFields{
 				"message_uuid":          msg.UUID,
 				"expected_command_type": cmdName,
