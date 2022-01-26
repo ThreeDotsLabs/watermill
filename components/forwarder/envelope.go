@@ -51,7 +51,10 @@ func wrapMessageInEnvelope(destinationTopic string, msg *message.Message) (*mess
 		return nil, errors.Wrap(err, "cannot marshal a message")
 	}
 
-	return message.NewMessage(watermill.NewUUID(), envelopedMessage), nil
+	wrappedMsg := message.NewMessage(watermill.NewUUID(), envelopedMessage)
+	wrappedMsg.SetContext(msg.Context())
+
+	return wrappedMsg, nil
 }
 
 func unwrapMessageFromEnvelope(msg *message.Message) (destinationTopic string, unwrappedMsg *message.Message, err error) {
