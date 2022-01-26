@@ -1,6 +1,7 @@
 package forwarder
 
 import (
+	"context"
 	"testing"
 
 	"github.com/ThreeDotsLabs/watermill"
@@ -15,12 +16,18 @@ func TestEnvelope(t *testing.T) {
 	expectedMetadata := message.Metadata{"key": "value"}
 	expectedDestinationTopic := "dest_topic"
 
+	ctx := context.WithValue(context.Background(), "key", "value")
+
 	msg := message.NewMessage(expectedUUID, expectedPayload)
 	msg.Metadata = expectedMetadata
+	msg.SetContext(ctx)
 
 	wrappedMsg, err := wrapMessageInEnvelope(expectedDestinationTopic, msg)
 	require.NoError(t, err)
 	require.NotNil(t, wrappedMsg)
+	v, ok := wrappedMsg.Context().Value("key").(string)
+	require.True(t, ok)
+	require.Equal(t, "value", v)
 
 	destinationTopic, unwrappedMsg, err := unwrapMessageFromEnvelope(wrappedMsg)
 	require.NoError(t, err)

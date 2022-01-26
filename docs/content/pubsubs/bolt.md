@@ -20,6 +20,10 @@ want to publish messages in transaction when saving other data.
 
 Bolt documentation: https://github.com/etcd-io/bbolt
 
+### Installation
+
+    go get github.com/ThreeDotsLabs/watermill-bolt
+
 #### Characteristics
 
 | Feature             | Implements | Note |

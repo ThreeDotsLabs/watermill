@@ -18,6 +18,7 @@ func NewThrottle(count int64, duration time.Duration) *Throttle {
 	return &Throttle{time.Tick(duration / time.Duration(count))}
 }
 
+// Middleware returns the Throttle middleware.
 func (t Throttle) Middleware(h message.HandlerFunc) message.HandlerFunc {
 	return func(message *message.Message) ([]*message.Message, error) {
 		select {

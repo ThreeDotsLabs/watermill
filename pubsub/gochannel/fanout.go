@@ -100,10 +100,12 @@ func (f *FanOut) Running() chan struct{} {
 	return f.internalRouter.Running()
 }
 
+// Subscribe starts subscription to the FanOut's internal Pub/Sub.
 func (f *FanOut) Subscribe(ctx context.Context, topic string) (<-chan *message.Message, error) {
 	return f.internalPubSub.Subscribe(ctx, topic)
 }
 
+// Close closes the FanOut's internal Pub/Sub.
 func (f *FanOut) Close() error {
 	return f.internalPubSub.Close()
 }

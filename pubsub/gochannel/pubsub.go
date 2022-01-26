@@ -5,13 +5,13 @@ import (
 	"sync"
 
 	"github.com/pkg/errors"
-
 	"github.com/lithammer/shortuuid/v3"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
+// Config holds the GoChannel Pub/Sub's configuration options.
 type Config struct {
 	// Output channel buffer size.
 	OutputChannelBuffer int64
@@ -274,6 +274,7 @@ func (g *GoChannel) isClosed() bool {
 	return g.closed
 }
 
+// Close closes the GoChannel Pub/Sub.
 func (g *GoChannel) Close() error {
 	g.closedLock.Lock()
 	defer g.closedLock.Unlock()
