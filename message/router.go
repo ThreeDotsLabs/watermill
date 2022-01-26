@@ -266,7 +266,9 @@ func (r *Router) AddHandler(
 		handlerFunc:       handlerFunc,
 		runningHandlersWg: r.runningHandlersWg,
 		messagesCh:        nil,
-		closeCh:           r.closeCh,
+		routersCloseCh:    r.closeCh,
+
+		startedCh: make(chan struct{}),
 	}
 
 	r.handlers[handlerName] = newHandler
@@ -355,10 +357,11 @@ func (r *Router) RunHandlers(ctx context.Context) error {
 	r.handlersLock.Lock()
 	defer r.handlersLock.Unlock()
 
-	for name := range r.handlers {
-		h := r.handlers[name]
+	for name, h := range r.handlers {
+		name := name
+		h := h
 
-		if h.running {
+		if h.started {
 			continue
 		}
 
@@ -374,25 +377,37 @@ func (r *Router) RunHandlers(ctx context.Context) error {
 			"topic":           h.subscribeTopic,
 		})
 
+		ctx, cancel := context.WithCancel(ctx)
+
 		messages, err := h.subscriber.Subscribe(ctx, h.subscribeTopic)
 		if err != nil {
+			cancel()
 			return errors.Wrapf(err, "cannot subscribe topic %s", h.subscribeTopic)
 		}
 
 		h.messagesCh = messages
 		r.handlersWg.Add(1)
+		h.started = true
+		close(h.startedCh)
+
+		h.stopFn = cancel
+		h.stopped = make(chan struct{})
 
 		go func() {
-			h.run(r.middlewares)
+			defer cancel()
+
+			h.run(ctx, r.middlewares)
 
 			r.handlersWg.Done()
 			r.logger.Info("Subscriber stopped", watermill.LogFields{
 				"subscriber_name": h.name,
 				"topic":           h.subscribeTopic,
 			})
-		}()
 
-		h.running = true
+			r.handlersLock.Lock()
+			delete(r.handlers, name)
+			r.handlersLock.Unlock()
+		}()
 	}
 	return nil
 }
@@ -444,6 +459,9 @@ func (r *Router) Close() error {
 	r.closedLock.Lock()
 	defer r.closedLock.Unlock()
 
+	r.handlersLock.Lock()
+	defer r.handlersLock.Unlock()
+
 	if r.closed {
 		return nil
 	}
@@ -488,12 +506,15 @@ type handler struct {
 
 	messagesCh <-chan *Message
 
-	closeCh chan struct{}
+	started   bool
+	startedCh chan struct{}
 
-	running bool
+	stopFn         context.CancelFunc
+	stopped        chan struct{}
+	routersCloseCh chan struct{}
 }
 
-func (h *handler) run(middlewares []middleware) {
+func (h *handler) run(ctx context.Context, middlewares []middleware) {
 	h.logger.Info("Starting handler", watermill.LogFields{
 		"subscriber_name": h.name,
 		"topic":           h.subscribeTopic,
@@ -509,7 +530,7 @@ func (h *handler) run(middlewares []middleware) {
 		}
 	}
 
-	go h.handleClose()
+	go h.handleClose(ctx)
 
 	for msg := range h.messagesCh {
 		h.runningHandlersWg.Add(1)
@@ -525,6 +546,7 @@ func (h *handler) run(middlewares []middleware) {
 	}
 
 	h.logger.Debug("Router handler stopped", nil)
+	close(h.stopped)
 }
 
 // Handler handles Messages.
@@ -544,6 +566,27 @@ func (h *Handler) AddMiddleware(m ...HandlerMiddleware) {
 	})
 
 	h.router.addHandlerLevelMiddleware(handler.name, m...)
+}
+
+// Started returns channel which is stopped when handler is running.
+func (h *Handler) Started() chan struct{} {
+	return h.handler.startedCh
+}
+
+// Stop stops the handler.
+// Stop is asynchronous.
+// You can check if handler was stopped with Stopped() function.
+func (h *Handler) Stop() {
+	if !h.handler.started {
+		panic("handler is not started")
+	}
+
+	h.handler.stopFn()
+}
+
+// Stopped returns channel which is stopped when handler did stop.
+func (h *Handler) Stopped() chan struct{} {
+	return h.handler.stopped
 }
 
 // decorateHandlerPublisher applies the decorator chain to handler's publisher.
@@ -614,13 +657,15 @@ func (h *handler) addHandlerContext(messages ...*Message) {
 	}
 }
 
-func (h *handler) handleClose() {
-	<-h.closeCh
-
-	h.logger.Debug("Waiting for subscriber to close", nil)
-
-	if err := h.subscriber.Close(); err != nil {
-		h.logger.Error("Failed to close subscriber", err, nil)
+func (h *handler) handleClose(ctx context.Context) {
+	select {
+	case <-h.routersCloseCh:
+		h.logger.Debug("Waiting for subscriber to close", nil)
+		if err := h.subscriber.Close(); err != nil {
+			h.logger.Error("Failed to close subscriber", err, nil)
+		}
+	case <-ctx.Done():
+		// we are closing subscriber just when entire router is closed
 	}
 
 	h.logger.Debug("Subscriber closed", nil)
