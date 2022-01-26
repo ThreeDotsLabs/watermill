@@ -29,6 +29,10 @@ Godoc: <https://pkg.go.dev/github.com/ThreeDotsLabs/watermill-firestore>
 
 Firestore documentation: <https://firebase.google.com/docs/firestore/>
 
+### Installation
+
+    go get github.com/ThreeDotsLabs/watermill-firestore
+
 #### Characteristics
 
 | Feature             | Implements | Note |

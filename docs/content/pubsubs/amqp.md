@@ -12,11 +12,15 @@ toc = false
 
 > RabbitMQ is the most widely deployed open source message broker.
 
-We are providing Pub/Sub implementation based on [github.com/streadway/amqp](https://github.com/streadway/amqp).
+We are providing Pub/Sub implementation based on [github.com/rabbitmq/amqp091-go](https://github.com/rabbitmq/amqp091-go) official library.
 
 {{% render-md %}}
 {{% load-snippet-partial file="src-link/watermill-amqp/pkg/amqp/doc.go" first_line_contains="// AMQP" last_line_contains="package amqp" padding_after="0" %}}
 {{% /render-md %}}
+
+### Installation
+
+    go get github.com/ThreeDotsLabs/watermill-amqp/v2
 
 #### Characteristics
 

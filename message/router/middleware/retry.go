@@ -35,6 +35,7 @@ type Retry struct {
 	Logger watermill.LoggerAdapter
 }
 
+// Middleware returns the Retry middleware.
 func (r Retry) Middleware(h message.HandlerFunc) message.HandlerFunc {
 	return func(msg *message.Message) ([]*message.Message, error) {
 		producedMessages, err := h(msg)

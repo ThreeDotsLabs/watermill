@@ -2,6 +2,7 @@ package internal
 
 import "strings"
 
+// Indent indents all lines in the given string with a given prefix.
 func Indent(s, prefix string) string {
 	endsWithNewline := strings.HasSuffix(s, "\n")
 	split := strings.Split(s, "\n")

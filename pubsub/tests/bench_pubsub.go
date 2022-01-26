@@ -9,8 +9,10 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message/subscriber"
 )
 
+// BenchmarkPubSubConstructor is a function that creates a Publisher and Subscriber to be used for benchmarks.
 type BenchmarkPubSubConstructor func(n int) (message.Publisher, message.Subscriber)
 
+// BenchSubscriber runs benchmark on a message Subscriber.
 func BenchSubscriber(b *testing.B, pubSubConstructor BenchmarkPubSubConstructor) {
 	pub, sub := pubSubConstructor(b.N)
 	topicName := testTopicName(NewTestID())

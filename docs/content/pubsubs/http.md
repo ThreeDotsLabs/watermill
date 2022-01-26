@@ -15,6 +15,10 @@ You can then post them to any Publisher. Here is an example with [sending HTTP m
 
 The HTTP publisher sends HTTP requests as specified in its configuration. Here is an example with [transforming Kafka messages into HTTP webhook requests](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/real-world-examples/sending-webhooks).
 
+### Installation
+
+    go get github.com/ThreeDotsLabs/watermill-http
+
 #### Characteristics
 
 | Feature | Implements | Note |

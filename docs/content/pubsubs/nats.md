@@ -12,6 +12,10 @@ toc = false
 
 NATS Streaming is a data streaming system powered by NATS, and written in the Go programming language. The executable name for the NATS Streaming server is nats-streaming-server. NATS Streaming embeds, extends, and interoperates seamlessly with the core NATS platform.
 
+### Installation
+
+    go get github.com/ThreeDotsLabs/watermill-nats
+
 #### Characteristics
 
 | Feature | Implements | Note |

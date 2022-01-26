@@ -24,6 +24,10 @@ log of events that were published on a queue with short message expiration time.
 
 See also the [SQL example](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/pubsubs/sql).
 
+### Installation
+
+    go get github.com/ThreeDotsLabs/watermill-sql
+
 #### Characteristics
 
 | Feature             | Implements | Note |

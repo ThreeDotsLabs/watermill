@@ -23,6 +23,10 @@ systems hosted on the Google Cloud Platform and externally.
 
 Documentation: [https://cloud.google.com/pubsub/docs/](https://cloud.google.com/pubsub/docs/overview)
 
+### Installation
+
+    go get github.com/ThreeDotsLabs/watermill-googlecloud
+
 #### Characteristics
 
 | Feature | Implements | Note |

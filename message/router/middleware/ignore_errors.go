@@ -21,6 +21,7 @@ func NewIgnoreErrors(errs []error) IgnoreErrors {
 	return IgnoreErrors{errsMap}
 }
 
+// Middleware returns the IgnoreErrors middleware.
 func (i IgnoreErrors) Middleware(h message.HandlerFunc) message.HandlerFunc {
 	return func(msg *message.Message) ([]*message.Message, error) {
 		events, err := h(msg)

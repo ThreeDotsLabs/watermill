@@ -4,6 +4,7 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
+// CorrelationIDMetadataKey is used to store the correlation ID in metadata.
 const CorrelationIDMetadataKey = "correlation_id"
 
 // SetCorrelationID sets a correlation ID for the message.
