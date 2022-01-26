@@ -135,6 +135,7 @@ func RunOnlyFastTests() bool {
 
 // PubSubConstructor is a function that creates a Publisher and a Subscriber.
 type PubSubConstructor func(t *testing.T) (message.Publisher, message.Subscriber)
+
 // ConsumerGroupPubSubConstructor is a function that creates a Publisher and a Subscriber that use given consumer group.
 type ConsumerGroupPubSubConstructor func(t *testing.T, consumerGroup string) (message.Publisher, message.Subscriber)
 
