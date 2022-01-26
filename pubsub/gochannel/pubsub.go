@@ -147,10 +147,19 @@ func (g *GoChannel) sendMessage(topic string, message *message.Message) (<-chan 
 	}
 
 	go func(subscribers []*subscriber) {
+		wg := &sync.WaitGroup{}
+
 		for i := range subscribers {
 			subscriber := subscribers[i]
-			subscriber.sendMessageToSubscriber(message, logFields)
+
+			wg.Add(1)
+			go func() {
+				subscriber.sendMessageToSubscriber(message, logFields)
+				wg.Done()
+			}()
 		}
+
+		wg.Wait()
 		close(ackedBySubscribers)
 	}(subscribers)
 
