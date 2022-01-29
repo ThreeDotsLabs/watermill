@@ -38,4 +38,7 @@ Example usage is shown below:
 Below are the middlewares provided by Watermill and ready to use. You can also easily implement your own.
 For example, if you'd like to store every received message in some kind of log, it's the best way to do it.
 
-{{% readfile file="/content/src-link/middleware-defs.md" markdown="true" %}}
+{{% render-md %}}
+{{% readfile file="/content/src-link/middleware-defs.md" %}}
+{{% /render-md %}}
+
