@@ -271,7 +271,9 @@ func (r *Router) AddHandler(
 		startedCh: make(chan struct{}),
 	}
 
+	r.handlersWg.Add(1)
 	r.handlers[handlerName] = newHandler
+	r.handlerAdded <- struct{}{}
 
 	return &Handler{
 		router:  r,
@@ -390,7 +392,6 @@ func (r *Router) RunHandlers(ctx context.Context) error {
 		}
 
 		h.messagesCh = messages
-		r.handlersWg.Add(1)
 		h.started = true
 		close(h.startedCh)
 
