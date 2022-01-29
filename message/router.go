@@ -354,6 +354,10 @@ func (r *Router) Run(ctx context.Context) (err error) {
 // RunHandlers runs all handlers that were added after Run().
 // RunHandlers is idempotent, so can be called multiple times safely.
 func (r *Router) RunHandlers(ctx context.Context) error {
+	if !r.isRunning {
+		return errors.New("you can't call RunHandlers on non-running router")
+	}
+
 	r.handlersLock.Lock()
 	defer r.handlersLock.Unlock()
 
