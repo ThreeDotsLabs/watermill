@@ -273,7 +273,12 @@ func (r *Router) AddHandler(
 
 	r.handlersWg.Add(1)
 	r.handlers[handlerName] = newHandler
-	r.handlerAdded <- struct{}{}
+
+	select {
+	case r.handlerAdded <- struct{}{}:
+	default:
+		// closeWhenAllHandlersStopped is not always waiting for handlerAdded
+	}
 
 	return &Handler{
 		router:  r,
