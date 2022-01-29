@@ -1,4 +1,4 @@
-// +build stress
+//go:build stress
 
 package gochannel_test
 

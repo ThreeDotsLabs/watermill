@@ -159,10 +159,10 @@ func TestPublish_race_condition_when_closing(t *testing.T) {
 				watermill.NewStdLogger(true, false),
 			)
 			go func() {
-				err := pubSub.Close()
-				require.NoError(t, err)
+				_ = pubSub.Publish("topic", message.NewMessage(strconv.Itoa(i), nil))
 			}()
-			err := pubSub.Publish("topic", message.NewMessage(strconv.Itoa(i), nil))
+
+			err := pubSub.Close()
 			require.NoError(t, err)
 		})
 	}

@@ -20,10 +20,10 @@ func TestFanIn(t *testing.T) {
 		upstreamTopicPattern = "upstream-topic-%d"
 		downstreamTopic      = "downstream-topic"
 
-		cancelAfter = time.Second
+		cancelAfter = time.Millisecond * 100
 
-		workersCount        = 5
-		messagesCount       = 100
+		workersCount        = 3
+		messagesCount       = 10
 		upstreamTopicsCount = 5
 	)
 

@@ -4,8 +4,8 @@ import (
 	"context"
 	"sync"
 
-	"github.com/pkg/errors"
 	"github.com/lithammer/shortuuid/v3"
+	"github.com/pkg/errors"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
@@ -273,7 +273,13 @@ func (g *GoChannel) topicSubscribers(topic string) []*subscriber {
 		return nil
 	}
 
-	return subscribers
+	// let's do a copy to avoid race conditions and deadlocks due to lock
+	subscribersCopy := make([]*subscriber, len(subscribers))
+	for i, s := range subscribers {
+		subscribersCopy[i] = s
+	}
+
+	return subscribersCopy
 }
 
 func (g *GoChannel) isClosed() bool {
