@@ -485,7 +485,7 @@ func (r *Router) Close() error {
 
 	timeouted := sync_internal.WaitGroupTimeout(r.handlersWg, r.config.CloseTimeout)
 	if timeouted {
-		return errors.New("router close timeouted")
+		return errors.New("router close timeout")
 	}
 
 	return nil
@@ -670,15 +670,16 @@ func (h *handler) addHandlerContext(messages ...*Message) {
 func (h *handler) handleClose(ctx context.Context) {
 	select {
 	case <-h.routersCloseCh:
+		// for backward compatibility we are closing subscriber
 		h.logger.Debug("Waiting for subscriber to close", nil)
 		if err := h.subscriber.Close(); err != nil {
 			h.logger.Error("Failed to close subscriber", err, nil)
 		}
+		h.logger.Debug("Subscriber closed", nil)
 	case <-ctx.Done():
 		// we are closing subscriber just when entire router is closed
 	}
-
-	h.logger.Debug("Subscriber closed", nil)
+	h.stopFn()
 }
 
 func (h *handler) handleMessage(msg *Message, handler HandlerFunc) {
