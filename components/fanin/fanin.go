@@ -25,9 +25,9 @@ type Config struct {
 // FanIn is a component that receives messages from 1..N topics from a subscriber and publishes them
 // on a specified topic in the publisher. In effect, messages are "multiplexed".
 type FanIn struct {
-	router    *message.Router
-	config    Config
-	logger    watermill.LoggerAdapter
+	router *message.Router
+	config Config
+	logger watermill.LoggerAdapter
 }
 
 func (c *Config) setDefaults() {
@@ -106,9 +106,9 @@ func NewFanIn(
 	}
 
 	return &FanIn{
-		router:    router,
-		config:    config,
-		logger:    logger,
+		router: router,
+		config: config,
+		logger: logger,
 	}, nil
 }
 
