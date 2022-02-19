@@ -886,6 +886,13 @@ func TestMessageCtx(
 	tCtx TestContext,
 	pubSubConstructor PubSubConstructor,
 ) {
+	if tCtx.Features.ExactlyOnceDelivery {
+		// with ExactlyOnce delivery (at least as implemented by NATS jetstream)
+		// the second message will never be received because the broker deduplicates
+		// by message ID.
+		t.Skip("ExactlyOnceDelivery test is not supported yet")
+	}
+
 	pub, sub := pubSubConstructor(t)
 	defer closePubSub(t, pub, sub)
 
