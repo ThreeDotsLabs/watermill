@@ -583,6 +583,10 @@ func TestContinueAfterSubscribeClose(
 	tCtx TestContext,
 	createPubSub PubSubConstructor,
 ) {
+	if !tCtx.Features.Persistent {
+		t.Skip("Non-Persistent is not supported yet")
+	}
+
 	if tCtx.Features.ExactlyOnceDelivery {
 		t.Skip("ExactlyOnceDelivery test is not supported yet")
 	}
