@@ -90,11 +90,13 @@ func TestRouter_functional(t *testing.T) {
 	)
 
 	go func() {
+		require.False(t, r.IsRunning())
 		require.NoError(t, r.Run(context.Background()))
 	}()
 	<-r.Running()
 
 	defer func() {
+		require.True(t, r.IsRunning())
 		assert.NoError(t, r.Close())
 	}()
 
