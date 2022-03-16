@@ -22,7 +22,7 @@ you can make your life easier by using Watermill's [Forwarder component](https:/
 You can think of the Forwarder as a background running daemon which awaits  
 messages that are published to a database, and makes sure they eventually reach a message broker.  
 
-<img src="/img/publishing-with-forwarder.svg" alt="Watermill Forwarder component" style="width:100%;"
+<img src="/img/publishing-with-forwarder.svg" alt="Watermill Forwarder component" style="width:100%;" />
 
 ## Example
 
