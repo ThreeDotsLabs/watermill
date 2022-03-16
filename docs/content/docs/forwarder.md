@@ -10,8 +10,19 @@ toc = true
 
 ## Publishing messages in transactions (and why we should care) 
 While working with an event-driven application, you may in some point need to store an application state and publish a message 
-telling the rest of the system about what just happened. As it may look trivial at a first glance, it could become 
-a bit tricky if we consider what can go wrong in case we won't pay enough attention to details.  
+telling the rest of the system about what's just happened. In a perfect scenario, you'd want to persist the application state 
+and publish the message **in a transaction**, as not doing so might get you easily into troubles with data consistency. In 
+order to commit both storing data and emitting an event in one transaction, you'd have to be able to publish 
+messages to the same database you use for the data storage, 
+or implement [2PC](https://martinfowler.com/articles/patterns-of-distributed-systems/two-phase-commit.html) 
+on your own. If you don't want to change your message broker to a database, nor invent the wheel once again,
+you can make your life easier by using Watermill's [Forwarder component](https://github.com/ThreeDotsLabs/watermill/blob/master/components/forwarder/forwarder.go)! 
+
+## Forwarder component 
+
+<img src="/img/publishing-with-forwarder.svg" alt="Watermill Forwarder component" style="width:100%;">
+
+## Example
 
 Let's consider a following example: there's a command which responsibility is to run a lottery. It has to pick 
 a random user that's registered in the system as a winner. While it does so, it should also persist the decision it made by 
@@ -20,7 +31,7 @@ event-driven system, it should emit a `LotteryConcluded` event, so that other co
 To be precise - there will be component responsible for sending prizes to lottery winners. It will receive `LotteryConcluded`
 events, and using the lottery ID embedded in the event, verify who was the winner, checking with the database entry. 
 
-In our case, the database is MySQL and the message broker is Google Pub/Sub, but it could be any two other technologies.  
+In our case, the database is MySQL and the message broker is Google Pub/Sub, b/t it could be any two other technologies.  
 
 Approaching to implementation of such a command, we could go various ways. Below we're going to cover three possible 
 attempts, pointing their vulnerabilities. 
@@ -90,7 +101,8 @@ you with picking all the messages you publish to the database and forwarding the
 
 Everything you have to do is to make sure that:
 
-1. Your command uses a publisher working in a context of a database transaction.
+1. Your command uses a publisher working in a context of a database transaction (i.e. [SQL](https://github.com/ThreeDotsLabs/watermill-sql/blob/4f39bf82b6180ca2191c791e7cb220fff22b9255/pkg/sql/publisher.go#L53), 
+[Firestore](https://github.com/ThreeDotsLabs/watermill-firestore/blob/b7bd31b3458884dc76076196cdc8942d18b5ab61/pkg/firestore/transactional.go#L14), [Bolt](https://github.com/ThreeDotsLabs/watermill-bolt/blob/0652f3602f6adbe4e3e39b97308fbed16dcbe29e/pkg/bolt/tx_publisher.go#L24)).
 2. **Forwarder** component is running, using a database subscriber, and a message broker publisher.  
 
 The command could look like following in this case:

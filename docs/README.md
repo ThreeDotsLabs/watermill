@@ -1,6 +1,6 @@
 # Watermill Docs
 
-Live version is available under [https://watermill.io/](https://watermill.io/).available
+Live version is available under [https://watermill.io/](https://watermill.io/).
 
 ## Running locally
 

@@ -19,7 +19,7 @@ import (
 
 const (
 	projectID             = "transactional-events"
-	forwarderSQLTopic     = "events-to-forward"
+	forwarderSQLTopic     = "eventsToForward"
 	googleCloudEventTopic = "lottery-concluded"
 
 	simulatedErrorProbability = 0.5
@@ -262,7 +262,10 @@ func runPrizeSenderService(logger watermill.LoggerAdapter) {
 			continue
 		}
 
-		logger.Info("Sending a prize to the winner", watermill.LogFields{"winner": winner, "lottery_id": event.LotteryID})
+		logger.Info("Sending a prize to the winner", watermill.LogFields{
+			"winner":     winner,
+			"lottery_id": event.LotteryID,
+		})
 	}
 }
 
