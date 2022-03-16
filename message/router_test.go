@@ -610,6 +610,154 @@ func TestRouter_AddMiddleware_to_handler_many(t *testing.T) {
 	require.Equal(t, 2, counts["fourthMiddleware"])
 }
 
+func TestRouter_RunHandlers(t *testing.T) {
+	ctx := context.Background()
+
+	testID := watermill.NewUUID()
+	subscribeTopic := "test_topic_" + testID
+
+	pubsub := gochannel.NewGoChannel(
+		gochannel.Config{Persistent: true},
+		watermill.NewStdLogger(true, true),
+	)
+	defer func() {
+		assert.NoError(t, pubsub.Close())
+	}()
+
+	r, err := message.NewRouter(
+		message.RouterConfig{},
+		watermill.NewStdLogger(true, true),
+	)
+	require.NoError(t, err)
+
+	defer func() {
+		assert.NoError(t, r.Close())
+	}()
+
+	go func() {
+		require.NoError(t, r.Run(ctx))
+	}()
+	<-r.Running()
+
+	messagesCount := 3
+
+	var expectedReceivedMessages message.Messages
+
+	receivedMessagesCh := make(chan *message.Message, messagesCount)
+
+	handler := r.AddNoPublisherHandler(
+		"test_subscriber_1",
+		subscribeTopic,
+		pubsub,
+		func(msg *message.Message) error {
+			receivedMessagesCh <- msg
+			return nil
+		},
+	)
+	require.NotNil(t, handler)
+	require.NoError(t, err)
+
+	require.NoError(t, r.RunHandlers(ctx))
+	require.NoError(t, r.RunHandlers(ctx)) // RunHandlers should be idempotent
+
+	select {
+	case <-handler.Started():
+	// ok
+	case <-time.After(time.Second):
+		t.Fatal("timeout waiting for handler")
+	}
+
+	expectedReceivedMessages = publishMessagesForHandler(t, messagesCount, pubsub, pubsub, subscribeTopic)
+
+	receivedMessages1, all := subscriber.BulkRead(receivedMessagesCh, len(expectedReceivedMessages), time.Second*10)
+	assert.True(t, all)
+	tests.AssertAllMessagesReceived(t, expectedReceivedMessages, receivedMessages1)
+}
+
+func TestRouter_close_handler(t *testing.T) {
+	testID := watermill.NewUUID()
+	subscribeTopic1 := "test_topic_1_" + testID
+	subscribeTopic2 := "test_topic_2_" + testID
+
+	pub, sub := createPubSub()
+	defer func() {
+		assert.NoError(t, pub.Close())
+		assert.NoError(t, sub.Close())
+	}()
+
+	r, err := message.NewRouter(
+		message.RouterConfig{},
+		watermill.NewStdLogger(true, true),
+	)
+	require.NoError(t, err)
+
+	messagesCount := 3
+	var expectedReceivedMessages message.Messages
+	receivedMessagesCh1 := make(chan *message.Message, messagesCount)
+
+	handler := r.AddNoPublisherHandler(
+		"test_subscriber_1",
+		subscribeTopic1,
+		sub,
+		func(msg *message.Message) error {
+			receivedMessagesCh1 <- msg
+			return nil
+		},
+	)
+
+	// to keep at least one running handler to prevent router from closing
+	r.AddNoPublisherHandler(
+		"noop_handler",
+		watermill.NewUUID(),
+		sub,
+		func(msg *message.Message) error {
+			return nil
+		},
+	)
+
+	go func() {
+		require.NoError(t, r.Run(context.Background()))
+	}()
+	<-r.Running()
+
+	expectedReceivedMessages = publishMessagesForHandler(t, messagesCount, pub, sub, subscribeTopic1)
+	receivedMessages1, all := subscriber.BulkRead(receivedMessagesCh1, len(expectedReceivedMessages), time.Second*10)
+	assert.True(t, all)
+	tests.AssertAllMessagesReceived(t, expectedReceivedMessages, receivedMessages1)
+
+	handler.Stop()
+	select {
+	case <-handler.Stopped():
+	// ok
+	case <-time.After(time.Second):
+		t.Fatal("timeout waiting for handler stopped")
+	}
+
+	expectedReceivedMessages = publishMessagesForHandler(t, 1, pub, sub, subscribeTopic1)
+	_, received := subscriber.BulkRead(receivedMessagesCh1, 1, time.Millisecond*1)
+	assert.False(t, received)
+
+	receivedMessagesCh2 := make(chan *message.Message, messagesCount)
+
+	// we are adding the same handler again, with the same name
+	r.AddNoPublisherHandler(
+		"test_subscriber_1",
+		subscribeTopic2,
+		sub,
+		func(msg *message.Message) error {
+			receivedMessagesCh2 <- msg
+			return nil
+		},
+	)
+	err = r.RunHandlers(context.Background())
+	require.NoError(t, err)
+
+	expectedReceivedMessages = publishMessagesForHandler(t, messagesCount, pub, sub, subscribeTopic2)
+	receivedMessages2, all := subscriber.BulkRead(receivedMessagesCh2, len(expectedReceivedMessages), time.Second*10)
+	assert.True(t, all)
+	tests.AssertAllMessagesReceived(t, expectedReceivedMessages, receivedMessages2)
+}
+
 type subscriberMock struct {
 	messages chan *message.Message
 }
@@ -697,7 +845,7 @@ func TestRouter_stop_when_all_handlers_stopped(t *testing.T) {
 	case <-routerStopped:
 	// ok
 	case <-time.After(time.Second):
-		t.Fatal("router not closed")
+		t.Fatal("router not stopped")
 	}
 }
 
@@ -1016,7 +1164,7 @@ func readMessages(messagesCh <-chan *message.Message, limit int, timeout time.Du
 				break
 			}
 		}
-		// messagesCh closed
+		// messagesCh stopped
 		allMessagesReceived <- struct{}{}
 	}()
 

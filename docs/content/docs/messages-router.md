@@ -77,6 +77,26 @@ It can be useful to know if the router is running. You can use the `Running()` m
 {{% load-snippet-partial file="src-link/message/router.go" first_line_contains="// Running" last_line_contains="func (r *Router) Running()" padding_after="0" %}}
 {{% /render-md %}}
 
+
+### Adding handler after the router has started
+
+You can add a new handler while the router is already running.
+To do that, you need to call `AddNoPublisherHandler` or `AddHandler` and call `RunHandlers`.
+
+{{% render-md %}}
+{{% load-snippet-partial file="src-link/message/router.go" first_line_contains="// RunHandlers" last_line_contains="func (r *Router) RunHandlers" padding_after="0" %}}
+{{% /render-md %}}
+
+### Stopping running handler
+
+It is possible to stop the running handler by calling `Stop()`.
+
+Please keep in mind, that router will be closed when there are no running handlers.
+
+{{% render-md %}}
+{{% load-snippet-partial file="src-link/message/router.go" first_line_contains="// Stop" last_line_contains="func (h *Handler) Stop()" padding_after="0" %}}
+{{% /render-md %}}
+
 ### Execution models
 
 *Subscribers* can consume either one message at a time or multiple messages in parallel.

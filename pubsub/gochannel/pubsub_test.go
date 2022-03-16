@@ -159,12 +159,50 @@ func TestPublish_race_condition_when_closing(t *testing.T) {
 				watermill.NewStdLogger(true, false),
 			)
 			go func() {
-				err := pubSub.Close()
-				require.NoError(t, err)
+				_ = pubSub.Publish("topic", message.NewMessage(strconv.Itoa(i), nil))
 			}()
-			err := pubSub.Publish("topic", message.NewMessage(strconv.Itoa(i), nil))
+
+			err := pubSub.Close()
 			require.NoError(t, err)
 		})
+	}
+}
+
+func TestPublishSubscribe_do_not_block_other_subscribers(t *testing.T) {
+	pubSub := gochannel.NewGoChannel(
+		gochannel.Config{},
+		watermill.NewStdLogger(true, true),
+	)
+	topicName := "test_topic_" + watermill.NewUUID()
+
+	msgsFromSubscriber1, err := pubSub.Subscribe(context.Background(), topicName)
+	require.NoError(t, err)
+
+	_, err = pubSub.Subscribe(context.Background(), topicName)
+	require.NoError(t, err)
+
+	msgsFromSubscriber3, err := pubSub.Subscribe(context.Background(), topicName)
+	require.NoError(t, err)
+
+	err = pubSub.Publish(topicName, message.NewMessage("1", nil))
+	require.NoError(t, err)
+
+	received := make(chan struct{})
+	go func() {
+		msg := <-msgsFromSubscriber1
+		msg.Ack()
+
+		msg = <-msgsFromSubscriber3
+		msg.Ack()
+
+		close(received)
+	}()
+
+	select {
+	case <-received:
+		// ok
+	case <-time.After(5 * time.Second):
+		t.Fatal("subscriber which didn't ack a message blocked other subscribers from receiving it")
 	}
 }
 
