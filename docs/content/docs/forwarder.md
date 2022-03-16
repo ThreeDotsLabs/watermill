@@ -4,7 +4,7 @@ description = "Publishing messages in transactional way with help of Forwarder c
 date = 2021-01-13T12:47:30+01:00
 weight = -400
 draft = false
-bref = "Publishing messages in transactions, while emitting events along with storing data in a database"
+bref = "Emitting events along with storing data in a database in one transaction"
 toc = true
 +++
 
@@ -19,8 +19,10 @@ on your own. If you don't want to change your message broker to a database, nor 
 you can make your life easier by using Watermill's [Forwarder component](https://github.com/ThreeDotsLabs/watermill/blob/master/components/forwarder/forwarder.go)! 
 
 ## Forwarder component 
+You can think of the Forwarder as a background running daemon which awaits  
+messages that are published to a database, and makes sure they eventually reach a message broker.  
 
-<img src="/img/publishing-with-forwarder.svg" alt="Watermill Forwarder component" style="width:100%;">
+<img src="/img/publishing-with-forwarder.svg" alt="Watermill Forwarder component" style="width:100%;"
 
 ## Example
 
