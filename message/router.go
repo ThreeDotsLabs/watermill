@@ -464,6 +464,16 @@ func (r *Router) Running() chan struct{} {
 	return r.running
 }
 
+// IsRunning returns true when router is running.
+func (r *Router) IsRunning() bool {
+	select {
+	case <-r.running:
+		return true
+	default:
+		return false
+	}
+}
+
 // Close gracefully closes the router with a timeout provided in the configuration.
 func (r *Router) Close() error {
 	r.closedLock.Lock()
