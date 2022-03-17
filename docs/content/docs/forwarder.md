@@ -23,6 +23,12 @@ You can think of the Forwarder as a background running daemon which awaits messa
 
 <img src="/img/publishing-with-forwarder.svg" alt="Watermill Forwarder component" style="width:100%;" />
 
+In order to make the Forwarder universal and usable transparently, it listens to a single topic on an intermediate 
+database based Pub/Sub, where enveloped messages are sent with help of a decorated [Forwarder Publisher](https://github.com/ThreeDotsLabs/watermill/blob/9e04bfefbd6fef9f9ffa59956654277005fa2e8a/components/forwarder/publisher.go#L30). 
+The Forwarder unwraps them, and sends to a specified destined topic on the message broker.  
+
+<img src="/img/forwarder-envelope.svg" alt="Forwarder envelope" style="width:100%;" />
+
 ## Example
 
 Let's consider a following example: there's a command which responsibility is to run a lottery. It has to pick 
