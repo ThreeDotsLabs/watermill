@@ -57,7 +57,7 @@ func (NopLogger) Debug(msg string, fields LogFields)            {}
 func (NopLogger) Trace(msg string, fields LogFields)            {}
 func (l NopLogger) With(fields LogFields) LoggerAdapter         { return l }
 
-// StdLoggerAdapter is a logger implementation, which sends al logs to provided standard output.
+// StdLoggerAdapter is a logger implementation, which sends all logs to provided standard output.
 type StdLoggerAdapter struct {
 	ErrorLogger *log.Logger
 	InfoLogger  *log.Logger
@@ -67,7 +67,7 @@ type StdLoggerAdapter struct {
 	fields LogFields
 }
 
-// NewStdLogger creates StdLoggerAdapter which sends al logs to stderr.
+// NewStdLogger creates StdLoggerAdapter which sends all logs to stderr.
 func NewStdLogger(debug, trace bool) LoggerAdapter {
 	return NewStdLoggerWithOut(os.Stderr, debug, trace)
 }
