@@ -8,7 +8,8 @@ import "github.com/ThreeDotsLabs/watermill/message"
 // If you had ordered messages, the ordering might be broken.
 func InstantAck(h message.HandlerFunc) message.HandlerFunc {
 	return func(message *message.Message) ([]*message.Message, error) {
+		messages, err := h(message)
 		message.Ack()
-		return h(message)
+		return messages, err
 	}
 }
