@@ -477,11 +477,11 @@ func TestResendOnError(
 	var publishedMessages message.Messages
 	allMessagesSent := make(chan struct{})
 
-	publishedMessages = PublishSimpleMessages(t, messagesToSend, pub, topicName)
-	close(allMessagesSent)
-
 	messages, err := sub.Subscribe(context.Background(), topicName)
 	require.NoError(t, err)
+
+	publishedMessages = PublishSimpleMessages(t, messagesToSend, pub, topicName)
+	close(allMessagesSent)
 
 NackLoop:
 	for i := 0; i < nacksCount; i++ {
@@ -524,6 +524,9 @@ func TestNoAck(
 		require.NoError(t, subscribeInitializer.SubscribeInitialize(topicName))
 	}
 
+	messages, err := sub.Subscribe(context.Background(), topicName)
+	require.NoError(t, err)
+
 	for i := 0; i < 2; i++ {
 		id := watermill.NewUUID()
 		log.Printf("sending %s", id)
@@ -533,9 +536,6 @@ func TestNoAck(
 		err := publishWithRetry(pub, topicName, msg)
 		require.NoError(t, err)
 	}
-
-	messages, err := sub.Subscribe(context.Background(), topicName)
-	require.NoError(t, err)
 
 	receivedMessage := make(chan struct{})
 	unlockAck := make(chan struct{}, 1)
