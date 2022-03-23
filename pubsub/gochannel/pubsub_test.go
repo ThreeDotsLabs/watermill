@@ -108,6 +108,72 @@ func TestPublishSubscribe_block_until_ack(t *testing.T) {
 	}
 }
 
+func TestPublishSubscribe_do_not_block_without_ack_required(t *testing.T) {
+	t.Helper()
+
+	messagesCount := 10
+	subscribersCount := 10
+
+	pubSub := gochannel.NewGoChannel(
+		gochannel.Config{
+			OutputChannelBuffer: int64(messagesCount),
+			Persistent:          true,
+		},
+		watermill.NewStdLogger(true, false),
+	)
+
+	allSent := sync.WaitGroup{}
+	allSent.Add(messagesCount)
+	allReceived := sync.WaitGroup{}
+
+	sentMessages := message.Messages{}
+	subscriberReceivedCh := make(chan message.Messages, subscribersCount)
+	for i := 0; i < subscribersCount; i++ {
+		allReceived.Add(1)
+
+		go func(i int) {
+			allMsgReceived := make(message.Messages, 0)
+			msgs, err := pubSub.Subscribe(context.Background(), "topic")
+			require.NoError(t, err)
+
+			for received := range msgs {
+				allMsgReceived = append(allMsgReceived, received)
+				if len(allMsgReceived) >= len(sentMessages) {
+					break
+				}
+			}
+			subscriberReceivedCh <- allMsgReceived
+			allReceived.Done()
+		}(i)
+	}
+
+	go func() {
+		for i := 0; i < messagesCount; i++ {
+			msg := message.NewMessage(watermill.NewUUID(), nil)
+			sentMessages = append(sentMessages, msg)
+
+			go func() {
+				require.NoError(t, pubSub.Publish("topic", msg))
+				allSent.Done()
+			}()
+		}
+	}()
+
+	log.Println("waiting for all sent")
+	allSent.Wait()
+
+	log.Println("waiting for all received")
+	allReceived.Wait()
+
+	close(subscriberReceivedCh)
+
+	log.Println("asserting")
+
+	for subMsgs := range subscriberReceivedCh {
+		tests.AssertAllMessagesReceived(t, sentMessages, subMsgs)
+	}
+}
+
 func TestPublishSubscribe_race_condition_on_subscribe(t *testing.T) {
 	testsCount := 15
 	if testing.Short() {
@@ -228,19 +294,6 @@ func testPublishSubscribeSubRace(t *testing.T) {
 	allSent.Add(messagesCount)
 	allReceived := sync.WaitGroup{}
 
-	sentMessages := message.Messages{}
-	go func() {
-		for i := 0; i < messagesCount; i++ {
-			msg := message.NewMessage(watermill.NewUUID(), nil)
-			sentMessages = append(sentMessages, msg)
-
-			go func() {
-				require.NoError(t, pubSub.Publish("topic", msg))
-				allSent.Done()
-			}()
-		}
-	}()
-
 	subscriberReceivedCh := make(chan message.Messages, subscribersCount)
 	for i := 0; i < subscribersCount; i++ {
 		allReceived.Add(1)
@@ -255,6 +308,19 @@ func testPublishSubscribeSubRace(t *testing.T) {
 			allReceived.Done()
 		}()
 	}
+
+	sentMessages := message.Messages{}
+	go func() {
+		for i := 0; i < messagesCount; i++ {
+			msg := message.NewMessage(watermill.NewUUID(), nil)
+			sentMessages = append(sentMessages, msg)
+
+			go func() {
+				require.NoError(t, pubSub.Publish("topic", msg))
+				allSent.Done()
+			}()
+		}
+	}()
 
 	log.Println("waiting for all sent")
 	allSent.Wait()
