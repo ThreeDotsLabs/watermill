@@ -1,6 +1,7 @@
 cloud.google.com/go v0.34.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
-github.com/ThreeDotsLabs/watermill v1.2.0-rc.7 h1:c7rlzfhUFPtNo2WiJuIhrdwAfZcuAfbvB29uF+I0z7c=
 github.com/ThreeDotsLabs/watermill v1.2.0-rc.7/go.mod h1:QLZSaklpSZ/7yv288LL2DFOgCEi86VYEmQvzmaMlHoA=
+github.com/ThreeDotsLabs/watermill v1.2.0-rc.10 h1:vBO4/hMXKyszmixz8KzrayBWBiBTfUBtrwL6aj5PfaY=
+github.com/ThreeDotsLabs/watermill v1.2.0-rc.10/go.mod h1:QLZSaklpSZ/7yv288LL2DFOgCEi86VYEmQvzmaMlHoA=
 github.com/ThreeDotsLabs/watermill-amqp/v2 v2.0.1 h1:TxQ/glzR/8bnYA2QeHN7CHc1mXD+BHB9vrCWASV12PI=
 github.com/ThreeDotsLabs/watermill-amqp/v2 v2.0.1/go.mod h1:DKOBUoMVtPMV8jBEbRP3NL6TgnOMyRvVza3W297cdqU=
 github.com/alecthomas/template v0.0.0-20160405071501-a0175ee3bccc/go.mod h1:LOuyumcjzFXgccqObfd/Ljyb9UuFJ6TxHnclSeseNhc=

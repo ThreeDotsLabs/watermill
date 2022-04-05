@@ -94,7 +94,8 @@ Supported Pub/Subs:
 - HTTP Pub/Sub [(`github.com/ThreeDotsLabs/watermill-http`)](https://github.com/ThreeDotsLabs/watermill-http/)
 - io.Reader/io.Writer Pub/Sub [(`github.com/ThreeDotsLabs/watermill-io`)](https://github.com/ThreeDotsLabs/watermill-io/)
 - Kafka Pub/Sub [(`github.com/ThreeDotsLabs/watermill-kafka/v2`)](https://github.com/ThreeDotsLabs/watermill-kafka/)
-- NATS Pub/Sub [(`github.com/ThreeDotsLabs/watermill-nats`)](https://github.com/ThreeDotsLabs/watermill-nats/)
+- NATS (STAN) Pub/Sub [(`github.com/ThreeDotsLabs/watermill-nats`)](https://github.com/ThreeDotsLabs/watermill-nats/)
+- NATS (Jetstream) Pub/Sub [(`github.com/ThreeDotsLabs/watermill-jetstream`)](https://github.com/ThreeDotsLabs/watermill-jetstream/)
 - SQL Pub/Sub [(`github.com/ThreeDotsLabs/watermill-sql`)](https://github.com/ThreeDotsLabs/watermill-sql/)
 
 

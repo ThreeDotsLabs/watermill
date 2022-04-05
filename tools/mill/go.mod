@@ -5,7 +5,7 @@ go 1.17
 require (
 	cloud.google.com/go/pubsub v1.17.0
 	github.com/Shopify/sarama v1.30.0
-	github.com/ThreeDotsLabs/watermill v1.2.0-rc.7
+	github.com/ThreeDotsLabs/watermill v1.2.0-rc.10
 	github.com/ThreeDotsLabs/watermill-amqp/v2 v2.0.1
 	github.com/ThreeDotsLabs/watermill-googlecloud v1.0.9
 	github.com/ThreeDotsLabs/watermill-io v1.0.3
