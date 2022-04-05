@@ -3,10 +3,11 @@ package main
 
 import (
 	"context"
-	"github.com/ThreeDotsLabs/watermill-jetstream/pkg/jetstream"
-	"github.com/nats-io/nats.go"
 	"log"
 	"time"
+
+	"github.com/ThreeDotsLabs/watermill-jetstream/pkg/jetstream"
+	"github.com/nats-io/nats.go"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
