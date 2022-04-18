@@ -14,6 +14,7 @@ type MessageSubscriberConstructor func(handlerName string) (message.Subscriber, 
 type MessageBus struct {
 	router *message.Router
 
+	marshaler             MessageMarshaler
 	generateTopic         func(messageType string) string
 	subscriberConstructor MessageSubscriberConstructor
 
@@ -22,12 +23,16 @@ type MessageBus struct {
 
 func NewMessageBus(
 	router *message.Router,
+	marshaler MessageMarshaler,
 	generateTopic func(messageType string) string,
 	subscriberConstructor MessageSubscriberConstructor,
 	logger watermill.LoggerAdapter,
 ) (*MessageBus, error) {
 	if router == nil {
 		return nil, errors.New("missing router")
+	}
+	if marshaler == nil {
+		return nil, errors.New("missing marshaler")
 	}
 	if generateTopic == nil {
 		return nil, errors.New("missing generateTopic")
@@ -41,58 +46,52 @@ func NewMessageBus(
 
 	return &MessageBus{
 		router,
+		marshaler,
 		generateTopic,
 		subscriberConstructor,
 		logger,
 	}, nil
 }
 
-func (b *MessageBus) AddHandler(handler MessageHandler) error {
-	topicName := b.generateTopic(handler.MessageType)
+func AddHandler[M any](
+	b *MessageBus,
+	handlerName string,
+	handlerFunc func(ctx context.Context, message M) error,
+) error {
+	messageType := b.marshaler.Type(new(M))
+	topicName := b.generateTopic(messageType)
 
 	logger := b.logger.With(watermill.LogFields{
-		"handler_name": handler.Name,
-		"messageType":  handler.MessageType,
+		"handler_name": handlerName,
+		"messageType":  messageType,
 		"topic":        topicName,
 	})
 
 	logger.Debug("Adding bus message handler to router", nil)
 
-	subscriber, err := b.subscriberConstructor(handler.Name)
+	subscriber, err := b.subscriberConstructor(handlerName)
 	if err != nil {
 		return errors.Wrap(err, "cannot create subscriber for message bus")
 	}
 
 	b.router.AddNoPublisherHandler(
-		handler.Name,
+		handlerName,
 		topicName,
 		subscriber,
-		handler.Handler,
+		newMessageHandler(b, handlerFunc),
 	)
 
 	return nil
 }
 
-type MessageHandler struct {
-	Name        string
-	MessageType string
-	Handler     message.NoPublishHandlerFunc
-}
-
-func NewMessageHandler[M any](
-	handlerName string,
-	handlerFunc func(ctx context.Context, message M) error,
-	marshaler MessageMarshaler,
-	logger watermill.LoggerAdapter,
-) MessageHandler {
-	expectedType := marshaler.Type(new(M))
-
-	handler := func(msg *message.Message) error {
+func newMessageHandler[M any](b *MessageBus, handlerFunc func(ctx context.Context, message M) error) message.NoPublishHandlerFunc {
+	return func(msg *message.Message) error {
+		expectedType := b.marshaler.Type(new(M))
 		messageStruct := new(M)
-		messageType := marshaler.TypeFromMessage(msg)
+		messageType := b.marshaler.TypeFromMessage(msg)
 
 		if messageType != expectedType {
-			logger.Trace("Received different message type than expected, ignoring", watermill.LogFields{
+			b.logger.Trace("Received different message type than expected, ignoring", watermill.LogFields{
 				"message_uuid":          msg.UUID,
 				"expected_message_type": expectedType,
 				"received_message_type": messageType,
@@ -100,27 +99,21 @@ func NewMessageHandler[M any](
 			return nil
 		}
 
-		logger.Debug("Handling message", watermill.LogFields{
+		b.logger.Debug("Handling message", watermill.LogFields{
 			"message_uuid":          msg.UUID,
 			"received_message_type": messageType,
 		})
 
-		if err := marshaler.Unmarshal(msg, messageStruct); err != nil {
+		if err := b.marshaler.Unmarshal(msg, messageStruct); err != nil {
 			return err
 		}
 
 		if err := handlerFunc(msg.Context(), *messageStruct); err != nil {
 			// TODO consider this to be logged as Error?
-			logger.Debug("Error when handling message", watermill.LogFields{"err": err})
+			b.logger.Debug("Error when handling message", watermill.LogFields{"err": err})
 			return err
 		}
 
 		return nil
-	}
-
-	return MessageHandler{
-		Name:        handlerName,
-		MessageType: expectedType,
-		Handler:     handler,
 	}
 }

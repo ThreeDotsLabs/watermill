@@ -23,20 +23,16 @@ func TestNewEventProcessor(t *testing.T) {
 	router, err := message.NewRouter(message.RouterConfig{}, watermill.NopLogger{})
 	require.NoError(t, err)
 
-	messageBus, err := bus.NewMessageBus(router, generateTopic, subscriberConstructor, watermill.NopLogger{})
+	messageBus, err := bus.NewMessageBus(router, bus.JSONMarshaler{}, generateTopic, subscriberConstructor, watermill.NopLogger{})
 	require.NoError(t, err)
 
-	marshaler := bus.JSONMarshaler{}
-
-	err = messageBus.AddHandler(bus.NewMessageHandler(
+	err = bus.AddHandler(messageBus,
 		"testHandler",
 		func(ctx context.Context, event ExampleEvent) error {
 			fmt.Println("Handling", event.ID)
 			return nil
 		},
-		marshaler,
-		watermill.NopLogger{},
-	))
+	)
 	require.NoError(t, err)
 }
 
