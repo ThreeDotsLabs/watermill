@@ -1177,3 +1177,47 @@ func readMessages(messagesCh <-chan *message.Message, limit int, timeout time.Du
 
 	return receivedMessages, len(receivedMessages) == limit
 }
+
+func TestRouter_Handlers(t *testing.T) {
+	pub, sub := createPubSub()
+	defer func() {
+		assert.NoError(t, pub.Close())
+		assert.NoError(t, sub.Close())
+	}()
+
+	logger := watermill.NewCaptureLogger()
+
+	r, err := message.NewRouter(
+		message.RouterConfig{},
+		logger,
+	)
+	require.NoError(t, err)
+
+	handlerCalled := false
+
+	handlerName := "test_get_handler"
+
+	r.AddNoPublisherHandler(
+		handlerName,
+		"subscribe_topic",
+		sub,
+		func(msg *message.Message) error {
+			handlerCalled = true
+			return nil
+		},
+	)
+
+	actual := r.Handlers()
+
+	assert.Len(t, actual, 1)
+
+	actualHandler := actual[handlerName]
+
+	assert.NotNil(t, actualHandler)
+
+	messages, err := actualHandler(nil)
+
+	assert.Empty(t, messages)
+	assert.NoError(t, err)
+	assert.True(t, handlerCalled, "Handler function should be the same")
+}
