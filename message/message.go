@@ -21,7 +21,7 @@ type Message struct {
 	// UUID is an unique identifier of message.
 	//
 	// It is only used by Watermill for debugging.
-	// UUID can be empty.
+	// Usually it's not required, but some Pub/Sub implementation may require this field.
 	UUID string
 
 	// Metadata contains the message metadata.
