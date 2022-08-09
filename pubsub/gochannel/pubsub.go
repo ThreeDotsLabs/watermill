@@ -2,10 +2,10 @@ package gochannel
 
 import (
 	"context"
-	"sync"
-
+	"fmt"
 	"github.com/lithammer/shortuuid/v3"
 	"github.com/pkg/errors"
+	"sync"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
@@ -26,6 +26,10 @@ type Config struct {
 	// When true, Publish will block until subscriber Ack's the message.
 	// If there are no subscribers, Publish will not block (also when Persistent is true).
 	BlockPublishUntilSubscriberAck bool
+
+	// The concurrent count of subscriber to handle the messages.
+	// Default is 1, which means the subscriber will be blocked until the last message ack or nack.
+	SubscriberConcurrentCount int
 }
 
 // GoChannel is the simplest Pub/Sub implementation.
@@ -60,7 +64,9 @@ func NewGoChannel(config Config, logger watermill.LoggerAdapter) *GoChannel {
 	if logger == nil {
 		logger = watermill.NopLogger{}
 	}
-
+	if config.SubscriberConcurrentCount == 0 {
+		config.SubscriberConcurrentCount = 1
+	}
 	return &GoChannel{
 		config: config,
 
@@ -69,7 +75,6 @@ func NewGoChannel(config Config, logger watermill.LoggerAdapter) *GoChannel {
 		logger: logger.With(watermill.LogFields{
 			"pubsub_uuid": shortuuid.New(),
 		}),
-
 		closing: make(chan struct{}),
 
 		persistedMessages: map[string][]*message.Message{},
@@ -113,7 +118,6 @@ func (g *GoChannel) Publish(topic string, messages ...*message.Message) error {
 		if err != nil {
 			return err
 		}
-
 		if g.config.BlockPublishUntilSubscriberAck {
 			g.waitForAckFromSubscribers(msg, ackedBySubscribers)
 		}
@@ -145,6 +149,7 @@ func (g *GoChannel) sendMessage(topic string, message *message.Message) (<-chan 
 		g.logger.Info("No subscribers to send message", logFields)
 		return ackedBySubscribers, nil
 	}
+	fmt.Printf("\nsend message: %v", message)
 
 	go func(subscribers []*subscriber) {
 		wg := &sync.WaitGroup{}
@@ -186,11 +191,12 @@ func (g *GoChannel) Subscribe(ctx context.Context, topic string) (<-chan *messag
 	subLock.(*sync.Mutex).Lock()
 
 	s := &subscriber{
-		ctx:           ctx,
-		uuid:          watermill.NewUUID(),
-		outputChannel: make(chan *message.Message, g.config.OutputChannelBuffer),
-		logger:        g.logger,
-		closing:       make(chan struct{}),
+		ctx:            ctx,
+		uuid:           watermill.NewUUID(),
+		outputChannel:  make(chan *message.Message, g.config.OutputChannelBuffer),
+		sendingChannel: make(chan struct{}, g.config.SubscriberConcurrentCount),
+		logger:         g.logger,
+		closing:        make(chan struct{}),
 	}
 
 	go func(s *subscriber, g *GoChannel) {
@@ -315,8 +321,9 @@ type subscriber struct {
 
 	uuid string
 
-	sending       sync.Mutex
-	outputChannel chan *message.Message
+	sending        sync.Mutex
+	sendingChannel chan struct{}
+	outputChannel  chan *message.Message
 
 	logger  watermill.LoggerAdapter
 	closed  bool
@@ -342,13 +349,14 @@ func (s *subscriber) Close() {
 }
 
 func (s *subscriber) sendMessageToSubscriber(msg *message.Message, logFields watermill.LogFields) {
-	s.sending.Lock()
-	defer s.sending.Unlock()
+	s.sendingChannel <- struct{}{}
+	defer func() {
+		<-s.sendingChannel
+	}()
 
 	ctx, cancelCtx := context.WithCancel(s.ctx)
 	defer cancelCtx()
 
-SendToSubscriber:
 	for {
 		// copy the message to prevent ack/nack propagation to other consumers
 		// also allows to make retries on a fresh copy of the original message
@@ -375,8 +383,7 @@ SendToSubscriber:
 			s.logger.Trace("Message acked", logFields)
 			return
 		case <-msgToSend.Nacked():
-			s.logger.Trace("Nack received, resending message", logFields)
-			continue SendToSubscriber
+			s.logger.Trace("Nack received", logFields)
 		case <-s.closing:
 			s.logger.Trace("Closing, message discarded", logFields)
 			return
