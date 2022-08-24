@@ -353,7 +353,7 @@ func (s *subscriber) sendMessageToSubscriber(msg *message.Message, logFields wat
 
 	ctx, cancelCtx := context.WithCancel(s.ctx)
 	defer cancelCtx()
-
+SendToSubscriber:
 	for {
 		// copy the message to prevent ack/nack propagation to other consumers
 		// also allows to make retries on a fresh copy of the original message
@@ -381,7 +381,7 @@ func (s *subscriber) sendMessageToSubscriber(msg *message.Message, logFields wat
 			return
 		case <-msgToSend.Nacked():
 			s.logger.Trace("Nack received", logFields)
-			return
+			continue SendToSubscriber
 		case <-s.closing:
 			s.logger.Trace("Closing, message discarded", logFields)
 			return
