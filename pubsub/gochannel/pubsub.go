@@ -380,7 +380,7 @@ SendToSubscriber:
 			s.logger.Trace("Message acked", logFields)
 			return
 		case <-msgToSend.Nacked():
-			s.logger.Trace("Nack received", logFields)
+			s.logger.Trace("Nack received, resending message", logFields)
 			continue SendToSubscriber
 		case <-s.closing:
 			s.logger.Trace("Closing, message discarded", logFields)
