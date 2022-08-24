@@ -2,7 +2,6 @@ package gochannel
 
 import (
 	"context"
-	"fmt"
 	"github.com/lithammer/shortuuid/v3"
 	"github.com/pkg/errors"
 	"sync"
@@ -28,7 +27,7 @@ type Config struct {
 	BlockPublishUntilSubscriberAck bool
 
 	// The concurrent count of subscriber to handle the messages.
-	// Default is 1, which means the subscriber will be blocked until the last message ack or nack.
+	// Default value is 1, which means the subscriber will be blocked until the last message ack or nack.
 	SubscriberConcurrentCount int
 }
 
@@ -83,7 +82,6 @@ func NewGoChannel(config Config, logger watermill.LoggerAdapter) *GoChannel {
 
 // Publish in GoChannel is NOT blocking until all consumers consume.
 // Messages will be send in background.
-//
 // Messages may be persisted or not, depending of persistent attribute.
 func (g *GoChannel) Publish(topic string, messages ...*message.Message) error {
 	if g.isClosed() {
@@ -149,7 +147,6 @@ func (g *GoChannel) sendMessage(topic string, message *message.Message) (<-chan 
 		g.logger.Info("No subscribers to send message", logFields)
 		return ackedBySubscribers, nil
 	}
-	fmt.Printf("\nsend message: %v", message)
 
 	go func(subscribers []*subscriber) {
 		wg := &sync.WaitGroup{}
@@ -384,6 +381,7 @@ func (s *subscriber) sendMessageToSubscriber(msg *message.Message, logFields wat
 			return
 		case <-msgToSend.Nacked():
 			s.logger.Trace("Nack received", logFields)
+			return
 		case <-s.closing:
 			s.logger.Trace("Closing, message discarded", logFields)
 			return
