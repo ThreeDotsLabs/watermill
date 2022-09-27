@@ -19,7 +19,7 @@ jobs:
         with:
           go-version: '^1.19.1'
       - run: |
-          [ -f docker-compose.yml ] && docker-compose up -d
+          [ -f docker-compose.yml ] && docker-compose up -d || true
       - run: make test
       - run: make test_short
       - run: make test_race
