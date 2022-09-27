@@ -23,6 +23,8 @@ validate_examples:
 	go run dev/update-examples-deps/main.go
 	go run dev/validate-examples/main.go
 
+build:
+	go build ./...
 
 fmt:
 	go fmt ./...

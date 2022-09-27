@@ -10,4 +10,9 @@ jobs:
       - uses: actions/setup-go@v2
         with:
           go-version: '^1.19.1'
-      - run: make test
+      - run: make build
+      - run: make test_full
+      - run: make test_short
+      - run: make test_race
+      - run: make test_stress
+
