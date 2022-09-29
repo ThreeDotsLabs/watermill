@@ -5,7 +5,6 @@ import (
 	"runtime/debug"
 
 	"github.com/ThreeDotsLabs/watermill/message"
-	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 )
 
@@ -25,8 +24,7 @@ func Recoverer(h message.HandlerFunc) message.HandlerFunc {
 	return func(event *message.Message) (events []*message.Message, err error) {
 		defer func() {
 			if r := recover(); r != nil {
-				panicErr := errors.WithStack(RecoveredPanicError{V: r, Stacktrace: string(debug.Stack())})
-				err = multierror.Append(err, panicErr)
+				err = errors.WithStack(RecoveredPanicError{V: r, Stacktrace: string(debug.Stack())})
 			}
 		}()
 
