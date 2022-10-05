@@ -504,12 +504,27 @@ func (r *Router) Close() error {
 	close(r.closeCh)
 	defer close(r.closedCh)
 
-	timeouted := sync_internal.WaitGroupTimeout(r.handlersWg, r.config.CloseTimeout)
+	timeouted := r.waitingForHandlers()
 	if timeouted {
 		return errors.New("router close timeout")
 	}
 
 	return nil
+}
+
+func (r *Router) waitingForHandlers() bool {
+	var waitGroup sync.WaitGroup
+	waitGroup.Add(1)
+	go func() {
+		defer waitGroup.Done()
+		r.handlersWg.Wait()
+	}()
+	waitGroup.Add(1)
+	go func() {
+		defer waitGroup.Done()
+		r.runningHandlersWg.Wait()
+	}()
+	return sync_internal.WaitGroupTimeout(&waitGroup, r.config.CloseTimeout)
 }
 
 func (r *Router) isClosed() bool {
