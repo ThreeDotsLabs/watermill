@@ -1,0 +1,10 @@
+name: pr
+on:
+  push:
+    branches:
+      - master
+jobs:
+  ci:
+    uses: ThreeDotsLabs/watermill/.github/workflows/tests.yml@github-actions
+    with:
+      stress-tests: true

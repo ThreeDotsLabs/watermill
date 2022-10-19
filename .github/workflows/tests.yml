@@ -1,6 +1,12 @@
-name: ci
+name: tests
 on:
-  push:
+  workflow_call:
+    inputs:
+      stress-tests:
+        description: 'Run stress tests'
+        required: false
+        type: boolean
+        default: false
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -24,4 +30,5 @@ jobs:
       - run: make test_short
       - run: make test_race
       - run: make test_stress
+        if: ${{ inputs.stress-tests }}
 
