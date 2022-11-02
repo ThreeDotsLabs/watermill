@@ -1,5 +1,4 @@
 up:
-	docker-compose up
 
 test:
 	go test ./...
@@ -25,6 +24,8 @@ validate_examples:
 
 build:
 	go build ./...
+
+wait:
 
 fmt:
 	go fmt ./...

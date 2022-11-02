@@ -27,6 +27,7 @@ jobs:
       - run: make up
       - run: make wait
       - run: make test
+        timeout-minutes: 30
       - run: make test_short
       - run: make test_race
       - run: make test_stress
