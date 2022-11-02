@@ -1,4 +1,4 @@
-module github.com/ThreeDotsLabs/watermill
+module github.com/golang-boy/watermill
 
 go 1.17
 
