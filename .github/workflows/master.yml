@@ -5,6 +5,6 @@ on:
       - master
 jobs:
   ci:
-    uses: ThreeDotsLabs/watermill/.github/workflows/tests.yml@github-actions
+    uses: ThreeDotsLabs/watermill/.github/workflows/tests.yml
     with:
       stress-tests: true
