@@ -1,7 +1,7 @@
 # Watermill
 <img align="right" width="200" src="https://threedots.tech/watermill-io/watermill-logo.png">
 
-[![CircleCI](https://circleci.com/gh/ThreeDotsLabs/watermill/tree/master.svg?style=svg)](https://circleci.com/gh/ThreeDotsLabs/watermill/tree/master)
+[![CI Status](https://github.com/ThreeDotsLabs/watermill/actions/workflows/master.yml/badge.svg)](https://github.com/ThreeDotsLabs/watermill/actions/workflows/master.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/ThreeDotsLabs/watermill)](https://goreportcard.com/report/github.com/ThreeDotsLabs/watermill)
 [![codecov](https://codecov.io/gh/ThreeDotsLabs/watermill/branch/master/graph/badge.svg)](https://codecov.io/gh/ThreeDotsLabs/watermill)
 
