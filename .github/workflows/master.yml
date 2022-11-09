@@ -1,4 +1,4 @@
-name: pr
+name: master
 on:
   push:
     branches:
