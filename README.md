@@ -26,6 +26,10 @@ Pick what you like the best or see in order:
 2. See examples below.
 3. Read the full documentation: https://watermill.io/
 
+## Our online hands-on training
+
+<a href="https://threedots.tech/event-driven/?utm_source=watermill-readme"><img align="center" width="400" src="https://threedots.tech/event-driven-banner.png"></a>
+
 ## Examples
 
 * Basic
