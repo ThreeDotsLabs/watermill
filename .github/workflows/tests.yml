@@ -1,0 +1,36 @@
+name: tests
+on:
+  workflow_call:
+    inputs:
+      stress-tests:
+        description: 'Run stress tests'
+        required: false
+        type: boolean
+        default: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v2
+        with:
+          go-version: '^1.19.1'
+      - run: make build
+  tests:
+    needs: [build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v2
+        with:
+          go-version: '^1.19.1'
+      - run: cat .env >> $GITHUB_ENV || true
+      - run: make up
+      - run: make wait
+      - run: make test
+        timeout-minutes: 30
+      - run: make test_short
+      - run: make test_race
+      - run: make test_stress
+        if: ${{ inputs.stress-tests }}
+
