@@ -1017,7 +1017,7 @@ ClosedLoop:
 	AssertAllMessagesReceived(t, publishedMessages, receivedMessages)
 
 	for _, msg := range receivedMessages {
-		assert.EqualValues(t, "bar", msg.Context().Value("foo"))
+		assert.EqualValues(t, "bar", msg.Context().Value(contextKey("foo")))
 	}
 }
 
