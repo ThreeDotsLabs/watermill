@@ -27,7 +27,7 @@ func TestEnvelope(t *testing.T) {
 	wrappedMsg, err := wrapMessageInEnvelope(expectedDestinationTopic, msg)
 	require.NoError(t, err)
 	require.NotNil(t, wrappedMsg)
-	v, ok := wrappedMsg.Context().Value("key").(string)
+	v, ok := wrappedMsg.Context().Value(contextKey("key")).(string)
 	require.True(t, ok)
 	require.Equal(t, "value", v)
 
