@@ -344,18 +344,18 @@ func TestConcurrentSubscribeMultipleTopics(
 			if subscribeInitializer, ok := sub.(message.SubscribeInitializer); ok {
 				err := subscribeInitializer.SubscribeInitialize(topicName)
 				if err != nil {
-					t.Fatal(err)
+					t.Error(err)
 				}
 			}
 
 			err := publishWithRetry(pub, topicName, messagesToPublish...)
 			if err != nil {
-				t.Fatal(err)
+				t.Error(err)
 			}
 
 			messages, err := sub.Subscribe(context.Background(), topicName)
 			if err != nil {
-				t.Fatal(err)
+				t.Error(err)
 			}
 			topicMessages, _ := bulkRead(tCtx, messages, len(messagesToPublish), defaultTimeout)
 
@@ -966,6 +966,8 @@ func TestMessageCtx(
 	}
 }
 
+type contextKey string
+
 // TestSubscribeCtx tests if the Subscriber's Context works correctly.
 func TestSubscribeCtx(
 	t *testing.T,
@@ -978,7 +980,7 @@ func TestSubscribeCtx(
 	const messagesCount = 20
 
 	ctxWithCancel, cancel := context.WithCancel(context.Background())
-	ctxWithCancel = context.WithValue(ctxWithCancel, "foo", "bar")
+	ctxWithCancel = context.WithValue(ctxWithCancel, contextKey("foo"), "bar")
 
 	topicName := testTopicName(tCtx.TestID)
 	if subscribeInitializer, ok := sub.(message.SubscribeInitializer); ok {
@@ -1007,7 +1009,7 @@ ClosedLoop:
 		time.Sleep(time.Millisecond * 100)
 	}
 
-	ctx := context.WithValue(context.Background(), "foo", "bar")
+	ctx := context.WithValue(context.Background(), contextKey("foo"), "bar")
 	msgs, err := sub.Subscribe(ctx, topicName)
 	require.NoError(t, err)
 

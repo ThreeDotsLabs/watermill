@@ -10,13 +10,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type contextKey string
+
 func TestEnvelope(t *testing.T) {
 	expectedUUID := watermill.NewUUID()
 	expectedPayload := message.Payload("msg content")
 	expectedMetadata := message.Metadata{"key": "value"}
 	expectedDestinationTopic := "dest_topic"
 
-	ctx := context.WithValue(context.Background(), "key", "value")
+	ctx := context.WithValue(context.Background(), contextKey("key"), "value")
 
 	msg := message.NewMessage(expectedUUID, expectedPayload)
 	msg.Metadata = expectedMetadata

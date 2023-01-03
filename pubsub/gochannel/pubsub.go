@@ -275,9 +275,7 @@ func (g *GoChannel) topicSubscribers(topic string) []*subscriber {
 
 	// let's do a copy to avoid race conditions and deadlocks due to lock
 	subscribersCopy := make([]*subscriber, len(subscribers))
-	for i, s := range subscribers {
-		subscribersCopy[i] = s
-	}
+	copy(subscribersCopy, subscribers)
 
 	return subscribersCopy
 }
