@@ -1,7 +1,7 @@
 +++
 title = "Troubleshooting"
 description = "When something goes wrong"
-weight = 0
+weight = -90
 draft = false
 toc = true
 bref = "When something goes wrong"

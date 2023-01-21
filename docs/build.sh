@@ -7,7 +7,7 @@ if [[ ! -d themes/kube ]]; then
     mkdir -p themes/kube && pushd themes/kube
     git init
     git remote add origin https://github.com/jeblister/kube
-    git fetch --depth 1 origin bda578df413e441fb24e4f5f751d2b15b7efb53a
+    git fetch --depth 1 origin 1507abea527aecd896fdc306dfd28ee3e34f01ec
     git checkout FETCH_HEAD
     popd
 fi

@@ -3,7 +3,7 @@ title = "Firestore Pub/Sub"
 description = "A scalable document database from Google"
 date = 2021-07-29T15:30:00+02:00
 bref = "A scalable document database from Google"
-weight = 0
+weight = -20
 type = "docs"
 toc = false
 +++

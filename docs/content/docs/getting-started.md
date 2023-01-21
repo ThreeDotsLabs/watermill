@@ -80,7 +80,7 @@ for msg := range messages {
 
 See detailed examples below for supported PubSubs.
 
-{{% tabs id="subscribing" tabs="go-channel,kafka,nats-streaming,gcloud,amqp,sql" labels="Go Channel,Kafka,NATS Streaming,Google Cloud Pub/Sub,RabbitMQ (AMQP),SQL" %}}
+{{< tabs id="subscribing" tabs="go-channel,kafka,nats-streaming,gcloud,amqp,sql" labels="Go Channel,Kafka,NATS Streaming,Google Cloud Pub/Sub,RabbitMQ (AMQP),SQL" >}}
 
 {{% tabs-tab id="go-channel"%}}
 {{% load-snippet-partial file="src-link/_examples/pubsubs/go-channel/main.go" first_line_contains="package main" last_line_contains="process(messages)" %}}
@@ -205,7 +205,7 @@ A more detailed explanation of how it is working (and how to add live code reloa
 {{% load-snippet-partial file="src-link/_examples/pubsubs/sql/main.go" first_line_contains="func process" %}}
 {{% /tabs-tab %}}
 
-{{% /tabs %}}
+{{< /tabs >}}
 
 ### Creating Messages
 
@@ -229,7 +229,7 @@ if err != nil {
 }
 ```
 
-{{% tabs id="publishing" tabs="go-channel,kafka,nats-streaming,gcloud,amqp,sql" labels="Go Channel,Kafka,NATS Streaming,Google Cloud Pub/Sub,RabbitMQ (AMQP),SQL" %}}
+{{< tabs id="publishing" tabs="go-channel,kafka,nats-streaming,gcloud,amqp,sql" labels="Go Channel,Kafka,NATS Streaming,Google Cloud Pub/Sub,RabbitMQ (AMQP),SQL" >}}
 
 {{% tabs-tab id="go-channel"%}}
 {{% load-snippet-partial file="src-link/_examples/pubsubs/go-channel/main.go" first_line_contains="go process(messages)" last_line_contains="publisher.Publish" padding_after="4" %}}
@@ -255,7 +255,7 @@ if err != nil {
 {{% load-snippet-partial file="src-link/_examples/pubsubs/sql/main.go" first_line_contains="go process(messages)" last_line_contains="publisher.Publish" padding_after="4" %}}
 {{% /tabs-tab %}}
 
-{{% /tabs %}}
+{{< /tabs >}}
 
 ### Using *Message Router*
 
