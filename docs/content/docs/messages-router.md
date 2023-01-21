@@ -93,8 +93,8 @@ To close the Router, you need to call `Close()`.
 
 `Close()` will close all publishers and subscribers, and wait for all handlers to finish.
 
-`Close()` will wait until timeout configured in `RouterConfig.CloseTimeout`.
-If timeout is reached, `Close()` will return an error.
+`Close()` will wait for a timeout configured in `RouterConfig.CloseTimeout`.
+If the timeout is reached, `Close()` will return an error.
 
 ### Adding handler after the router has started
 
@@ -107,7 +107,7 @@ To do that, you need to call `AddNoPublisherHandler` or `AddHandler` and call `R
 
 ### Stopping running handler
 
-It is possible to stop the running **just one handler** by calling `Stop()`.
+It is possible to stop **just one running handler** by calling `Stop()`.
 
 Please keep in mind, that router will be closed when there are no running handlers.
 
