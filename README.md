@@ -104,6 +104,12 @@ Supported Pub/Subs:
 
 All Pub/Subs implementation documentation can be found in the [documentation](https://watermill.io/pubsubs/).
 
+## Unofficial libraries
+
+Can't find your favorite Pub/Sub or library integration? Check [Awesome Watermill](https://watermill.io/docs/awesome/).
+
+If you know another library or are an author of one, please [add it to the list](https://github.com/ThreeDotsLabs/watermill/edit/master/docs/content/docs/awesome.md).
+
 ## Contributing
 
 Please check our [contributing guide](CONTRIBUTING.md).
