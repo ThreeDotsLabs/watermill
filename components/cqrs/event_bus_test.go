@@ -45,7 +45,7 @@ func TestEventBus_Send_ContextPropagation(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	ctx := context.WithValue(context.Background(), "key", "value")
+	ctx := context.WithValue(context.Background(), contextKey("key"), "value")
 
 	err = eventBus.Publish(ctx, "message")
 	require.NoError(t, err)

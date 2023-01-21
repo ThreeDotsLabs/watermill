@@ -21,7 +21,8 @@ const (
 func TestThrottle_Middleware(t *testing.T) {
 	throttle := middleware.NewThrottle(perSecond, testTimeout)
 
-	ctx, _ := context.WithTimeout(context.Background(), testTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+	defer cancel()
 
 	producedMessagesChannel := make(chan struct{})
 
