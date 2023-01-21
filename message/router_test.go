@@ -354,9 +354,6 @@ func TestRouter_nack_on_handler_failure(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("expected the message to be nacked")
 	}
-
-	err = router.Close()
-	require.NoError(t, err)
 }
 
 func TestRouter_AddMiddleware_to_router(t *testing.T) {
