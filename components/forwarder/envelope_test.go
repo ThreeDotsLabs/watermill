@@ -10,13 +10,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type contextKey string
+
 func TestEnvelope(t *testing.T) {
 	expectedUUID := watermill.NewUUID()
 	expectedPayload := message.Payload("msg content")
 	expectedMetadata := message.Metadata{"key": "value"}
 	expectedDestinationTopic := "dest_topic"
 
-	ctx := context.WithValue(context.Background(), "key", "value")
+	ctx := context.WithValue(context.Background(), contextKey("key"), "value")
 
 	msg := message.NewMessage(expectedUUID, expectedPayload)
 	msg.Metadata = expectedMetadata
@@ -25,7 +27,7 @@ func TestEnvelope(t *testing.T) {
 	wrappedMsg, err := wrapMessageInEnvelope(expectedDestinationTopic, msg)
 	require.NoError(t, err)
 	require.NotNil(t, wrappedMsg)
-	v, ok := wrappedMsg.Context().Value("key").(string)
+	v, ok := wrappedMsg.Context().Value(contextKey("key")).(string)
 	require.True(t, ok)
 	require.Equal(t, "value", v)
 

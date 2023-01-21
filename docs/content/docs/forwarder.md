@@ -38,7 +38,7 @@ event-driven system, it should emit a `LotteryConcluded` event, so that other co
 To be precise - there will be component responsible for sending prizes to lottery winners. It will receive `LotteryConcluded`
 events, and using the lottery ID embedded in the event, verify who was the winner, checking with the database entry. 
 
-In our case, the database is MySQL and the message broker is Google Pub/Sub, b/t it could be any two other technologies.  
+In our case, the database is MySQL and the message broker is Google Pub/Sub, but it could be any two other technologies.  
 
 Approaching to implementation of such a command, we could go various ways. Below we're going to cover three possible 
 attempts, pointing their vulnerabilities. 

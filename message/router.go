@@ -208,6 +208,17 @@ func (r *Router) AddSubscriberDecorators(dec ...SubscriberDecorator) {
 	r.subscriberDecorators = append(r.subscriberDecorators, dec...)
 }
 
+// Handlers returns all registered handlers.
+func (r *Router) Handlers() map[string]HandlerFunc {
+	handlers := map[string]HandlerFunc{}
+
+	for handlerName, handler := range r.handlers {
+		handlers[handlerName] = handler.handlerFunc
+	}
+
+	return handlers
+}
+
 // DuplicateHandlerNameError is sent in a panic when you try to add a second handler with the same name.
 type DuplicateHandlerNameError struct {
 	HandlerName string
