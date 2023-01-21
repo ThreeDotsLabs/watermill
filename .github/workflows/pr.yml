@@ -6,3 +6,13 @@ on:
 jobs:
   ci:
     uses: ThreeDotsLabs/watermill/.github/workflows/tests.yml@lint
+
+  validate-examples:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v2
+        with:
+          go-version: '^1.19.1'
+      - run: make validate_examples
+        timeout-minutes: 30
