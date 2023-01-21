@@ -174,6 +174,7 @@ func (g *GoChannel) Subscribe(ctx context.Context, topic string) (<-chan *messag
 	g.closedLock.Lock()
 
 	if g.closed {
+		g.closedLock.Unlock()
 		return nil, errors.New("Pub/Sub closed")
 	}
 
