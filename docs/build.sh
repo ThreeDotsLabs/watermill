@@ -51,6 +51,8 @@ else
 
         "components/metrics/builder.go"
         "components/metrics/http.go"
+
+        "components/fanin/fanin.go"
     )
 
     pushd ../
