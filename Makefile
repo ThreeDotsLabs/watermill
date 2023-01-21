@@ -18,10 +18,6 @@ test_stress:
 test_reconnect:
 	go test -tags=reconnect ./...
 
-validate_examples:
-	go run dev/update-examples-deps/main.go
-	go run dev/validate-examples/main.go
-
 build:
 	go build ./...
 
@@ -39,3 +35,8 @@ generate_gomod:
 	sed -i '\|go |d' go.mod
 	go mod edit -fmt
 
+update_examples_deps:
+	go run dev/update-examples-deps/main.go
+
+validate_examples:
+	(cd dev/validate-examples/ && go run main.go)
