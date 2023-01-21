@@ -56,6 +56,7 @@ func main() {
 	go publishMessages(pubSub)
 
 	// AddHandler returns a handler which can be used to add handler level middleware
+	// or to stop handler.
 	handler := router.AddHandler(
 		"struct_handler",          // handler name, must be unique
 		"incoming_messages_topic", // topic from which we will read events
