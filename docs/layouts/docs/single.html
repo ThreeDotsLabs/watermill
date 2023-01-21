@@ -1,0 +1,24 @@
+{{ define "title"}} {{ .Title}} {{end}}
+{{ define "header"}} {{ partial "header" .}} {{end}}
+{{ define "main"}}
+  <div id="main">
+    <div id="hero">
+      <h1> {{ .Title}} </h1>
+      <p class="hero-lead">
+           {{ .Params.bref | safeHTML }}.
+      </p>
+
+    </div> 
+    <div id="kube-component" class="content">
+    {{ partial "toc" .}}
+
+    {{ .Content}}
+<!-- Inject script tag in this template  -->
+    {{if .Params.script}}
+     {{ $script := (delimit (slice "scripts" .Params.script) "/")}}
+    {{ partial (string $script) .}}
+    {{end }}
+    </div>
+    </div>
+{{ end }}
+{{ define "footer"}} {{ partial "footer" .}} {{end}}
