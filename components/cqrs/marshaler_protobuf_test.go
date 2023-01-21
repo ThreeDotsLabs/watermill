@@ -4,20 +4,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill/components/cqrs"
-
-	"github.com/golang/protobuf/ptypes"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/timestamppb"
+
+	"github.com/ThreeDotsLabs/watermill"
+	"github.com/ThreeDotsLabs/watermill/components/cqrs"
 )
 
 func TestProtobufMarshaler(t *testing.T) {
 	marshaler := cqrs.ProtobufMarshaler{}
 
-	when, err := ptypes.TimestampProto(time.Now())
-	require.NoError(t, err)
+	when := timestamppb.New(time.Now())
 	eventToMarshal := &TestProtobufEvent{
 		Id:   watermill.NewULID(),
 		When: when,
@@ -41,8 +39,7 @@ func TestProtobufMarshaler_Marshal_generated_name(t *testing.T) {
 		},
 	}
 
-	when, err := ptypes.TimestampProto(time.Now())
-	require.NoError(t, err)
+	when := timestamppb.New(time.Now())
 	eventToMarshal := &TestProtobufEvent{
 		Id:   watermill.NewULID(),
 		When: when,

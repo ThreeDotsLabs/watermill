@@ -148,7 +148,7 @@ func (l *StdLoggerAdapter) log(logger *log.Logger, level string, msg string, fie
 		fieldsStr += key + "=" + valueStr + " "
 	}
 
-	logger.Output(3, fmt.Sprintf("\t"+`level=%s msg="%s" %s`, level, msg, fieldsStr))
+	_ = logger.Output(3, fmt.Sprintf("\t"+`level=%s msg="%s" %s`, level, msg, fieldsStr))
 }
 
 type LogLevel uint

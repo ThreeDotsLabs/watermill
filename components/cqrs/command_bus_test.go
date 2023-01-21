@@ -34,6 +34,8 @@ func TestNewCommandBus(t *testing.T) {
 	assert.Error(t, err)
 }
 
+type contextKey string
+
 func TestCommandBus_Send_ContextPropagation(t *testing.T) {
 	publisher := newPublisherStub()
 
@@ -46,7 +48,7 @@ func TestCommandBus_Send_ContextPropagation(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	ctx := context.WithValue(context.Background(), "key", "value")
+	ctx := context.WithValue(context.Background(), contextKey("key"), "value")
 
 	err = commandBus.Send(ctx, "message")
 	require.NoError(t, err)
