@@ -504,7 +504,7 @@ func (r *Router) Close() error {
 	close(r.closeCh)
 	defer close(r.closedCh)
 
-	timeouted := r.waitingForHandlers()
+	timeouted := r.waitForHandlers()
 	if timeouted {
 		return errors.New("router close timeout")
 	}
@@ -512,7 +512,7 @@ func (r *Router) Close() error {
 	return nil
 }
 
-func (r *Router) waitingForHandlers() bool {
+func (r *Router) waitForHandlers() bool {
 	var waitGroup sync.WaitGroup
 	waitGroup.Add(1)
 	go func() {
