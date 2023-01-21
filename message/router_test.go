@@ -1221,3 +1221,102 @@ func TestRouter_Handlers(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, handlerCalled, "Handler function should be the same")
 }
+
+func TestRouter_wait_for_handlers_before_shutdown(t *testing.T) {
+	t.Parallel()
+
+	pub, sub := createPubSub()
+	defer func() {
+		assert.NoError(t, pub.Close())
+		assert.NoError(t, sub.Close())
+	}()
+
+	logger := watermill.NewCaptureLogger()
+
+	r, err := message.NewRouter(
+		message.RouterConfig{},
+		logger,
+	)
+	require.NoError(t, err)
+
+	handlerStarted := make(chan struct{})
+	routerClosed := make(chan struct{})
+
+	r.AddNoPublisherHandler(
+		"foo",
+		"subscribe_topic",
+		sub,
+		func(msg *message.Message) error {
+			close(handlerStarted)
+			select {}
+		},
+	)
+
+	go func() {
+		err := r.Run(context.Background())
+		assert.NoError(t, err)
+	}()
+	<-r.Running()
+
+	err = pub.Publish("subscribe_topic", message.NewMessage(watermill.NewUUID(), nil))
+	require.NoError(t, err)
+
+	<-handlerStarted
+
+	go func() {
+		assert.NoError(t, r.Close())
+		close(routerClosed)
+	}()
+
+	select {
+	case <-routerClosed:
+		t.Fatal("Router should wait for handlers to finish")
+	case <-time.After(time.Millisecond * 100):
+		// ok, router is still running
+	}
+}
+
+func TestRouter_wait_for_handlers_before_shutdown_timeout(t *testing.T) {
+	t.Parallel()
+
+	pub, sub := createPubSub()
+	defer func() {
+		assert.NoError(t, pub.Close())
+		assert.NoError(t, sub.Close())
+	}()
+
+	logger := watermill.NewCaptureLogger()
+
+	r, err := message.NewRouter(
+		message.RouterConfig{
+			CloseTimeout: time.Millisecond * 1,
+		},
+		logger,
+	)
+	require.NoError(t, err)
+
+	handlerStarted := make(chan struct{})
+
+	r.AddNoPublisherHandler(
+		"foo",
+		"subscribe_topic",
+		sub,
+		func(msg *message.Message) error {
+			close(handlerStarted)
+			select {}
+		},
+	)
+
+	go func() {
+		err := r.Run(context.Background())
+		assert.NoError(t, err)
+	}()
+	<-r.Running()
+
+	err = pub.Publish("subscribe_topic", message.NewMessage(watermill.NewUUID(), nil))
+	require.NoError(t, err)
+
+	<-handlerStarted
+
+	assert.EqualError(t, r.Close(), "router close timeout")
+}
