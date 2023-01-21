@@ -40,5 +40,7 @@ googleAnalytics = "UA-128588911-2"
     url = "/support/"
 
 [markup]
-defaultMarkdownHandler = 'blackfriday'
-
+defaultMarkdownHandler = 'goldmark'
+  [markup.goldmark]
+    [markup.goldmark.renderer]
+      unsafe = true
