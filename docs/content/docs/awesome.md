@@ -12,16 +12,50 @@ Below is a list of libraries that are not maintained by Three Dots Labs, but you
 
 **Please note we can't provide support or guarantee they work correctly**. Do your own research.
 
+### Examples
+
+* https://github.com/minghsu0107/golang-taipei-watermill-example
+* https://github.com/minghsu0107/Kafka-PubSub
+* https://github.com/pperaltaisern/go-example-financing
+
 ### Pub/Subs
 
 * Apache Pulsar https://github.com/AlexCuse/watermill-pulsar
-* NSQ https://github.com/chennqqi/watermill-nsq
+* Apache RocketMQ https://github.com/yflau/watermill-rocketmq
 * CockroachDB https://github.com/cockroachdb/watermill-crdb
+* Ensign https://github.com/rotationalio/watermill-ensign
+* GoogleCloud Pub/Sub HTTP Push https://github.com/dentech-floss/watermill-googlecloud-http
 * MongoDB https://github.com/cunyat/watermill-mongodb
 * MQTT https://github.com/perfect13/watermill-mqtt
-* Apache RocketMQ https://github.com/yflau/watermill-rocketmq
+* NSQ https://github.com/chennqqi/watermill-nsq
+
+### Logging
+
+* logrus
+  * https://github.com/ma-hartma/watermill-logrus-adapter
+  * https://github.com/UNIwise/walrus
+* logur https://github.com/logur/integration-watermill
+* zap
+  * https://github.com/garsue/watermillzap
+  * https://github.com/pperaltaisern/watermillzap
+* zerolog
+  * https://github.com/alexdrl/zerowater
+  * https://github.com/bogatyr285/watermillzlog
+  * https://github.com/vsvp21/zerolog-watermill-adapter
 
 ### Observability
 
-* https://github.com/sagikazarmark/ocwatermill
-* https://github.com/voi-oss/watermill-opentelemetry
+* OpenCensus
+  * https://github.com/czeslavo/watermill-opencensus
+  * https://github.com/sagikazarmark/ocwatermill
+* OpenTelemetry
+  * https://github.com/voi-oss/watermill-opentelemetry
+  * https://github.com/dentech-floss/watermill-opentelemetry-go-extra
+  * AMQP https://github.com/hpcslag/otel-watermill-amqp
+  * GoChannel https://github.com/hpcslag/watermill-otel-tracable-gochannel
+
+### Other
+
+* https://github.com/asyncapi/go-watermill-template
+* https://github.com/goph/watermillx
+* https://github.com/voi-oss/protoc-gen-event
