@@ -12,6 +12,8 @@ Below is a list of libraries that are not maintained by Three Dots Labs, but you
 
 **Please note we can't provide support or guarantee they work correctly**. Do your own research.
 
+If you know another library or are an author of one, please [add it to the list](https://github.com/ThreeDotsLabs/watermill/edit/master/docs/content/docs/awesome.md).
+
 ### Examples
 
 * https://github.com/minghsu0107/golang-taipei-watermill-example
