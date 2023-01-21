@@ -735,7 +735,7 @@ func TestRouter_close_handler(t *testing.T) {
 		t.Fatal("timeout waiting for handler stopped")
 	}
 
-	expectedReceivedMessages = publishMessagesForHandler(t, 1, pub, sub, subscribeTopic1)
+	_ = publishMessagesForHandler(t, 1, pub, sub, subscribeTopic1)
 	_, received := subscriber.BulkRead(receivedMessagesCh1, 1, time.Millisecond*1)
 	assert.False(t, received)
 
