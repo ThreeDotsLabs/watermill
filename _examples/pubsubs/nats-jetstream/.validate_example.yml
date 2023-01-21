@@ -1,0 +1,4 @@
+validation_cmd: "docker-compose up"
+teardown_cmd: "docker-compose down"
+timeout: 30
+expected_output: "payload: Hello, world!"

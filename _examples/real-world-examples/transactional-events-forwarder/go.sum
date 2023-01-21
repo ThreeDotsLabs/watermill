@@ -54,8 +54,8 @@ github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym
 github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=
 github.com/ThreeDotsLabs/watermill v1.0.2/go.mod h1:vZCPh7eN0P7r2qKau4SfmcUZ83+3JXWkRl4BiWUlqFw=
 github.com/ThreeDotsLabs/watermill v1.2.0-rc.5/go.mod h1:jv/oBxhLI2COC1jS4LEfFAArVxWkdnGnmKRrjOy3BkY=
-github.com/ThreeDotsLabs/watermill v1.2.0-rc.7 h1:c7rlzfhUFPtNo2WiJuIhrdwAfZcuAfbvB29uF+I0z7c=
-github.com/ThreeDotsLabs/watermill v1.2.0-rc.7/go.mod h1:QLZSaklpSZ/7yv288LL2DFOgCEi86VYEmQvzmaMlHoA=
+github.com/ThreeDotsLabs/watermill v1.2.0-rc.10 h1:vBO4/hMXKyszmixz8KzrayBWBiBTfUBtrwL6aj5PfaY=
+github.com/ThreeDotsLabs/watermill v1.2.0-rc.10/go.mod h1:QLZSaklpSZ/7yv288LL2DFOgCEi86VYEmQvzmaMlHoA=
 github.com/ThreeDotsLabs/watermill-googlecloud v1.0.11 h1:EoEm38DywefhDoJlKXF/2dIKkKQQriEYwT5k9NjoL4k=
 github.com/ThreeDotsLabs/watermill-googlecloud v1.0.11/go.mod h1:HfJGTfrFonSoztBGy4RGFlRXy6I8Fa0op50Yno6buJI=
 github.com/ThreeDotsLabs/watermill-sql v1.3.5 h1:GBvxjJykkt5JX5xZFjlh5z2g6l8fECFc6xlFfxb6zKA=
