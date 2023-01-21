@@ -1,16 +1,16 @@
 +++
 title = "Merging two topics into one"
-description = "Merging two topics into one with FanIn component"
+description = "Merging two topics into one with the FanIn component"
 date = 2023-01-21T12:47:30+01:00
 weight = -100
 draft = false
-bref = "Merging two topics into one with FanIn component"
+bref = "Merging two topics into one with the FanIn component"
 toc = true
 +++
 
 ## FanIn component
 
-FanIn component is a component that merges two topics into one.
+The FanIn component merges two topics into one.
 
 ### Configuring
 
@@ -20,10 +20,10 @@ FanIn component is a component that merges two topics into one.
 
 ### Running
 
-You need to provide Publisher and Subscriber implementation for FanIn component.
+You need to provide a Publisher and a Subscriber implementation for the FanIn component.
 
-You can find list of supported Pub/Subs on [Supported Pub/Subs page](/pubsubs/).
-Publisher and subscriber can be implemented by different message broker (so you can for example merge Kafka topic with RabbitMQ topic).
+You can find the list of supported Pub/Subs on [Supported Pub/Subs page](/pubsubs/).
+The Publisher and subscriber can be implemented by different message brokers (for example, you can merge a Kafka topic with a RabbitMQ topic).
 
 ```go
 
@@ -53,7 +53,7 @@ if err := fi.Run(context.Background()); err != nil {
 
 ### Controlling FanIn component
 
-FanIn component can be stopped by cancelling the context passed to `Run` method or by calling `Close` method.
+The FanIn component can be stopped by cancelling the context passed to the `Run` method or by calling the `Close` method.
 
 {{% render-md %}}
 {{% load-snippet-partial file="src-link/components/fanin/fanin.go" first_line_contains="func (f *FanIn) Run" last_line_contains=" Close() error" padding_after="2" %}}
