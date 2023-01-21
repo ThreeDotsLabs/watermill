@@ -1,7 +1,7 @@
 version: '3'
 services:
   server:
-    image: golang:1.11
+    image: golang:1.19
     restart: unless-stopped
     depends_on:
       - googlecloud
@@ -15,6 +15,6 @@ services:
     command: go run main.go
 
   googlecloud:
-    image: google/cloud-sdk:228.0.0
-    entrypoint: gcloud --quiet beta emulators pubsub start --host-port=googlecloud:8085 --verbosity=debug --log-http
+    image: google/cloud-sdk:414.0.0
+    entrypoint: gcloud --quiet beta emulators pubsub start --host-port=0.0.0.0:8085 --verbosity=debug --log-http
     restart: unless-stopped
