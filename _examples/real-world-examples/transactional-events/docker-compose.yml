@@ -1,7 +1,7 @@
 version: '3'
 services:
   server:
-    image: golang:1.17
+    image: golang:1.19
     restart: unless-stopped
     depends_on:
       - mysql
@@ -21,7 +21,7 @@ services:
       MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
 
   zookeeper:
-    image: confluentinc/cp-zookeeper:latest
+    image: confluentinc/cp-zookeeper:7.3.1
     logging:
       driver: none
     restart: unless-stopped
@@ -29,7 +29,7 @@ services:
       ZOOKEEPER_CLIENT_PORT: 2181
 
   kafka:
-    image: confluentinc/cp-kafka:latest
+    image: confluentinc/cp-kafka:7.3.1
     logging:
       driver: none
     restart: unless-stopped

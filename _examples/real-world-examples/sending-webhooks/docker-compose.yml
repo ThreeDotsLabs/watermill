@@ -1,7 +1,7 @@
 version: '3'
 services:
   webhooks-server:
-    image: golang:1.11
+    image: golang:1.19
     restart: unless-stopped
     volumes:
     - .:/app
@@ -10,7 +10,7 @@ services:
     command: go run main.go
 
   router:
-    image: golang:1.11
+    image: golang:1.19
     restart: unless-stopped
     depends_on:
       - kafka
@@ -21,7 +21,7 @@ services:
     command: go run main.go
 
   producer:
-    image: golang:1.11
+    image: golang:1.19
     restart: unless-stopped
     depends_on:
     - kafka
@@ -34,7 +34,7 @@ services:
     command: go run main.go
 
   zookeeper:
-    image: confluentinc/cp-zookeeper:latest
+    image: confluentinc/cp-zookeeper:7.3.1
     restart: unless-stopped
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
@@ -42,7 +42,7 @@ services:
       driver: none
 
   kafka:
-    image: confluentinc/cp-kafka:latest
+    image: confluentinc/cp-kafka:7.3.1
     restart: unless-stopped
     logging:
       driver: none

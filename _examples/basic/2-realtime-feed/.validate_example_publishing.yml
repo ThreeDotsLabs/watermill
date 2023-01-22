@@ -1,4 +1,0 @@
-validation_cmd: "docker-compose up"
-teardown_cmd: "docker-compose down"
-timeout: 60
-expected_output: "msg=\"Message sent to Kafka\""

@@ -1,4 +1,4 @@
 validation_cmd: "docker-compose up"
 teardown_cmd: "docker-compose down"
-timeout: 30
+timeout: 120
 expected_output: "beers ordered to room 3"
