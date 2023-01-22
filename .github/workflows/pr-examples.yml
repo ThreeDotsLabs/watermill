@@ -1,8 +1,6 @@
 name: pr-examples
 on:
   pull_request:
-    branches-ignore:
-      - master
     paths:
       - '_examples/**/*'
 
