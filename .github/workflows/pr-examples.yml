@@ -1,6 +1,6 @@
 name: pr-examples
 on:
-  push:
+  pull_request:
     branches-ignore:
       - master
     paths:
