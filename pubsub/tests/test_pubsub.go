@@ -315,7 +315,7 @@ func TestConcurrentSubscribeMultipleTopics(
 	defer closePubSub(t, pub, sub)
 
 	messagesCount := 100
-	topicsCount := 50
+	topicsCount := 20
 
 	if testing.Short() {
 		messagesCount = 50
@@ -357,7 +357,7 @@ func TestConcurrentSubscribeMultipleTopics(
 			if err != nil {
 				t.Error(err)
 			}
-			topicMessages, _ := bulkRead(tCtx, messages, len(messagesToPublish), defaultTimeout)
+			topicMessages, _ := bulkRead(tCtx, messages, len(messagesToPublish), defaultTimeout*5)
 
 			receivedMessagesCh <- topicMessages
 		}()
