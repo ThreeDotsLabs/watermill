@@ -158,8 +158,8 @@ func TestPublish_race_condition_when_closing(t *testing.T) {
 				gochannel.Config{},
 				watermill.NewStdLogger(true, false),
 			)
-			go func(i int) {
-				_ = pubSub.Publish("topic", message.NewMessage(strconv.Itoa(i), nil))
+			go func(i0 int) {
+				_ = pubSub.Publish("topic", message.NewMessage(strconv.Itoa(i0), nil))
 			}(i)
 
 			err := pubSub.Close()
