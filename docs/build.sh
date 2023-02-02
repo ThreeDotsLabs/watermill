@@ -19,7 +19,7 @@ function cloneOrPull() {
         git pull
         popd
     else
-        git clone --single-branch --branch master $1 $2
+        git clone --single-branch $1 $2
     fi
 }
 
@@ -76,6 +76,7 @@ cloneOrPull "https://github.com/ThreeDotsLabs/watermill-nats.git" content/src-li
 cloneOrPull "https://github.com/ThreeDotsLabs/watermill-sql.git" content/src-link/watermill-sql
 cloneOrPull "https://github.com/ThreeDotsLabs/watermill-firestore.git" content/src-link/watermill-firestore
 cloneOrPull "https://github.com/ThreeDotsLabs/watermill-bolt.git" content/src-link/watermill-bolt
+cloneOrPull "https://github.com/ThreeDotsLabs/watermill-redisstream.git" content/src-link/watermill-redisstream
 
 
 python3 ./extract_middleware_godocs.py > content/src-link/middleware-defs.md
