@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -158,9 +157,8 @@ func TestPublish_race_condition_when_closing(t *testing.T) {
 				gochannel.Config{},
 				watermill.NewStdLogger(true, false),
 			)
-			i0 := i
 			go func() {
-				_ = pubSub.Publish("topic", message.NewMessage(strconv.Itoa(i0), nil))
+				_ = pubSub.Publish("topic", message.NewMessage(watermill.NewShortUUID(), nil))
 			}()
 
 			err := pubSub.Close()
