@@ -1,5 +1,16 @@
 version: '3'
 services:
+  server:
+    image: golang:1.19
+    restart: unless-stopped
+    depends_on:
+      - redis
+    volumes:
+      - .:/app
+      - $GOPATH/pkg/mod:/go/pkg/mod
+    working_dir: /app
+    command: go run main.go
+
   redis:
     image: redis:7
     ports:
