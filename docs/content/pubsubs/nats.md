@@ -43,14 +43,14 @@ By default NATS client will try to connect to `localhost:4222`. If you are using
 {{% load-snippet-partial file="src-link/watermill-nats/pkg/nats/publisher.go" first_line_contains="// NewPublisher" last_line_contains="func NewPublisher" %}}
 
 Example:
-{{% load-snippet-partial file="src-link/watermill-nats/_examples/jetstream.go" first_line_contains="publisher, err :=" last_line_contains="panic(err)" padding_after="1" %}}
+{{% load-snippet-partial file="src-link/_examples/pubsubs/nats-jetstream/main.go" first_line_contains="publisher, err :=" last_line_contains="panic(err)" padding_after="1" %}}
 {{% /render-md %}}
 
 {{% render-md %}}
 {{% load-snippet-partial file="src-link/watermill-nats/pkg/nats/subscriber.go" first_line_contains="// NewSubscriber" last_line_contains="func NewSubscriber" %}}
 
 Example:
-{{% load-snippet-partial file="src-link/watermill-nats/_examples/jetstream.go" first_line_contains="subscriber, err :=" last_line_contains="panic(err)" padding_after="1" %}}
+{{% load-snippet-partial file="src-link/_examples/pubsubs/nats-jetstream/main.go" first_line_contains="subscriber, err :=" last_line_contains="panic(err)" padding_after="1" %}}
 {{% /render-md %}}
 
 You can also use `NewSubscriberWithNATSConn` and `NewPublisherWithNatsConn` to use a custom `stan.Conn` created by `NewStanConnection`.
