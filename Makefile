@@ -15,6 +15,9 @@ test_race:
 test_stress:
 	go test -tags=stress -timeout=30m ./...
 
+test_codecov:
+	go test -race -coverprofile=coverage.out -covermode=atomic
+
 test_reconnect:
 	go test -tags=reconnect ./...
 

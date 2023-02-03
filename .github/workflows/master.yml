@@ -8,3 +8,8 @@ jobs:
     uses: ThreeDotsLabs/watermill/.github/workflows/tests.yml@master
     with:
       stress-tests: true
+  codecov:
+    steps:
+    - uses: actions/checkout@master
+    - run: test_codecov
+    - uses: codecov/codecov-action@v3
