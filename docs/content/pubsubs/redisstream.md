@@ -10,7 +10,7 @@ toc = false
 
 ### Redis Stream
 
-Redis is a the open source, in-memory data store used by millions of developers. Redis stream is a data structure that acts like an append-only log in Redis. We are providing Pub/Sub implementation based on [redis/go-redis](https://github.com/redis/go-redis).
+Redis is the open source, in-memory data store used by millions of developers. Redis stream is a data structure that acts like an append-only log in Redis. We are providing Pub/Sub implementation based on [redis/go-redis](https://github.com/redis/go-redis).
 
 ### Installation
 
@@ -69,7 +69,7 @@ Example:
 
 #### Marshaler
 
-Watermill's messages cannot be directly sent to Redis - they need to be marshaled. You can implement your marshaler or use default implementation.
+Watermill's messages cannot be directly sent to Redis - they need to be marshaled. You can implement your marshaler or use default implementation. The default implementation uses [MessagePack](https://msgpack.org/index.html) for efficient serialization.
 
 {{% render-md %}}
 {{% load-snippet-partial file="src-link/watermill-redisstream/pkg/redisstream/marshaller.go" first_line_contains="const UUIDHeaderKey" last_line_contains="type DefaultMarshallerUnmarshaller" padding_after="0" %}}
