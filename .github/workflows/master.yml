@@ -9,6 +9,7 @@ jobs:
     with:
       stress-tests: true
   codecov:
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@master
     - run: test_codecov
