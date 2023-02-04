@@ -111,6 +111,7 @@ func New[T any, P Validatable[T]](readLimit int64, converter func(P) (*message.M
 			err = fmt.Errorf("failed to construct a message: %w", err)
 			return
 		}
+    message.SetContext(r.Context())
 
 		if err = p.Publish(topic, message); err != nil {
 			err = fmt.Errorf("publisher rejected the message: %w", err)
