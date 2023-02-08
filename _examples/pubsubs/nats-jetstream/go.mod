@@ -1,11 +1,10 @@
 module main
 
-go 1.17
+go 1.19
 
 require (
 	github.com/ThreeDotsLabs/watermill v1.2.0
-	github.com/ThreeDotsLabs/watermill-nats/v2 v2.0.0-20230203210959-2211c28ef3b8
-	github.com/nats-io/nats-server/v2 v2.9.8
+	github.com/ThreeDotsLabs/watermill-nats/v2 v2.0.0
 	github.com/nats-io/nats.go v1.23.0
 )
 
@@ -20,6 +19,5 @@ require (
 	github.com/oklog/ulid v1.3.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	golang.org/x/crypto v0.5.0 // indirect
-	golang.org/x/sys v0.4.0 // indirect
 	golang.org/x/time v0.0.0-20220922220347-f3bd1da661af // indirect
 )
