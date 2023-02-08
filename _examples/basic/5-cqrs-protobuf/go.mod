@@ -15,7 +15,7 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/lithammer/shortuuid/v3 v3.0.7 // indirect
 	github.com/oklog/ulid v1.3.1 // indirect
-	github.com/rabbitmq/amqp091-go v1.6.0 // indirect
+	github.com/rabbitmq/amqp091-go v1.6.1 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
 )
 
