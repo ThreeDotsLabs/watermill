@@ -51,7 +51,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 
 	"github.com/ThreeDotsLabs/watermill/message"
@@ -111,13 +110,22 @@ func New[T any, P Validatable[T]](readLimit int64, converter func(P) (*message.M
 			err = fmt.Errorf("failed to construct a message: %w", err)
 			return
 		}
-    message.SetContext(r.Context())
+		message.SetContext(r.Context())
 
 		if err = p.Publish(topic, message); err != nil {
 			err = fmt.Errorf("publisher rejected the message: %w", err)
 			return
 		}
 
-		io.WriteString(w, "nil")
+		response, err := json.Marshal(map[string]string{
+			"UUID": message.UUID,
+		})
+		if err != nil {
+			r.Body.Close()
+			err = errors.New("JSON encoding failure: " + err.Error())
+			return
+		}
+
+		_, err = w.Write(response)
 	}
 }

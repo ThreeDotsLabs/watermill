@@ -79,13 +79,9 @@ func TestEndpointCreationIntegration(t *testing.T) {
 	)
 	w := httptest.NewRecorder()
 	endpoint(w, request)
-	res := w.Result()
-	defer res.Body.Close()
 
-	data, err := ioutil.ReadAll(res.Body)
-	if res.StatusCode != http.StatusOK {
-		t.Logf("Data: %s", data)
-		t.Fatalf("HTTP test request failed: status code is not OK: %d", res.StatusCode)
+	if err = validateEndpointResponse(w.Result()); err != nil {
+		t.Fatalf("HTTP test request failed: %v", err)
 	}
 
 	replayedMessage := <-messages
@@ -100,4 +96,22 @@ func TestEndpointCreationIntegration(t *testing.T) {
 	if rm.Number != m.Number {
 		t.Fatalf("number mismatch: %q vs %q", rm.Number, rm.Number)
 	}
+}
+
+func validateEndpointResponse(response *http.Response) (err error) {
+	defer response.Body.Close()
+
+	data, err := ioutil.ReadAll(response.Body)
+	if response.StatusCode != http.StatusOK {
+		return fmt.Errorf("HTTP test request failed: status code is not OK: %d", response.StatusCode)
+	}
+
+	var values map[string]string
+	if err = json.Unmarshal(data, &values); err != nil {
+		return fmt.Errorf("JSON decoding failure for %q: %w", data, err)
+	}
+	if _, ok := values["UUID"]; !ok {
+		return errors.New("response does not contain new message UUID")
+	}
+	return nil
 }
