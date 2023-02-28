@@ -29,6 +29,17 @@
     function App() {
         const [chapters, setChapters] = React.useState([
             {
+                number: 0,
+                title: "Consumer Groups",
+                description: `
+                <p>Consumer groups let you decide which handler receives a message.</p>
+                <p>They are related to subscribers.</p>
+                <p>Some Pub/Sub take a different approach, but the idea stays the same.</p>
+                `,
+                services: [],
+                code: [],
+            },
+            {
                 number: 1,
                 title: "Signing up for the newsletter",
                 description: `
@@ -1098,14 +1109,14 @@ func (h AddToSupportHandler) Handle(ctx context.Context, event interface{}) erro
                     {chapters.map(chapter => (
                         <li key={chapter.number} className="nav-item mx-1" role="presentation">
                             <button
-                                className={`nav-link ${chapter.number === 1 ? "active" : ""}`}
+                                className={`nav-link ${chapter.number === 0 ? "active" : ""}`}
                                 id={"example-tab-" + chapter.number }
                                 data-bs-toggle="tab"
                                 data-bs-target={"#tab-pane-" + chapter.number}
                                 type="button"
                                 role="tab"
                                 aria-controls={"tab-pane-" + chapter.number}
-                                aria-selected={chapter.number === "1" ? "true" : "false"}><span className="px-1">{chapter.number}</span></button>
+                                aria-selected={chapter.number === 0 ? "true" : "false"}><span className="px-1">{chapter.number}</span></button>
                         </li>
                     ))}
                 </ul>
@@ -1157,7 +1168,7 @@ func (h AddToSupportHandler) Handle(ctx context.Context, event interface{}) erro
 
         return (
             <div
-                className={`tab-pane fade ${props.chapter.number === 1 ? " show active" : ""}`}
+                className={`tab-pane fade ${props.chapter.number === 0 ? " show active" : ""}`}
                 id={"tab-pane-" + props.chapter.number}
                 role="tabpanel"
                 aria-labelledby={"tab-" + props.chapter.number}
@@ -1170,12 +1181,13 @@ func (h AddToSupportHandler) Handle(ctx context.Context, event interface{}) erro
                     <div className="card-body">
                         <p dangerouslySetInnerHTML={{__html: props.chapter.description}}></p>
 
-                        <div className="form-check form-switch mx-3 mt-5 mb-4">
-                            <input className="form-check-input" onChange={() => setSending(!sending) } type="checkbox" role="switch" id={`flexSwitchCheckDefault-${props.chapter.number}`} />
-                            <label className="form-check-label" htmlFor={`flexSwitchCheckDefault-${props.chapter.number}`}>Send <span className="badge bg-dark">UserSignedUp</span> Events</label>
-                            {sending && <div className="mx-3 spinner-grow spinner-grow-sm text-success" role="status"></div>}
-                        </div>
-
+                        {props.chapter.services.length > 0 &&
+                            <div className="form-check form-switch mx-3 mt-5 mb-4">
+                                <input className="form-check-input" onChange={() => setSending(!sending) } type="checkbox" role="switch" id={`flexSwitchCheckDefault-${props.chapter.number}`} />
+                                <label className="form-check-label" htmlFor={`flexSwitchCheckDefault-${props.chapter.number}`}>Send <span className="badge bg-dark">UserSignedUp</span> Events</label>
+                                {sending && <div className="mx-3 spinner-grow spinner-grow-sm text-success" role="status"></div>}
+                            </div>
+                        }
 
                         <div className="container">
                             {rows}
