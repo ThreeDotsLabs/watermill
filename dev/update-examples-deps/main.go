@@ -27,6 +27,10 @@ func main() {
 
 				fmt.Println("update of", file, "@", dir)
 
+				if err := updateDeps(dir, file); err != nil {
+					panic(err)
+				}
+
 				if err := updateWatermill(dir, file); err != nil {
 					panic(fmt.Sprintf("failed to update %s: %s", file, err))
 				}
@@ -66,7 +70,7 @@ func getGomods() []string {
 }
 
 func goModTidy(dir string, file string) error {
-	cmd2 := exec.Command("go", "mod", "tidy")
+	cmd2 := exec.Command("go", "mod", "tidy", "-go=1.19")
 	cmd2.Dir = dir
 	cmd2.Stderr = os.Stderr
 	cmd2.Stdout = os.Stdout
@@ -75,7 +79,17 @@ func goModTidy(dir string, file string) error {
 }
 
 func updateWatermill(dir string, file string) error {
-	cmd := exec.Command("go", "get", "-u", "github.com/ThreeDotsLabs/watermill")
+	cmd := exec.Command("go", "get", "-u", "github.com/ThreeDotsLabs/watermill@v1.2.0-rc.11")
+	cmd.Dir = dir
+	cmd.Stderr = os.Stderr
+	cmd.Stdout = os.Stdout
+	err := cmd.Run()
+
+	return err
+}
+
+func updateDeps(dir string, file string) error {
+	cmd := exec.Command("go", "get", "-u", "./...")
 	cmd.Dir = dir
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout

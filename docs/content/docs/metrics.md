@@ -65,7 +65,7 @@ Follow the instructions in the example's [README](https://github.com/ThreeDotsLa
 
 ### Grafana dashboard
 
-We have prepared a [Grafana dashboard](https://grafana.com/dashboards/9777) to use with the metrics implementation described above. It provides basic information about the throughput, failure rates and publish/handler durations.
+We have prepared a [Grafana dashboard](https://grafana.com/grafana/dashboards/9777-watermill/) to use with the metrics implementation described above. It provides basic information about the throughput, failure rates and publish/handler durations.
 
 If you want to check out the dashboard on your machine, you can use the [Example application](#example-application).
 

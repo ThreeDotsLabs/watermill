@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fatih/color"
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -35,7 +36,7 @@ func (c *Config) LoadFrom(path string) error {
 }
 
 func main() {
-	walkErr := filepath.Walk(".", func(exampleConfig string, f os.FileInfo, _ error) error {
+	walkErr := filepath.Walk("../../", func(exampleConfig string, f os.FileInfo, _ error) error {
 		matches, _ := filepath.Match(".validate_example*.yml", f.Name())
 		if !matches {
 			return nil
@@ -45,19 +46,11 @@ func main() {
 
 		fmt.Printf("validating %s\n", exampleDirectory)
 
-		ok, err := validate(exampleConfig)
-
+		err := validate(exampleConfig)
 		if err != nil {
-			fmt.Printf("validation for %s failed, err: %v\n", exampleDirectory, err)
-			return nil
+			return fmt.Errorf("validation for %s failed, err: %v", exampleDirectory, err)
 		}
 
-		if ok {
-			fmt.Printf("validation for %s succeeded\n", exampleDirectory)
-			return nil
-		}
-
-		fmt.Printf("validation for %s failed\n", exampleDirectory)
 		return nil
 	})
 	if walkErr != nil {
@@ -66,12 +59,18 @@ func main() {
 
 }
 
-func validate(path string) (bool, error) {
+func validate(path string) error {
 	config := &Config{}
 	err := config.LoadFrom(path)
 	if err != nil {
-		return false, fmt.Errorf("could not load config, err: %v", err)
+		return fmt.Errorf("could not load config, err: %v", err)
 	}
+
+	dirName := filepath.Base(filepath.Dir(path))
+
+	fmt.Print("\n\n")
+	fmt.Println("Validating example:", dirName)
+	fmt.Println("Waiting for output: ", color.GreenString(config.ExpectedOutput))
 
 	cmdAndArgs := strings.Fields(config.ValidationCmd)
 	validationCmd := exec.Command(cmdAndArgs[0], cmdAndArgs[1:]...)
@@ -88,20 +87,34 @@ func validate(path string) (bool, error) {
 
 	stdout, err := validationCmd.StdoutPipe()
 	if err != nil {
-		return false, fmt.Errorf("could not attach to stdout, err: %v", err)
+		return fmt.Errorf("could not attach to stdout, err: %v", err)
+	}
+
+	stderr, err := validationCmd.StderrPipe()
+	if err != nil {
+		return fmt.Errorf("could not attach to stderr, err: %v", err)
 	}
 
 	fmt.Printf("running: %v\n", validationCmd.Args)
 
 	err = validationCmd.Start()
 	if err != nil {
-		return false, fmt.Errorf("could not start validation, err: %v", err)
+		return fmt.Errorf("could not start validation, err: %v", err)
 	}
 
-	success := make(chan bool)
+	defer func() {
+		err := validationCmd.Process.Kill()
+		if err != nil {
+			fmt.Printf("could not kill process in %s, err: %v\n", dirName, err)
+		}
+	}()
+
+	success := make(chan error)
 
 	go func() {
-		output := bufio.NewReader(stdout)
+		io.MultiReader()
+
+		output := bufio.NewReader(io.MultiReader(stdout, stderr))
 		for {
 			line, _, err := output.ReadLine()
 			if err != nil {
@@ -109,19 +122,22 @@ func validate(path string) (bool, error) {
 					break
 				}
 			}
+
+			fmt.Printf("[%s] > %s\n", color.CyanString(dirName), string(line))
+
 			ok, _ := regexp.Match(config.ExpectedOutput, line)
 			if ok {
-				success <- true
+				success <- nil
 				return
 			}
 		}
-		success <- false
+		success <- fmt.Errorf("could not find expected output: %s", config.ExpectedOutput)
 	}()
 
 	select {
-	case success := <-success:
-		return success, nil
+	case err := <-success:
+		return err
 	case <-time.After(time.Duration(config.Timeout) * time.Second):
-		return false, fmt.Errorf("validation command timed out")
+		return fmt.Errorf("validation command timed out")
 	}
 }

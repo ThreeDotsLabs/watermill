@@ -1,0 +1,67 @@
+version: '3'
+services:
+  api:
+    image: golang:1.19
+    restart: unless-stopped
+    depends_on:
+      - redis
+    volumes:
+      - .:/app
+    working_dir: /app/api
+    ports:
+      - "8080:8080"
+    command: go run .
+
+  newsletter-1:
+    image: golang:1.19
+    restart: unless-stopped
+    depends_on:
+      - redis
+    volumes:
+      - .:/app
+    working_dir: /app/newsletter-service
+    command: go run .
+    environment:
+      REPLICA: 1
+
+  newsletter-2:
+    image: golang:1.19
+    restart: unless-stopped
+    depends_on:
+      - redis
+    volumes:
+      - .:/app
+    working_dir: /app/newsletter-service
+    command: go run .
+    environment:
+      REPLICA: 2
+
+  crm-1:
+    image: golang:1.19
+    restart: unless-stopped
+    depends_on:
+      - redis
+    volumes:
+      - .:/app
+    working_dir: /app/crm-service
+    command: go run .
+    environment:
+      REPLICA: 1
+
+  crm-2:
+    image: golang:1.19
+    restart: unless-stopped
+    depends_on:
+      - redis
+    volumes:
+      - .:/app
+    working_dir: /app/crm-service
+    command: go run .
+    environment:
+      REPLICA: 2
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+    restart: unless-stopped

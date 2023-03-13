@@ -46,15 +46,16 @@ var PassthroughHandler HandlerFunc = func(msg *Message) ([]*Message, error) {
 // It can be attached to the router by using `AddMiddleware` method.
 //
 // Example:
-//		func ExampleMiddleware(h message.HandlerFunc) message.HandlerFunc {
-//			return func(message *message.Message) ([]*message.Message, error) {
-//				fmt.Println("executed before handler")
-//				producedMessages, err := h(message)
-//				fmt.Println("executed after handler")
 //
-//				return producedMessages, err
-//			}
+//	func ExampleMiddleware(h message.HandlerFunc) message.HandlerFunc {
+//		return func(message *message.Message) ([]*message.Message, error) {
+//			fmt.Println("executed before handler")
+//			producedMessages, err := h(message)
+//			fmt.Println("executed after handler")
+//
+//			return producedMessages, err
 //		}
+//	}
 type HandlerMiddleware func(h HandlerFunc) HandlerFunc
 
 // RouterPlugin is function which is executed on Router start.
@@ -95,12 +96,17 @@ func NewRouter(config RouterConfig, logger watermill.LoggerAdapter) (*Router, er
 
 		handlers: map[string]*handler{},
 
-		handlersWg:        &sync.WaitGroup{},
-		runningHandlersWg: &sync.WaitGroup{},
-		handlerAdded:      make(chan struct{}),
+		handlersWg: &sync.WaitGroup{},
 
-		closeCh:  make(chan struct{}),
-		closedCh: make(chan struct{}),
+		runningHandlersWg:     &sync.WaitGroup{},
+		runningHandlersWgLock: &sync.Mutex{},
+
+		handlerAdded: make(chan struct{}),
+
+		handlersLock: &sync.RWMutex{},
+
+		closingInProgressCh: make(chan struct{}),
+		closedCh:            make(chan struct{}),
 
 		logger: logger,
 
@@ -126,16 +132,19 @@ type Router struct {
 	plugins []RouterPlugin
 
 	handlers     map[string]*handler
-	handlersLock sync.RWMutex
+	handlersLock *sync.RWMutex
 
-	handlersWg        *sync.WaitGroup
-	runningHandlersWg *sync.WaitGroup
-	handlerAdded      chan struct{}
+	handlersWg *sync.WaitGroup
 
-	closeCh    chan struct{}
-	closedCh   chan struct{}
-	closed     bool
-	closedLock sync.Mutex
+	runningHandlersWg     *sync.WaitGroup
+	runningHandlersWgLock *sync.Mutex
+
+	handlerAdded chan struct{}
+
+	closingInProgressCh chan struct{}
+	closedCh            chan struct{}
+	closed              bool
+	closedLock          sync.Mutex
 
 	logger watermill.LoggerAdapter
 
@@ -274,10 +283,13 @@ func (r *Router) AddHandler(
 		publishTopic:  publishTopic,
 		publisherName: publisherName,
 
-		handlerFunc:       handlerFunc,
-		runningHandlersWg: r.runningHandlersWg,
-		messagesCh:        nil,
-		routersCloseCh:    r.closeCh,
+		handlerFunc: handlerFunc,
+
+		runningHandlersWg:     r.runningHandlersWg,
+		runningHandlersWgLock: r.runningHandlersWgLock,
+
+		messagesCh:     nil,
+		routersCloseCh: r.closingInProgressCh,
 
 		startedCh: make(chan struct{}),
 	}
@@ -355,7 +367,7 @@ func (r *Router) Run(ctx context.Context) (err error) {
 
 	go r.closeWhenAllHandlersStopped()
 
-	<-r.closeCh
+	<-r.closingInProgressCh
 	cancel()
 
 	r.logger.Info("Waiting for messages", watermill.LogFields{
@@ -467,10 +479,11 @@ func (r *Router) closeWhenAllHandlersStopped() {
 
 // Running is closed when router is running.
 // In other words: you can wait till router is running using
-//		fmt.Println("Starting router")
-//		go r.Run(ctx)
-//		<- r.Running()
-//		fmt.Println("Router is running")
+//
+//	fmt.Println("Starting router")
+//	go r.Run(ctx)
+//	<- r.Running()
+//	fmt.Println("Router is running")
 func (r *Router) Running() chan struct{} {
 	return r.running
 }
@@ -501,15 +514,34 @@ func (r *Router) Close() error {
 	r.logger.Info("Closing router", nil)
 	defer r.logger.Info("Router closed", nil)
 
-	close(r.closeCh)
+	close(r.closingInProgressCh)
 	defer close(r.closedCh)
 
-	timeouted := sync_internal.WaitGroupTimeout(r.handlersWg, r.config.CloseTimeout)
+	timeouted := r.waitForHandlers()
 	if timeouted {
 		return errors.New("router close timeout")
 	}
 
 	return nil
+}
+
+func (r *Router) waitForHandlers() bool {
+	var waitGroup sync.WaitGroup
+	waitGroup.Add(1)
+	go func() {
+		defer waitGroup.Done()
+		r.handlersWg.Wait()
+	}()
+	waitGroup.Add(1)
+	go func() {
+		defer waitGroup.Done()
+
+		r.runningHandlersWgLock.Lock()
+		defer r.runningHandlersWgLock.Unlock()
+
+		r.runningHandlersWg.Wait()
+	}()
+	return sync_internal.WaitGroupTimeout(&waitGroup, r.config.CloseTimeout)
 }
 
 func (r *Router) isClosed() bool {
@@ -533,7 +565,8 @@ type handler struct {
 
 	handlerFunc HandlerFunc
 
-	runningHandlersWg *sync.WaitGroup
+	runningHandlersWg     *sync.WaitGroup
+	runningHandlersWgLock *sync.Mutex
 
 	messagesCh <-chan *Message
 
@@ -564,7 +597,10 @@ func (h *handler) run(ctx context.Context, middlewares []middleware) {
 	go h.handleClose(ctx)
 
 	for msg := range h.messagesCh {
+		h.runningHandlersWgLock.Lock()
 		h.runningHandlersWg.Add(1)
+		h.runningHandlersWgLock.Unlock()
+
 		go h.handleMessage(msg, middlewareHandler)
 	}
 

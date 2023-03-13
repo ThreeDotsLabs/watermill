@@ -9,6 +9,6 @@ Please join us on the `#watermill` channel on the [Three Dots Labs discord](http
 
 ### Professional Support
 
-For enterprise support please contact us by e-mail: **{{% contact-email %}}**.
+For enterprise support please contact us by e-mail: {{% contact-email %}}
 
 You can also use the [contact form](https://threedotslabs.com/#contact-form) on our website.

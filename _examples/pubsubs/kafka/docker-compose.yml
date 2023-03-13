@@ -1,7 +1,7 @@
 version: '3'
 services:
   server:
-    image: golang:1.11
+    image: golang:1.19
     restart: unless-stopped
     depends_on:
       - kafka
@@ -12,7 +12,7 @@ services:
     command: go run main.go
 
   zookeeper:
-    image: confluentinc/cp-zookeeper:latest
+    image: confluentinc/cp-zookeeper:7.3.1
     restart: unless-stopped
     logging:
       driver: none
@@ -20,7 +20,7 @@ services:
       ZOOKEEPER_CLIENT_PORT: 2181
 
   kafka:
-    image: confluentinc/cp-kafka:latest
+    image: confluentinc/cp-kafka:7.3.1
     restart: unless-stopped
     depends_on:
       - zookeeper

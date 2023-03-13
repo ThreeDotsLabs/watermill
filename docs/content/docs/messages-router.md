@@ -39,7 +39,7 @@ Next, you have to add a new handler with `Router.AddHandler`:
 
 See an example usage from [Getting Started]({{< ref "/docs/getting-started#using-messages-router" >}}):
 {{% render-md %}}
-{{% load-snippet-partial file="src-link/_examples/basic/3-router/main.go" first_line_contains="router.AddHandler(" last_line_contains="structHandler{}.Handler," padding_after="1" %}}
+{{% load-snippet-partial file="src-link/_examples/basic/3-router/main.go" first_line_contains="// AddHandler returns a handler" last_line_contains="return h(message)" padding_after="3" %}}
 {{% /render-md %}}
 
 ### No publisher handler
@@ -71,12 +71,30 @@ To run the Router, you need to call `Run()`.
 
 #### Ensuring that the Router is running
 
-It can be useful to know if the router is running. You can use the `Running()` method for this.
+It can be useful to know if the router is running. You can use the `Running()` method for this. 
 
 {{% render-md %}}
 {{% load-snippet-partial file="src-link/message/router.go" first_line_contains="// Running" last_line_contains="func (r *Router) Running()" padding_after="0" %}}
 {{% /render-md %}}
 
+You can also use `IsRunning` function, that returns bool:
+
+{{% render-md %}}
+{{% load-snippet-partial file="src-link/message/router.go" first_line_contains="// IsRunning" last_line_contains="func (r *Router) IsRunning()" padding_after="0" %}}
+{{% /render-md %}}
+
+#### Closing the Router
+
+To close the Router, you need to call `Close()`.
+
+{{% render-md %}}
+{{% load-snippet-partial file="src-link/message/router.go" first_line_contains="// Close gracefully" last_line_contains="func (r *Router) Close()" padding_after="1" %}}
+{{% /render-md %}}
+
+`Close()` will close all publishers and subscribers, and wait for all handlers to finish.
+
+`Close()` will wait for a timeout configured in `RouterConfig.CloseTimeout`.
+If the timeout is reached, `Close()` will return an error.
 
 ### Adding handler after the router has started
 
@@ -89,7 +107,7 @@ To do that, you need to call `AddNoPublisherHandler` or `AddHandler` and call `R
 
 ### Stopping running handler
 
-It is possible to stop the running handler by calling `Stop()`.
+It is possible to stop **just one running handler** by calling `Stop()`.
 
 Please keep in mind, that router will be closed when there are no running handlers.
 
