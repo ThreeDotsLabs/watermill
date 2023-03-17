@@ -174,8 +174,8 @@ func main() {
 	logger := watermill.NewStdLogger(false, false)
 	cqrsMarshaler := cqrs.ProtobufMarshaler{}
 
-	// You can use any Pub/Sub implementation from here: https://watermill.io/docs/pub-sub-implementations/
-	// Detailed RabbitMQ implementation: https://watermill.io/docs/pub-sub-implementations/#rabbitmq-amqp
+	// You can use any Pub/Sub implementation from here: https://watermill.io/pubsubs/
+	// Detailed RabbitMQ implementation: https://watermill.io/pubsubs/amqp/
 	// Commands will be send to queue, because they need to be consumed once.
 	commandsAMQPConfig := amqp.NewDurableQueueConfig(amqpAddress)
 	commandsPublisher, err := amqp.NewPublisher(commandsAMQPConfig, logger)
