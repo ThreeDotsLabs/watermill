@@ -569,11 +569,13 @@ func TestNoAck(
 		t.Fatal("messages channel should be unblocked after Ack()")
 	}
 
-	select {
-	case <-messages:
-		t.Fatal("msg should be not sent again")
-	case <-time.After(time.Millisecond * 50):
-		// ok
+	if tCtx.Features.ExactlyOnceDelivery {
+		select {
+		case <-messages:
+			t.Fatal("msg should be not sent again")
+		case <-time.After(time.Millisecond * 50):
+			// ok
+		}
 	}
 }
 
