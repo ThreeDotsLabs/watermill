@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 
 	"github.com/ThreeDotsLabs/watermill"
@@ -53,13 +54,25 @@ type EventProcessor struct {
 	config EventProcessorConfig
 }
 
-type GenerateIndividualSubscriberTopicFn func(eventName string, handler EventHandler) string
+// GenerateEventsTopicFn generates topic for individual event handler.
+type GenerateEventsTopicFn func(GenerateEventsTopicParams) string
 
-type GenerateHandlerGroupTopicFn func(groupName string, handlers []GroupEventHandler) string
+type GenerateEventsTopicParams struct {
+	EventName string
+	Handler   EventHandler
+}
+
+// GenerateEventsGroupTopicFn generates topic for event handler group.
+type GenerateEventsGroupTopicFn func(GenerateEventsGroupTopicParams) string
+
+type GenerateEventsGroupTopicParams struct {
+	GroupName string
+	Handlers  []GroupEventHandler
+}
 
 type EventProcessorConfig struct {
-	GenerateIndividualSubscriberTopic GenerateIndividualSubscriberTopicFn
-	GenerateHandlerGroupTopic         GenerateHandlerGroupTopicFn
+	GenerateIndividualSubscriberTopic GenerateEventsTopicFn
+	GenerateHandlerGroupTopic         GenerateEventsGroupTopicFn
 
 	ErrorOnUnknownEvent bool
 
@@ -69,7 +82,31 @@ type EventProcessorConfig struct {
 	Logger    watermill.LoggerAdapter
 }
 
-// todo: deprecate it?
+func (c *EventProcessorConfig) setDefaults() {
+	if c.Logger == nil {
+		c.Logger = watermill.NopLogger{}
+	}
+	if c.Marshaler == nil {
+		c.Marshaler = JSONMarshaler{}
+	}
+}
+
+func (c EventProcessorConfig) Validate() error {
+	var err error
+
+	if c.GenerateIndividualSubscriberTopic == nil && c.GenerateHandlerGroupTopic == nil {
+		err = multierror.Append(err, errors.New("GenerateIndividualSubscriberTopic or GenerateHandlerGroupTopic must be set"))
+	}
+
+	if c.SubscriberConstructor == nil {
+		err = multierror.Append(err, errors.New("missing SubscriberConstructor"))
+	}
+
+	return nil
+}
+
+// NewEventProcessor creates a new EventProcessor.
+// Deprecated. Use NewEventProcessorWithConfig instead.
 func NewEventProcessor(
 	individualHandlers []EventHandler,
 	generateTopic func(eventName string) string,
@@ -94,8 +131,8 @@ func NewEventProcessor(
 		individualHandlers: individualHandlers,
 		groupEventHandlers: map[string][]GroupEventHandler{},
 		config: EventProcessorConfig{
-			GenerateIndividualSubscriberTopic: func(eventName string, handler EventHandler) string {
-				return generateTopic(eventName)
+			GenerateIndividualSubscriberTopic: func(params GenerateEventsTopicParams) string {
+				return generateTopic(params.EventName)
 			},
 			GenerateHandlerGroupTopic: nil,
 			SubscriberConstructor: func(handlerName string) (message.Subscriber, error) {
@@ -106,15 +143,12 @@ func NewEventProcessor(
 	}, nil
 }
 
+// NewEventProcessorWithConfig creates a new EventProcessor.
 func NewEventProcessorWithConfig(config EventProcessorConfig) (*EventProcessor, error) {
-	if config.Logger == nil {
-		return nil, errors.New("missing logger")
-	}
-	if config.Marshaler == nil {
-		return nil, errors.New("missing marshaler")
-	}
-	if config.SubscriberConstructor == nil {
-		return nil, errors.New("missing subscriberConstructor")
+	config.setDefaults()
+
+	if err := config.Validate(); err != nil {
+		return nil, err
 	}
 
 	return &EventProcessor{
@@ -123,12 +157,17 @@ func NewEventProcessorWithConfig(config EventProcessorConfig) (*EventProcessor, 
 	}, nil
 }
 
-func (p EventProcessor) AddHandlersGroup(handlerName string, handlers []GroupEventHandler) (EventProcessor, error) {
+func (p *EventProcessor) AddHandler(handler EventHandler) *EventProcessor {
+	p.individualHandlers = append(p.individualHandlers, handler)
+	return p
+}
+
+func (p *EventProcessor) AddHandlersGroup(handlerName string, handlers []GroupEventHandler) (*EventProcessor, error) {
 	if len(handlers) == 0 {
-		return EventProcessor{}, errors.New("missing handlers")
+		return nil, errors.New("missing handlers")
 	}
 	if _, ok := p.groupEventHandlers[handlerName]; ok {
-		return EventProcessor{}, fmt.Errorf("event handler group '%s' already exists", handlerName)
+		return nil, fmt.Errorf("event handler group '%s' already exists", handlerName)
 	}
 
 	p.groupEventHandlers[handlerName] = handlers
@@ -155,7 +194,10 @@ func (p EventProcessor) AddHandlersToRouter(r *message.Router) error {
 
 		handlerName := handler.HandlerName()
 		eventName := p.config.Marshaler.Name(handler.NewEvent())
-		topicName := p.config.GenerateIndividualSubscriberTopic(eventName, handler)
+		topicName := p.config.GenerateIndividualSubscriberTopic(GenerateEventsTopicParams{
+			EventName: eventName,
+			Handler:   handler,
+		})
 
 		logger := p.config.Logger.With(watermill.LogFields{
 			"event_handler_name": handlerName,
@@ -191,7 +233,10 @@ func (p EventProcessor) AddHandlersToRouter(r *message.Router) error {
 			}
 		}
 
-		topicName := p.config.GenerateHandlerGroupTopic(groupName, handlersGroup)
+		topicName := p.config.GenerateHandlerGroupTopic(GenerateEventsGroupTopicParams{
+			GroupName: groupName,
+			Handlers:  handlersGroup,
+		})
 
 		logger := p.config.Logger.With(watermill.LogFields{
 			"event_handler_group_name": groupName,
