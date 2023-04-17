@@ -33,21 +33,15 @@ func NewPubSubRequestReply(config PubSubRequestReplyConfig) (*PubSubRequestReply
 	}, nil
 }
 
-type PubSubRequestReplySubscriberConstructorFn func(PubSubRequestReplySubscriberConstructorParams) (message.Subscriber, error)
-
-type PubSubRequestReplySubscriberConstructorParams struct {
+type PubSubRequestReplySubscriberContext struct {
 	CommandUUID    string
 	CommandMessage *message.Message
 	Command        any
 }
 
-type PubSubRequestReplyTopicGeneratorFn func(PubSubRequestReplyTopicGeneratorParams) (string, error)
+type PubSubRequestReplySubscriberConstructorFn func(PubSubRequestReplySubscriberContext) (message.Subscriber, error)
 
-type PubSubRequestReplyTopicGeneratorParams struct {
-	CommandUUID    string
-	CommandMessage *message.Message
-	Command        any
-}
+type PubSubRequestReplyTopicGeneratorFn func(PubSubRequestReplySubscriberContext) (string, error)
 
 type PubSubRequestReplyConfig struct {
 	Publisher                      message.Publisher
@@ -61,6 +55,8 @@ type PubSubRequestReplyConfig struct {
 	ListenForReplyTimeout *time.Duration
 
 	ModifyNotificationMessage func(msg *message.Message, handleErr error) error
+
+	OnListenForReplyFinished func(context.Context, PubSubRequestReplySubscriberContext)
 }
 
 func (p *PubSubRequestReplyConfig) setDefaults() {
@@ -102,25 +98,19 @@ func (p PubSubRequestReply) ListenForReply(
 ) (<-chan CommandReply, error) {
 	start := time.Now()
 
+	replyContext := PubSubRequestReplySubscriberContext{
+		CommandUUID:    cmdMsg.UUID,
+		CommandMessage: cmdMsg,
+		Command:        command,
+	}
+
 	// this needs to be done before publishing the message to avoid race condition
-	notificationsSubscriber, err := p.config.SubscriberConstructor(
-		PubSubRequestReplySubscriberConstructorParams{
-			CommandUUID:    cmdMsg.UUID,
-			CommandMessage: cmdMsg,
-			Command:        command,
-		},
-	)
+	notificationsSubscriber, err := p.config.SubscriberConstructor(replyContext)
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot create request/reply notifications subscriber")
 	}
 
-	replyNotificationTopic, err := p.config.GenerateReplyNotificationTopic(
-		PubSubRequestReplyTopicGeneratorParams{
-			CommandUUID:    cmdMsg.UUID,
-			CommandMessage: cmdMsg,
-			Command:        command,
-		},
-	)
+	replyNotificationTopic, err := p.config.GenerateReplyNotificationTopic(replyContext)
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot generate request/reply notifications topic")
 	}
@@ -143,6 +133,13 @@ func (p PubSubRequestReply) ListenForReply(
 	replyChan := make(chan CommandReply, 1)
 
 	go func() {
+		defer func() {
+			if p.config.OnListenForReplyFinished == nil {
+				return
+			}
+
+			p.config.OnListenForReplyFinished(ctx, replyContext)
+		}()
 		defer close(replyChan)
 		defer cancel()
 
@@ -211,7 +208,7 @@ func (p PubSubRequestReply) OnCommandProcessed(cmdMsg *message.Message, cmd any,
 		}
 	}
 
-	replyTopic, err := p.config.GenerateReplyNotificationTopic(PubSubRequestReplyTopicGeneratorParams{
+	replyTopic, err := p.config.GenerateReplyNotificationTopic(PubSubRequestReplySubscriberContext{
 		CommandUUID:    cmdMsg.UUID,
 		CommandMessage: cmdMsg,
 		Command:        cmd,
