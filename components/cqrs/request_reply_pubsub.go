@@ -34,9 +34,14 @@ func NewPubSubRequestReply(config PubSubRequestReplyConfig) (*PubSubRequestReply
 }
 
 type PubSubRequestReplySubscriberContext struct {
-	CommandUUID    string
 	CommandMessage *message.Message
 	Command        any
+}
+
+type PubSubRequestReplyOnCommandProcessedContext struct {
+	HandleErr error
+
+	PubSubRequestReplySubscriberContext
 }
 
 type PubSubRequestReplySubscriberConstructorFn func(PubSubRequestReplySubscriberContext) (message.Subscriber, error)
@@ -54,7 +59,7 @@ type PubSubRequestReplyConfig struct {
 
 	ListenForReplyTimeout *time.Duration
 
-	ModifyNotificationMessage func(msg *message.Message, handleErr error) error
+	ModifyNotificationMessage func(msg *message.Message, context PubSubRequestReplyOnCommandProcessedContext) error
 
 	OnListenForReplyFinished func(context.Context, PubSubRequestReplySubscriberContext)
 }
@@ -99,7 +104,6 @@ func (p PubSubRequestReply) ListenForReply(
 	start := time.Now()
 
 	replyContext := PubSubRequestReplySubscriberContext{
-		CommandUUID:    cmdMsg.UUID,
 		CommandMessage: cmdMsg,
 		Command:        command,
 	}
@@ -203,13 +207,19 @@ func (p PubSubRequestReply) OnCommandProcessed(cmdMsg *message.Message, cmd any,
 	notificationMsg.Metadata.Set(HandledCommandMessageUuidMetadataKey, cmdMsg.UUID)
 
 	if p.config.ModifyNotificationMessage != nil {
-		if err := p.config.ModifyNotificationMessage(notificationMsg, handleErr); err != nil {
+		processedContext := PubSubRequestReplyOnCommandProcessedContext{
+			HandleErr: handleErr,
+			PubSubRequestReplySubscriberContext: PubSubRequestReplySubscriberContext{
+				CommandMessage: cmdMsg,
+				Command:        cmd,
+			},
+		}
+		if err := p.config.ModifyNotificationMessage(notificationMsg, processedContext); err != nil {
 			return errors.Wrap(err, "cannot modify notification message")
 		}
 	}
 
 	replyTopic, err := p.config.GenerateReplyNotificationTopic(PubSubRequestReplySubscriberContext{
-		CommandUUID:    cmdMsg.UUID,
 		CommandMessage: cmdMsg,
 		Command:        cmd,
 	})
