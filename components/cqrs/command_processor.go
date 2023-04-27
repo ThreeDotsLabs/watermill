@@ -273,7 +273,7 @@ func (p CommandProcessor) routerHandlerFunc(handler CommandHandler, logger water
 			logger.Debug("Error when handling command", watermill.LogFields{"err": err})
 		}
 
-		return nil
+		return err
 	}, nil
 }
 
