@@ -177,7 +177,7 @@ func (p PubSubRequestReply) ListenForReply(
 	return replyChan, nil
 }
 
-const handledCommandUuidMetadataKey = "_watermill_command_message_uuid"
+const HandledCommandMessageUuidMetadataKey = "_watermill_command_message_uuid"
 
 func (p PubSubRequestReply) OnCommandProcessed(cmdMsg *message.Message, cmd any, handleErr error) error {
 	if cmdMsg.Metadata.Get(notifyWhenExecutedMetadataKey) != "1" {
@@ -200,7 +200,7 @@ func (p PubSubRequestReply) OnCommandProcessed(cmdMsg *message.Message, cmd any,
 	}
 
 	notificationMsg.SetContext(cmdMsg.Context())
-	notificationMsg.Metadata.Set(handledCommandUuidMetadataKey, cmdMsg.UUID)
+	notificationMsg.Metadata.Set(HandledCommandMessageUuidMetadataKey, cmdMsg.UUID)
 
 	if p.config.ModifyNotificationMessage != nil {
 		if err := p.config.ModifyNotificationMessage(notificationMsg, handleErr); err != nil {
@@ -227,7 +227,7 @@ func (p PubSubRequestReply) OnCommandProcessed(cmdMsg *message.Message, cmd any,
 func (p PubSubRequestReply) handleNotifyMsg(msg *message.Message, expectedCommandUuid string) (bool, error) {
 	defer msg.Ack()
 
-	if msg.Metadata.Get(handledCommandUuidMetadataKey) != expectedCommandUuid {
+	if msg.Metadata.Get(HandledCommandMessageUuidMetadataKey) != expectedCommandUuid {
 		// todo: lower log level
 		p.config.Logger.Debug("Received notify message with different command UUID", nil)
 		return false, nil
