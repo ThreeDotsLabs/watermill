@@ -128,8 +128,8 @@ func NewCommandProcessorWithConfig(config CommandProcessorConfig) (*CommandProce
 	}, nil
 }
 
-func (p *CommandProcessor) AddHandler(handler CommandHandler) {
-	p.handlers = append(p.handlers, handler)
+func (p *CommandProcessor) AddHandler(handler ...CommandHandler) {
+	p.handlers = append(p.handlers, handler...)
 }
 
 // DuplicateCommandHandlerError occurs when a handler with the same name already exists.

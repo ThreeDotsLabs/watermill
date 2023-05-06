@@ -127,8 +127,8 @@ func NewEventProcessorWithConfig(config EventProcessorConfig) (*EventProcessor, 
 	}, nil
 }
 
-func (p *EventProcessor) AddHandler(handler EventHandler) *EventProcessor {
-	p.individualHandlers = append(p.individualHandlers, handler)
+func (p *EventProcessor) AddHandler(handler ...EventHandler) *EventProcessor {
+	p.individualHandlers = append(p.individualHandlers, handler...)
 	return p
 }
 
