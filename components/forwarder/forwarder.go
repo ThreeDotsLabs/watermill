@@ -24,6 +24,12 @@ type Config struct {
 
 	// AckWhenCannotUnwrap enables acking of messages which cannot be unwrapped from an envelope.
 	AckWhenCannotUnwrap bool
+
+	// Router is a router used by the forwarder.
+	// If not provided, a new router will be created.
+	//
+	// If router is provided, it's not necessary to call `Forwarder.Run()` if the router is started with `router.Run()`.
+	Router *message.Router
 }
 
 func (c *Config) setDefaults() {
@@ -66,9 +72,15 @@ func NewForwarder(subscriberIn message.Subscriber, publisherOut message.Publishe
 		return nil, errors.Wrap(err, "invalid router config")
 	}
 
-	router, err := message.NewRouter(routerConfig, logger)
-	if err != nil {
-		return nil, errors.Wrap(err, "cannot create a router")
+	var router *message.Router
+	if config.Router != nil {
+		router = config.Router
+	} else {
+		var err error
+		router, err = message.NewRouter(routerConfig, logger)
+		if err != nil {
+			return nil, errors.Wrap(err, "cannot create a router")
+		}
 	}
 
 	f := &Forwarder{router, publisherOut, logger, config}
