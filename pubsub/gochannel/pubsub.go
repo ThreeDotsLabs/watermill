@@ -77,7 +77,7 @@ func NewGoChannel(config Config, logger watermill.LoggerAdapter) *GoChannel {
 }
 
 // Publish in GoChannel is NOT blocking until all consumers consume.
-// Messages will be send in background.
+// Messages will be sent in the background.
 //
 // Messages may be persisted or not, depending of persistent attribute.
 func (g *GoChannel) Publish(topic string, messages ...*message.Message) error {
