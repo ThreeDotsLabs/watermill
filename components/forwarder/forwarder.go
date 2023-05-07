@@ -85,14 +85,14 @@ func NewForwarder(subscriberIn message.Subscriber, publisherOut message.Publishe
 
 	f := &Forwarder{router, publisherOut, logger, config}
 
-	router.AddNoPublisherHandler(
+	handler := router.AddNoPublisherHandler(
 		"events_forwarder",
 		config.ForwarderTopic,
 		subscriberIn,
 		f.forwardMessage,
 	)
 
-	router.AddMiddleware(config.Middlewares...)
+	handler.AddMiddleware(config.Middlewares...)
 
 	return f, nil
 }
