@@ -11,6 +11,10 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
+// NoSubscribersFallbackTopic is the fallback topic messages without any subscribers will be sent to.
+// This is used if the `EnableFallback` configuration option is enabled.
+const NoSubscribersFallbackTopic = "*"
+
 // Config holds the GoChannel Pub/Sub's configuration options.
 type Config struct {
 	// Output channel buffer size.
@@ -26,6 +30,10 @@ type Config struct {
 	// When true, Publish will block until subscriber Ack's the message.
 	// If there are no subscribers, Publish will not block (also when Persistent is true).
 	BlockPublishUntilSubscriberAck bool
+
+	// When true, messages sent to a topic without any subscribers will be sent to the
+	// subscribers of the `*` topic.
+	EnableFallback bool
 }
 
 // GoChannel is the simplest Pub/Sub implementation.
