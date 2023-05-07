@@ -63,6 +63,28 @@ func TestPublishSubscribe_not_persistent(t *testing.T) {
 	assert.NoError(t, pubSub.Close())
 }
 
+func TestPublishSubscribe_enable_fallback(t *testing.T) {
+	messagesCount := 100
+	pubSub := gochannel.NewGoChannel(
+		gochannel.Config{
+			OutputChannelBuffer: int64(messagesCount),
+			EnableFallback:      true,
+		},
+		watermill.NewStdLogger(true, true),
+	)
+	topicName := "test_topic_" + watermill.NewUUID()
+
+	msgs, err := pubSub.Subscribe(context.Background(), gochannel.NoSubscribersFallbackTopic)
+	require.NoError(t, err)
+
+	sendMessages := tests.PublishSimpleMessages(t, messagesCount, pubSub, topicName)
+	receivedMsgs, _ := subscriber.BulkRead(msgs, messagesCount, time.Second)
+
+	tests.AssertAllMessagesReceived(t, sendMessages, receivedMsgs)
+
+	assert.NoError(t, pubSub.Close())
+}
+
 func TestPublishSubscribe_block_until_ack(t *testing.T) {
 	pubSub := gochannel.NewGoChannel(
 		gochannel.Config{BlockPublishUntilSubscriberAck: true},
