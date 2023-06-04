@@ -76,7 +76,7 @@ func createCqrsComponents(t *testing.T, commandHandler *CaptureCommandHandler, e
 	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
 	require.NoError(t, err)
 
-	eventConfig := cqrs.EventProcessorConfig{
+	eventConfig := cqrs.EventConfig{
 		GenerateIndividualSubscriberTopic: func(params cqrs.GenerateEventsTopicParams) string {
 			assert.Equal(t, "cqrs_test.TestEvent", params.EventName)
 

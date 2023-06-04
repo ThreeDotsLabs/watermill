@@ -3,7 +3,6 @@ package cqrs
 import (
 	"fmt"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 
 	"github.com/ThreeDotsLabs/watermill"
@@ -21,62 +20,7 @@ type EventProcessor struct {
 	individualHandlers []EventHandler
 	groupEventHandlers map[string][]GroupEventHandler
 
-	config EventProcessorConfig
-}
-
-// GenerateEventsTopicFn generates topic for individual event handler.
-type GenerateEventsTopicFn func(GenerateEventsTopicParams) string
-
-type GenerateEventsTopicParams struct {
-	EventName string
-	Handler   EventHandler
-}
-
-// GenerateEventsGroupTopicFn generates topic for event handler group.
-type GenerateEventsGroupTopicFn func(GenerateEventsGroupTopicParams) string
-
-type GenerateEventsGroupTopicParams struct {
-	GroupName string
-	Handlers  []GroupEventHandler
-}
-
-// todo: rename to EventConfig?
-type EventProcessorConfig struct {
-	// todo: rename
-	GenerateIndividualSubscriberTopic GenerateEventsTopicFn
-	// todo: rename
-	GenerateHandlerGroupTopic GenerateEventsGroupTopicFn
-
-	// todo: rename to nack?
-	ErrorOnUnknownEvent bool
-
-	SubscriberConstructor EventsSubscriberConstructor
-
-	Marshaler CommandEventMarshaler
-	Logger    watermill.LoggerAdapter
-}
-
-func (c *EventProcessorConfig) setDefaults() {
-	if c.Logger == nil {
-		c.Logger = watermill.NopLogger{}
-	}
-	if c.Marshaler == nil {
-		c.Marshaler = JSONMarshaler{}
-	}
-}
-
-func (c EventProcessorConfig) Validate() error {
-	var err error
-
-	if c.GenerateIndividualSubscriberTopic == nil && c.GenerateHandlerGroupTopic == nil {
-		err = multierror.Append(err, errors.New("GenerateIndividualSubscriberTopic or GenerateHandlerGroupTopic must be set"))
-	}
-
-	if c.SubscriberConstructor == nil {
-		err = multierror.Append(err, errors.New("missing SubscriberConstructor"))
-	}
-
-	return nil
+	config EventConfig
 }
 
 // NewEventProcessor creates a new EventProcessor.
@@ -104,7 +48,7 @@ func NewEventProcessor(
 		logger = watermill.NopLogger{}
 	}
 
-	eventProcessorConfig := EventProcessorConfig{
+	eventProcessorConfig := EventConfig{
 		GenerateIndividualSubscriberTopic: func(params GenerateEventsTopicParams) string {
 			return generateTopic(params.EventName)
 		},
@@ -129,7 +73,7 @@ func NewEventProcessor(
 }
 
 // NewEventProcessorWithConfig creates a new EventProcessor.
-func NewEventProcessorWithConfig(config EventProcessorConfig) (*EventProcessor, error) {
+func NewEventProcessorWithConfig(config EventConfig) (*EventProcessor, error) {
 	config.setDefaults()
 
 	if err := config.Validate(); err != nil {
