@@ -45,6 +45,7 @@ type CommandConfig struct {
 	RequestReplyEnabled bool
 	RequestReplyBackend RequestReplyBackend
 
+	// todo: better naming?
 	// If true, CommandProcessor will ack messages even if CommandHandler returns an error.
 	// If RequestReplyEnabled is enabled and sending reply fails, the message will be nack-ed anyway.
 	AckCommandHandlingErrors bool
@@ -134,6 +135,7 @@ func NewCommandProcessorWithConfig(config CommandConfig) (*CommandProcessor, err
 	}, nil
 }
 
+// todo: confusing with  AddHandlersToRouter
 func (p *CommandProcessor) AddHandler(handler ...CommandHandler) {
 	p.handlers = append(p.handlers, handler...)
 }

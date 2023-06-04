@@ -14,6 +14,7 @@ type EventBus struct {
 	marshaler     CommandEventMarshaler
 }
 
+// todo: deprecate + add NewXXXXwithConfig func?
 func NewEventBus(
 	publisher message.Publisher,
 	generateTopic func(eventName string) string,

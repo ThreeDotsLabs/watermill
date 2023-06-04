@@ -40,10 +40,14 @@ type GenerateEventsGroupTopicParams struct {
 	Handlers  []GroupEventHandler
 }
 
+// todo: rename to EventConfig?
 type EventProcessorConfig struct {
+	// todo: rename
 	GenerateIndividualSubscriberTopic GenerateEventsTopicFn
-	GenerateHandlerGroupTopic         GenerateEventsGroupTopicFn
+	// todo: rename
+	GenerateHandlerGroupTopic GenerateEventsGroupTopicFn
 
+	// todo: rename to nack?
 	ErrorOnUnknownEvent bool
 
 	SubscriberConstructor EventsSubscriberConstructor

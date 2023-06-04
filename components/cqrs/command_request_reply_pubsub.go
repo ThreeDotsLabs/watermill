@@ -10,6 +10,8 @@ import (
 	"github.com/pkg/errors"
 )
 
+//go:generate protoc --proto_path=. command_request_reply_pubsub.proto  --go_out=. --go_opt=paths=source_relative --go-grpc_opt=require_unimplemented_servers=false --go-grpc_out=. --go-grpc_opt=paths=source_relative
+
 type PubSubRequestReplyMarshaler interface {
 	Marshal(v interface{}) (*message.Message, error)
 	Unmarshal(msg *message.Message, v interface{}) (err error)
