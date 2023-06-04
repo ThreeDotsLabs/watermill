@@ -13,7 +13,7 @@ import (
 type CommandBus struct {
 	publisher message.Publisher
 
-	config CommandProcessorConfig
+	config CommandConfig
 }
 
 // NewCommandBus creates a new CommandBus.
@@ -33,7 +33,7 @@ func NewCommandBus(
 		return nil, errors.New("missing marshaler")
 	}
 
-	return &CommandBus{publisher, CommandProcessorConfig{
+	return &CommandBus{publisher, CommandConfig{
 		GenerateTopic: func(params GenerateCommandsTopicParams) string {
 			return generateTopic(params.CommandName)
 		},
@@ -43,7 +43,7 @@ func NewCommandBus(
 }
 
 // NewCommandBusWithConfig creates a new CommandBus.
-func NewCommandBusWithConfig(publisher message.Publisher, config CommandProcessorConfig) (*CommandBus, error) {
+func NewCommandBusWithConfig(publisher message.Publisher, config CommandConfig) (*CommandBus, error) {
 	if publisher == nil {
 		return nil, errors.New("missing publisher")
 	}

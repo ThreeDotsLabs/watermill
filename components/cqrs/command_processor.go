@@ -29,10 +29,10 @@ type CommandsSubscriberConstructorParams struct {
 type CommandProcessor struct {
 	handlers []CommandHandler
 
-	config CommandProcessorConfig
+	config CommandConfig
 }
 
-type CommandProcessorConfig struct {
+type CommandConfig struct {
 	GenerateTopic         GenerateCommandsTopicFn
 	SubscriberConstructor CommandsSubscriberConstructorWithParams
 
@@ -50,13 +50,13 @@ type CommandProcessorConfig struct {
 	AckCommandHandlingErrors bool
 }
 
-func (c *CommandProcessorConfig) setDefaults() {
+func (c *CommandConfig) setDefaults() {
 	if c.Logger == nil {
 		c.Logger = watermill.NopLogger{}
 	}
 }
 
-func (c CommandProcessorConfig) Validate() error {
+func (c CommandConfig) Validate() error {
 	var err error
 
 	if c.GenerateTopic == nil {
@@ -94,8 +94,14 @@ func NewCommandProcessor(
 	if len(handlers) == 0 {
 		return nil, errors.New("missing handlers")
 	}
+	if generateTopic == nil {
+		return nil, errors.New("missing generateTopic")
+	}
+	if subscriberConstructor == nil {
+		return nil, errors.New("missing subscriberConstructor")
+	}
 
-	cp, err := NewCommandProcessorWithConfig(CommandProcessorConfig{
+	cp, err := NewCommandProcessorWithConfig(CommandConfig{
 		GenerateTopic: func(params GenerateCommandsTopicParams) string {
 			return generateTopic(params.CommandName)
 		},
@@ -116,7 +122,7 @@ func NewCommandProcessor(
 	return cp, nil
 }
 
-func NewCommandProcessorWithConfig(config CommandProcessorConfig) (*CommandProcessor, error) {
+func NewCommandProcessorWithConfig(config CommandConfig) (*CommandProcessor, error) {
 	config.setDefaults()
 
 	if err := config.Validate(); err != nil {

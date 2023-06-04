@@ -84,6 +84,9 @@ func NewEventProcessor(
 	marshaler CommandEventMarshaler,
 	logger watermill.LoggerAdapter,
 ) (*EventProcessor, error) {
+	if len(individualHandlers) == 0 {
+		return nil, errors.New("missing handlers")
+	}
 	if generateTopic == nil {
 		return nil, errors.New("nil generateTopic")
 	}
@@ -97,19 +100,27 @@ func NewEventProcessor(
 		logger = watermill.NopLogger{}
 	}
 
+	eventProcessorConfig := EventProcessorConfig{
+		GenerateIndividualSubscriberTopic: func(params GenerateEventsTopicParams) string {
+			return generateTopic(params.EventName)
+		},
+		GenerateHandlerGroupTopic: nil,
+		SubscriberConstructor: func(handlerName string) (message.Subscriber, error) {
+			return subscriberConstructor(handlerName)
+		},
+		Marshaler: marshaler,
+		Logger:    logger,
+	}
+	eventProcessorConfig.setDefaults()
+
+	if err := eventProcessorConfig.Validate(); err != nil {
+		return nil, err
+	}
+
 	return &EventProcessor{
 		individualHandlers: individualHandlers,
 		groupEventHandlers: map[string][]GroupEventHandler{},
-		config: EventProcessorConfig{
-			GenerateIndividualSubscriberTopic: func(params GenerateEventsTopicParams) string {
-				return generateTopic(params.EventName)
-			},
-			GenerateHandlerGroupTopic: nil,
-			SubscriberConstructor: func(handlerName string) (message.Subscriber, error) {
-				return subscriberConstructor(handlerName)
-			},
-			Marshaler: marshaler,
-		},
+		config:             eventProcessorConfig,
 	}, nil
 }
 
@@ -159,7 +170,7 @@ func (p EventProcessor) AddHandlersToRouter(r *message.Router) error {
 		handler := p.individualHandlers[i]
 
 		if err := p.validateEvent(handler.NewEvent()); err != nil {
-			return fmt.Errorf("invalid event for handler %s: %w", handler.HandlerName(), err)
+			return errors.Wrapf(err, "invalid event for handler %s", handler.HandlerName())
 		}
 
 		handlerName := handler.HandlerName()
