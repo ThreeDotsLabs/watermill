@@ -23,9 +23,9 @@ type EventHandler interface {
 	// it may result with **reconsuming all messages** !!!
 	HandlerName() string
 
-	NewEvent() interface{}
+	NewEvent() any
 
-	Handle(ctx context.Context, event interface{}) error
+	Handle(ctx context.Context, event any) error
 }
 
 type GroupEventHandler interface {
@@ -49,7 +49,7 @@ func (c genericEventHandler[T]) HandlerName() string {
 	return c.handlerName
 }
 
-func (c genericEventHandler[T]) NewEvent() interface{} {
+func (c genericEventHandler[T]) NewEvent() any {
 	tVar := new(T)
 	return tVar
 }

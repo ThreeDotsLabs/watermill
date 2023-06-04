@@ -22,33 +22,33 @@ type CommandHandler interface {
 	// it may result with **reconsuming all messages**!
 	HandlerName() string
 
-	NewCommand() interface{}
+	NewCommand() any
 
-	Handle(ctx context.Context, cmd interface{}) error
+	Handle(ctx context.Context, cmd any) error
 }
 
-type genericCommandHandler[T any] struct {
-	handleFunc  func(ctx context.Context, cmd *T) error
+type genericCommandHandler[Command any] struct {
+	handleFunc  func(ctx context.Context, cmd *Command) error
 	handlerName string
 }
 
-func NewCommandHandler[T any](handlerName string, handleFunc func(ctx context.Context, cmd *T) error) CommandHandler {
-	return &genericCommandHandler[T]{
+func NewCommandHandler[Command any](handlerName string, handleFunc func(ctx context.Context, cmd *Command) error) CommandHandler {
+	return &genericCommandHandler[Command]{
 		handleFunc:  handleFunc,
 		handlerName: handlerName,
 	}
 }
 
-func (c genericCommandHandler[T]) HandlerName() string {
+func (c genericCommandHandler[Command]) HandlerName() string {
 	return c.handlerName
 }
 
-func (c genericCommandHandler[T]) NewCommand() interface{} {
-	tVar := new(T)
+func (c genericCommandHandler[Command]) NewCommand() any {
+	tVar := new(Command)
 	return tVar
 }
 
-func (c genericCommandHandler[T]) Handle(ctx context.Context, cmd any) error {
-	command := cmd.(*T)
+func (c genericCommandHandler[Command]) Handle(ctx context.Context, cmd any) error {
+	command := cmd.(*Command)
 	return c.handleFunc(ctx, command)
 }
