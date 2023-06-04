@@ -1,7 +1,7 @@
 package cqrs
 
 import (
-	stdErr "errors"
+	stdErrors "errors"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/pkg/errors"
@@ -36,17 +36,17 @@ func (c CommandConfig) Validate() error {
 	var err error
 
 	if c.GenerateTopic == nil {
-		err = stdErr.Join(err, errors.New("missing GenerateTopic"))
+		err = stdErrors.Join(err, errors.New("missing GenerateTopic"))
 	}
 	if c.SubscriberConstructor == nil {
-		err = stdErr.Join(err, errors.New("missing SubscriberConstructor"))
+		err = stdErrors.Join(err, errors.New("missing SubscriberConstructor"))
 	}
 	if c.Marshaler == nil {
-		err = stdErr.Join(err, errors.New("missing Marshaler"))
+		err = stdErrors.Join(err, errors.New("missing Marshaler"))
 	}
 
 	if c.RequestReplyEnabled && c.RequestReplyBackend == nil {
-		err = stdErr.Join(err, errors.New("missing RequestReply.Backend"))
+		err = stdErrors.Join(err, errors.New("missing RequestReply.Backend"))
 	}
 
 	return err

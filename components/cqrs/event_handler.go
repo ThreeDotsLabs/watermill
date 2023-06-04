@@ -28,6 +28,7 @@ type EventHandler interface {
 	Handle(ctx context.Context, event any) error
 }
 
+// todo: add generic constructor?
 type GroupEventHandler interface {
 	NewEvent() interface{}
 	Handle(ctx context.Context, event interface{}) error

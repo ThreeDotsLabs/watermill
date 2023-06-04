@@ -91,6 +91,7 @@ func (p *EventProcessor) AddHandler(handler ...EventHandler) *EventProcessor {
 	return p
 }
 
+// todo: test
 func (p *EventProcessor) AddHandlersGroup(handlerName string, handlers []GroupEventHandler) (*EventProcessor, error) {
 	if len(handlers) == 0 {
 		return nil, errors.New("missing handlers")
@@ -241,6 +242,7 @@ func (p EventProcessor) routerHandlerFunc(handler EventHandler, logger watermill
 		messageEventName := p.config.Marshaler.NameFromMessage(msg)
 
 		if messageEventName != expectedEventName {
+			// todo: test
 			if p.config.ErrorOnUnknownEvent {
 				return fmt.Errorf("received unexpected event type %s, expected %s", messageEventName, expectedEventName)
 			} else {
@@ -307,6 +309,7 @@ func (p EventProcessor) routerHandlerGroupFunc(handlers []GroupEventHandler, log
 			return nil
 		}
 
+		// todo: test
 		if p.config.ErrorOnUnknownEvent {
 			return fmt.Errorf("no handler found for event %s", p.config.Marshaler.NameFromMessage(msg))
 		} else {

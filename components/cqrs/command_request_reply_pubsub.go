@@ -3,6 +3,7 @@ package cqrs
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/ThreeDotsLabs/watermill"
@@ -103,6 +104,14 @@ func (p PubSubRequestReply) ListenForReply(
 	cmdMsg *message.Message,
 	command any,
 ) (<-chan CommandReply, error) {
+	if !p.isRequestReplyEnabled(cmdMsg) {
+		return nil, errors.Errorf(
+			"RequestReply is enabled, but %s metadata is '%s' in command msg",
+			notifyWhenExecutedMetadataKey,
+			cmdMsg.Metadata.Get(notifyWhenExecutedMetadataKey),
+		)
+	}
+
 	start := time.Now()
 
 	replyContext := PubSubRequestReplySubscriberContext{
@@ -134,7 +143,12 @@ func (p PubSubRequestReply) ListenForReply(
 		return nil, errors.Wrap(err, "cannot subscribe to request/reply notifications topic")
 	}
 
-	p.config.Logger.Debug("Subscribed to request/reply notifications topic", nil)
+	p.config.Logger.Debug(
+		"Subscribed to request/reply notifications topic",
+		watermill.LogFields{
+			"request_reply_topic": replyNotificationTopic,
+		},
+	)
 
 	replyChan := make(chan CommandReply, 1)
 
@@ -186,7 +200,7 @@ func (p PubSubRequestReply) ListenForReply(
 const HandledCommandMessageUuidMetadataKey = "_watermill_command_message_uuid"
 
 func (p PubSubRequestReply) OnCommandProcessed(cmdMsg *message.Message, cmd any, handleErr error) error {
-	if cmdMsg.Metadata.Get(notifyWhenExecutedMetadataKey) != "1" {
+	if !p.isRequestReplyEnabled(cmdMsg) {
 		p.config.Logger.Debug(fmt.Sprintf("RequestReply is enabled, but %s is missing", notifyWhenExecutedMetadataKey), nil)
 		return nil
 	}
@@ -236,11 +250,18 @@ func (p PubSubRequestReply) OnCommandProcessed(cmdMsg *message.Message, cmd any,
 	return nil
 }
 
+func (p PubSubRequestReply) isRequestReplyEnabled(cmdMsg *message.Message) bool {
+	notificationEnabled := cmdMsg.Metadata.Get(notifyWhenExecutedMetadataKey)
+	enabled, _ := strconv.ParseBool(notificationEnabled)
+
+	return enabled
+}
+
 func (p PubSubRequestReply) handleNotifyMsg(msg *message.Message, expectedCommandUuid string) (bool, error) {
 	defer msg.Ack()
 
 	if msg.Metadata.Get(HandledCommandMessageUuidMetadataKey) != expectedCommandUuid {
-		// todo: lower log level
+		// todo: test
 		p.config.Logger.Debug("Received notify message with different command UUID", nil)
 		return false, nil
 	}

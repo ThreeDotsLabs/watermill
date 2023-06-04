@@ -106,6 +106,7 @@ func (f *FanOut) Subscribe(ctx context.Context, topic string) (<-chan *message.M
 	return f.internalPubSub.Subscribe(ctx, topic)
 }
 
+// todo: test
 // Close closes the FanOut's internal Pub/Sub.
 func (f *FanOut) Close() error {
 	var err error

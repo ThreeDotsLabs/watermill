@@ -1,7 +1,7 @@
 package cqrs
 
 import (
-	stdErr "errors"
+	stdErrors "errors"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/pkg/errors"
@@ -49,15 +49,15 @@ func (c EventConfig) Validate() error {
 	var err error
 
 	if c.GenerateIndividualSubscriberTopic == nil && c.GenerateHandlerGroupTopic == nil {
-		err = stdErr.Join(err, errors.New("GenerateIndividualSubscriberTopic or GenerateHandlerGroupTopic must be set"))
+		err = stdErrors.Join(err, errors.New("GenerateIndividualSubscriberTopic or GenerateHandlerGroupTopic must be set"))
 	}
 
 	if c.Marshaler == nil {
-		err = stdErr.Join(err, errors.New("missing Marshaler"))
+		err = stdErrors.Join(err, errors.New("missing Marshaler"))
 	}
 
 	if c.SubscriberConstructor == nil {
-		err = stdErr.Join(err, errors.New("missing SubscriberConstructor"))
+		err = stdErrors.Join(err, errors.New("missing SubscriberConstructor"))
 	}
 
 	return err

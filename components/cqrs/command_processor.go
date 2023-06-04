@@ -1,9 +1,9 @@
 package cqrs
 
 import (
+	stdErrors "errors"
 	"fmt"
 
-	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 
 	"github.com/ThreeDotsLabs/watermill"
@@ -185,10 +185,13 @@ func (p CommandProcessor) routerHandlerFunc(handler CommandHandler, logger water
 		err := handler.Handle(msg.Context(), cmd)
 
 		var replyErr error
+
+		// todo: test
 		if p.config.RequestReplyEnabled {
 			replyErr = p.config.RequestReplyBackend.OnCommandProcessed(msg, cmd, err)
 		}
 
+		// todo: test
 		if p.config.AckCommandHandlingErrors && err != nil {
 			// we want to nack if we are using request-reply,
 			// and we failed to send information about failure
@@ -199,7 +202,7 @@ func (p CommandProcessor) routerHandlerFunc(handler CommandHandler, logger water
 			logger.Error("Error when handling command", err, nil)
 			return nil
 		} else if replyErr != nil {
-			err = multierror.Append(err, replyErr)
+			err = stdErrors.Join(err, replyErr)
 		}
 
 		if err != nil {

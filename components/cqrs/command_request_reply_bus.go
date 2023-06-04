@@ -20,6 +20,8 @@ type CommandReply struct {
 	ReplyMsg *message.Message
 }
 
+// todo: test
+// todo: add cancel func?
 // SendAndWait sends command to the command bus and waits for the command execution.
 func (c CommandBus) SendAndWait(ctx context.Context, cmd interface{}) (<-chan CommandReply, error) {
 	if !c.config.RequestReplyEnabled {
@@ -35,6 +37,7 @@ func (c CommandBus) SendAndWait(ctx context.Context, cmd interface{}) (<-chan Co
 		return nil, errors.Wrap(err, "cannot modify command message before publish")
 	}
 
+	// todo: wait for 1 reply by default?
 	replyChan, err := c.config.RequestReplyBackend.ListenForReply(ctx, msg, cmd)
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot listen for reply")
