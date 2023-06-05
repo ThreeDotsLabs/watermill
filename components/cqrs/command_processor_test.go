@@ -3,7 +3,9 @@ package cqrs_test
 import (
 	"context"
 	"testing"
+	"time"
 
+	"github.com/ThreeDotsLabs/watermill"
 	"github.com/pkg/errors"
 
 	"github.com/ThreeDotsLabs/watermill/components/cqrs"
@@ -108,4 +110,104 @@ func TestCommandProcessor_multiple_same_command_handlers(t *testing.T) {
 	err = commandProcessor.AddHandlersToRouter(router)
 	assert.EqualValues(t, cqrs.DuplicateCommandHandlerError{CommandName: "cqrs_test.TestCommand"}, err)
 	assert.Equal(t, "command handler for command cqrs_test.TestCommand already exists", err.Error())
+}
+
+type mockSubscriber struct {
+	MessagesToSend []*message.Message
+	out            chan *message.Message
+}
+
+func (m *mockSubscriber) Subscribe(ctx context.Context, topic string) (<-chan *message.Message, error) {
+	m.out = make(chan *message.Message)
+
+	go func() {
+		for _, msg := range m.MessagesToSend {
+			m.out <- msg
+		}
+	}()
+
+	return m.out, nil
+}
+
+func (m mockSubscriber) Close() error {
+	close(m.out)
+	return nil
+}
+
+func TestCommandProcessor_ack_command_handling_errors(t *testing.T) {
+	logger := watermill.NewCaptureLogger()
+
+	marshaler := cqrs.JSONMarshaler{}
+
+	msgToSend, err := marshaler.Marshal(&TestCommand{ID: "1"})
+	require.NoError(t, err)
+
+	mockSub := &mockSubscriber{
+		MessagesToSend: []*message.Message{
+			msgToSend,
+		},
+	}
+
+	commandProcessor, err := cqrs.NewCommandProcessorWithConfig(
+		cqrs.CommandConfig{
+			GenerateTopic: func(params cqrs.GenerateCommandsTopicParams) string {
+				return "commands"
+			},
+			SubscriberConstructor: func(params cqrs.CommandsSubscriberConstructorParams) (message.Subscriber, error) {
+				return mockSub, nil
+			},
+			Marshaler:                marshaler,
+			Logger:                   logger,
+			AckCommandHandlingErrors: true,
+		},
+	)
+	require.NoError(t, err)
+
+	expectedErr := errors.New("test error")
+
+	commandProcessor.AddHandler(cqrs.NewCommandHandler(
+		"handler", func(ctx context.Context, cmd *TestCommand) error {
+			return expectedErr
+		}),
+	)
+
+	router, err := message.NewRouter(message.RouterConfig{}, logger)
+	require.NoError(t, err)
+
+	err = commandProcessor.AddHandlersToRouter(router)
+	require.NoError(t, err)
+
+	go func() {
+		err := router.Run(context.Background())
+		assert.NoError(t, err)
+	}()
+
+	<-router.Running()
+
+	select {
+	case <-msgToSend.Acked():
+		// ok
+	case <-msgToSend.Nacked():
+		// nack received
+		t.Fatal("nack received, message should be acked")
+	case <-time.After(1 * time.Second):
+		t.Fatal("timeout waiting for ack")
+	}
+
+	// it's pretty important to not ack message silently, so let's assert if it's logged properly
+	expectedLogMessage := watermill.CapturedMessage{
+		Level: watermill.ErrorLogLevel,
+		Fields: map[string]any{
+			"command_handler_name": "handler",
+			"topic":                "commands",
+		},
+		Msg: "Error when handling command",
+		Err: expectedErr,
+	}
+	assert.True(
+		t,
+		logger.Has(expectedLogMessage),
+		"expected log message not found, logs: %#v",
+		logger.Captured(),
+	)
 }

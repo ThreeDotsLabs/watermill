@@ -1,7 +1,7 @@
 package cqrs
 
 import (
-	"context"
+	stdErrors "errors"
 	"fmt"
 
 	"github.com/pkg/errors"
@@ -10,45 +10,30 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
-// CommandHandler receives a command defined by NewCommand and handles it with the Handle method.
-// If using DDD, CommandHandler may modify and persist the aggregate.
-//
-// In contrast to EventHandler, every Command must have only one CommandHandler.
-//
-// One instance of CommandHandler is used during handling messages.
-// When multiple commands are delivered at the same time, Handle method can be executed multiple times at the same time.
-// Because of that, Handle method needs to be thread safe!
-type CommandHandler interface {
-	// HandlerName is the name used in message.Router while creating handler.
-	//
-	// It will be also passed to CommandsSubscriberConstructor.
-	// May be useful, for example, to create a consumer group per each handler.
-	//
-	// WARNING: If HandlerName was changed and is used for generating consumer groups,
-	// it may result with **reconsuming all messages**!
-	HandlerName() string
-
-	NewCommand() interface{}
-
-	Handle(ctx context.Context, cmd interface{}) error
-}
-
 // CommandsSubscriberConstructor creates subscriber for CommandHandler.
 // It allows you to create a separate customized Subscriber for every command handler.
+//
+// Deprecated: please use CommandsSubscriberConstructorWithParams instead.
 type CommandsSubscriberConstructor func(handlerName string) (message.Subscriber, error)
+
+// CommandsSubscriberConstructorWithParams creates subscriber for CommandHandler.
+// It allows you to create a separate customized Subscriber for every command handler.
+type CommandsSubscriberConstructorWithParams func(CommandsSubscriberConstructorParams) (message.Subscriber, error)
+
+type CommandsSubscriberConstructorParams struct {
+	HandlerName string
+	Handler     CommandHandler
+}
 
 // CommandProcessor determines which CommandHandler should handle the command received from the command bus.
 type CommandProcessor struct {
-	handlers      []CommandHandler
-	generateTopic func(commandName string) string
+	handlers []CommandHandler
 
-	subscriberConstructor CommandsSubscriberConstructor
-
-	marshaler CommandEventMarshaler
-	logger    watermill.LoggerAdapter
+	config CommandConfig
 }
 
 // NewCommandProcessor creates a new CommandProcessor.
+// Deprecated. Use NewCommandProcessorWithConfig instead.
 func NewCommandProcessor(
 	handlers []CommandHandler,
 	generateTopic func(commandName string) string,
@@ -65,20 +50,43 @@ func NewCommandProcessor(
 	if subscriberConstructor == nil {
 		return nil, errors.New("missing subscriberConstructor")
 	}
-	if marshaler == nil {
-		return nil, errors.New("missing marshaler")
+
+	cp, err := NewCommandProcessorWithConfig(CommandConfig{
+		GenerateTopic: func(params GenerateCommandsTopicParams) string {
+			return generateTopic(params.CommandName)
+		},
+		SubscriberConstructor: func(params CommandsSubscriberConstructorParams) (message.Subscriber, error) {
+			return subscriberConstructor(params.HandlerName)
+		},
+		Marshaler: marshaler,
+		Logger:    logger,
+	})
+	if err != nil {
+		return nil, err
 	}
-	if logger == nil {
-		logger = watermill.NopLogger{}
+
+	for _, handler := range handlers {
+		cp.AddHandler(handler)
+	}
+
+	return cp, nil
+}
+
+func NewCommandProcessorWithConfig(config CommandConfig) (*CommandProcessor, error) {
+	config.setDefaults()
+
+	if err := config.Validate(); err != nil {
+		return nil, err
 	}
 
 	return &CommandProcessor{
-		handlers,
-		generateTopic,
-		subscriberConstructor,
-		marshaler,
-		logger,
+		config: config,
 	}, nil
+}
+
+// todo: confusing with  AddHandlersToRouter
+func (p *CommandProcessor) AddHandler(handler ...CommandHandler) {
+	p.handlers = append(p.handlers, handler...)
 }
 
 // DuplicateCommandHandlerError occurs when a handler with the same name already exists.
@@ -97,15 +105,18 @@ func (p CommandProcessor) AddHandlersToRouter(r *message.Router) error {
 	for i := range p.Handlers() {
 		handler := p.handlers[i]
 		handlerName := handler.HandlerName()
-		commandName := p.marshaler.Name(handler.NewCommand())
-		topicName := p.generateTopic(commandName)
+		commandName := p.config.Marshaler.Name(handler.NewCommand())
+
+		topicName := p.config.GenerateTopic(GenerateCommandsTopicParams{
+			CommandName: commandName,
+		})
 
 		if _, ok := handledCommands[commandName]; ok {
 			return DuplicateCommandHandlerError{commandName}
 		}
 		handledCommands[commandName] = struct{}{}
 
-		logger := p.logger.With(watermill.LogFields{
+		logger := p.config.Logger.With(watermill.LogFields{
 			"command_handler_name": handlerName,
 			"topic":                topicName,
 		})
@@ -117,7 +128,10 @@ func (p CommandProcessor) AddHandlersToRouter(r *message.Router) error {
 
 		logger.Debug("Adding CQRS command handler to router", nil)
 
-		subscriber, err := p.subscriberConstructor(handlerName)
+		subscriber, err := p.config.SubscriberConstructor(CommandsSubscriberConstructorParams{
+			HandlerName: handlerName,
+			Handler:     handler,
+		})
 		if err != nil {
 			return errors.Wrap(err, "cannot create subscriber for command processor")
 		}
@@ -140,7 +154,7 @@ func (p CommandProcessor) Handlers() []CommandHandler {
 
 func (p CommandProcessor) routerHandlerFunc(handler CommandHandler, logger watermill.LoggerAdapter) (message.NoPublishHandlerFunc, error) {
 	cmd := handler.NewCommand()
-	cmdName := p.marshaler.Name(cmd)
+	cmdName := p.config.Marshaler.Name(cmd)
 
 	if err := p.validateCommand(cmd); err != nil {
 		return nil, err
@@ -148,7 +162,7 @@ func (p CommandProcessor) routerHandlerFunc(handler CommandHandler, logger water
 
 	return func(msg *message.Message) error {
 		cmd := handler.NewCommand()
-		messageCmdName := p.marshaler.NameFromMessage(msg)
+		messageCmdName := p.config.Marshaler.NameFromMessage(msg)
 
 		if messageCmdName != cmdName {
 			logger.Trace("Received different command type than expected, ignoring", watermill.LogFields{
@@ -164,16 +178,33 @@ func (p CommandProcessor) routerHandlerFunc(handler CommandHandler, logger water
 			"received_command_type": messageCmdName,
 		})
 
-		if err := p.marshaler.Unmarshal(msg, cmd); err != nil {
+		if err := p.config.Marshaler.Unmarshal(msg, cmd); err != nil {
 			return err
 		}
 
-		if err := handler.Handle(msg.Context(), cmd); err != nil {
+		err := handler.Handle(msg.Context(), cmd)
+
+		var replyErr error
+
+		// todo: test
+		if p.config.AckCommandHandlingErrors && err != nil {
+			// we want to nack if we are using request-reply,
+			// and we failed to send information about failure
+			if replyErr != nil {
+				return replyErr
+			}
+
+			logger.Error("Error when handling command", err, nil)
+			return nil
+		} else if replyErr != nil {
+			err = stdErrors.Join(err, replyErr)
+		}
+
+		if err != nil {
 			logger.Debug("Error when handling command", watermill.LogFields{"err": err})
-			return err
 		}
 
-		return nil
+		return err
 	}, nil
 }
 
