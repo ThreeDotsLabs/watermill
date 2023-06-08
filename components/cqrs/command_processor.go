@@ -39,10 +39,6 @@ func NewCommandProcessor(
 		GenerateHandlerSubscribeTopic: func(params GenerateCommandHandlerSubscribeTopicParams) (string, error) {
 			return generateTopic(params.CommandName), nil
 		},
-		GeneratePublishTopic: func(params GenerateCommandPublishTopicParams) (string, error) {
-			// todo: is needed?
-			return generateTopic(params.CommandName), nil
-		},
 		SubscriberConstructor: func(params CommandsSubscriberConstructorParams) (message.Subscriber, error) {
 			return subscriberConstructor(params.HandlerName)
 		},

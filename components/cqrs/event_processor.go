@@ -44,11 +44,7 @@ func NewEventProcessor(
 
 	eventProcessorConfig := EventConfig{
 		AckOnUnknownEvent: true, // this is the previous default behaviour - keeping backwards compatibility
-		GeneratePublishTopic: func(params GenerateEventPublishTopicParams) (string, error) {
-			return generateTopic(params.EventName), nil
-		},
 		GenerateHandlerSubscribeTopic: func(params GenerateEventHandlerSubscribeTopicParams) (string, error) {
-			// todo: is required?
 			return generateTopic(params.EventName), nil
 		},
 		SubscriberConstructor: func(params EventsSubscriberConstructorParams) (message.Subscriber, error) {
@@ -120,8 +116,8 @@ func (p EventProcessor) AddHandlersToRouter(r *message.Router) error {
 		handlerName := handler.HandlerName()
 		eventName := p.config.Marshaler.Name(handler.NewEvent())
 
-		if p.config.GeneratePublishTopic == nil {
-			return errors.New("missing GenerateHandlerTopic config option")
+		if p.config.GenerateHandlerSubscribeTopic == nil {
+			return errors.New("missing GenerateHandlerSubscribeTopic config option")
 		}
 
 		topicName, err := p.config.GenerateHandlerSubscribeTopic(GenerateEventHandlerSubscribeTopicParams{
