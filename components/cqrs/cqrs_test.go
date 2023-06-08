@@ -77,21 +77,16 @@ func createCqrsComponents(t *testing.T, commandHandler *CaptureCommandHandler, e
 	require.NoError(t, err)
 
 	eventConfig := cqrs.EventConfig{
-		GenerateHandlerTopic: func(params cqrs.GenerateEventHandlerTopicParams) (string, error) {
+		GenerateTopic: func(params cqrs.GenerateEventTopicParams) (string, error) {
 			// todo: assert entire context + assert in different cases
-			assert.Equal(t, "cqrs_test.TestEvent", params.EventName)
+			assert.Equal(t, "cqrs_test.TestEvent", params.EventName())
 
-			return params.EventName, nil
+			return params.EventName(), nil
 		},
-		GenerateBusTopic: func(params cqrs.GenerateEventBusTopicParams) (string, error) {
-			// todo: assert entire context + assert in different cases
-			assert.Equal(t, "cqrs_test.TestEvent", params.EventName)
-
-			return params.EventName, nil
-		},
-		ErrorOnUnknownEvent: false,
-		SubscriberConstructor: func(handlerName string) (message.Subscriber, error) {
-			assert.Equal(t, "CaptureEventHandler", handlerName)
+		AckOnUnknownEvent: false,
+		SubscriberConstructor: func(params cqrs.EventsSubscriberConstructorParams) (message.Subscriber, error) {
+			// todo: assert all
+			assert.Equal(t, "CaptureEventHandler", params.HandlerName())
 
 			return ts.EventsPubSub, nil
 		},
@@ -118,20 +113,14 @@ func createCqrsComponents(t *testing.T, commandHandler *CaptureCommandHandler, e
 	require.NoError(t, err)
 
 	commandConfig := cqrs.CommandConfig{
-		GenerateBusTopic: func(params cqrs.GenerateCommandBusTopicParams) (string, error) {
+		GenerateTopic: func(params cqrs.GenerateCommandTopicParams) (string, error) {
 			// todo: assert rest of context
-			assert.Equal(t, "cqrs_test.TestCommand", params.CommandName)
+			assert.Equal(t, "cqrs_test.TestCommand", params.CommandName())
 
-			return params.CommandName, nil
-		},
-		GenerateHandlerTopic: func(params cqrs.GenerateCommandHandlerTopicParams) (string, error) {
-			// todo: assert rest of context
-			assert.Equal(t, "cqrs_test.TestCommand", params.CommandName)
-
-			return params.CommandName, nil
+			return params.CommandName(), nil
 		},
 		SubscriberConstructor: func(params cqrs.CommandsSubscriberConstructorParams) (message.Subscriber, error) {
-			assert.Equal(t, "CaptureCommandHandler", params.HandlerName)
+			assert.Equal(t, "CaptureCommandHandler", params.HandlerName())
 
 			return ts.CommandsPubSub, nil
 		},

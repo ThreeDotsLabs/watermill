@@ -22,9 +22,9 @@ func TestCommandConfig_Validate(t *testing.T) {
 		{
 			Name: "missing_GenerateReplyNotificationTopic",
 			ModifyValidConfig: func(c *CommandConfig) {
-				c.GenerateBusTopic = nil
+				c.GenerateTopic = nil
 			},
-			ExpectedErr: errors.Errorf("missing GenerateBusTopic"),
+			ExpectedErr: errors.Errorf("missing GenerateTopic"),
 		},
 		{
 			Name: "missing_SubscriberConstructor",
@@ -46,7 +46,7 @@ func TestCommandConfig_Validate(t *testing.T) {
 
 		t.Run(tc.Name, func(t *testing.T) {
 			validConfig := CommandConfig{
-				GenerateBusTopic: func(params GenerateCommandBusTopicParams) (string, error) {
+				GenerateTopic: func(params GenerateCommandTopicParams) (string, error) {
 					return "", nil
 				},
 				SubscriberConstructor: func(params CommandsSubscriberConstructorParams) (message.Subscriber, error) {

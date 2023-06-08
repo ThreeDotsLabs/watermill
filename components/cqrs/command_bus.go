@@ -33,8 +33,8 @@ func NewCommandBus(
 	}
 
 	return &CommandBus{publisher, CommandConfig{
-		GenerateBusTopic: func(params GenerateCommandBusTopicParams) (string, error) {
-			return generateTopic(params.CommandName), nil
+		GenerateTopic: func(params GenerateCommandTopicParams) (string, error) {
+			return generateTopic(params.CommandName()), nil
 		},
 		Marshaler: marshaler,
 	}}, nil
@@ -71,9 +71,9 @@ func (c CommandBus) newMessage(ctx context.Context, command any) (*message.Messa
 	}
 
 	commandName := c.config.Marshaler.Name(command)
-	topicName, err := c.config.GenerateBusTopic(GenerateCommandBusTopicParams{
-		CommandName: commandName,
-		Command:     &command,
+	topicName, err := c.config.GenerateTopic(generateCommandBusTopicParams{
+		commandName: commandName,
+		command:     &command,
 	})
 	if err != nil {
 		return nil, "", errors.Wrap(err, "cannot generate topic name")

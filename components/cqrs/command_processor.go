@@ -9,21 +9,6 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
-// CommandsSubscriberConstructor creates subscriber for CommandHandler.
-// It allows you to create a separate customized Subscriber for every command handler.
-//
-// Deprecated: please use CommandsSubscriberConstructorWithParams instead.
-type CommandsSubscriberConstructor func(handlerName string) (message.Subscriber, error)
-
-// CommandsSubscriberConstructorWithParams creates subscriber for CommandHandler.
-// It allows you to create a separate customized Subscriber for every command handler.
-type CommandsSubscriberConstructorWithParams func(CommandsSubscriberConstructorParams) (message.Subscriber, error)
-
-type CommandsSubscriberConstructorParams struct {
-	HandlerName string
-	Handler     CommandHandler
-}
-
 // CommandProcessor determines which CommandHandler should handle the command received from the command bus.
 type CommandProcessor struct {
 	handlers []CommandHandler
@@ -51,14 +36,11 @@ func NewCommandProcessor(
 	}
 
 	cp, err := NewCommandProcessorWithConfig(CommandConfig{
-		GenerateBusTopic: func(params GenerateCommandBusTopicParams) (string, error) {
-			return generateTopic(params.CommandName), nil
-		},
-		GenerateHandlerTopic: func(params GenerateCommandHandlerTopicParams) (string, error) {
-			return generateTopic(params.CommandName), nil
+		GenerateTopic: func(params GenerateCommandTopicParams) (string, error) {
+			return generateTopic(params.CommandName()), nil
 		},
 		SubscriberConstructor: func(params CommandsSubscriberConstructorParams) (message.Subscriber, error) {
-			return subscriberConstructor(params.HandlerName)
+			return subscriberConstructor(params.HandlerName())
 		},
 		Marshaler: marshaler,
 		Logger:    logger,
@@ -108,9 +90,9 @@ func (p CommandProcessor) AddHandlersToRouter(r *message.Router) error {
 		handlerName := handler.HandlerName()
 		commandName := p.config.Marshaler.Name(handler.NewCommand())
 
-		topicName, err := p.config.GenerateHandlerTopic(GenerateCommandHandlerTopicParams{
-			CommandName:    commandName,
-			CommandHandler: handler,
+		topicName, err := p.config.GenerateTopic(generateCommandHandlerTopicParams{
+			commandName:    commandName,
+			commandHandler: handler,
 		})
 		if err != nil {
 			return errors.Wrapf(err, "cannot generate topic for command handler %s", handlerName)
@@ -133,9 +115,9 @@ func (p CommandProcessor) AddHandlersToRouter(r *message.Router) error {
 
 		logger.Debug("Adding CQRS command handler to router", nil)
 
-		subscriber, err := p.config.SubscriberConstructor(CommandsSubscriberConstructorParams{
-			HandlerName: handlerName,
-			Handler:     handler,
+		subscriber, err := p.config.SubscriberConstructor(commandsSubscriberConstructorParams{
+			handlerName: handlerName,
+			handler:     handler,
 		})
 		if err != nil {
 			return errors.Wrap(err, "cannot create subscriber for command processor")
