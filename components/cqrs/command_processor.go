@@ -1,7 +1,6 @@
 package cqrs
 
 import (
-	stdErrors "errors"
 	"fmt"
 
 	"github.com/pkg/errors"
@@ -52,8 +51,11 @@ func NewCommandProcessor(
 	}
 
 	cp, err := NewCommandProcessorWithConfig(CommandConfig{
-		GenerateTopic: func(params GenerateCommandsTopicParams) string {
-			return generateTopic(params.CommandName)
+		GenerateBusTopic: func(params GenerateCommandBusTopicParams) (string, error) {
+			return generateTopic(params.CommandName), nil
+		},
+		GenerateHandlerTopic: func(params GenerateCommandHandlerTopicParams) (string, error) {
+			return generateTopic(params.CommandName), nil
 		},
 		SubscriberConstructor: func(params CommandsSubscriberConstructorParams) (message.Subscriber, error) {
 			return subscriberConstructor(params.HandlerName)
@@ -84,7 +86,6 @@ func NewCommandProcessorWithConfig(config CommandConfig) (*CommandProcessor, err
 	}, nil
 }
 
-// todo: confusing with  AddHandlersToRouter
 func (p *CommandProcessor) AddHandler(handler ...CommandHandler) {
 	p.handlers = append(p.handlers, handler...)
 }
@@ -107,9 +108,13 @@ func (p CommandProcessor) AddHandlersToRouter(r *message.Router) error {
 		handlerName := handler.HandlerName()
 		commandName := p.config.Marshaler.Name(handler.NewCommand())
 
-		topicName := p.config.GenerateTopic(GenerateCommandsTopicParams{
-			CommandName: commandName,
+		topicName, err := p.config.GenerateHandlerTopic(GenerateCommandHandlerTopicParams{
+			CommandName:    commandName,
+			CommandHandler: handler,
 		})
+		if err != nil {
+			return errors.Wrapf(err, "cannot generate topic for command handler %s", handlerName)
+		}
 
 		if _, ok := handledCommands[commandName]; ok {
 			return DuplicateCommandHandlerError{commandName}
@@ -182,29 +187,29 @@ func (p CommandProcessor) routerHandlerFunc(handler CommandHandler, logger water
 			return err
 		}
 
-		err := handler.Handle(msg.Context(), cmd)
+		handle := func(params OnCommandHandleParams) error {
+			return params.Handler.Handle(params.Message.Context(), params.Command)
+		}
+		if p.config.OnHandle != nil {
+			handle = p.config.OnHandle
+		}
 
-		var replyErr error
+		err := handle(OnCommandHandleParams{
+			Handler: handler,
+			Command: cmd,
+			Message: msg,
+		})
 
-		// todo: test
 		if p.config.AckCommandHandlingErrors && err != nil {
-			// we want to nack if we are using request-reply,
-			// and we failed to send information about failure
-			if replyErr != nil {
-				return replyErr
-			}
-
 			logger.Error("Error when handling command", err, nil)
 			return nil
-		} else if replyErr != nil {
-			err = stdErrors.Join(err, replyErr)
 		}
-
 		if err != nil {
 			logger.Debug("Error when handling command", watermill.LogFields{"err": err})
+			return err
 		}
 
-		return err
+		return nil
 	}, nil
 }
 

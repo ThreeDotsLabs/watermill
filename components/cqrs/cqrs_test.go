@@ -77,13 +77,19 @@ func createCqrsComponents(t *testing.T, commandHandler *CaptureCommandHandler, e
 	require.NoError(t, err)
 
 	eventConfig := cqrs.EventConfig{
-		GenerateIndividualSubscriberTopic: func(params cqrs.GenerateEventsTopicParams) string {
+		GenerateHandlerTopic: func(params cqrs.GenerateEventHandlerTopicParams) (string, error) {
+			// todo: assert entire context + assert in different cases
 			assert.Equal(t, "cqrs_test.TestEvent", params.EventName)
 
-			return params.EventName
+			return params.EventName, nil
 		},
-		GenerateHandlerGroupTopic: nil,
-		ErrorOnUnknownEvent:       false,
+		GenerateBusTopic: func(params cqrs.GenerateEventBusTopicParams) (string, error) {
+			// todo: assert entire context + assert in different cases
+			assert.Equal(t, "cqrs_test.TestEvent", params.EventName)
+
+			return params.EventName, nil
+		},
+		ErrorOnUnknownEvent: false,
 		SubscriberConstructor: func(handlerName string) (message.Subscriber, error) {
 			assert.Equal(t, "CaptureEventHandler", handlerName)
 
@@ -112,10 +118,17 @@ func createCqrsComponents(t *testing.T, commandHandler *CaptureCommandHandler, e
 	require.NoError(t, err)
 
 	commandConfig := cqrs.CommandConfig{
-		GenerateTopic: func(params cqrs.GenerateCommandsTopicParams) string {
+		GenerateBusTopic: func(params cqrs.GenerateCommandBusTopicParams) (string, error) {
+			// todo: assert rest of context
 			assert.Equal(t, "cqrs_test.TestCommand", params.CommandName)
 
-			return params.CommandName
+			return params.CommandName, nil
+		},
+		GenerateHandlerTopic: func(params cqrs.GenerateCommandHandlerTopicParams) (string, error) {
+			// todo: assert rest of context
+			assert.Equal(t, "cqrs_test.TestCommand", params.CommandName)
+
+			return params.CommandName, nil
 		},
 		SubscriberConstructor: func(params cqrs.CommandsSubscriberConstructorParams) (message.Subscriber, error) {
 			assert.Equal(t, "CaptureCommandHandler", params.HandlerName)

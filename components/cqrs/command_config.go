@@ -4,17 +4,22 @@ import (
 	stdErrors "errors"
 
 	"github.com/ThreeDotsLabs/watermill"
+	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/pkg/errors"
 )
 
 type CommandConfig struct {
-	GenerateTopic         GenerateCommandsTopicFn
+	GenerateBusTopic     GenerateCommandBusTopicFn
+	GenerateHandlerTopic GenerateCommandHandlerTopicFn
+
 	SubscriberConstructor CommandsSubscriberConstructorWithParams
+
+	OnSend   OnCommandSendFn
+	OnHandle OnCommandHandleFn
 
 	Marshaler CommandEventMarshaler
 	Logger    watermill.LoggerAdapter
 
-	// todo: better naming?
 	// If true, CommandProcessor will ack messages even if CommandHandler returns an error.
 	// If RequestReplyEnabled is enabled and sending reply fails, the message will be nack-ed anyway.
 	AckCommandHandlingErrors bool
@@ -29,8 +34,8 @@ func (c *CommandConfig) setDefaults() {
 func (c CommandConfig) Validate() error {
 	var err error
 
-	if c.GenerateTopic == nil {
-		err = stdErrors.Join(err, errors.New("missing GenerateTopic"))
+	if c.GenerateBusTopic == nil {
+		err = stdErrors.Join(err, errors.New("missing GenerateBusTopic"))
 	}
 	if c.SubscriberConstructor == nil {
 		err = stdErrors.Join(err, errors.New("missing SubscriberConstructor"))
@@ -42,8 +47,33 @@ func (c CommandConfig) Validate() error {
 	return err
 }
 
-type GenerateCommandsTopicFn func(GenerateCommandsTopicParams) string
+type GenerateCommandBusTopicFn func(GenerateCommandBusTopicParams) (string, error)
 
-type GenerateCommandsTopicParams struct {
+type GenerateCommandBusTopicParams struct {
 	CommandName string
+	Command     any
+}
+
+type GenerateCommandHandlerTopicFn func(GenerateCommandHandlerTopicParams) (string, error)
+
+type GenerateCommandHandlerTopicParams struct {
+	CommandName    string
+	CommandHandler CommandHandler
+}
+
+type OnCommandSendFn func(params OnCommandSendParams) error
+
+type OnCommandSendParams struct {
+	CommandName string
+	Command     any
+	Message     *message.Message
+}
+
+type OnCommandHandleFn func(params OnCommandHandleParams) error
+
+type OnCommandHandleParams struct {
+	Handler CommandHandler
+	Command any
+	// todo: doc that always present
+	Message *message.Message
 }
