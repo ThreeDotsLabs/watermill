@@ -9,12 +9,6 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
-// EventsSubscriberConstructor creates a subscriber for EventHandler.
-// It allows you to create separated customized Subscriber for every command handler.
-//
-// When handler groups are used, handler group is passed as handlerName.
-type EventsSubscriberConstructor func(handlerName string) (message.Subscriber, error)
-
 // EventProcessor determines which EventHandler should handle event received from event bus.
 type EventProcessor struct {
 	individualHandlers []EventHandler
@@ -49,12 +43,11 @@ func NewEventProcessor(
 	}
 
 	eventProcessorConfig := EventConfig{
-		GenerateIndividualSubscriberTopic: func(params GenerateEventsTopicParams) string {
-			return generateTopic(params.EventName)
+		GenerateTopic: func(params GenerateEventTopicParams) (string, error) {
+			return generateTopic(params.EventName()), nil
 		},
-		GenerateHandlerGroupTopic: nil,
-		SubscriberConstructor: func(handlerName string) (message.Subscriber, error) {
-			return subscriberConstructor(handlerName)
+		SubscriberConstructor: func(params EventsSubscriberConstructorParams) (message.Subscriber, error) {
+			return subscriberConstructor(params.HandlerName())
 		},
 		Marshaler: marshaler,
 		Logger:    logger,
@@ -112,10 +105,6 @@ func (p EventProcessor) AddHandlersToRouter(r *message.Router) error {
 	}
 
 	for i := range p.individualHandlers {
-		if p.config.GenerateIndividualSubscriberTopic == nil {
-			return errors.New("missing GenerateIndividualSubscriberTopic configuration option")
-		}
-
 		handler := p.individualHandlers[i]
 
 		if err := p.validateEvent(handler.NewEvent()); err != nil {
@@ -124,10 +113,18 @@ func (p EventProcessor) AddHandlersToRouter(r *message.Router) error {
 
 		handlerName := handler.HandlerName()
 		eventName := p.config.Marshaler.Name(handler.NewEvent())
-		topicName := p.config.GenerateIndividualSubscriberTopic(GenerateEventsTopicParams{
-			EventName: eventName,
-			Handler:   handler,
+
+		if p.config.GenerateTopic == nil {
+			return errors.New("missing GenerateHandlerTopic config option")
+		}
+
+		topicName, err := p.config.GenerateTopic(generateEventHandlerTopicParams{
+			eventName:    eventName,
+			eventHandler: handler,
 		})
+		if err != nil {
+			return errors.Wrapf(err, "cannot generate topic name for handler %s", handlerName)
+		}
 
 		logger := p.config.Logger.With(watermill.LogFields{
 			"event_handler_name": handlerName,
@@ -139,16 +136,20 @@ func (p EventProcessor) AddHandlersToRouter(r *message.Router) error {
 			return err
 		}
 
-		if err := p.addHandlerToRouter(r, handlerName, topicName, handlerFunc); err != nil {
+		subscriber, err := p.config.SubscriberConstructor(eventsSubscriberConstructorParams{
+			handlerName: handlerName,
+			handler:     handler,
+		})
+		if err != nil {
+			return errors.Wrap(err, "cannot create subscriber for event processor")
+		}
+
+		if err := p.addHandlerToRouter(r, handlerName, topicName, handlerFunc, subscriber); err != nil {
 			return err
 		}
 	}
 
 	for groupName := range p.groupEventHandlers {
-		if p.config.GenerateHandlerGroupTopic == nil {
-			return errors.New("missing GenerateHandlerGroupTopic configuration option")
-		}
-
 		handlersGroup := p.groupEventHandlers[groupName]
 
 		for i, handler := range handlersGroup {
@@ -163,22 +164,38 @@ func (p EventProcessor) AddHandlersToRouter(r *message.Router) error {
 			}
 		}
 
-		topicName := p.config.GenerateHandlerGroupTopic(GenerateEventsGroupTopicParams{
-			GroupName: groupName,
-			Handlers:  handlersGroup,
+		if p.config.GenerateHandlerGroupTopic == nil {
+			return errors.New("missing GenerateHandlerGroupTopic config option")
+		}
+
+		topicName, err := p.config.GenerateHandlerGroupTopic(generateEventHandlerGroupTopicParams{
+			eventGroupName:     groupName,
+			eventGroupHandlers: handlersGroup,
 		})
+		if err != nil {
+			return errors.Wrapf(err, "cannot generate topic name for handler group %s", groupName)
+		}
 
 		logger := p.config.Logger.With(watermill.LogFields{
 			"event_handler_group_name": groupName,
 			"topic":                    topicName,
 		})
 
-		handlerFunc, err := p.routerHandlerGroupFunc(handlersGroup, logger)
+		handlerFunc, err := p.routerHandlerGroupFunc(handlersGroup, groupName, logger)
 		if err != nil {
 			return err
 		}
 
-		if err := p.addHandlerToRouter(r, groupName, topicName, handlerFunc); err != nil {
+		subscriber, err := p.config.SubscriberConstructor(eventsGroupSubscriberConstructorParams{
+			handlerName: groupName,
+			groupName:   groupName,
+			handlers:    handlersGroup,
+		})
+		if err != nil {
+			return errors.Wrap(err, "cannot create subscriber for event processor")
+		}
+
+		if err := p.addHandlerToRouter(r, groupName, topicName, handlerFunc, subscriber); err != nil {
 			return err
 		}
 	}
@@ -201,23 +218,13 @@ func (p EventProcessor) Handlers() []EventHandler {
 	return append(p.individualHandlers, groupHandlers...)
 }
 
-func (p EventProcessor) addHandlerToRouter(
-	r *message.Router,
-	handlerName string,
-	topicName string,
-	handlerFunc message.NoPublishHandlerFunc,
-) error {
+func (p EventProcessor) addHandlerToRouter(r *message.Router, handlerName string, topicName string, handlerFunc message.NoPublishHandlerFunc, subscriber message.Subscriber) error {
 	logger := p.config.Logger.With(watermill.LogFields{
 		"event_handler_name": handlerName,
 		"topic":              topicName,
 	})
 
 	logger.Debug("Adding CQRS event handler to router", nil)
-
-	subscriber, err := p.config.SubscriberConstructor(handlerName)
-	if err != nil {
-		return errors.Wrap(err, "cannot create subscriber for event processor")
-	}
 
 	r.AddNoPublisherHandler(
 		handlerName,
@@ -243,7 +250,7 @@ func (p EventProcessor) routerHandlerFunc(handler EventHandler, logger watermill
 
 		if messageEventName != expectedEventName {
 			// todo: test
-			if p.config.ErrorOnUnknownEvent {
+			if p.config.AckOnUnknownEvent {
 				return fmt.Errorf("received unexpected event type %s, expected %s", messageEventName, expectedEventName)
 			} else {
 				logger.Trace("Received different event type than expected, ignoring", watermill.LogFields{
@@ -264,7 +271,19 @@ func (p EventProcessor) routerHandlerFunc(handler EventHandler, logger watermill
 			return err
 		}
 
-		if err := handler.Handle(msg.Context(), event); err != nil {
+		handle := func(params OnEventHandleParams) error {
+			return params.Handler.Handle(params.Message.Context(), params.Event)
+		}
+		if p.config.OnHandle != nil {
+			handle = p.config.OnHandle
+		}
+
+		err := handle(OnEventHandleParams{
+			Handler: handler,
+			Event:   event,
+			Message: msg,
+		})
+		if err != nil {
 			logger.Debug("Error when handling event", watermill.LogFields{"err": err})
 			return err
 		}
@@ -273,7 +292,7 @@ func (p EventProcessor) routerHandlerFunc(handler EventHandler, logger watermill
 	}, nil
 }
 
-func (p EventProcessor) routerHandlerGroupFunc(handlers []GroupEventHandler, logger watermill.LoggerAdapter) (message.NoPublishHandlerFunc, error) {
+func (p EventProcessor) routerHandlerGroupFunc(handlers []GroupEventHandler, groupName string, logger watermill.LoggerAdapter) (message.NoPublishHandlerFunc, error) {
 	return func(msg *message.Message) error {
 		messageEventName := p.config.Marshaler.NameFromMessage(msg)
 
@@ -301,7 +320,20 @@ func (p EventProcessor) routerHandlerGroupFunc(handlers []GroupEventHandler, log
 				return err
 			}
 
-			if err := handler.Handle(msg.Context(), event); err != nil {
+			handle := func(params OnGroupEventHandleParams) error {
+				return params.Handler.Handle(params.Message.Context(), params.Event)
+			}
+			if p.config.OnGroupHandle != nil {
+				handle = p.config.OnGroupHandle
+			}
+
+			err := handle(OnGroupEventHandleParams{
+				GroupName: groupName,
+				Handler:   handler,
+				Event:     event,
+				Message:   msg,
+			})
+			if err != nil {
 				logger.Debug("Error when handling event", watermill.LogFields{"err": err})
 				return err
 			}
@@ -310,7 +342,7 @@ func (p EventProcessor) routerHandlerGroupFunc(handlers []GroupEventHandler, log
 		}
 
 		// todo: test
-		if p.config.ErrorOnUnknownEvent {
+		if p.config.AckOnUnknownEvent {
 			return fmt.Errorf("no handler found for event %s", p.config.Marshaler.NameFromMessage(msg))
 		} else {
 			logger.Trace("Received event can't be handled by any handler in handler group", watermill.LogFields{

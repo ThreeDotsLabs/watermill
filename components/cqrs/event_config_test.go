@@ -21,12 +21,11 @@ func TestEventConfig_Validate(t *testing.T) {
 			ExpectedErr:       nil,
 		},
 		{
-			Name: "missing_GenerateIndividualSubscriberTopic_and_GenerateHandlerGroupTopic",
+			Name: "missing_GenerateEventHandlerTopic_and_GenerateEventHandlerGroupTopic",
 			ModifyValidConfig: func(config *cqrs.EventConfig) {
-				config.GenerateIndividualSubscriberTopic = nil
-				config.GenerateHandlerGroupTopic = nil
+				config.GenerateTopic = nil
 			},
-			ExpectedErr: fmt.Errorf("GenerateIndividualSubscriberTopic or GenerateHandlerGroupTopic must be set"),
+			ExpectedErr: fmt.Errorf("GenerateHandlerTopic or GenerateHandlerGroupTopic is required"),
 		},
 		{
 			Name: "missing_marshaler",
@@ -48,13 +47,10 @@ func TestEventConfig_Validate(t *testing.T) {
 
 		t.Run(tc.Name, func(t *testing.T) {
 			validConfig := cqrs.EventConfig{
-				GenerateIndividualSubscriberTopic: func(params cqrs.GenerateEventsTopicParams) string {
-					return ""
+				GenerateTopic: func(params cqrs.GenerateEventTopicParams) (string, error) {
+					return "", nil
 				},
-				GenerateHandlerGroupTopic: func(params cqrs.GenerateEventsGroupTopicParams) string {
-					return ""
-				},
-				SubscriberConstructor: func(handlerName string) (message.Subscriber, error) {
+				SubscriberConstructor: func(params cqrs.EventsSubscriberConstructorParams) (message.Subscriber, error) {
 					return nil, nil
 				},
 				Marshaler: cqrs.JSONMarshaler{},

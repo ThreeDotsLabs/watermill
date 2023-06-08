@@ -34,11 +34,10 @@ func NewCommandBus(
 	}
 
 	return &CommandBus{publisher, CommandConfig{
-		GenerateTopic: func(params GenerateCommandsTopicParams) string {
-			return generateTopic(params.CommandName)
+		GenerateTopic: func(params GenerateCommandTopicParams) (string, error) {
+			return generateTopic(params.CommandName()), nil
 		},
 		Marshaler: marshaler,
-		Logger:    watermill.NopLogger{},
 	}}, nil
 }
 
@@ -66,17 +65,33 @@ func (c CommandBus) Send(ctx context.Context, cmd any) error {
 	return c.publisher.Publish(topicName, msg)
 }
 
-func (c CommandBus) newMessage(ctx context.Context, cmd any) (*message.Message, string, error) {
-	msg, err := c.config.Marshaler.Marshal(cmd)
+func (c CommandBus) newMessage(ctx context.Context, command any) (*message.Message, string, error) {
+	msg, err := c.config.Marshaler.Marshal(command)
 	if err != nil {
 		return nil, "", err
 	}
 
-	commandName := c.config.Marshaler.Name(cmd)
-	topicName := c.config.GenerateTopic(GenerateCommandsTopicParams{
-		CommandName: commandName,
+	commandName := c.config.Marshaler.Name(command)
+	topicName, err := c.config.GenerateTopic(generateCommandBusTopicParams{
+		commandName: commandName,
+		command:     &command,
 	})
+	if err != nil {
+		return nil, "", errors.Wrap(err, "cannot generate topic name")
+	}
 
 	msg.SetContext(ctx)
+
+	if c.config.OnSend != nil {
+		err := c.config.OnSend(OnCommandSendParams{
+			CommandName: commandName,
+			Command:     command,
+			Message:     msg,
+		})
+		if err != nil {
+			return nil, "", errors.Wrap(err, "cannot execute OnSend")
+		}
+	}
+
 	return msg, topicName, nil
 }

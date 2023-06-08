@@ -10,21 +10,6 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
-// CommandsSubscriberConstructor creates subscriber for CommandHandler.
-// It allows you to create a separate customized Subscriber for every command handler.
-//
-// Deprecated: please use CommandsSubscriberConstructorWithParams instead.
-type CommandsSubscriberConstructor func(handlerName string) (message.Subscriber, error)
-
-// CommandsSubscriberConstructorWithParams creates subscriber for CommandHandler.
-// It allows you to create a separate customized Subscriber for every command handler.
-type CommandsSubscriberConstructorWithParams func(CommandsSubscriberConstructorParams) (message.Subscriber, error)
-
-type CommandsSubscriberConstructorParams struct {
-	HandlerName string
-	Handler     CommandHandler
-}
-
 // CommandProcessor determines which CommandHandler should handle the command received from the command bus.
 type CommandProcessor struct {
 	handlers []CommandHandler
@@ -52,11 +37,11 @@ func NewCommandProcessor(
 	}
 
 	cp, err := NewCommandProcessorWithConfig(CommandConfig{
-		GenerateTopic: func(params GenerateCommandsTopicParams) string {
-			return generateTopic(params.CommandName)
+		GenerateTopic: func(params GenerateCommandTopicParams) (string, error) {
+			return generateTopic(params.CommandName()), nil
 		},
 		SubscriberConstructor: func(params CommandsSubscriberConstructorParams) (message.Subscriber, error) {
-			return subscriberConstructor(params.HandlerName)
+			return subscriberConstructor(params.HandlerName())
 		},
 		Marshaler: marshaler,
 		Logger:    logger,
@@ -84,7 +69,6 @@ func NewCommandProcessorWithConfig(config CommandConfig) (*CommandProcessor, err
 	}, nil
 }
 
-// todo: confusing with  AddHandlersToRouter
 func (p *CommandProcessor) AddHandler(handler ...CommandHandler) {
 	p.handlers = append(p.handlers, handler...)
 }
@@ -107,9 +91,13 @@ func (p CommandProcessor) AddHandlersToRouter(r *message.Router) error {
 		handlerName := handler.HandlerName()
 		commandName := p.config.Marshaler.Name(handler.NewCommand())
 
-		topicName := p.config.GenerateTopic(GenerateCommandsTopicParams{
-			CommandName: commandName,
+		topicName, err := p.config.GenerateTopic(generateCommandHandlerTopicParams{
+			commandName:    commandName,
+			commandHandler: handler,
 		})
+		if err != nil {
+			return errors.Wrapf(err, "cannot generate topic for command handler %s", handlerName)
+		}
 
 		if _, ok := handledCommands[commandName]; ok {
 			return DuplicateCommandHandlerError{commandName}
@@ -128,9 +116,9 @@ func (p CommandProcessor) AddHandlersToRouter(r *message.Router) error {
 
 		logger.Debug("Adding CQRS command handler to router", nil)
 
-		subscriber, err := p.config.SubscriberConstructor(CommandsSubscriberConstructorParams{
-			HandlerName: handlerName,
-			Handler:     handler,
+		subscriber, err := p.config.SubscriberConstructor(commandsSubscriberConstructorParams{
+			handlerName: handlerName,
+			handler:     handler,
 		})
 		if err != nil {
 			return errors.Wrap(err, "cannot create subscriber for command processor")
@@ -182,19 +170,30 @@ func (p CommandProcessor) routerHandlerFunc(handler CommandHandler, logger water
 			return err
 		}
 
-		err := handler.Handle(msg.Context(), cmd)
+		handle := func(params OnCommandHandleParams) error {
+			return params.Handler.Handle(params.Message.Context(), params.Command)
+		}
+		if p.config.OnHandle != nil {
+			handle = p.config.OnHandle
+		}
+
+		err := handle(OnCommandHandleParams{
+			Handler: handler,
+			Command: cmd,
+			Message: msg,
+		})
 
 		var replyErr error
-
 		// todo: test
 		if p.config.RequestReplyEnabled {
 			replyErr = p.config.RequestReplyBackend.OnCommandProcessed(msg, cmd, err)
 		}
 
-		// todo: test
+
 		if p.config.AckCommandHandlingErrors && err != nil {
 			// we want to nack if we are using request-reply,
 			// and we failed to send information about failure
+			// todo: test
 			if replyErr != nil {
 				return replyErr
 			}
@@ -202,14 +201,16 @@ func (p CommandProcessor) routerHandlerFunc(handler CommandHandler, logger water
 			logger.Error("Error when handling command", err, nil)
 			return nil
 		} else if replyErr != nil {
+			// todo: test
 			err = stdErrors.Join(err, replyErr)
 		}
 
 		if err != nil {
 			logger.Debug("Error when handling command", watermill.LogFields{"err": err})
+			return err
 		}
 
-		return err
+		return nil
 	}, nil
 }
 

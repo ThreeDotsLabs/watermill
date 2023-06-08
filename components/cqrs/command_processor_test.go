@@ -134,7 +134,7 @@ func (m mockSubscriber) Close() error {
 	return nil
 }
 
-func TestCommandProcessor_ack_command_handling_errors(t *testing.T) {
+func TestCommandProcessor_AckCommandHandlingErrors_option_true(t *testing.T) {
 	logger := watermill.NewCaptureLogger()
 
 	marshaler := cqrs.JSONMarshaler{}
@@ -150,8 +150,8 @@ func TestCommandProcessor_ack_command_handling_errors(t *testing.T) {
 
 	commandProcessor, err := cqrs.NewCommandProcessorWithConfig(
 		cqrs.CommandConfig{
-			GenerateTopic: func(params cqrs.GenerateCommandsTopicParams) string {
-				return "commands"
+			GenerateTopic: func(params cqrs.GenerateCommandTopicParams) (string, error) {
+				return "commands", nil
 			},
 			SubscriberConstructor: func(params cqrs.CommandsSubscriberConstructorParams) (message.Subscriber, error) {
 				return mockSub, nil
@@ -210,4 +210,65 @@ func TestCommandProcessor_ack_command_handling_errors(t *testing.T) {
 		"expected log message not found, logs: %#v",
 		logger.Captured(),
 	)
+}
+
+func TestCommandProcessor_AckCommandHandlingErrors_option_false(t *testing.T) {
+	logger := watermill.NewCaptureLogger()
+
+	marshaler := cqrs.JSONMarshaler{}
+
+	msgToSend, err := marshaler.Marshal(&TestCommand{ID: "1"})
+	require.NoError(t, err)
+
+	mockSub := &mockSubscriber{
+		MessagesToSend: []*message.Message{
+			msgToSend,
+		},
+	}
+
+	commandProcessor, err := cqrs.NewCommandProcessorWithConfig(
+		cqrs.CommandConfig{
+			GenerateTopic: func(params cqrs.GenerateCommandTopicParams) (string, error) {
+				return "commands", nil
+			},
+			SubscriberConstructor: func(params cqrs.CommandsSubscriberConstructorParams) (message.Subscriber, error) {
+				return mockSub, nil
+			},
+			Marshaler:                marshaler,
+			Logger:                   logger,
+			AckCommandHandlingErrors: false,
+		},
+	)
+	require.NoError(t, err)
+
+	expectedErr := errors.New("test error")
+
+	commandProcessor.AddHandler(cqrs.NewCommandHandler(
+		"handler", func(ctx context.Context, cmd *TestCommand) error {
+			return expectedErr
+		}),
+	)
+
+	router, err := message.NewRouter(message.RouterConfig{}, logger)
+	require.NoError(t, err)
+
+	err = commandProcessor.AddHandlersToRouter(router)
+	require.NoError(t, err)
+
+	go func() {
+		err := router.Run(context.Background())
+		assert.NoError(t, err)
+	}()
+
+	<-router.Running()
+
+	select {
+	case <-msgToSend.Acked():
+		// nack received
+		t.Fatal("ack received, message should be nacked")
+	case <-msgToSend.Nacked():
+		// ok
+	case <-time.After(1 * time.Second):
+		t.Fatal("timeout waiting for ack")
+	}
 }

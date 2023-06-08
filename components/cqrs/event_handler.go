@@ -28,12 +28,6 @@ type EventHandler interface {
 	Handle(ctx context.Context, event any) error
 }
 
-// todo: add generic constructor?
-type GroupEventHandler interface {
-	NewEvent() interface{}
-	Handle(ctx context.Context, event interface{}) error
-}
-
 type genericEventHandler[T any] struct {
 	handleFunc  func(ctx context.Context, cmd *T) error
 	handlerName string
@@ -58,4 +52,16 @@ func (c genericEventHandler[T]) NewEvent() any {
 func (c genericEventHandler[T]) Handle(ctx context.Context, cmd any) error {
 	event := cmd.(*T)
 	return c.handleFunc(ctx, event)
+}
+
+type GroupEventHandler interface {
+	NewEvent() interface{}
+	Handle(ctx context.Context, event interface{}) error
+}
+
+// todo: test!
+func NewGroupEventHandler[T any](handleFunc func(ctx context.Context, cmd *T) error) GroupEventHandler {
+	return &genericEventHandler[T]{
+		handleFunc: handleFunc,
+	}
 }

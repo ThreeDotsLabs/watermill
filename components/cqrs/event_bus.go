@@ -9,12 +9,12 @@ import (
 
 // EventBus transports events to event handlers.
 type EventBus struct {
-	publisher     message.Publisher
-	generateTopic func(eventName string) string
-	marshaler     CommandEventMarshaler
+	publisher message.Publisher
+	config    EventConfig
 }
 
-// todo: deprecate + add NewXXXXwithConfig func?
+// NewEventBus creates a new CommandBus.
+// Deprecated: use NewEventBusWithConfig instead.
 func NewEventBus(
 	publisher message.Publisher,
 	generateTopic func(eventName string) string,
@@ -30,20 +30,59 @@ func NewEventBus(
 		return nil, errors.New("missing marshaler")
 	}
 
-	return &EventBus{publisher, generateTopic, marshaler}, nil
+	return &EventBus{
+		publisher: publisher,
+		config: EventConfig{
+			GenerateTopic: func(params GenerateEventTopicParams) (string, error) {
+				return generateTopic(params.EventName()), nil
+			},
+			Marshaler: marshaler,
+		},
+	}, nil
+}
+
+// NewEventBusWithConfig creates a new EventBus.
+func NewEventBusWithConfig(publisher message.Publisher, config EventConfig) (*EventBus, error) {
+	if publisher == nil {
+		return nil, errors.New("missing publisher")
+	}
+
+	config.setDefaults()
+	if err := config.Validate(); err != nil {
+		return nil, errors.Wrap(err, "invalid config")
+	}
+
+	return &EventBus{publisher, config}, nil
 }
 
 // Publish sends event to the event bus.
-func (c EventBus) Publish(ctx context.Context, event interface{}) error {
-	msg, err := c.marshaler.Marshal(event)
+func (c EventBus) Publish(ctx context.Context, event any) error {
+	msg, err := c.config.Marshaler.Marshal(event)
 	if err != nil {
 		return err
 	}
 
-	eventName := c.marshaler.Name(event)
-	topicName := c.generateTopic(eventName)
+	eventName := c.config.Marshaler.Name(event)
+	topicName, err := c.config.GenerateTopic(generateEventTopicParams{
+		eventName: eventName,
+		event:     event,
+	})
+	if err != nil {
+		return errors.Wrap(err, "cannot generate topic")
+	}
 
 	msg.SetContext(ctx)
+
+	if c.config.OnSend != nil {
+		err := c.config.OnSend(OnEventSendParams{
+			EventName: eventName,
+			Event:     event,
+			Message:   msg,
+		})
+		if err != nil {
+			return errors.Wrap(err, "cannot execute OnSend")
+		}
+	}
 
 	return c.publisher.Publish(topicName, msg)
 }

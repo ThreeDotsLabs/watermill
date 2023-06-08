@@ -77,15 +77,16 @@ func createCqrsComponents(t *testing.T, commandHandler *CaptureCommandHandler, e
 	require.NoError(t, err)
 
 	eventConfig := cqrs.EventConfig{
-		GenerateIndividualSubscriberTopic: func(params cqrs.GenerateEventsTopicParams) string {
-			assert.Equal(t, "cqrs_test.TestEvent", params.EventName)
+		GenerateTopic: func(params cqrs.GenerateEventTopicParams) (string, error) {
+			// todo: assert entire context + assert in different cases
+			assert.Equal(t, "cqrs_test.TestEvent", params.EventName())
 
-			return params.EventName
+			return params.EventName(), nil
 		},
-		GenerateHandlerGroupTopic: nil,
-		ErrorOnUnknownEvent:       false,
-		SubscriberConstructor: func(handlerName string) (message.Subscriber, error) {
-			assert.Equal(t, "CaptureEventHandler", handlerName)
+		AckOnUnknownEvent: false,
+		SubscriberConstructor: func(params cqrs.EventsSubscriberConstructorParams) (message.Subscriber, error) {
+			// todo: assert all
+			assert.Equal(t, "CaptureEventHandler", params.HandlerName())
 
 			return ts.EventsPubSub, nil
 		},
@@ -112,20 +113,19 @@ func createCqrsComponents(t *testing.T, commandHandler *CaptureCommandHandler, e
 	require.NoError(t, err)
 
 	commandConfig := cqrs.CommandConfig{
-		GenerateTopic: func(params cqrs.GenerateCommandsTopicParams) string {
-			assert.Equal(t, "cqrs_test.TestCommand", params.CommandName)
+		GenerateTopic: func(params cqrs.GenerateCommandTopicParams) (string, error) {
+			// todo: assert rest of context
+			assert.Equal(t, "cqrs_test.TestCommand", params.CommandName())
 
-			return params.CommandName
+			return params.CommandName(), nil
 		},
 		SubscriberConstructor: func(params cqrs.CommandsSubscriberConstructorParams) (message.Subscriber, error) {
-			assert.Equal(t, "CaptureCommandHandler", params.HandlerName)
+			assert.Equal(t, "CaptureCommandHandler", params.HandlerName())
 
 			return ts.CommandsPubSub, nil
 		},
 		Marshaler:                ts.Marshaler,
 		Logger:                   ts.Logger,
-		RequestReplyEnabled:      false,
-		RequestReplyBackend:      nil,
 		AckCommandHandlingErrors: false,
 	}
 

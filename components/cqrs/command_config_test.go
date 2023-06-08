@@ -40,22 +40,14 @@ func TestCommandConfig_Validate(t *testing.T) {
 			},
 			ExpectedErr: errors.Errorf("missing Marshaler"),
 		},
-		{
-			Name: "missing_RequestReplyBackend",
-			ModifyValidConfig: func(c *CommandConfig) {
-				c.RequestReplyEnabled = true
-				c.RequestReplyBackend = nil
-			},
-			ExpectedErr: errors.Errorf("missing RequestReply.Backend"),
-		},
 	}
 	for i := range testCases {
 		tc := testCases[i]
 
 		t.Run(tc.Name, func(t *testing.T) {
 			validConfig := CommandConfig{
-				GenerateTopic: func(params GenerateCommandsTopicParams) string {
-					return ""
+				GenerateTopic: func(params GenerateCommandTopicParams) (string, error) {
+					return "", nil
 				},
 				SubscriberConstructor: func(params CommandsSubscriberConstructorParams) (message.Subscriber, error) {
 					return nil, nil
