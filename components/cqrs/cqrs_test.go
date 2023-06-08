@@ -77,11 +77,14 @@ func createCqrsComponents(t *testing.T, commandHandler *CaptureCommandHandler, e
 	require.NoError(t, err)
 
 	eventConfig := cqrs.EventConfig{
-		GenerateTopic: func(params cqrs.GenerateEventTopicParams) (string, error) {
+		GeneratePublishTopic: func(params cqrs.GenerateEventPublishTopicParams) (string, error) {
 			// todo: assert entire context + assert in different cases
-			assert.Equal(t, "cqrs_test.TestEvent", params.EventName())
+			assert.Equal(t, "cqrs_test.TestEvent", params.EventName)
 
-			return params.EventName(), nil
+			return params.EventName, nil
+		},
+		GenerateHandlerSubscribeTopic: func(params cqrs.GenerateEventHandlerSubscribeTopicParams) (string, error) {
+			return params.EventName, nil
 		},
 		AckOnUnknownEvent: false,
 		SubscriberConstructor: func(params cqrs.EventsSubscriberConstructorParams) (message.Subscriber, error) {
@@ -113,14 +116,20 @@ func createCqrsComponents(t *testing.T, commandHandler *CaptureCommandHandler, e
 	require.NoError(t, err)
 
 	commandConfig := cqrs.CommandConfig{
-		GenerateTopic: func(params cqrs.GenerateCommandTopicParams) (string, error) {
+		GeneratePublishTopic: func(params cqrs.GenerateCommandPublishTopicParams) (string, error) {
 			// todo: assert rest of context
-			assert.Equal(t, "cqrs_test.TestCommand", params.CommandName())
+			assert.Equal(t, "cqrs_test.TestCommand", params.CommandName)
 
-			return params.CommandName(), nil
+			return params.CommandName, nil
+		},
+		GenerateHandlerSubscribeTopic: func(params cqrs.GenerateCommandHandlerSubscribeTopicParams) (string, error) {
+			// todo: assert rest of context
+			assert.Equal(t, "cqrs_test.TestCommand", params.CommandName)
+
+			return params.CommandName, nil
 		},
 		SubscriberConstructor: func(params cqrs.CommandsSubscriberConstructorParams) (message.Subscriber, error) {
-			assert.Equal(t, "CaptureCommandHandler", params.HandlerName())
+			assert.Equal(t, "CaptureCommandHandler", params.HandlerName)
 
 			return ts.CommandsPubSub, nil
 		},

@@ -33,8 +33,12 @@ func NewEventBus(
 	return &EventBus{
 		publisher: publisher,
 		config: EventConfig{
-			GenerateTopic: func(params GenerateEventTopicParams) (string, error) {
-				return generateTopic(params.EventName()), nil
+			GeneratePublishTopic: func(params GenerateEventPublishTopicParams) (string, error) {
+				return generateTopic(params.EventName), nil
+			},
+			GenerateHandlerSubscribeTopic: func(params GenerateEventHandlerSubscribeTopicParams) (string, error) {
+				// todo: is required?
+				return generateTopic(params.EventName), nil
 			},
 			Marshaler: marshaler,
 		},
@@ -63,9 +67,9 @@ func (c EventBus) Publish(ctx context.Context, event any) error {
 	}
 
 	eventName := c.config.Marshaler.Name(event)
-	topicName, err := c.config.GenerateTopic(generateEventTopicParams{
-		eventName: eventName,
-		event:     event,
+	topicName, err := c.config.GeneratePublishTopic(GenerateEventPublishTopicParams{
+		EventName: eventName,
+		Event:     event,
 	})
 	if err != nil {
 		return errors.Wrap(err, "cannot generate topic")

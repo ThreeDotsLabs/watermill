@@ -37,11 +37,15 @@ func NewCommandProcessor(
 	}
 
 	cp, err := NewCommandProcessorWithConfig(CommandConfig{
-		GenerateTopic: func(params GenerateCommandTopicParams) (string, error) {
-			return generateTopic(params.CommandName()), nil
+		GenerateHandlerSubscribeTopic: func(params GenerateCommandHandlerSubscribeTopicParams) (string, error) {
+			return generateTopic(params.CommandName), nil
+		},
+		GeneratePublishTopic: func(params GenerateCommandPublishTopicParams) (string, error) {
+			// todo: is needed?
+			return generateTopic(params.CommandName), nil
 		},
 		SubscriberConstructor: func(params CommandsSubscriberConstructorParams) (message.Subscriber, error) {
-			return subscriberConstructor(params.HandlerName())
+			return subscriberConstructor(params.HandlerName)
 		},
 		Marshaler: marshaler,
 		Logger:    logger,
@@ -91,9 +95,9 @@ func (p CommandProcessor) AddHandlersToRouter(r *message.Router) error {
 		handlerName := handler.HandlerName()
 		commandName := p.config.Marshaler.Name(handler.NewCommand())
 
-		topicName, err := p.config.GenerateTopic(generateCommandHandlerTopicParams{
-			commandName:    commandName,
-			commandHandler: handler,
+		topicName, err := p.config.GenerateHandlerSubscribeTopic(GenerateCommandHandlerSubscribeTopicParams{
+			CommandName:    commandName,
+			CommandHandler: handler,
 		})
 		if err != nil {
 			return errors.Wrapf(err, "cannot generate topic for command handler %s", handlerName)
@@ -116,9 +120,9 @@ func (p CommandProcessor) AddHandlersToRouter(r *message.Router) error {
 
 		logger.Debug("Adding CQRS command handler to router", nil)
 
-		subscriber, err := p.config.SubscriberConstructor(commandsSubscriberConstructorParams{
-			handlerName: handlerName,
-			handler:     handler,
+		subscriber, err := p.config.SubscriberConstructor(CommandsSubscriberConstructorParams{
+			HandlerName: handlerName,
+			Handler:     handler,
 		})
 		if err != nil {
 			return errors.Wrap(err, "cannot create subscriber for command processor")
@@ -170,7 +174,9 @@ func (p CommandProcessor) routerHandlerFunc(handler CommandHandler, logger water
 			return err
 		}
 
-		handle := func(params OnCommandHandleParams) error {
+		handle := func(params OnCommandHandleParams) (err error) {
+			fmt.Println("handling", params.Command, "with", params.Handler.HandlerName(), "handler")
+
 			return params.Handler.Handle(params.Message.Context(), params.Command)
 		}
 		if p.config.OnHandle != nil {

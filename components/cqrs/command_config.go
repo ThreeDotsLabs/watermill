@@ -9,7 +9,9 @@ import (
 )
 
 type CommandConfig struct {
-	GenerateTopic GenerateCommandTopicFn
+	GeneratePublishTopic GenerateCommandPublishTopicFn
+
+	GenerateHandlerSubscribeTopic GenerateCommandHandlerSubscribeTopicFn
 
 	SubscriberConstructor CommandsSubscriberConstructorWithParams
 
@@ -39,8 +41,8 @@ func (c *CommandConfig) setDefaults() {
 func (c CommandConfig) Validate() error {
 	var err error
 
-	if c.GenerateTopic == nil {
-		err = stdErrors.Join(err, errors.New("missing GenerateTopic"))
+	if c.GeneratePublishTopic == nil {
+		err = stdErrors.Join(err, errors.New("missing GeneratePublishTopic"))
 	}
 	if c.SubscriberConstructor == nil {
 		err = stdErrors.Join(err, errors.New("missing SubscriberConstructor"))
@@ -56,46 +58,18 @@ func (c CommandConfig) Validate() error {
 	return err
 }
 
-type GenerateCommandTopicFn func(GenerateCommandTopicParams) (string, error)
+type GenerateCommandPublishTopicFn func(GenerateCommandPublishTopicParams) (string, error)
 
-type GenerateCommandTopicParams interface {
-	CommandName() string
+type GenerateCommandPublishTopicParams struct {
+	CommandName string
+	Command     any
 }
 
-type GenerateCommandBusTopicParams interface {
-	GenerateCommandTopicParams
-	Command() any
-}
+type GenerateCommandHandlerSubscribeTopicFn func(GenerateCommandHandlerSubscribeTopicParams) (string, error)
 
-type generateCommandBusTopicParams struct {
-	commandName string
-	command     any
-}
-
-func (g generateCommandBusTopicParams) CommandName() string {
-	return g.commandName
-}
-
-func (g generateCommandBusTopicParams) Command() any {
-	return g.command
-}
-
-type GenerateCommandHandlerTopicParams interface {
-	GenerateCommandTopicParams
-	CommandHandler() CommandHandler
-}
-
-type generateCommandHandlerTopicParams struct {
-	commandName    string
-	commandHandler CommandHandler
-}
-
-func (g generateCommandHandlerTopicParams) CommandName() string {
-	return g.commandName
-}
-
-func (g generateCommandHandlerTopicParams) CommandHandler() CommandHandler {
-	return g.commandHandler
+type GenerateCommandHandlerSubscribeTopicParams struct {
+	CommandName    string
+	CommandHandler CommandHandler
 }
 
 type OnCommandSendFn func(params OnCommandSendParams) error
@@ -125,20 +99,7 @@ type CommandsSubscriberConstructor func(handlerName string) (message.Subscriber,
 // It allows you to create a separate customized Subscriber for every command handler.
 type CommandsSubscriberConstructorWithParams func(CommandsSubscriberConstructorParams) (message.Subscriber, error)
 
-type CommandsSubscriberConstructorParams interface {
-	HandlerName() string
-	Handler() CommandHandler
-}
-
-type commandsSubscriberConstructorParams struct {
-	handlerName string
-	handler     CommandHandler
-}
-
-func (c commandsSubscriberConstructorParams) HandlerName() string {
-	return c.handlerName
-}
-
-func (c commandsSubscriberConstructorParams) Handler() CommandHandler {
-	return c.handler
+type CommandsSubscriberConstructorParams struct {
+	HandlerName string
+	Handler     CommandHandler
 }
