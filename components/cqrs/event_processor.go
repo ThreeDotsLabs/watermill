@@ -43,8 +43,12 @@ func NewEventProcessor(
 	}
 
 	eventProcessorConfig := EventConfig{
-		GenerateTopic: func(params GenerateEventTopicParams) (string, error) {
-			return generateTopic(params.EventName()), nil
+		GeneratePublishTopic: func(params GenerateEventPublishTopicParams) (string, error) {
+			return generateTopic(params.EventName), nil
+		},
+		GenerateHandlerSubscribeTopic: func(params GenerateEventHandlerSubscribeTopicParams) (string, error) {
+			// todo: is required?
+			return generateTopic(params.EventName), nil
 		},
 		SubscriberConstructor: func(params EventsSubscriberConstructorParams) (message.Subscriber, error) {
 			return subscriberConstructor(params.HandlerName())
@@ -114,13 +118,13 @@ func (p EventProcessor) AddHandlersToRouter(r *message.Router) error {
 		handlerName := handler.HandlerName()
 		eventName := p.config.Marshaler.Name(handler.NewEvent())
 
-		if p.config.GenerateTopic == nil {
+		if p.config.GeneratePublishTopic == nil {
 			return errors.New("missing GenerateHandlerTopic config option")
 		}
 
-		topicName, err := p.config.GenerateTopic(generateEventHandlerTopicParams{
-			eventName:    eventName,
-			eventHandler: handler,
+		topicName, err := p.config.GenerateHandlerSubscribeTopic(GenerateEventHandlerSubscribeTopicParams{
+			EventName:    eventName,
+			EventHandler: handler,
 		})
 		if err != nil {
 			return errors.Wrapf(err, "cannot generate topic name for handler %s", handlerName)
@@ -164,13 +168,13 @@ func (p EventProcessor) AddHandlersToRouter(r *message.Router) error {
 			}
 		}
 
-		if p.config.GenerateHandlerGroupTopic == nil {
-			return errors.New("missing GenerateHandlerGroupTopic config option")
+		if p.config.GenerateHandlerGroupSubscribeTopic == nil {
+			return errors.New("missing GenerateHandlerGroupSubscribeTopic config option")
 		}
 
-		topicName, err := p.config.GenerateHandlerGroupTopic(generateEventHandlerGroupTopicParams{
-			eventGroupName:     groupName,
-			eventGroupHandlers: handlersGroup,
+		topicName, err := p.config.GenerateHandlerGroupSubscribeTopic(GenerateEventHandlerGroupTopicParams{
+			EventGroupName:     groupName,
+			EventGroupHandlers: handlersGroup,
 		})
 		if err != nil {
 			return errors.Wrapf(err, "cannot generate topic name for handler group %s", groupName)

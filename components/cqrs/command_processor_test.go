@@ -150,7 +150,10 @@ func TestCommandProcessor_AckCommandHandlingErrors_option_true(t *testing.T) {
 
 	commandProcessor, err := cqrs.NewCommandProcessorWithConfig(
 		cqrs.CommandConfig{
-			GenerateTopic: func(params cqrs.GenerateCommandTopicParams) (string, error) {
+			GeneratePublishTopic: func(params cqrs.GenerateCommandPublishTopicParams) (string, error) {
+				return "commands", nil
+			},
+			GenerateHandlerSubscribeTopic: func(params cqrs.GenerateCommandHandlerSubscribeTopicParams) (string, error) {
 				return "commands", nil
 			},
 			SubscriberConstructor: func(params cqrs.CommandsSubscriberConstructorParams) (message.Subscriber, error) {
@@ -228,7 +231,10 @@ func TestCommandProcessor_AckCommandHandlingErrors_option_false(t *testing.T) {
 
 	commandProcessor, err := cqrs.NewCommandProcessorWithConfig(
 		cqrs.CommandConfig{
-			GenerateTopic: func(params cqrs.GenerateCommandTopicParams) (string, error) {
+			GeneratePublishTopic: func(params cqrs.GenerateCommandPublishTopicParams) (string, error) {
+				return "commands", nil
+			},
+			GenerateHandlerSubscribeTopic: func(params cqrs.GenerateCommandHandlerSubscribeTopicParams) (string, error) {
 				return "commands", nil
 			},
 			SubscriberConstructor: func(params cqrs.CommandsSubscriberConstructorParams) (message.Subscriber, error) {

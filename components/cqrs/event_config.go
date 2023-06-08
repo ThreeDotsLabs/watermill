@@ -61,12 +61,14 @@ func (e eventsGroupSubscriberConstructorParams) Handlers() []GroupEventHandler {
 
 type EventConfig struct {
 	// todo: optional when passing to processor?
-	// todo: make GenerateHandlerTopic and GenerateHandlerGroupTopic optional if it's present?
-	GenerateTopic GenerateEventTopicFn
+	// todo: make GenerateHandlerTopic and GenerateHandlerGroupSubscribeTopic optional if it's present?
+	GeneratePublishTopic GenerateEventPublishTopicFn
+
+	GenerateHandlerSubscribeTopic GenerateEventHandlerSubscribeTopicFn
 
 	// todo: validate
 	// todo: optional when passing to bus?
-	GenerateHandlerGroupTopic GenerateEventGroupHandlerTopicFn
+	GenerateHandlerGroupSubscribeTopic GenerateEventHandlerGroupSubscribeTopicFn
 
 	OnSend        OnEventSendFn
 	OnHandle      OnEventHandleFn
@@ -90,8 +92,8 @@ func (c EventConfig) Validate() error {
 	var err error
 
 	// todo: different validation for bus and non-bus
-	if c.GenerateTopic == nil && c.GenerateHandlerGroupTopic == nil {
-		err = stdErrors.Join(err, errors.New("GenerateHandlerTopic or GenerateHandlerGroupTopic is required"))
+	if c.GeneratePublishTopic == nil && c.GenerateHandlerGroupSubscribeTopic == nil {
+		err = stdErrors.Join(err, errors.New("GenerateHandlerTopic or GenerateHandlerGroupSubscribeTopic is required"))
 	}
 
 	if c.Marshaler == nil {
@@ -105,66 +107,25 @@ func (c EventConfig) Validate() error {
 	return err
 }
 
-type GenerateEventTopicFn func(GenerateEventTopicParams) (string, error)
+type GenerateEventPublishTopicFn func(GenerateEventPublishTopicParams) (string, error)
 
-type GenerateEventTopicParams interface {
-	EventName() string
+type GenerateEventPublishTopicParams struct {
+	EventName string
+	Event     any
 }
 
-type GenerateEventBusTopicParams interface {
-	GenerateEventTopicParams
-	Event() any
+type GenerateEventHandlerSubscribeTopicFn func(GenerateEventHandlerSubscribeTopicParams) (string, error)
+
+type GenerateEventHandlerSubscribeTopicParams struct {
+	EventName    string
+	EventHandler EventHandler
 }
 
-type generateEventTopicParams struct {
-	eventName string
-	event     any
-}
+type GenerateEventHandlerGroupSubscribeTopicFn func(GenerateEventHandlerGroupTopicParams) (string, error)
 
-func (g generateEventTopicParams) EventName() string {
-	return g.eventName
-}
-
-func (g generateEventTopicParams) Event() any {
-	return g.event
-}
-
-type GenerateEventHandlerTopicParams interface {
-	GenerateEventTopicParams
-	EventHandler() EventHandler
-}
-
-type generateEventHandlerTopicParams struct {
-	eventName    string
-	eventHandler EventHandler
-}
-
-func (g generateEventHandlerTopicParams) EventName() string {
-	return g.eventName
-}
-
-func (g generateEventHandlerTopicParams) EventHandler() EventHandler {
-	return g.eventHandler
-}
-
-type GenerateEventGroupHandlerTopicFn func(GenerateEventHandlerGroupTopicParams) (string, error)
-
-type GenerateEventHandlerGroupTopicParams interface {
-	EventGroupName() string
-	EventGroupHandlers() []GroupEventHandler
-}
-
-type generateEventHandlerGroupTopicParams struct {
-	eventGroupName     string
-	eventGroupHandlers []GroupEventHandler
-}
-
-func (g generateEventHandlerGroupTopicParams) EventGroupName() string {
-	return g.eventGroupName
-}
-
-func (g generateEventHandlerGroupTopicParams) EventGroupHandlers() []GroupEventHandler {
-	return g.eventGroupHandlers
+type GenerateEventHandlerGroupTopicParams struct {
+	EventGroupName     string
+	EventGroupHandlers []GroupEventHandler
 }
 
 type OnEventSendFn func(params OnEventSendParams) error

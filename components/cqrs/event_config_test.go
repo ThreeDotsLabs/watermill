@@ -23,9 +23,9 @@ func TestEventConfig_Validate(t *testing.T) {
 		{
 			Name: "missing_GenerateEventHandlerTopic_and_GenerateEventHandlerGroupTopic",
 			ModifyValidConfig: func(config *cqrs.EventConfig) {
-				config.GenerateTopic = nil
+				config.GeneratePublishTopic = nil
 			},
-			ExpectedErr: fmt.Errorf("GenerateHandlerTopic or GenerateHandlerGroupTopic is required"),
+			ExpectedErr: fmt.Errorf("GenerateHandlerTopic or GenerateHandlerGroupSubscribeTopic is required"),
 		},
 		{
 			Name: "missing_marshaler",
@@ -47,7 +47,7 @@ func TestEventConfig_Validate(t *testing.T) {
 
 		t.Run(tc.Name, func(t *testing.T) {
 			validConfig := cqrs.EventConfig{
-				GenerateTopic: func(params cqrs.GenerateEventTopicParams) (string, error) {
+				GeneratePublishTopic: func(params cqrs.GenerateEventPublishTopicParams) (string, error) {
 					return "", nil
 				},
 				SubscriberConstructor: func(params cqrs.EventsSubscriberConstructorParams) (message.Subscriber, error) {
