@@ -3,7 +3,6 @@ package cqrs
 import (
 	"context"
 
-	"github.com/ThreeDotsLabs/watermill"
 	"github.com/pkg/errors"
 
 	"github.com/ThreeDotsLabs/watermill/message"

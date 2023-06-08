@@ -261,8 +261,8 @@ func runCommandProcessorWithRequestReplyWithHandler(
 	require.NoError(t, err)
 
 	commandConfig := cqrs.CommandConfig{
-		GenerateTopic: func(params cqrs.GenerateCommandsTopicParams) string {
-			return "commands"
+		GenerateTopic: func(params cqrs.GenerateCommandTopicParams) (string, error) {
+			return "commands", nil
 		},
 		SubscriberConstructor: func(params cqrs.CommandsSubscriberConstructorParams) (message.Subscriber, error) {
 			return ts.CommandsPubSub, nil
