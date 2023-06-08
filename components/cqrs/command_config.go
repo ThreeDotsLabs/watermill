@@ -32,17 +32,38 @@ func (c *CommandConfig) setDefaults() {
 	}
 }
 
-func (c CommandConfig) Validate() error {
+func (c CommandConfig) validateCommon() error {
 	var err error
 
-	if c.GeneratePublishTopic == nil {
-		err = stdErrors.Join(err, errors.New("missing GeneratePublishTopic"))
+	if c.Marshaler == nil {
+		err = stdErrors.Join(err, errors.New("missing Marshaler"))
+	}
+
+	return err
+}
+
+func (c CommandConfig) ValidateForProcessor() error {
+	var err error
+
+	err = stdErrors.Join(err, c.validateCommon())
+
+	if c.GenerateHandlerSubscribeTopic == nil {
+		err = stdErrors.Join(err, errors.New("missing GenerateHandlerSubscribeTopic"))
 	}
 	if c.SubscriberConstructor == nil {
 		err = stdErrors.Join(err, errors.New("missing SubscriberConstructor"))
 	}
-	if c.Marshaler == nil {
-		err = stdErrors.Join(err, errors.New("missing Marshaler"))
+
+	return err
+}
+
+func (c CommandConfig) ValidateForBus() error {
+	var err error
+
+	err = stdErrors.Join(err, c.validateCommon())
+
+	if c.GeneratePublishTopic == nil {
+		err = stdErrors.Join(err, errors.New("missing GeneratePublishTopic"))
 	}
 
 	return err

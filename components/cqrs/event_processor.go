@@ -43,6 +43,7 @@ func NewEventProcessor(
 	}
 
 	eventProcessorConfig := EventConfig{
+		AckOnUnknownEvent: true, // this is the previous default behaviour - keeping backwards compatibility
 		GeneratePublishTopic: func(params GenerateEventPublishTopicParams) (string, error) {
 			return generateTopic(params.EventName), nil
 		},
@@ -58,23 +59,24 @@ func NewEventProcessor(
 	}
 	eventProcessorConfig.setDefaults()
 
-	if err := eventProcessorConfig.Validate(); err != nil {
+	ep, err := NewEventProcessorWithConfig(eventProcessorConfig)
+	if err != nil {
 		return nil, err
 	}
 
-	return &EventProcessor{
-		individualHandlers: individualHandlers,
-		groupEventHandlers: map[string][]GroupEventHandler{},
-		config:             eventProcessorConfig,
-	}, nil
+	for _, handler := range individualHandlers {
+		ep.AddHandler(handler)
+	}
+
+	return ep, nil
 }
 
 // NewEventProcessorWithConfig creates a new EventProcessor.
 func NewEventProcessorWithConfig(config EventConfig) (*EventProcessor, error) {
 	config.setDefaults()
 
-	if err := config.Validate(); err != nil {
-		return nil, err
+	if err := config.ValidateForProcessor(); err != nil {
+		return nil, errors.Wrap(err, "invalid config EventProcessor")
 	}
 
 	return &EventProcessor{
@@ -138,6 +140,10 @@ func (p EventProcessor) AddHandlersToRouter(r *message.Router) error {
 		handlerFunc, err := p.routerHandlerFunc(handler, logger)
 		if err != nil {
 			return err
+		}
+
+		if p.config.SubscriberConstructor == nil {
+			return errors.New("missing SubscriberConstructor config option")
 		}
 
 		subscriber, err := p.config.SubscriberConstructor(eventsSubscriberConstructorParams{
@@ -254,7 +260,7 @@ func (p EventProcessor) routerHandlerFunc(handler EventHandler, logger watermill
 
 		if messageEventName != expectedEventName {
 			// todo: test
-			if p.config.AckOnUnknownEvent {
+			if !p.config.AckOnUnknownEvent {
 				return fmt.Errorf("received unexpected event type %s, expected %s", messageEventName, expectedEventName)
 			} else {
 				logger.Trace("Received different event type than expected, ignoring", watermill.LogFields{
@@ -346,7 +352,7 @@ func (p EventProcessor) routerHandlerGroupFunc(handlers []GroupEventHandler, gro
 		}
 
 		// todo: test
-		if p.config.AckOnUnknownEvent {
+		if !p.config.AckOnUnknownEvent {
 			return fmt.Errorf("no handler found for event %s", p.config.Marshaler.NameFromMessage(msg))
 		} else {
 			logger.Trace("Received event can't be handled by any handler in handler group", watermill.LogFields{

@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestCommandConfig_Validate(t *testing.T) {
+func TestCommandConfig_ValidateForProcessor(t *testing.T) {
 	testCases := []struct {
 		Name              string
 		ModifyValidConfig func(*CommandConfig)
@@ -20,11 +20,11 @@ func TestCommandConfig_Validate(t *testing.T) {
 			ExpectedErr:       nil,
 		},
 		{
-			Name: "missing_GenerateReplyNotificationTopic",
+			Name: "missing_Marshaler",
 			ModifyValidConfig: func(c *CommandConfig) {
-				c.GeneratePublishTopic = nil
+				c.Marshaler = nil
 			},
-			ExpectedErr: errors.Errorf("missing GeneratePublishTopic"),
+			ExpectedErr: errors.Errorf("missing Marshaler"),
 		},
 		{
 			Name: "missing_SubscriberConstructor",
@@ -34,11 +34,11 @@ func TestCommandConfig_Validate(t *testing.T) {
 			ExpectedErr: errors.Errorf("missing SubscriberConstructor"),
 		},
 		{
-			Name: "missing_Marshaler",
+			Name: "missing_GenerateHandlerSubscribeTopic",
 			ModifyValidConfig: func(c *CommandConfig) {
-				c.Marshaler = nil
+				c.GenerateHandlerSubscribeTopic = nil
 			},
-			ExpectedErr: errors.Errorf("missing Marshaler"),
+			ExpectedErr: errors.Errorf("missing GenerateHandlerSubscribeTopic"),
 		},
 	}
 	for i := range testCases {
@@ -46,7 +46,7 @@ func TestCommandConfig_Validate(t *testing.T) {
 
 		t.Run(tc.Name, func(t *testing.T) {
 			validConfig := CommandConfig{
-				GeneratePublishTopic: func(params GenerateCommandPublishTopicParams) (string, error) {
+				GenerateHandlerSubscribeTopic: func(params GenerateCommandHandlerSubscribeTopicParams) (string, error) {
 					return "", nil
 				},
 				SubscriberConstructor: func(params CommandsSubscriberConstructorParams) (message.Subscriber, error) {
@@ -59,7 +59,58 @@ func TestCommandConfig_Validate(t *testing.T) {
 				tc.ModifyValidConfig(&validConfig)
 			}
 
-			err := validConfig.Validate()
+			err := validConfig.ValidateForProcessor()
+			if tc.ExpectedErr == nil {
+				assert.NoError(t, err)
+			} else {
+				assert.EqualError(t, err, tc.ExpectedErr.Error())
+			}
+		})
+	}
+}
+
+func TestCommandConfig_ValidateForBus(t *testing.T) {
+	testCases := []struct {
+		Name              string
+		ModifyValidConfig func(*CommandConfig)
+		ExpectedErr       error
+	}{
+		{
+			Name:              "valid_config",
+			ModifyValidConfig: nil,
+			ExpectedErr:       nil,
+		},
+		{
+			Name: "missing_Marshaler",
+			ModifyValidConfig: func(c *CommandConfig) {
+				c.Marshaler = nil
+			},
+			ExpectedErr: errors.Errorf("missing Marshaler"),
+		},
+		{
+			Name: "missing_GeneratePublishTopic",
+			ModifyValidConfig: func(c *CommandConfig) {
+				c.GeneratePublishTopic = nil
+			},
+			ExpectedErr: errors.Errorf("missing GeneratePublishTopic"),
+		},
+	}
+	for i := range testCases {
+		tc := testCases[i]
+
+		t.Run(tc.Name, func(t *testing.T) {
+			validConfig := CommandConfig{
+				GeneratePublishTopic: func(params GenerateCommandPublishTopicParams) (string, error) {
+					return "", nil
+				},
+				Marshaler: JSONMarshaler{},
+			}
+
+			if tc.ModifyValidConfig != nil {
+				tc.ModifyValidConfig(&validConfig)
+			}
+
+			err := validConfig.ValidateForBus()
 			if tc.ExpectedErr == nil {
 				assert.NoError(t, err)
 			} else {

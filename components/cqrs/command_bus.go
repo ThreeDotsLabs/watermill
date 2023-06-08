@@ -47,7 +47,7 @@ func NewCommandBusWithConfig(publisher message.Publisher, config CommandConfig) 
 	}
 
 	config.setDefaults()
-	if err := config.Validate(); err != nil {
+	if err := config.ValidateForBus(); err != nil {
 		return nil, errors.Wrap(err, "invalid config")
 	}
 

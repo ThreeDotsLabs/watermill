@@ -70,13 +70,13 @@ type EventConfig struct {
 	// todo: optional when passing to bus?
 	GenerateHandlerGroupSubscribeTopic GenerateEventHandlerGroupSubscribeTopicFn
 
+	SubscriberConstructor EventsSubscriberConstructorWithParams
+
 	OnSend        OnEventSendFn
 	OnHandle      OnEventHandleFn
 	OnGroupHandle OnGroupEventHandleFn
 
 	AckOnUnknownEvent bool
-
-	SubscriberConstructor EventsSubscriberConstructorWithParams
 
 	Marshaler CommandEventMarshaler
 	Logger    watermill.LoggerAdapter
@@ -88,20 +88,41 @@ func (c *EventConfig) setDefaults() {
 	}
 }
 
-func (c EventConfig) Validate() error {
+func (c EventConfig) validateCommon() error {
 	var err error
-
-	// todo: different validation for bus and non-bus
-	if c.GeneratePublishTopic == nil && c.GenerateHandlerGroupSubscribeTopic == nil {
-		err = stdErrors.Join(err, errors.New("GenerateHandlerTopic or GenerateHandlerGroupSubscribeTopic is required"))
-	}
 
 	if c.Marshaler == nil {
 		err = stdErrors.Join(err, errors.New("missing Marshaler"))
 	}
 
+	return err
+}
+
+func (c EventConfig) ValidateForProcessor() error {
+	var err error
+
+	err = stdErrors.Join(err, c.validateCommon())
+
+	if c.GenerateHandlerSubscribeTopic == nil && c.GenerateHandlerGroupSubscribeTopic == nil {
+		err = stdErrors.Join(err, errors.New(
+			"GenerateHandlerSubscribeTopic and GenerateHandlerGroupSubscribeTopic are missing, one of them is required",
+		))
+	}
+
 	if c.SubscriberConstructor == nil {
 		err = stdErrors.Join(err, errors.New("missing SubscriberConstructor"))
+	}
+
+	return err
+}
+
+func (c EventConfig) ValidateForBus() error {
+	var err error
+
+	err = stdErrors.Join(err, c.validateCommon())
+
+	if c.GeneratePublishTopic == nil {
+		err = stdErrors.Join(err, errors.New("missing GenerateHandlerTopic"))
 	}
 
 	return err

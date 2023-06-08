@@ -63,7 +63,7 @@ func NewCommandProcessor(
 func NewCommandProcessorWithConfig(config CommandConfig) (*CommandProcessor, error) {
 	config.setDefaults()
 
-	if err := config.Validate(); err != nil {
+	if err := config.ValidateForProcessor(); err != nil {
 		return nil, err
 	}
 
@@ -174,8 +174,6 @@ func (p CommandProcessor) routerHandlerFunc(handler CommandHandler, logger water
 		}
 
 		handle := func(params OnCommandHandleParams) (err error) {
-			fmt.Println("handling", params.Command, "with", params.Handler.HandlerName(), "handler")
-
 			return params.Handler.Handle(params.Message.Context(), params.Command)
 		}
 		if p.config.OnHandle != nil {

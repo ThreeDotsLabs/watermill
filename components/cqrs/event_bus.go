@@ -36,10 +36,6 @@ func NewEventBus(
 			GeneratePublishTopic: func(params GenerateEventPublishTopicParams) (string, error) {
 				return generateTopic(params.EventName), nil
 			},
-			GenerateHandlerSubscribeTopic: func(params GenerateEventHandlerSubscribeTopicParams) (string, error) {
-				// todo: is required?
-				return generateTopic(params.EventName), nil
-			},
 			Marshaler: marshaler,
 		},
 	}, nil
@@ -52,7 +48,7 @@ func NewEventBusWithConfig(publisher message.Publisher, config EventConfig) (*Ev
 	}
 
 	config.setDefaults()
-	if err := config.Validate(); err != nil {
+	if err := config.ValidateForBus(); err != nil {
 		return nil, errors.Wrap(err, "invalid config")
 	}
 
