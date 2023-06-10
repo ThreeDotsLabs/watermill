@@ -673,6 +673,25 @@ func TestRouter_RunHandlers(t *testing.T) {
 	tests.AssertAllMessagesReceived(t, expectedReceivedMessages, receivedMessages1)
 }
 
+func TestRouter_Run_no_handlers(t *testing.T) {
+	pub, sub := createPubSub()
+	defer func() {
+		assert.NoError(t, pub.Close())
+		assert.NoError(t, sub.Close())
+	}()
+
+	logger := watermill.NewCaptureLogger()
+
+	r, err := message.NewRouter(
+		message.RouterConfig{},
+		logger,
+	)
+	require.NoError(t, err)
+
+	err = r.Run(context.Background())
+	require.EqualError(t, err, "no handlers to run")
+}
+
 func TestRouter_close_handler(t *testing.T) {
 	testID := watermill.NewUUID()
 	subscribeTopic1 := "test_topic_1_" + testID

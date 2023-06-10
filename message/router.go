@@ -391,6 +391,10 @@ func (r *Router) RunHandlers(ctx context.Context) error {
 	r.handlersLock.Lock()
 	defer r.handlersLock.Unlock()
 
+	if len(r.handlers) == 0 {
+		return errors.New("no handlers to run")
+	}
+
 	for name, h := range r.handlers {
 		name := name
 		h := h

@@ -225,3 +225,162 @@ func TestNewEventProcessor_OnHandle(t *testing.T) {
 
 	assert.Equal(t, 2, onHandleCalled)
 }
+
+type UnknownEvent struct {
+}
+
+func TestNewEventProcessor_AckOnUnknownEvent(t *testing.T) {
+	ts := NewTestServices()
+
+	msg, err := ts.Marshaler.Marshal(&UnknownEvent{})
+	require.NoError(t, err)
+
+	mockSub := &mockSubscriber{
+		MessagesToSend: []*message.Message{
+			msg,
+		},
+	}
+
+	cp, err := cqrs.NewEventProcessorWithConfig(
+		cqrs.EventConfig{
+			GenerateHandlerSubscribeTopic: func(params cqrs.GenerateEventHandlerSubscribeTopicParams) (string, error) {
+				return "events", nil
+			},
+			SubscriberConstructor: func(params cqrs.EventsSubscriberConstructorParams) (message.Subscriber, error) {
+				return mockSub, nil
+			},
+			AckOnUnknownEvent: true,
+			Marshaler:         ts.Marshaler,
+			Logger:            ts.Logger,
+		},
+	)
+	require.NoError(t, err)
+
+	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
+	require.NoError(t, err)
+
+	cp.AddHandler(cqrs.NewEventHandler("test", func(ctx context.Context, cmd *TestEvent) error {
+		return nil
+	}))
+
+	err = cp.AddHandlersToRouter(router)
+	require.NoError(t, err)
+
+	go func() {
+		err := router.Run(context.Background())
+		assert.NoError(t, err)
+	}()
+
+	<-router.Running()
+
+	select {
+	case <-msg.Acked():
+		// ok
+	case <-msg.Nacked():
+		// ack received
+		t.Fatal("ack received, message should be nacked")
+	}
+}
+
+func TestNewEventProcessor_AckOnUnknownEvent_disabled(t *testing.T) {
+	ts := NewTestServices()
+
+	msg, err := ts.Marshaler.Marshal(&UnknownEvent{})
+	require.NoError(t, err)
+
+	mockSub := &mockSubscriber{
+		MessagesToSend: []*message.Message{
+			msg,
+		},
+	}
+
+	cp, err := cqrs.NewEventProcessorWithConfig(
+		cqrs.EventConfig{
+			GenerateHandlerSubscribeTopic: func(params cqrs.GenerateEventHandlerSubscribeTopicParams) (string, error) {
+				return "events", nil
+			},
+			SubscriberConstructor: func(params cqrs.EventsSubscriberConstructorParams) (message.Subscriber, error) {
+				return mockSub, nil
+			},
+			AckOnUnknownEvent: false,
+			Marshaler:         ts.Marshaler,
+			Logger:            ts.Logger,
+		},
+	)
+	require.NoError(t, err)
+
+	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
+	require.NoError(t, err)
+
+	cp.AddHandler(cqrs.NewEventHandler("test", func(ctx context.Context, cmd *TestEvent) error {
+		return nil
+	}))
+
+	err = cp.AddHandlersToRouter(router)
+	require.NoError(t, err)
+
+	go func() {
+		err := router.Run(context.Background())
+		assert.NoError(t, err)
+	}()
+
+	<-router.Running()
+
+	select {
+	case <-msg.Nacked():
+		// ok
+	case <-msg.Acked():
+		// ack received
+		t.Fatal("ack received, message should be nacked")
+	}
+}
+
+func TestNewEventProcessor_backward_compatibility_of_AckOnUnknownEvent(t *testing.T) {
+	ts := NewTestServices()
+
+	msg, err := ts.Marshaler.Marshal(&UnknownEvent{})
+	require.NoError(t, err)
+
+	mockSub := &mockSubscriber{
+		MessagesToSend: []*message.Message{
+			msg,
+		},
+	}
+
+	cp, err := cqrs.NewEventProcessor(
+		[]cqrs.EventHandler{
+			cqrs.NewEventHandler("test", func(ctx context.Context, cmd *TestEvent) error {
+				return nil
+			}),
+		},
+		func(eventName string) string {
+			return "events"
+		},
+		func(handlerName string) (message.Subscriber, error) {
+			return mockSub, nil
+		},
+		ts.Marshaler,
+		ts.Logger,
+	)
+	require.NoError(t, err)
+
+	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
+	require.NoError(t, err)
+
+	err = cp.AddHandlersToRouter(router)
+
+	go func() {
+		err := router.Run(context.Background())
+		assert.NoError(t, err)
+	}()
+
+	<-router.Running()
+
+	select {
+	case <-msg.Acked():
+		// ok
+	case <-msg.Nacked():
+		// ack received
+		t.Fatal("ack received, message should be nacked")
+	}
+}
