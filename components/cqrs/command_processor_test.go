@@ -16,32 +16,25 @@ import (
 )
 
 func TestNewCommandProcessor(t *testing.T) {
-	handlers := []cqrs.CommandHandler{nonPointerCommandHandler{}}
-
-	generateTopic := func(commandName string) string {
-		return ""
+	commandConfig := cqrs.CommandConfig{
+		GenerateHandlerSubscribeTopic: func(params cqrs.GenerateCommandHandlerSubscribeTopicParams) (string, error) {
+			return "", nil
+		},
+		SubscriberConstructor: func(params cqrs.CommandsSubscriberConstructorParams) (message.Subscriber, error) {
+			return nil, nil
+		},
+		Marshaler: cqrs.JSONMarshaler{},
 	}
-	subscriberConstructor := func(handlerName string) (subscriber message.Subscriber, e error) {
-		return nil, nil
-	}
+	require.NoError(t, commandConfig.ValidateForProcessor())
 
-	cp, err := cqrs.NewCommandProcessor(handlers, generateTopic, subscriberConstructor, cqrs.JSONMarshaler{}, nil)
+	cp, err := cqrs.NewCommandProcessorWithConfig(commandConfig)
 	assert.NotNil(t, cp)
 	assert.NoError(t, err)
 
-	cp, err = cqrs.NewCommandProcessor([]cqrs.CommandHandler{}, generateTopic, subscriberConstructor, cqrs.JSONMarshaler{}, nil)
-	assert.Nil(t, cp)
-	assert.Error(t, err)
+	commandConfig.SubscriberConstructor = nil
+	require.Error(t, commandConfig.ValidateForProcessor())
 
-	cp, err = cqrs.NewCommandProcessor(handlers, nil, subscriberConstructor, cqrs.JSONMarshaler{}, nil)
-	assert.Nil(t, cp)
-	assert.Error(t, err)
-
-	cp, err = cqrs.NewCommandProcessor(handlers, generateTopic, nil, cqrs.JSONMarshaler{}, nil)
-	assert.Nil(t, cp)
-	assert.Error(t, err)
-
-	cp, err = cqrs.NewCommandProcessor(handlers, generateTopic, subscriberConstructor, nil, nil)
+	cp, err = cqrs.NewCommandProcessorWithConfig(commandConfig)
 	assert.Nil(t, cp)
 	assert.Error(t, err)
 }
@@ -64,18 +57,23 @@ func (nonPointerCommandHandler) Handle(ctx context.Context, cmd interface{}) err
 func TestCommandProcessor_non_pointer_command(t *testing.T) {
 	ts := NewTestServices()
 
-	commandProcessor, err := cqrs.NewCommandProcessor(
-		[]cqrs.CommandHandler{nonPointerCommandHandler{}},
-		func(commandName string) string {
-			return "commands"
+	handler := nonPointerCommandHandler{}
+
+	commandProcessor, err := cqrs.NewCommandProcessorWithConfig(
+		cqrs.CommandConfig{
+			GenerateHandlerSubscribeTopic: func(params cqrs.GenerateCommandHandlerSubscribeTopicParams) (string, error) {
+				return "", nil
+			},
+			SubscriberConstructor: func(params cqrs.CommandsSubscriberConstructorParams) (message.Subscriber, error) {
+				return nil, nil
+			},
+			Marshaler: ts.Marshaler,
+			Logger:    ts.Logger,
 		},
-		func(handlerName string) (message.Subscriber, error) {
-			return ts.CommandsPubSub, nil
-		},
-		ts.Marshaler,
-		ts.Logger,
 	)
 	require.NoError(t, err)
+
+	commandProcessor.AddHandler(handler)
 
 	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
 	require.NoError(t, err)
@@ -88,21 +86,24 @@ func TestCommandProcessor_non_pointer_command(t *testing.T) {
 func TestCommandProcessor_multiple_same_command_handlers(t *testing.T) {
 	ts := NewTestServices()
 
-	commandProcessor, err := cqrs.NewCommandProcessor(
-		[]cqrs.CommandHandler{
-			&CaptureCommandHandler{},
-			&CaptureCommandHandler{},
+	commandProcessor, err := cqrs.NewCommandProcessorWithConfig(
+		cqrs.CommandConfig{
+			GenerateHandlerSubscribeTopic: func(params cqrs.GenerateCommandHandlerSubscribeTopicParams) (string, error) {
+				return "", nil
+			},
+			SubscriberConstructor: func(params cqrs.CommandsSubscriberConstructorParams) (message.Subscriber, error) {
+				return nil, nil
+			},
+			Marshaler: ts.Marshaler,
+			Logger:    ts.Logger,
 		},
-		func(commandName string) string {
-			return "commands"
-		},
-		func(handlerName string) (message.Subscriber, error) {
-			return ts.CommandsPubSub, nil
-		},
-		ts.Marshaler,
-		ts.Logger,
 	)
 	require.NoError(t, err)
+
+	commandProcessor.AddHandler(
+		&CaptureCommandHandler{},
+		&CaptureCommandHandler{},
+	)
 
 	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
 	require.NoError(t, err)
@@ -277,4 +278,97 @@ func TestCommandProcessor_AckCommandHandlingErrors_option_false(t *testing.T) {
 	case <-time.After(1 * time.Second):
 		t.Fatal("timeout waiting for ack")
 	}
+}
+
+func TestNewCommandProcessor_OnHandle(t *testing.T) {
+	ts := NewTestServices()
+
+	msg1, err := ts.Marshaler.Marshal(&TestCommand{ID: "1"})
+	require.NoError(t, err)
+
+	msg2, err := ts.Marshaler.Marshal(&TestCommand{ID: "2"})
+	require.NoError(t, err)
+
+	mockSub := &mockSubscriber{
+		MessagesToSend: []*message.Message{
+			msg1,
+			msg2,
+		},
+	}
+
+	handlerCalled := 0
+
+	defer func() {
+		// for msg 1 we are not calling handler - but returning before
+		assert.Equal(t, 1, handlerCalled)
+	}()
+
+	handler := cqrs.NewCommandHandler("test", func(ctx context.Context, cmd *TestCommand) error {
+		handlerCalled++
+		return nil
+	})
+
+	onHandleCalled := 0
+
+	config := cqrs.CommandConfig{
+		GenerateHandlerSubscribeTopic: func(params cqrs.GenerateCommandHandlerSubscribeTopicParams) (string, error) {
+			return "commands", nil
+		},
+		GeneratePublishTopic: func(params cqrs.GenerateCommandPublishTopicParams) (string, error) {
+			return "commands", nil
+		},
+		SubscriberConstructor: func(params cqrs.CommandsSubscriberConstructorParams) (message.Subscriber, error) {
+			return mockSub, nil
+		},
+		OnHandle: func(params cqrs.OnCommandHandleParams) error {
+			onHandleCalled++
+
+			assert.IsType(t, &TestCommand{}, params.Command)
+			assert.Equal(t, handler, params.Handler)
+
+			if params.Command.(*TestCommand).ID == "1" {
+				assert.Equal(t, msg1, params.Message)
+				return errors.New("test error")
+			} else {
+				assert.Equal(t, msg2, params.Message)
+			}
+
+			return params.Handler.Handle(params.Message.Context(), params.Command)
+		},
+		Marshaler: ts.Marshaler,
+		Logger:    ts.Logger,
+	}
+	cp, err := cqrs.NewCommandProcessorWithConfig(config)
+	require.NoError(t, err)
+
+	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
+	require.NoError(t, err)
+
+	cp.AddHandler(handler)
+
+	err = cp.AddHandlersToRouter(router)
+
+	go func() {
+		err := router.Run(context.Background())
+		assert.NoError(t, err)
+	}()
+
+	<-router.Running()
+
+	select {
+	case <-msg1.Nacked():
+		// ok
+	case <-msg1.Acked():
+		// ack received
+		t.Fatal("ack received, message should be nacked")
+	}
+
+	select {
+	case <-msg2.Acked():
+		// ok
+	case <-msg2.Nacked():
+		// nack received
+	}
+
+	assert.Equal(t, 2, onHandleCalled)
 }

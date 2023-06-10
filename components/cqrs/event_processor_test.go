@@ -14,32 +14,25 @@ import (
 )
 
 func TestNewEventProcessor(t *testing.T) {
-	handlers := []cqrs.EventHandler{nonPointerEventProcessor{}}
-
-	generateTopic := func(commandName string) string {
-		return ""
+	eventConfig := cqrs.EventConfig{
+		GenerateHandlerSubscribeTopic: func(params cqrs.GenerateEventHandlerSubscribeTopicParams) (string, error) {
+			return "", nil
+		},
+		SubscriberConstructor: func(params cqrs.EventsSubscriberConstructorParams) (message.Subscriber, error) {
+			return nil, nil
+		},
+		Marshaler: cqrs.JSONMarshaler{},
 	}
-	subscriberConstructor := func(handlerName string) (subscriber message.Subscriber, e error) {
-		return nil, nil
-	}
+	require.NoError(t, eventConfig.ValidateForProcessor())
 
-	cp, err := cqrs.NewEventProcessor(handlers, generateTopic, subscriberConstructor, cqrs.JSONMarshaler{}, nil)
+	cp, err := cqrs.NewEventProcessorWithConfig(eventConfig)
 	assert.NotNil(t, cp)
 	assert.NoError(t, err)
 
-	cp, err = cqrs.NewEventProcessor([]cqrs.EventHandler{}, generateTopic, subscriberConstructor, cqrs.JSONMarshaler{}, nil)
-	assert.Nil(t, cp)
-	assert.Error(t, err)
+	eventConfig.SubscriberConstructor = nil
+	require.Error(t, eventConfig.ValidateForProcessor())
 
-	cp, err = cqrs.NewEventProcessor(handlers, nil, subscriberConstructor, cqrs.JSONMarshaler{}, nil)
-	assert.Nil(t, cp)
-	assert.Error(t, err)
-
-	cp, err = cqrs.NewEventProcessor(handlers, generateTopic, nil, cqrs.JSONMarshaler{}, nil)
-	assert.Nil(t, cp)
-	assert.Error(t, err)
-
-	cp, err = cqrs.NewEventProcessor(handlers, generateTopic, subscriberConstructor, nil, nil)
+	cp, err = cqrs.NewEventProcessorWithConfig(eventConfig)
 	assert.Nil(t, cp)
 	assert.Error(t, err)
 }
@@ -62,18 +55,23 @@ func (nonPointerEventProcessor) Handle(ctx context.Context, cmd interface{}) err
 func TestEventProcessor_non_pointer_event(t *testing.T) {
 	ts := NewTestServices()
 
-	eventProcessor, err := cqrs.NewEventProcessor(
-		[]cqrs.EventHandler{nonPointerEventProcessor{}},
-		func(eventName string) string {
-			return "events"
+	handler := nonPointerEventProcessor{}
+
+	eventProcessor, err := cqrs.NewEventProcessorWithConfig(
+		cqrs.EventConfig{
+			GenerateHandlerSubscribeTopic: func(params cqrs.GenerateEventHandlerSubscribeTopicParams) (string, error) {
+				return "", nil
+			},
+			SubscriberConstructor: func(params cqrs.EventsSubscriberConstructorParams) (message.Subscriber, error) {
+				return nil, nil
+			},
+			Marshaler: ts.Marshaler,
+			Logger:    ts.Logger,
 		},
-		func(handlerName string) (message.Subscriber, error) {
-			return ts.EventsPubSub, nil
-		},
-		ts.Marshaler,
-		ts.Logger,
 	)
 	require.NoError(t, err)
+
+	eventProcessor.AddHandler(handler)
 
 	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
 	require.NoError(t, err)
@@ -109,25 +107,121 @@ func (h *duplicateTestEventHandler2) Handle(ctx context.Context, event interface
 func TestEventProcessor_multiple_same_event_handlers(t *testing.T) {
 	ts := NewTestServices()
 
-	eventProcessor, err := cqrs.NewEventProcessor(
-		[]cqrs.EventHandler{
-			&duplicateTestEventHandler1{},
-			&duplicateTestEventHandler2{},
+	eventProcessor, err := cqrs.NewEventProcessorWithConfig(
+		cqrs.EventConfig{
+			GenerateHandlerSubscribeTopic: func(params cqrs.GenerateEventHandlerSubscribeTopicParams) (string, error) {
+				return "", nil
+			},
+			SubscriberConstructor: func(params cqrs.EventsSubscriberConstructorParams) (message.Subscriber, error) {
+				return nil, nil
+			},
+			Marshaler: ts.Marshaler,
+			Logger:    ts.Logger,
 		},
-		func(eventName string) string {
-			return "events"
-		},
-		func(handlerName string) (message.Subscriber, error) {
-			return ts.EventsPubSub, nil
-		},
-		ts.Marshaler,
-		ts.Logger,
 	)
 	require.NoError(t, err)
+
+	eventProcessor.AddHandler(
+		&duplicateTestEventHandler1{},
+		&duplicateTestEventHandler2{},
+	)
 
 	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
 	require.NoError(t, err)
 
 	err = eventProcessor.AddHandlersToRouter(router)
 	require.NoError(t, err)
+}
+
+func TestNewEventProcessor_OnHandle(t *testing.T) {
+	ts := NewTestServices()
+
+	msg1, err := ts.Marshaler.Marshal(&TestEvent{ID: "1"})
+	require.NoError(t, err)
+
+	msg2, err := ts.Marshaler.Marshal(&TestEvent{ID: "2"})
+	require.NoError(t, err)
+
+	mockSub := &mockSubscriber{
+		MessagesToSend: []*message.Message{
+			msg1,
+			msg2,
+		},
+	}
+
+	handlerCalled := 0
+
+	defer func() {
+		// for msg 1 we are not calling handler - but returning before
+		assert.Equal(t, 1, handlerCalled)
+	}()
+
+	handler := cqrs.NewEventHandler("test", func(ctx context.Context, cmd *TestEvent) error {
+		handlerCalled++
+		return nil
+	})
+
+	onHandleCalled := 0
+
+	config := cqrs.EventConfig{
+		GenerateHandlerSubscribeTopic: func(params cqrs.GenerateEventHandlerSubscribeTopicParams) (string, error) {
+			return "events", nil
+		},
+		GeneratePublishTopic: func(params cqrs.GenerateEventPublishTopicParams) (string, error) {
+			return "events", nil
+		},
+		SubscriberConstructor: func(params cqrs.EventsSubscriberConstructorParams) (message.Subscriber, error) {
+			return mockSub, nil
+		},
+		OnHandle: func(params cqrs.OnEventHandleParams) error {
+			onHandleCalled++
+
+			assert.IsType(t, &TestEvent{}, params.Event)
+			assert.Equal(t, handler, params.Handler)
+
+			if params.Event.(*TestEvent).ID == "1" {
+				assert.Equal(t, msg1, params.Message)
+				return errors.New("test error")
+			} else {
+				assert.Equal(t, msg2, params.Message)
+			}
+
+			return params.Handler.Handle(params.Message.Context(), params.Event)
+		},
+		Marshaler: ts.Marshaler,
+		Logger:    ts.Logger,
+	}
+	cp, err := cqrs.NewEventProcessorWithConfig(config)
+	require.NoError(t, err)
+
+	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
+	require.NoError(t, err)
+
+	cp.AddHandler(handler)
+
+	err = cp.AddHandlersToRouter(router)
+
+	go func() {
+		err := router.Run(context.Background())
+		assert.NoError(t, err)
+	}()
+
+	<-router.Running()
+
+	select {
+	case <-msg1.Nacked():
+		// ok
+	case <-msg1.Acked():
+		// ack received
+		t.Fatal("ack received, message should be nacked")
+	}
+
+	select {
+	case <-msg2.Acked():
+		// ok
+	case <-msg2.Nacked():
+		// nack received
+	}
+
+	assert.Equal(t, 2, onHandleCalled)
 }

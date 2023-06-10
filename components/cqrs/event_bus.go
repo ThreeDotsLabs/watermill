@@ -73,14 +73,14 @@ func (c EventBus) Publish(ctx context.Context, event any) error {
 
 	msg.SetContext(ctx)
 
-	if c.config.OnSend != nil {
-		err := c.config.OnSend(OnEventSendParams{
+	if c.config.OnPublish != nil {
+		err := c.config.OnPublish(OnEventSendParams{
 			EventName: eventName,
 			Event:     event,
 			Message:   msg,
 		})
 		if err != nil {
-			return errors.Wrap(err, "cannot execute OnSend")
+			return errors.Wrap(err, "cannot execute OnPublish")
 		}
 	}
 

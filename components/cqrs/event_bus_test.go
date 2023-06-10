@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/ThreeDotsLabs/watermill/components/cqrs"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -65,4 +66,51 @@ func TestEventBus_Send_topic_name(t *testing.T) {
 
 	err = cb.Publish(context.Background(), TestEvent{})
 	require.NoError(t, err)
+}
+
+func TestEventBus_Send_OnPublish(t *testing.T) {
+	publisher := newPublisherStub()
+
+	eb, err := cqrs.NewEventBusWithConfig(
+		publisher,
+		cqrs.EventConfig{
+			GeneratePublishTopic: func(params cqrs.GenerateEventPublishTopicParams) (string, error) {
+				return "whatever", nil
+			},
+			Marshaler: cqrs.JSONMarshaler{},
+			OnPublish: func(params cqrs.OnEventSendParams) error {
+				params.Message.Metadata.Set("key", "value")
+				return nil
+			},
+		},
+	)
+	require.NoError(t, err)
+
+	err = eb.Publish(context.Background(), TestEvent{})
+	require.NoError(t, err)
+
+	assert.Equal(t, "value", publisher.messages["whatever"][0].Metadata.Get("key"))
+}
+
+func TestEventBus_Send_OnPublish_error(t *testing.T) {
+	publisher := newPublisherStub()
+
+	expectedErr := errors.New("some error")
+
+	eb, err := cqrs.NewEventBusWithConfig(
+		publisher,
+		cqrs.EventConfig{
+			GeneratePublishTopic: func(params cqrs.GenerateEventPublishTopicParams) (string, error) {
+				return "whatever", nil
+			},
+			Marshaler: cqrs.JSONMarshaler{},
+			OnPublish: func(params cqrs.OnEventSendParams) error {
+				return expectedErr
+			},
+		},
+	)
+	require.NoError(t, err)
+
+	err = eb.Publish(context.Background(), TestEvent{})
+	require.EqualError(t, err, "cannot execute OnPublish: some error")
 }

@@ -72,7 +72,7 @@ type EventConfig struct {
 
 	SubscriberConstructor EventsSubscriberConstructorWithParams
 
-	OnSend        OnEventSendFn
+	OnPublish     OnEventSendFn
 	OnHandle      OnEventHandleFn
 	OnGroupHandle OnGroupEventHandleFn
 
