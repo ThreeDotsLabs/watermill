@@ -1,6 +1,7 @@
 package cqrs
 
 import (
+	stdErrors "errors"
 	"fmt"
 
 	"github.com/pkg/errors"
@@ -182,10 +183,28 @@ func (p CommandProcessor) routerHandlerFunc(handler CommandHandler, logger water
 			Message: msg,
 		})
 
+		var replyErr error
+		// todo: test
+		if p.config.RequestReplyEnabled {
+			replyErr = p.config.RequestReplyBackend.OnCommandProcessed(msg, cmd, err)
+		}
+
+
 		if p.config.AckCommandHandlingErrors && err != nil {
+			// we want to nack if we are using request-reply,
+			// and we failed to send information about failure
+			// todo: test
+			if replyErr != nil {
+				return replyErr
+			}
+
 			logger.Error("Error when handling command", err, nil)
 			return nil
+		} else if replyErr != nil {
+			// todo: test
+			err = stdErrors.Join(err, replyErr)
 		}
+
 		if err != nil {
 			logger.Debug("Error when handling command", watermill.LogFields{"err": err})
 			return err

@@ -18,6 +18,12 @@ type CommandConfig struct {
 	OnSend   OnCommandSendFn
 	OnHandle OnCommandHandleFn
 
+	// RequestReplyEnabled enables request-reply pattern for commands.
+	// Reply is sent **just** from the CommandBus.SendAndWait method.
+	// This configuration doesn't affect CommandBus.Send method.
+	RequestReplyEnabled bool
+	RequestReplyBackend RequestReplyBackend
+
 	Marshaler CommandEventMarshaler
 	Logger    watermill.LoggerAdapter
 
@@ -64,6 +70,10 @@ func (c CommandConfig) ValidateForBus() error {
 
 	if c.GeneratePublishTopic == nil {
 		err = stdErrors.Join(err, errors.New("missing GeneratePublishTopic"))
+	}
+
+	if c.RequestReplyEnabled && c.RequestReplyBackend == nil {
+		err = stdErrors.Join(err, errors.New("missing RequestReply.Backend"))
 	}
 
 	return err

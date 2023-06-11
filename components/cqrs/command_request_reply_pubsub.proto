@@ -1,0 +1,8 @@
+syntax = "proto3";
+package cqrs;
+option go_package = "github.com/ThreeDotsLabs/watermill/components/cqrs";
+
+message RequestReplyNotification {
+  string error = 1;
+  bool has_error = 2;
+}
