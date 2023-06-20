@@ -130,7 +130,9 @@ type OnCommandHandleFn func(params OnCommandHandleParams) error
 
 type OnCommandHandleParams struct {
 	Handler CommandHandler
-	Command any
+
+	CommandName string
+	Command     any
 
 	// Message is never nil and can be modified.
 	Message *message.Message

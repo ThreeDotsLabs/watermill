@@ -187,7 +187,9 @@ type OnEventHandleFn func(params OnEventHandleParams) error
 
 type OnEventHandleParams struct {
 	Handler EventHandler
-	Event   any
+
+	Event     any
+	EventName string
 
 	// Message is never nil and can be modified.
 	Message *message.Message
@@ -198,7 +200,9 @@ type OnGroupEventHandleFn func(params OnGroupEventHandleParams) error
 type OnGroupEventHandleParams struct {
 	GroupName string
 	Handler   GroupEventHandler
+
 	Event     any
+	EventName string
 
 	// Message is never nil and can be modified.
 	Message *message.Message

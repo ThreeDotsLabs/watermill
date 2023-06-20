@@ -178,6 +178,7 @@ func TestNewEventProcessor_OnHandle(t *testing.T) {
 			onHandleCalled++
 
 			assert.IsType(t, &TestEvent{}, params.Event)
+			assert.Equal(t, "cqrs_test.TestEvent", params.EventName)
 			assert.Equal(t, handler, params.Handler)
 
 			if params.Event.(*TestEvent).ID == "1" {
@@ -199,6 +200,104 @@ func TestNewEventProcessor_OnHandle(t *testing.T) {
 	require.NoError(t, err)
 
 	cp.AddHandler(handler)
+
+	err = cp.AddHandlersToRouter(router)
+	require.NoError(t, err)
+
+	go func() {
+		err := router.Run(context.Background())
+		assert.NoError(t, err)
+	}()
+
+	<-router.Running()
+
+	select {
+	case <-msg1.Nacked():
+		// ok
+	case <-msg1.Acked():
+		// ack received
+		t.Fatal("ack received, message should be nacked")
+	}
+
+	select {
+	case <-msg2.Acked():
+		// ok
+	case <-msg2.Nacked():
+		// nack received
+	}
+
+	assert.Equal(t, 2, onHandleCalled)
+}
+
+func TestNewEventProcessor_OnGroupHandle(t *testing.T) {
+	ts := NewTestServices()
+
+	msg1, err := ts.Marshaler.Marshal(&TestEvent{ID: "1"})
+	require.NoError(t, err)
+
+	msg2, err := ts.Marshaler.Marshal(&TestEvent{ID: "2"})
+	require.NoError(t, err)
+
+	mockSub := &mockSubscriber{
+		MessagesToSend: []*message.Message{
+			msg1,
+			msg2,
+		},
+	}
+
+	handlerCalled := 0
+
+	defer func() {
+		// for msg 1 we are not calling handler - but returning before
+		assert.Equal(t, 1, handlerCalled)
+	}()
+
+	handler := cqrs.NewEventHandler("test", func(ctx context.Context, cmd *TestEvent) error {
+		handlerCalled++
+		return nil
+	})
+
+	onHandleCalled := 0
+
+	config := cqrs.EventConfig{
+		GenerateHandlerGroupSubscribeTopic: func(params cqrs.GenerateEventHandlerGroupTopicParams) (string, error) {
+			return "events", nil
+		},
+		GeneratePublishTopic: func(params cqrs.GenerateEventPublishTopicParams) (string, error) {
+			return "events", nil
+		},
+		GroupSubscriberConstructor: func(params cqrs.EventsGroupSubscriberConstructorParams) (message.Subscriber, error) {
+			return mockSub, nil
+		},
+		OnGroupHandle: func(params cqrs.OnGroupEventHandleParams) error {
+			onHandleCalled++
+
+			assert.Equal(t, "some_group", params.GroupName)
+
+			assert.IsType(t, &TestEvent{}, params.Event)
+			assert.Equal(t, "cqrs_test.TestEvent", params.EventName)
+			assert.Equal(t, handler, params.Handler)
+
+			if params.Event.(*TestEvent).ID == "1" {
+				assert.Equal(t, msg1, params.Message)
+				return errors.New("test error")
+			} else {
+				assert.Equal(t, msg2, params.Message)
+			}
+
+			return params.Handler.Handle(params.Message.Context(), params.Event)
+		},
+		Marshaler: ts.Marshaler,
+		Logger:    ts.Logger,
+	}
+	cp, err := cqrs.NewEventProcessorWithConfig(config)
+	require.NoError(t, err)
+
+	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
+	require.NoError(t, err)
+
+	err = cp.AddHandlersGroup("some_group", handler)
+	require.NoError(t, err)
 
 	err = cp.AddHandlersToRouter(router)
 	require.NoError(t, err)

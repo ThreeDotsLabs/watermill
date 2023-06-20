@@ -324,6 +324,7 @@ func TestNewCommandProcessor_OnHandle(t *testing.T) {
 			onHandleCalled++
 
 			assert.IsType(t, &TestCommand{}, params.Command)
+			assert.Equal(t, "cqrs_test.TestCommand", params.CommandName)
 			assert.Equal(t, handler, params.Handler)
 
 			if params.Command.(*TestCommand).ID == "1" {

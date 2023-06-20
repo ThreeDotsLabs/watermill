@@ -292,9 +292,10 @@ func (p EventProcessor) routerHandlerFunc(handler EventHandler, logger watermill
 		}
 
 		err := handle(OnEventHandleParams{
-			Handler: handler,
-			Event:   event,
-			Message: msg,
+			Handler:   handler,
+			Event:     event,
+			EventName: messageEventName,
+			Message:   msg,
 		})
 		if err != nil {
 			logger.Debug("Error when handling event", watermill.LogFields{"err": err})
@@ -343,6 +344,7 @@ func (p EventProcessor) routerHandlerGroupFunc(handlers []GroupEventHandler, gro
 			err := handle(OnGroupEventHandleParams{
 				GroupName: groupName,
 				Handler:   handler,
+				EventName: messageEventName,
 				Event:     event,
 				Message:   msg,
 			})

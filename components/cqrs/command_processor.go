@@ -186,9 +186,10 @@ func (p CommandProcessor) routerHandlerFunc(handler CommandHandler, logger water
 		}
 
 		err := handle(OnCommandHandleParams{
-			Handler: handler,
-			Command: cmd,
-			Message: msg,
+			Handler:     handler,
+			CommandName: messageCmdName,
+			Command:     cmd,
+			Message:     msg,
 		})
 
 		if p.config.AckCommandHandlingErrors && err != nil {
