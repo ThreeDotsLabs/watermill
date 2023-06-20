@@ -33,6 +33,8 @@ type genericEventHandler[T any] struct {
 	handlerName string
 }
 
+// NewEventHandler creates a new EventHandler implementation based on provided function
+// and event type inferred from function argument.
 func NewEventHandler[T any](handlerName string, handleFunc func(ctx context.Context, cmd *T) error) EventHandler {
 	return &genericEventHandler[T]{
 		handleFunc:  handleFunc,
@@ -59,6 +61,8 @@ type GroupEventHandler interface {
 	Handle(ctx context.Context, event interface{}) error
 }
 
+// NewGroupEventHandler creates a new GroupEventHandler implementation based on provided function
+// and event type inferred from function argument.
 // todo: test!
 func NewGroupEventHandler[T any](handleFunc func(ctx context.Context, cmd *T) error) GroupEventHandler {
 	return &genericEventHandler[T]{

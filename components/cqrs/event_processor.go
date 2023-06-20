@@ -17,6 +17,20 @@ type EventProcessor struct {
 	config EventConfig
 }
 
+// NewEventProcessorWithConfig creates a new EventProcessor.
+func NewEventProcessorWithConfig(config EventConfig) (*EventProcessor, error) {
+	config.setDefaults()
+
+	if err := config.ValidateForProcessor(); err != nil {
+		return nil, errors.Wrap(err, "invalid config EventProcessor")
+	}
+
+	return &EventProcessor{
+		groupEventHandlers: map[string][]GroupEventHandler{},
+		config:             config,
+	}, nil
+}
+
 // NewEventProcessor creates a new EventProcessor.
 // Deprecated. Use NewEventProcessorWithConfig instead.
 func NewEventProcessor(
@@ -48,7 +62,7 @@ func NewEventProcessor(
 			return generateTopic(params.EventName), nil
 		},
 		SubscriberConstructor: func(params EventsSubscriberConstructorParams) (message.Subscriber, error) {
-			return subscriberConstructor(params.HandlerName())
+			return subscriberConstructor(params.HandlerName)
 		},
 		Marshaler: marshaler,
 		Logger:    logger,
@@ -67,26 +81,17 @@ func NewEventProcessor(
 	return ep, nil
 }
 
-// NewEventProcessorWithConfig creates a new EventProcessor.
-func NewEventProcessorWithConfig(config EventConfig) (*EventProcessor, error) {
-	config.setDefaults()
-
-	if err := config.ValidateForProcessor(); err != nil {
-		return nil, errors.Wrap(err, "invalid config EventProcessor")
-	}
-
-	return &EventProcessor{
-		groupEventHandlers: map[string][]GroupEventHandler{},
-		config:             config,
-	}, nil
-}
-
+// AddHandler adds a new EventHandler to the EventProcessor.
+//
+// It's required to call AddHandlersToRouter to add the handlers to the router after calling AddHandler.
 func (p *EventProcessor) AddHandler(handler ...EventHandler) *EventProcessor {
 	p.individualHandlers = append(p.individualHandlers, handler...)
 	return p
 }
 
-// todo: test
+// AddHandlersGroup adds a new list of GroupEventHandler to the EventProcessor.
+//
+// It's required to call AddHandlersToRouter to add the handlers to the router after calling AddHandlersGroup.
 func (p *EventProcessor) AddHandlersGroup(handlerName string, handlers []GroupEventHandler) (*EventProcessor, error) {
 	if len(handlers) == 0 {
 		return nil, errors.New("missing handlers")
@@ -100,10 +105,12 @@ func (p *EventProcessor) AddHandlersGroup(handlerName string, handlers []GroupEv
 	return p, nil
 }
 
+// AddHandlersToRouter adds the EventProcessor's handlers to the given router.
+// It should be called only once per EventProcessor instance.
 func (p EventProcessor) AddHandlersToRouter(r *message.Router) error {
 	handlers := p.Handlers()
 	if len(handlers) == 0 {
-		return errors.New("missing handlers")
+		return errors.New("EventProcessor has no handlers, did you call AddHandler or AddHandlersGroup?")
 	}
 
 	for i := range p.individualHandlers {
@@ -142,9 +149,9 @@ func (p EventProcessor) AddHandlersToRouter(r *message.Router) error {
 			return errors.New("missing SubscriberConstructor config option")
 		}
 
-		subscriber, err := p.config.SubscriberConstructor(eventsSubscriberConstructorParams{
-			handlerName: handlerName,
-			handler:     handler,
+		subscriber, err := p.config.SubscriberConstructor(EventsSubscriberConstructorParams{
+			HandlerName: handlerName,
+			Handler:     handler,
 		})
 		if err != nil {
 			return errors.Wrap(err, "cannot create subscriber for event processor")
@@ -192,10 +199,9 @@ func (p EventProcessor) AddHandlersToRouter(r *message.Router) error {
 			return err
 		}
 
-		subscriber, err := p.config.SubscriberConstructor(eventsGroupSubscriberConstructorParams{
-			handlerName: groupName,
-			groupName:   groupName,
-			handlers:    handlersGroup,
+		subscriber, err := p.config.GroupSubscriberConstructor(EventsGroupSubscriberConstructorParams{
+			GroupName: groupName,
+			Handlers:  handlersGroup,
 		})
 		if err != nil {
 			return errors.Wrap(err, "cannot create subscriber for event processor")

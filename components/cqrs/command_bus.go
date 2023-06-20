@@ -15,6 +15,20 @@ type CommandBus struct {
 	config CommandConfig
 }
 
+// NewCommandBusWithConfig creates a new CommandBus.
+func NewCommandBusWithConfig(publisher message.Publisher, config CommandConfig) (*CommandBus, error) {
+	if publisher == nil {
+		return nil, errors.New("missing publisher")
+	}
+
+	config.setDefaults()
+	if err := config.ValidateForBus(); err != nil {
+		return nil, errors.Wrap(err, "invalid config")
+	}
+
+	return &CommandBus{publisher, config}, nil
+}
+
 // NewCommandBus creates a new CommandBus.
 // Deprecated: use NewCommandBusWithConfig instead.
 func NewCommandBus(
@@ -38,20 +52,6 @@ func NewCommandBus(
 		},
 		Marshaler: marshaler,
 	}}, nil
-}
-
-// NewCommandBusWithConfig creates a new CommandBus.
-func NewCommandBusWithConfig(publisher message.Publisher, config CommandConfig) (*CommandBus, error) {
-	if publisher == nil {
-		return nil, errors.New("missing publisher")
-	}
-
-	config.setDefaults()
-	if err := config.ValidateForBus(); err != nil {
-		return nil, errors.Wrap(err, "invalid config")
-	}
-
-	return &CommandBus{publisher, config}, nil
 }
 
 // Send sends command to the command bus.

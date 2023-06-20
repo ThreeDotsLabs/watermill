@@ -200,6 +200,7 @@ func TestNewEventProcessor_OnHandle(t *testing.T) {
 	cp.AddHandler(handler)
 
 	err = cp.AddHandlersToRouter(router)
+	require.NoError(t, err)
 
 	go func() {
 		err := router.Run(context.Background())
@@ -368,6 +369,7 @@ func TestNewEventProcessor_backward_compatibility_of_AckOnUnknownEvent(t *testin
 	require.NoError(t, err)
 
 	err = cp.AddHandlersToRouter(router)
+	require.NoError(t, err)
 
 	go func() {
 		err := router.Run(context.Background())
@@ -383,4 +385,26 @@ func TestNewEventProcessor_backward_compatibility_of_AckOnUnknownEvent(t *testin
 		// ack received
 		t.Fatal("ack received, message should be nacked")
 	}
+}
+
+func TestEventProcessor_AddHandlersToRouter_missing_handlers(t *testing.T) {
+	ts := NewTestServices()
+
+	cp, err := cqrs.NewEventProcessorWithConfig(cqrs.EventConfig{
+		GenerateHandlerSubscribeTopic: func(params cqrs.GenerateEventHandlerSubscribeTopicParams) (string, error) {
+			return "", nil
+		},
+		SubscriberConstructor: func(params cqrs.EventsSubscriberConstructorParams) (message.Subscriber, error) {
+			return nil, nil
+		},
+		Marshaler: cqrs.JSONMarshaler{},
+	})
+	assert.NoError(t, err)
+
+	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
+	require.NoError(t, err)
+
+	err = cp.AddHandlersToRouter(router)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "EventProcessor has no handlers, did you call AddHandler or AddHandlersGroup?")
 }

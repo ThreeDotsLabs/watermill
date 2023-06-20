@@ -89,7 +89,7 @@ func createCqrsComponents(t *testing.T, commandHandler *CaptureCommandHandler, e
 		AckOnUnknownEvent: true,
 		SubscriberConstructor: func(params cqrs.EventsSubscriberConstructorParams) (message.Subscriber, error) {
 			// todo: assert all
-			assert.Equal(t, "CaptureEventHandler", params.HandlerName())
+			assert.Equal(t, "CaptureEventHandler", params.HandlerName)
 
 			return ts.EventsPubSub, nil
 		},

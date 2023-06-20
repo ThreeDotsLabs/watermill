@@ -16,6 +16,18 @@ type CommandProcessor struct {
 	config CommandConfig
 }
 
+func NewCommandProcessorWithConfig(config CommandConfig) (*CommandProcessor, error) {
+	config.setDefaults()
+
+	if err := config.ValidateForProcessor(); err != nil {
+		return nil, err
+	}
+
+	return &CommandProcessor{
+		config: config,
+	}, nil
+}
+
 // NewCommandProcessor creates a new CommandProcessor.
 // Deprecated. Use NewCommandProcessorWithConfig instead.
 func NewCommandProcessor(
@@ -56,18 +68,10 @@ func NewCommandProcessor(
 	return cp, nil
 }
 
-func NewCommandProcessorWithConfig(config CommandConfig) (*CommandProcessor, error) {
-	config.setDefaults()
-
-	if err := config.ValidateForProcessor(); err != nil {
-		return nil, err
-	}
-
-	return &CommandProcessor{
-		config: config,
-	}, nil
-}
-
+// AddHandler adds a new CommandHandler to the CommandProcessor.
+//
+// It's required to call AddHandlersToRouter to add the handlers to the router after calling AddHandler.
+// AddHandlersToRouter should be called only once.
 func (p *CommandProcessor) AddHandler(handler ...CommandHandler) {
 	p.handlers = append(p.handlers, handler...)
 }
@@ -82,8 +86,13 @@ func (d DuplicateCommandHandlerError) Error() string {
 }
 
 // AddHandlersToRouter adds the CommandProcessor's handlers to the given router.
+// It should be called only once per CommandProcessor instance.
 func (p CommandProcessor) AddHandlersToRouter(r *message.Router) error {
 	handledCommands := map[string]struct{}{}
+
+	if len(p.Handlers()) == 0 {
+		return errors.New("CommandProcessor has no handlers, did you call AddHandler?")
+	}
 
 	for i := range p.Handlers() {
 		handler := p.handlers[i]
@@ -183,11 +192,11 @@ func (p CommandProcessor) routerHandlerFunc(handler CommandHandler, logger water
 		})
 
 		if p.config.AckCommandHandlingErrors && err != nil {
-			logger.Error("Error when handling command", err, nil)
+			logger.Error("Error when handling command, acking (AckCommandHandlingErrors is enabled)", err, nil)
 			return nil
 		}
 		if err != nil {
-			logger.Debug("Error when handling command", watermill.LogFields{"err": err})
+			logger.Debug("Error when handling command, nacking", watermill.LogFields{"err": err})
 			return err
 		}
 

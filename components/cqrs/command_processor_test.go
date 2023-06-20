@@ -205,7 +205,7 @@ func TestCommandProcessor_AckCommandHandlingErrors_option_true(t *testing.T) {
 			"command_handler_name": "handler",
 			"topic":                "commands",
 		},
-		Msg: "Error when handling command",
+		Msg: "Error when handling command, acking (AckCommandHandlingErrors is enabled)",
 		Err: expectedErr,
 	}
 	assert.True(
@@ -371,4 +371,26 @@ func TestNewCommandProcessor_OnHandle(t *testing.T) {
 	}
 
 	assert.Equal(t, 2, onHandleCalled)
+}
+
+func TestCommandProcessor_AddHandlersToRouter_missing_handlers(t *testing.T) {
+	ts := NewTestServices()
+
+	cp, err := cqrs.NewCommandProcessorWithConfig(cqrs.CommandConfig{
+		GenerateHandlerSubscribeTopic: func(params cqrs.GenerateCommandHandlerSubscribeTopicParams) (string, error) {
+			return "", nil
+		},
+		SubscriberConstructor: func(params cqrs.CommandsSubscriberConstructorParams) (message.Subscriber, error) {
+			return nil, nil
+		},
+		Marshaler: cqrs.JSONMarshaler{},
+	})
+	assert.NoError(t, err)
+
+	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
+	require.NoError(t, err)
+
+	err = cp.AddHandlersToRouter(router)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "CommandProcessor has no handlers, did you call AddHandler?")
 }

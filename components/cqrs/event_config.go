@@ -17,46 +17,16 @@ type EventsSubscriberConstructor func(handlerName string) (message.Subscriber, e
 
 type EventsSubscriberConstructorWithParams func(EventsSubscriberConstructorParams) (message.Subscriber, error)
 
-type EventsSubscriberConstructorParams interface {
-	HandlerName() string
+type EventsSubscriberConstructorParams struct {
+	HandlerName string
+	Handler     EventHandler
 }
 
-type eventsSubscriberConstructorParams struct {
-	handlerName string
-	handler     EventHandler
-}
+type EventsGroupSubscriberConstructorWithParams func(EventsGroupSubscriberConstructorParams) (message.Subscriber, error)
 
-func (e eventsSubscriberConstructorParams) HandlerName() string {
-	return e.handlerName
-}
-
-func (e eventsSubscriberConstructorParams) Handler() EventHandler {
-	return e.handler
-}
-
-type EventsGroupSubscriberConstructorParams interface {
-	EventsSubscriberConstructorParams
-
-	GroupName() string
-	Handlers() []GroupEventHandler
-}
-
-type eventsGroupSubscriberConstructorParams struct {
-	handlerName string
-	groupName   string
-	handlers    []GroupEventHandler
-}
-
-func (e eventsGroupSubscriberConstructorParams) HandlerName() string {
-	return e.handlerName
-}
-
-func (e eventsGroupSubscriberConstructorParams) GroupName() string {
-	return e.groupName
-}
-
-func (e eventsGroupSubscriberConstructorParams) Handlers() []GroupEventHandler {
-	return e.handlers
+type EventsGroupSubscriberConstructorParams struct {
+	GroupName string
+	Handlers  []GroupEventHandler
 }
 
 type EventConfig struct {
@@ -65,21 +35,57 @@ type EventConfig struct {
 	GeneratePublishTopic GenerateEventPublishTopicFn
 
 	GenerateHandlerSubscribeTopic GenerateEventHandlerSubscribeTopicFn
+	SubscriberConstructor         EventsSubscriberConstructorWithParams
 
 	// todo: validate
 	// todo: optional when passing to bus?
 	GenerateHandlerGroupSubscribeTopic GenerateEventHandlerGroupSubscribeTopicFn
+	// todo: fix validation
+	// todo: unify naming and order of fields?
+	GroupSubscriberConstructor EventsGroupSubscriberConstructorWithParams
 
-	SubscriberConstructor EventsSubscriberConstructorWithParams
+	// OnPublish is called before sending the event.
+	// The *message.Message can be modified.
+	//
+	// This option is not required.
+	OnPublish OnEventSendFn
 
-	OnPublish     OnEventSendFn
-	OnHandle      OnEventHandleFn
+	// OnHandle is called before handling event.
+	// OnHandle works in a similar way to middlewares: you can inject additional logic before and after handling a event.
+	//
+	// Because of that, you need to explicitly call params.Handler.Handle() to handle the event.
+	//   func(params OnEventHandleParams) (err error) {
+	//       // logic before handle
+	//		 //  (...)
+	//
+	//	     err := params.Handler.Handle(params.Message.Context(), params.Event)
+	//
+	//       // logic after handle
+	//		 //  (...)
+	//
+	//		 return err
+	//	 }
+	//
+	// OnHandle is not called for handlers group.
+	//
+	// This option is not required.
+	OnHandle OnEventHandleFn
+
+	// OnGroupHandle works like OnHandle, but is called for group handlers instead.
+	// OnHandle is not called for handlers group.
+	// This option is not required.
 	OnGroupHandle OnGroupEventHandleFn
 
+	// AckOnUnknownEvent is used to decide if message should be acked if event has no handler defined.
 	AckOnUnknownEvent bool
 
+	// Marshaler is used to marshal and unmarshal events.
+	// It is required.
 	Marshaler CommandEventMarshaler
-	Logger    watermill.LoggerAdapter
+
+	// Logger instance used to log.
+	// If not provided, watermill.NopLogger is used.
+	Logger watermill.LoggerAdapter
 }
 
 func (c *EventConfig) setDefaults() {

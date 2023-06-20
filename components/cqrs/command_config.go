@@ -9,17 +9,50 @@ import (
 )
 
 type CommandConfig struct {
+	// GeneratePublishTopic is used to generate topic for publishing command.
+	// It is required if config is used in CommandBus.
 	GeneratePublishTopic GenerateCommandPublishTopicFn
 
+	// GenerateHandlerSubscribeTopic is used to generate topic for subscribing command.
+	// It is required if config is used in CommandProcessor.
 	GenerateHandlerSubscribeTopic GenerateCommandHandlerSubscribeTopicFn
 
+	// SubscriberConstructor is used to create subscriber for CommandHandler.
+	// It is required if config is used in CommandProcessor.
 	SubscriberConstructor CommandsSubscriberConstructorWithParams
 
-	OnSend   OnCommandSendFn
+	// OnSend is called before publishing the command.
+	// The *message.Message can be modified.
+	//
+	// This option is not required.
+	OnSend OnCommandSendFn
+
+	// OnHandle is called before handling command.
+	// OnHandle works in a similar way to middlewares: you can inject additional logic before and after handling a command.
+	//
+	// Because of that, you need to explicitly call params.Handler.Handle() to handle the command.
+	//   func(params OnCommandHandleParams) (err error) {
+	//       // logic before handle
+	//		 //  (...)
+	//
+	//	     err := params.Handler.Handle(params.Message.Context(), params.Command)
+	//
+	//       // logic after handle
+	//		 //  (...)
+	//
+	//		 return err
+	//	 }
+	//
+	// This option is not required.
 	OnHandle OnCommandHandleFn
 
+	// Marshaler is used to marshal and unmarshal commands.
+	// It is required.
 	Marshaler CommandEventMarshaler
-	Logger    watermill.LoggerAdapter
+
+	// Logger instance used to log.
+	// If not provided, watermill.NopLogger is used.
+	Logger watermill.LoggerAdapter
 
 	// If true, CommandProcessor will ack messages even if CommandHandler returns an error.
 	// If RequestReplyEnabled is enabled and sending reply fails, the message will be nack-ed anyway.
@@ -96,7 +129,6 @@ type OnCommandHandleFn func(params OnCommandHandleParams) error
 type OnCommandHandleParams struct {
 	Handler CommandHandler
 	Command any
-	// todo: doc that always present
 	Message *message.Message
 }
 
