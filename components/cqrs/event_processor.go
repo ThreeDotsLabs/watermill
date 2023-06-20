@@ -150,8 +150,8 @@ func (p EventProcessor) AddHandlersToRouter(r *message.Router) error {
 		}
 
 		subscriber, err := p.config.SubscriberConstructor(EventsSubscriberConstructorParams{
-			HandlerName: handlerName,
-			Handler:     handler,
+			HandlerName:  handlerName,
+			EventHandler: handler,
 		})
 		if err != nil {
 			return errors.Wrap(err, "cannot create subscriber for event processor")

@@ -73,7 +73,7 @@ func (c CommandBus) newMessage(ctx context.Context, command any) (*message.Messa
 	commandName := c.config.Marshaler.Name(command)
 	topicName, err := c.config.GeneratePublishTopic(GenerateCommandPublishTopicParams{
 		CommandName: commandName,
-		Command:     &command,
+		Command:     command,
 	})
 	if err != nil {
 		return nil, "", errors.Wrap(err, "cannot generate topic name")

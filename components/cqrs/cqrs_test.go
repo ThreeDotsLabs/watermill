@@ -78,8 +78,10 @@ func createCqrsComponents(t *testing.T, commandHandler *CaptureCommandHandler, e
 
 	eventConfig := cqrs.EventConfig{
 		GeneratePublishTopic: func(params cqrs.GenerateEventPublishTopicParams) (string, error) {
-			// todo: assert entire context + assert in different cases
 			assert.Equal(t, "cqrs_test.TestEvent", params.EventName)
+
+			assert.IsType(t, &TestEvent{}, params.Event)
+			assert.NotEmpty(t, params.Event)
 
 			return params.EventName, nil
 		},
@@ -88,8 +90,10 @@ func createCqrsComponents(t *testing.T, commandHandler *CaptureCommandHandler, e
 		},
 		AckOnUnknownEvent: true,
 		SubscriberConstructor: func(params cqrs.EventsSubscriberConstructorParams) (message.Subscriber, error) {
-			// todo: assert all
 			assert.Equal(t, "CaptureEventHandler", params.HandlerName)
+
+			assert.Implements(t, new(cqrs.EventHandler), params.EventHandler)
+			assert.NotNil(t, params.EventHandler)
 
 			return ts.EventsPubSub, nil
 		},
@@ -117,14 +121,26 @@ func createCqrsComponents(t *testing.T, commandHandler *CaptureCommandHandler, e
 
 	commandConfig := cqrs.CommandConfig{
 		GeneratePublishTopic: func(params cqrs.GenerateCommandPublishTopicParams) (string, error) {
-			// todo: assert rest of context
 			assert.Equal(t, "cqrs_test.TestCommand", params.CommandName)
+
+			switch cmd := params.Command.(type) {
+			case *TestCommand:
+				assert.NotEmpty(t, cmd.ID)
+			case TestCommand:
+				assert.NotEmpty(t, cmd.ID)
+			default:
+				assert.Fail(t, "unexpected command type: %T", cmd)
+			}
+
+			assert.NotNil(t, params.Command)
 
 			return params.CommandName, nil
 		},
 		GenerateHandlerSubscribeTopic: func(params cqrs.GenerateCommandHandlerSubscribeTopicParams) (string, error) {
-			// todo: assert rest of context
 			assert.Equal(t, "cqrs_test.TestCommand", params.CommandName)
+
+			assert.Implements(t, new(cqrs.CommandHandler), params.CommandHandler)
+			assert.NotNil(t, params.CommandHandler)
 
 			return params.CommandName, nil
 		},

@@ -98,6 +98,8 @@ func TestRouter_functional(t *testing.T) {
 	defer func() {
 		assert.True(t, r.IsRunning())
 		assert.NoError(t, r.Close())
+
+		assert.True(t, r.IsClosed())
 	}()
 
 	<-allMessagesSent

@@ -8,7 +8,6 @@ import (
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/hashicorp/go-multierror"
 )
 
 // FanOut is a component that receives messages from the subscriber and passes them
@@ -101,21 +100,24 @@ func (f *FanOut) Running() chan struct{} {
 	return f.internalRouter.Running()
 }
 
+func (f *FanOut) IsClosed() bool {
+	return f.internalRouter.IsClosed()
+}
+
 // Subscribe starts subscription to the FanOut's internal Pub/Sub.
 func (f *FanOut) Subscribe(ctx context.Context, topic string) (<-chan *message.Message, error) {
 	return f.internalPubSub.Subscribe(ctx, topic)
 }
 
-// todo: test
 // Close closes the FanOut's internal Pub/Sub.
 func (f *FanOut) Close() error {
 	var err error
 
 	if routerCloseErr := f.internalRouter.Close(); routerCloseErr != nil {
-		err = multierror.Append(err, routerCloseErr)
+		err = errors.Join(err, routerCloseErr)
 	}
 	if internalPubSubCloseErr := f.internalPubSub.Close(); internalPubSubCloseErr != nil {
-		err = multierror.Append(err, internalPubSubCloseErr)
+		err = errors.Join(err, internalPubSubCloseErr)
 	}
 
 	return err

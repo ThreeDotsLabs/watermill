@@ -21,12 +21,50 @@ func TestEventConfig_ValidateForProcessor(t *testing.T) {
 			ExpectedErr:       nil,
 		},
 		{
-			Name: "missing_GenerateEventHandlerTopic_and_GenerateEventHandlerGroupTopic",
+			Name: "missing_GenerateHandlerSubscribeTopic",
 			ModifyValidConfig: func(config *cqrs.EventConfig) {
 				config.GenerateHandlerSubscribeTopic = nil
-				config.GenerateHandlerGroupSubscribeTopic = nil
 			},
-			ExpectedErr: fmt.Errorf("GenerateHandlerSubscribeTopic and GenerateHandlerGroupSubscribeTopic are missing, one of them is required"),
+			ExpectedErr: fmt.Errorf("missing GenerateHandlerTopic while SubscriberConstructor is provided"),
+		},
+		{
+			Name: "valid_with_group_handlers",
+			ModifyValidConfig: func(config *cqrs.EventConfig) {
+				config.GenerateHandlerSubscribeTopic = nil
+				config.SubscriberConstructor = nil
+
+				config.GenerateHandlerGroupSubscribeTopic = func(params cqrs.GenerateEventHandlerGroupTopicParams) (string, error) {
+					return "", nil
+				}
+				config.GroupSubscriberConstructor = func(params cqrs.EventsGroupSubscriberConstructorParams) (message.Subscriber, error) {
+					return nil, nil
+				}
+			},
+			ExpectedErr: nil,
+		},
+		{
+			Name: "missing_GroupSubscriberConstructor",
+			ModifyValidConfig: func(config *cqrs.EventConfig) {
+				config.GenerateHandlerSubscribeTopic = nil
+				config.SubscriberConstructor = nil
+
+				config.GenerateHandlerGroupSubscribeTopic = func(params cqrs.GenerateEventHandlerGroupTopicParams) (string, error) {
+					return "", nil
+				}
+			},
+			ExpectedErr: fmt.Errorf("missing GroupSubscriberConstructor while GenerateHandlerGroupTopic is provided"),
+		},
+		{
+			Name: "missing_GenerateHandlerGroupSubscribeTopic",
+			ModifyValidConfig: func(config *cqrs.EventConfig) {
+				config.GenerateHandlerSubscribeTopic = nil
+				config.SubscriberConstructor = nil
+
+				config.GroupSubscriberConstructor = func(params cqrs.EventsGroupSubscriberConstructorParams) (message.Subscriber, error) {
+					return nil, nil
+				}
+			},
+			ExpectedErr: fmt.Errorf("missing GenerateHandlerGroupTopic while GroupSubscriberConstructor is provided"),
 		},
 		{
 			Name: "missing_marshaler",
@@ -40,7 +78,7 @@ func TestEventConfig_ValidateForProcessor(t *testing.T) {
 			ModifyValidConfig: func(config *cqrs.EventConfig) {
 				config.SubscriberConstructor = nil
 			},
-			ExpectedErr: fmt.Errorf("missing SubscriberConstructor"),
+			ExpectedErr: fmt.Errorf("missing SubscriberConstructor while GenerateHandlerTopic is provided"),
 		},
 	}
 	for i := range testCases {

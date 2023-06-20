@@ -121,7 +121,9 @@ type OnCommandSendFn func(params OnCommandSendParams) error
 type OnCommandSendParams struct {
 	CommandName string
 	Command     any
-	Message     *message.Message
+
+	// Message is never nil and can be modified.
+	Message *message.Message
 }
 
 type OnCommandHandleFn func(params OnCommandHandleParams) error
@@ -129,6 +131,8 @@ type OnCommandHandleFn func(params OnCommandHandleParams) error
 type OnCommandHandleParams struct {
 	Handler CommandHandler
 	Command any
+
+	// Message is never nil and can be modified.
 	Message *message.Message
 }
 
