@@ -3,6 +3,7 @@ package cqrs_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/pkg/errors"
 
@@ -407,4 +408,112 @@ func TestEventProcessor_AddHandlersToRouter_missing_handlers(t *testing.T) {
 	err = cp.AddHandlersToRouter(router)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "EventProcessor has no handlers, did you call AddHandler or AddHandlersGroup?")
+}
+
+func TestEventProcessor_handler_group(t *testing.T) {
+	ts := NewTestServices()
+
+	event1 := &TestEvent{ID: "1"}
+
+	msg1, err := ts.Marshaler.Marshal(event1)
+	require.NoError(t, err)
+
+	event2 := &AnotherTestEvent{ID: "2"}
+
+	msg2, err := ts.Marshaler.Marshal(event2)
+	require.NoError(t, err)
+
+	mockSub := &mockSubscriber{
+		MessagesToSend: []*message.Message{
+			msg1,
+			msg2,
+		},
+	}
+
+	handler1Calls := 0
+	handler2Calls := 0
+
+	handlers := []cqrs.GroupEventHandler{
+		cqrs.NewGroupEventHandler(func(ctx context.Context, event *TestEvent) error {
+			assert.EqualValues(t, event1, event)
+
+			handler1Calls++
+
+			return nil
+		}),
+		cqrs.NewGroupEventHandler(func(ctx context.Context, event *AnotherTestEvent) error {
+			assert.EqualValues(t, event2, event)
+
+			handler2Calls++
+
+			return nil
+		}),
+	}
+
+	eventProcessor, err := cqrs.NewEventProcessorWithConfig(
+		cqrs.EventConfig{
+			GenerateHandlerGroupSubscribeTopic: func(params cqrs.GenerateEventHandlerGroupTopicParams) (string, error) {
+				assert.Equal(t, "some_group", params.EventGroupName)
+				assert.Equal(t, handlers, params.EventGroupHandlers)
+
+				return "events", nil
+			},
+			GroupSubscriberConstructor: func(params cqrs.EventsGroupSubscriberConstructorParams) (message.Subscriber, error) {
+				assert.Equal(t, "some_group", params.EventGroupName)
+				assert.Equal(t, handlers, params.EventGroupHandlers)
+
+				return mockSub, nil
+			},
+			Marshaler: ts.Marshaler,
+			Logger:    ts.Logger,
+		},
+	)
+	require.NoError(t, err)
+
+	err = eventProcessor.AddHandlersGroup(
+		"some_group",
+		handlers...,
+	)
+	require.NoError(t, err)
+
+	err = eventProcessor.AddHandlersGroup(
+		"some_group",
+		handlers...,
+	)
+	require.ErrorContains(t, err, "event handler group 'some_group' already exists")
+
+	err = eventProcessor.AddHandlersGroup(
+		"some_group_2",
+	)
+	require.ErrorContains(t, err, "no handlers provided")
+
+	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
+	require.NoError(t, err)
+
+	err = eventProcessor.AddHandlersToRouter(router)
+	require.NoError(t, err)
+
+	go func() {
+		err := router.Run(context.Background())
+		assert.NoError(t, err)
+	}()
+
+	<-router.Running()
+
+	select {
+	case <-msg1.Acked():
+	// ok
+	case <-time.After(time.Second):
+		t.Fatal("message 1 not acked")
+	}
+
+	select {
+	case <-msg2.Acked():
+	// ok
+	case <-time.After(time.Second):
+		t.Fatal("message 2 not acked")
+	}
+
+	assert.Equal(t, 1, handler1Calls)
+	assert.Equal(t, 1, handler2Calls)
 }

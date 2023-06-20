@@ -290,6 +290,10 @@ type TestEvent struct {
 	When time.Time
 }
 
+type AnotherTestEvent struct {
+	ID string
+}
+
 type CaptureEventHandler struct {
 	handledEvents []interface{}
 }

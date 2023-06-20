@@ -25,8 +25,8 @@ type EventsSubscriberConstructorParams struct {
 type EventsGroupSubscriberConstructorWithParams func(EventsGroupSubscriberConstructorParams) (message.Subscriber, error)
 
 type EventsGroupSubscriberConstructorParams struct {
-	GroupName string
-	Handlers  []GroupEventHandler
+	EventGroupName     string
+	EventGroupHandlers []GroupEventHandler
 }
 
 type EventConfig struct {
