@@ -263,7 +263,6 @@ func (p EventProcessor) routerHandlerFunc(handler EventHandler, logger watermill
 		messageEventName := p.config.Marshaler.NameFromMessage(msg)
 
 		if messageEventName != expectedEventName {
-			// todo: test
 			if !p.config.AckOnUnknownEvent {
 				return fmt.Errorf("received unexpected event type %s, expected %s", messageEventName, expectedEventName)
 			} else {
@@ -355,7 +354,6 @@ func (p EventProcessor) routerHandlerGroupFunc(handlers []GroupEventHandler, gro
 			return nil
 		}
 
-		// todo: test
 		if !p.config.AckOnUnknownEvent {
 			return fmt.Errorf("no handler found for event %s", p.config.Marshaler.NameFromMessage(msg))
 		} else {
