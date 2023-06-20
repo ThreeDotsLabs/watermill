@@ -8,27 +8,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-// EventsSubscriberConstructor creates a subscriber for EventHandler.
-// It allows you to create separated customized Subscriber for every command handler.
-//
-// When handler groups are used, handler group is passed as handlerName.
-// Deprecated: please use EventsSubscriberConstructorWithParams instead.
-type EventsSubscriberConstructor func(handlerName string) (message.Subscriber, error)
-
-type EventsSubscriberConstructorWithParams func(EventsSubscriberConstructorParams) (message.Subscriber, error)
-
-type EventsSubscriberConstructorParams struct {
-	HandlerName  string
-	EventHandler EventHandler
-}
-
-type EventsGroupSubscriberConstructorWithParams func(EventsGroupSubscriberConstructorParams) (message.Subscriber, error)
-
-type EventsGroupSubscriberConstructorParams struct {
-	EventGroupName     string
-	EventGroupHandlers []GroupEventHandler
-}
-
+// EventConfig is used to configure EventProcessor and EventBus.
 type EventConfig struct {
 	GeneratePublishTopic GenerateEventPublishTopicFn
 
@@ -152,6 +132,20 @@ func (c EventConfig) ValidateForBus() error {
 	return err
 }
 
+type EventsSubscriberConstructorWithParams func(EventsSubscriberConstructorParams) (message.Subscriber, error)
+
+type EventsSubscriberConstructorParams struct {
+	HandlerName  string
+	EventHandler EventHandler
+}
+
+type EventsGroupSubscriberConstructorWithParams func(EventsGroupSubscriberConstructorParams) (message.Subscriber, error)
+
+type EventsGroupSubscriberConstructorParams struct {
+	EventGroupName     string
+	EventGroupHandlers []GroupEventHandler
+}
+
 type GenerateEventPublishTopicFn func(GenerateEventPublishTopicParams) (string, error)
 
 type GenerateEventPublishTopicParams struct {
@@ -207,3 +201,10 @@ type OnGroupEventHandleParams struct {
 	// Message is never nil and can be modified.
 	Message *message.Message
 }
+
+// EventsSubscriberConstructor creates a subscriber for EventHandler.
+// It allows you to create separated customized Subscriber for every command handler.
+//
+// When handler groups are used, handler group is passed as handlerName.
+// Deprecated: please use EventsSubscriberConstructorWithParams instead.
+type EventsSubscriberConstructor func(handlerName string) (message.Subscriber, error)

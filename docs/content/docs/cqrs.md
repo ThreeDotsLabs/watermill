@@ -16,31 +16,13 @@ toc = true
 >
 > Source: [www.cqrs.nu FAQ](http://www.cqrs.nu/Faq/command-query-responsibility-segregation)
 
-### Glossary
-
 ![CQRS Schema](https://threedots.tech/watermill-io/cqrs-big-picture.svg)
 
-#### Command
+The `cqrs` component provides some useful abstractions built on top of Pub/Sub and Router that helps to implement CQRS pattern.
 
-The command is a simple data structure, representing the request for executing some operation.
+You don't need to implement entire CQRS. It's very common to just use event part of this component to build event-driven application.
 
-#### Command Bus
-
-{{% render-md %}}
-{{% load-snippet-partial file="src-link/components/cqrs/command_bus.go" first_line_contains="// CommandBus" last_line_contains="type CommandBus" padding_after="0" %}}
-{{% /render-md %}}
-
-#### Command Processor
-
-{{% render-md %}}
-{{% load-snippet-partial file="src-link/components/cqrs/command_processor.go" first_line_contains="// CommandProcessor" last_line_contains="type CommandProcessor" padding_after="0" %}}
-{{% /render-md %}}
-
-#### Command Handler
-
-{{% render-md %}}
-{{% load-snippet-partial file="src-link/components/cqrs/command_processor.go" first_line_contains="// CommandHandler" last_line_contains="type CommandHandler" padding_after="0" %}}
-{{% /render-md %}}
+### Glossary
 
 #### Event
 
@@ -61,13 +43,42 @@ The event represents something that already took place. Events are immutable.
 #### Event Handler
 
 {{% render-md %}}
-{{% load-snippet-partial file="src-link/components/cqrs/event_processor.go" first_line_contains="// EventHandler" last_line_contains="type EventHandler" padding_after="0" %}}
+{{% load-snippet-partial file="src-link/components/cqrs/event_handler.go" first_line_contains="// EventHandler" last_line_contains="type EventHandler" padding_after="0" %}}
 {{% /render-md %}}
 
-#### CQRS Facade
+#### Event config
 
 {{% render-md %}}
-{{% load-snippet-partial file="src-link/components/cqrs/cqrs.go" first_line_contains="// Facade" last_line_contains="type Facade" padding_after="0" %}}
+{{% load-snippet-partial file="src-link/components/cqrs/event_config.go" first_line_contains="// EventConfig" last_line_contains="func (c *EventConfig) setDefaults() " padding_after="5" %}}
+{{% /render-md %}}
+
+
+#### Command
+
+The command is a simple data structure, representing the request for executing some operation.
+
+#### Command Bus
+
+{{% render-md %}}
+{{% load-snippet-partial file="src-link/components/cqrs/command_bus.go" first_line_contains="// CommandBus" last_line_contains="type CommandBus" padding_after="0" %}}
+{{% /render-md %}}
+
+#### Command Processor
+
+{{% render-md %}}
+{{% load-snippet-partial file="src-link/components/cqrs/command_processor.go" first_line_contains="// CommandProcessor" last_line_contains="type CommandProcessor" padding_after="0" %}}
+{{% /render-md %}}
+
+#### Command Handler
+
+{{% render-md %}}
+{{% load-snippet-partial file="src-link/components/cqrs/command_handler.go" first_line_contains="// CommandHandler" last_line_contains="type CommandHandler" padding_after="0" %}}
+{{% /render-md %}}
+
+#### Command config
+
+{{% render-md %}}
+{{% load-snippet-partial file="src-link/components/cqrs/command_config.go" first_line_contains="// CommandConfig" last_line_contains="func (c *CommandConfig) setDefaults() " padding_after="5" %}}
 {{% /render-md %}}
 
 #### Command and Event Marshaler
@@ -129,23 +140,45 @@ As mentioned before, we want to order a beer every time when a room is booked (*
 `OrderBeerHandler` is very similar to `BookRoomHandler`. The only difference is, that it sometimes returns an error when there are not enough beers, which causes redelivery of the command.
 You can find the entire implementation in the [example source code](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/basic/5-cqrs-protobuf/?utm_source=cqrs_doc).
 
+### Generic handlers
+
+Since Watermill v1.3 it's possible to use generic handlers for commands and events. It's useful when you have a lot of commands/events and you don't want to create a handler for each of them.
+
+{{% render-md %}}
+{{% load-snippet-partial file="src-link/_examples/basic/5-cqrs-protobuf/main.go" first_line_contains="cqrs.NewGroupEventHandler" last_line_contains="})," padding_after="0" %}}
+{{% /render-md %}}
+
+Under the hood, it creates EventHandler or CommandHandler implementation.
+It's available for all kind of handlers.
+
+{{% render-md %}}
+{{% load-snippet-partial file="src-link/components/cqrs/command_handler.go" first_line_contains="// NewCommandHandler" last_line_contains="func NewCommandHandler" padding_after="0" %}}
+{{% /render-md %}}
+
+{{% render-md %}}
+{{% load-snippet-partial file="src-link/components/cqrs/event_handler.go" first_line_contains="// NewEventHandler" last_line_contains="func NewEventHandler" padding_after="0" %}}
+{{% /render-md %}}
+
+{{% render-md %}}
+{{% load-snippet-partial file="src-link/components/cqrs/event_handler.go" first_line_contains="// NewGroupEventHandler" last_line_contains="func NewGroupEventHandler" padding_after="0" %}}
+{{% /render-md %}}
+
 ### Building a read model with the event handler
 
 {{% render-md %}}
 {{% load-snippet-partial file="src-link/_examples/basic/5-cqrs-protobuf/main.go" first_line_contains="// BookingsFinancialReport is a read model" last_line_contains="func main() {" padding_after="0" %}}
 {{% /render-md %}}
 
-### Wiring it up - the CQRS facade
+### Wiring it up
 
-We have all the blocks to build our CQRS application. We now need to use some kind of glue to wire it up.
+We have all the blocks to build our CQRS application.
 
-We will use the simplest in-memory messaging infrastructure: [GoChannel]({{< ref "/pubsubs/gochannel" >}}).
+We will use the AMQP (RabbitMQ) as our message broker: [AMQP]({{< ref "/pubsubs/amqp" >}}).
 
 Under the hood, CQRS is using Watermill's message router. If you are not familiar with it and want to learn how it works, you should check [Getting Started guide]({{< ref "getting-started" >}}).
 It will also show you how to use some standard messaging patterns, like metrics, poison queue, throttling, correlation and other tools used by every message-driven application. Those come built-in with Watermill.
 
 Let's go back to the CQRS. As you already know, CQRS is built from multiple components, like Command or Event buses, handlers, processors, etc.
-To simplify creating all these building blocks, we created `cqrs.Facade`, which creates all of them.
 
 {{% render-md %}}
 {{% load-snippet-partial file="src-link/_examples/basic/5-cqrs-protobuf/main.go" first_line_contains="main() {" last_line_contains="err := router.Run(" padding_after="3" %}}

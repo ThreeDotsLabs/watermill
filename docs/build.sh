@@ -43,8 +43,14 @@ else
 
         "components/cqrs/command_bus.go"
         "components/cqrs/command_processor.go"
+        "components/cqrs/command_handler.go"
+        "components/cqrs/command_config.go"
+
         "components/cqrs/event_bus.go"
         "components/cqrs/event_processor.go"
+        "components/cqrs/event_handler.go"
+        "components/cqrs/event_config.go"
+
         "components/cqrs/marshaler.go"
         "components/cqrs/cqrs.go"
         "components/cqrs/marshaler.go"

@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+// CommandConfig is used to configure CommandBus and CommandProcessor.
 type CommandConfig struct {
 	// GeneratePublishTopic is used to generate topic for publishing command.
 	// It is required if config is used in CommandBus.
@@ -138,12 +139,6 @@ type OnCommandHandleParams struct {
 	Message *message.Message
 }
 
-// CommandsSubscriberConstructor creates subscriber for CommandHandler.
-// It allows you to create a separate customized Subscriber for every command handler.
-//
-// Deprecated: please use CommandsSubscriberConstructorWithParams instead.
-type CommandsSubscriberConstructor func(handlerName string) (message.Subscriber, error)
-
 // CommandsSubscriberConstructorWithParams creates subscriber for CommandHandler.
 // It allows you to create a separate customized Subscriber for every command handler.
 type CommandsSubscriberConstructorWithParams func(CommandsSubscriberConstructorParams) (message.Subscriber, error)
@@ -152,3 +147,9 @@ type CommandsSubscriberConstructorParams struct {
 	HandlerName string
 	Handler     CommandHandler
 }
+
+// CommandsSubscriberConstructor creates subscriber for CommandHandler.
+// It allows you to create a separate customized Subscriber for every command handler.
+//
+// Deprecated: please use CommandsSubscriberConstructorWithParams instead.
+type CommandsSubscriberConstructor func(handlerName string) (message.Subscriber, error)
