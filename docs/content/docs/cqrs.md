@@ -52,7 +52,6 @@ The event represents something that already took place. Events are immutable.
 {{% load-snippet-partial file="src-link/components/cqrs/event_config.go" first_line_contains="// EventConfig" last_line_contains="func (c *EventConfig) setDefaults() " padding_after="5" %}}
 {{% /render-md %}}
 
-
 #### Command
 
 The command is a simple data structure, representing the request for executing some operation.
@@ -139,6 +138,26 @@ As mentioned before, we want to order a beer every time when a room is booked (*
 
 `OrderBeerHandler` is very similar to `BookRoomHandler`. The only difference is, that it sometimes returns an error when there are not enough beers, which causes redelivery of the command.
 You can find the entire implementation in the [example source code](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/basic/5-cqrs-protobuf/?utm_source=cqrs_doc).
+
+### Event Handler groups
+
+By default, each event handler has a separate subscriber instance.
+It works fine, if just one event type is sent to the topic.
+
+In the scenario, when we have multiple event types on one topic, you have two options:
+
+1. You can set `EventConfig.AckOnUnknownEvent` to true - it will acknowledge all events that are not handled by handler,
+2. You can use Event Handler groups mechanism.
+
+To use event groups, you need to set `GenerateHandlerGroupSubscribeTopic` and `GroupSubscriberConstructor` options in [`EventConfig`](#event-config).
+
+After that, you can use `AddHandlersGroup` on [`EventProcessor`](#event-processor).
+
+{{% render-md %}}
+{{% load-snippet-partial file="src-link/_examples/basic/5-cqrs-protobuf/main.go" first_line_contains="eventProcessor.AddHandlersGroup(" last_line_contains="if err != nil {" padding_after="0" %}}
+{{% /render-md %}}
+
+Both `GenerateHandlerGroupSubscribeTopic` and `GroupSubscriberConstructor` receives information about group name in function arguments.
 
 ### Generic handlers
 

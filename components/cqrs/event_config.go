@@ -22,7 +22,9 @@ type EventConfig struct {
 	GenerateHandlerGroupSubscribeTopic GenerateEventHandlerGroupSubscribeTopicFn
 
 	// SubscriberConstructor is used to create subscriber for EventHandler.
+	//
 	// This function is called for every EventHandler instance.
+	// If you want to re-use one subscriber for multiple handlers, use GroupSubscriberConstructor instead.
 	SubscriberConstructor EventsSubscriberConstructorWithParams
 
 	// GroupSubscriberConstructor is used to create subscriber for GroupEventHandler.
