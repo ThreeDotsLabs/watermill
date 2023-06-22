@@ -31,16 +31,16 @@ func TestEventGroupProcessorConfig_Validate(t *testing.T) {
 		{
 			Name: "missing_GroupSubscriberConstructor",
 			ModifyValidConfig: func(config *cqrs.EventGroupProcessorConfig) {
-				config.GroupSubscriberConstructor = nil
+				config.SubscriberConstructor = nil
 			},
-			ExpectedErr: fmt.Errorf("missing GroupSubscriberConstructor while GenerateHandlerGroupTopic is provided"),
+			ExpectedErr: fmt.Errorf("missing SubscriberConstructor"),
 		},
 		{
 			Name: "missing_GenerateHandlerGroupSubscribeTopic",
 			ModifyValidConfig: func(config *cqrs.EventGroupProcessorConfig) {
-				config.GenerateHandlerGroupSubscribeTopic = nil
+				config.GenerateSubscribeTopic = nil
 			},
-			ExpectedErr: fmt.Errorf("missing GenerateHandlerGroupTopic while GroupSubscriberConstructor is provided"),
+			ExpectedErr: fmt.Errorf("missing GenerateHandlerGroupTopic"),
 		},
 		{
 			Name: "missing_marshaler",
@@ -55,10 +55,10 @@ func TestEventGroupProcessorConfig_Validate(t *testing.T) {
 
 		t.Run(tc.Name, func(t *testing.T) {
 			validConfig := cqrs.EventGroupProcessorConfig{
-				GenerateHandlerGroupSubscribeTopic: func(params cqrs.GenerateEventHandlerGroupTopicParams) (string, error) {
+				GenerateSubscribeTopic: func(params cqrs.EventGroupProcessorGenerateSubscribeTopicParams) (string, error) {
 					return "", nil
 				},
-				GroupSubscriberConstructor: func(params cqrs.EventsGroupSubscriberConstructorParams) (message.Subscriber, error) {
+				SubscriberConstructor: func(params cqrs.EventGroupProcessorSubscriberConstructorParams) (message.Subscriber, error) {
 					return nil, nil
 				},
 				Marshaler: cqrs.JSONMarshaler{},
@@ -109,13 +109,13 @@ func TestNewEventProcessor_OnGroupHandle(t *testing.T) {
 	onHandleCalled := 0
 
 	config := cqrs.EventGroupProcessorConfig{
-		GenerateHandlerGroupSubscribeTopic: func(params cqrs.GenerateEventHandlerGroupTopicParams) (string, error) {
+		GenerateSubscribeTopic: func(params cqrs.EventGroupProcessorGenerateSubscribeTopicParams) (string, error) {
 			return "events", nil
 		},
-		GroupSubscriberConstructor: func(params cqrs.EventsGroupSubscriberConstructorParams) (message.Subscriber, error) {
+		SubscriberConstructor: func(params cqrs.EventGroupProcessorSubscriberConstructorParams) (message.Subscriber, error) {
 			return mockSub, nil
 		},
-		OnGroupHandle: func(params cqrs.OnGroupEventHandleParams) error {
+		OnHandle: func(params cqrs.EventGroupProcessorOnHandleParams) error {
 			onHandleCalled++
 
 			assert.Equal(t, "some_group", params.GroupName)
@@ -187,10 +187,10 @@ func TestNewEventProcessor_AckOnUnknownEvent_handler_group(t *testing.T) {
 
 	cp, err := cqrs.NewEventGroupProcessorWithConfig(
 		cqrs.EventGroupProcessorConfig{
-			GenerateHandlerGroupSubscribeTopic: func(params cqrs.GenerateEventHandlerGroupTopicParams) (string, error) {
+			GenerateSubscribeTopic: func(params cqrs.EventGroupProcessorGenerateSubscribeTopicParams) (string, error) {
 				return "events", nil
 			},
-			GroupSubscriberConstructor: func(params cqrs.EventsGroupSubscriberConstructorParams) (message.Subscriber, error) {
+			SubscriberConstructor: func(params cqrs.EventGroupProcessorSubscriberConstructorParams) (message.Subscriber, error) {
 				return mockSub, nil
 			},
 			AckOnUnknownEvent: true,
@@ -244,10 +244,10 @@ func TestNewEventProcessor_AckOnUnknownEvent_disabled_handler_group(t *testing.T
 
 	cp, err := cqrs.NewEventGroupProcessorWithConfig(
 		cqrs.EventGroupProcessorConfig{
-			GenerateHandlerGroupSubscribeTopic: func(params cqrs.GenerateEventHandlerGroupTopicParams) (string, error) {
+			GenerateSubscribeTopic: func(params cqrs.EventGroupProcessorGenerateSubscribeTopicParams) (string, error) {
 				return "events", nil
 			},
-			GroupSubscriberConstructor: func(params cqrs.EventsGroupSubscriberConstructorParams) (message.Subscriber, error) {
+			SubscriberConstructor: func(params cqrs.EventGroupProcessorSubscriberConstructorParams) (message.Subscriber, error) {
 				return mockSub, nil
 			},
 			AckOnUnknownEvent: false,
@@ -328,13 +328,13 @@ func TestEventProcessor_handler_group(t *testing.T) {
 
 	eventProcessor, err := cqrs.NewEventGroupProcessorWithConfig(
 		cqrs.EventGroupProcessorConfig{
-			GenerateHandlerGroupSubscribeTopic: func(params cqrs.GenerateEventHandlerGroupTopicParams) (string, error) {
+			GenerateSubscribeTopic: func(params cqrs.EventGroupProcessorGenerateSubscribeTopicParams) (string, error) {
 				assert.Equal(t, "some_group", params.EventGroupName)
 				assert.Equal(t, handlers, params.EventGroupHandlers)
 
 				return "events", nil
 			},
-			GroupSubscriberConstructor: func(params cqrs.EventsGroupSubscriberConstructorParams) (message.Subscriber, error) {
+			SubscriberConstructor: func(params cqrs.EventGroupProcessorSubscriberConstructorParams) (message.Subscriber, error) {
 				assert.Equal(t, "some_group", params.EventGroupName)
 				assert.Equal(t, handlers, params.EventGroupHandlers)
 

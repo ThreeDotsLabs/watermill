@@ -28,7 +28,7 @@ func TestEventProcessorConfig_Validate(t *testing.T) {
 		{
 			Name: "missing_GenerateHandlerSubscribeTopic",
 			ModifyValidConfig: func(config *cqrs.EventProcessorConfig) {
-				config.GenerateHandlerSubscribeTopic = nil
+				config.GenerateSubscribeTopic = nil
 			},
 			ExpectedErr: fmt.Errorf("missing GenerateHandlerTopic"),
 		},
@@ -52,10 +52,10 @@ func TestEventProcessorConfig_Validate(t *testing.T) {
 
 		t.Run(tc.Name, func(t *testing.T) {
 			validConfig := cqrs.EventProcessorConfig{
-				GenerateHandlerSubscribeTopic: func(params cqrs.GenerateEventHandlerSubscribeTopicParams) (string, error) {
+				GenerateSubscribeTopic: func(params cqrs.EventProcessorGenerateSubscribeTopicParams) (string, error) {
 					return "", nil
 				},
-				SubscriberConstructor: func(params cqrs.EventsSubscriberConstructorParams) (message.Subscriber, error) {
+				SubscriberConstructor: func(params cqrs.EventProcessorSubscriberConstructorParams) (message.Subscriber, error) {
 					return nil, nil
 				},
 				Marshaler: cqrs.JSONMarshaler{},
@@ -77,10 +77,10 @@ func TestEventProcessorConfig_Validate(t *testing.T) {
 
 func TestNewEventProcessor(t *testing.T) {
 	eventConfig := cqrs.EventProcessorConfig{
-		GenerateHandlerSubscribeTopic: func(params cqrs.GenerateEventHandlerSubscribeTopicParams) (string, error) {
+		GenerateSubscribeTopic: func(params cqrs.EventProcessorGenerateSubscribeTopicParams) (string, error) {
 			return "", nil
 		},
-		SubscriberConstructor: func(params cqrs.EventsSubscriberConstructorParams) (message.Subscriber, error) {
+		SubscriberConstructor: func(params cqrs.EventProcessorSubscriberConstructorParams) (message.Subscriber, error) {
 			return nil, nil
 		},
 		Marshaler: cqrs.JSONMarshaler{},
@@ -121,10 +121,10 @@ func TestEventProcessor_non_pointer_event(t *testing.T) {
 
 	eventProcessor, err := cqrs.NewEventProcessorWithConfig(
 		cqrs.EventProcessorConfig{
-			GenerateHandlerSubscribeTopic: func(params cqrs.GenerateEventHandlerSubscribeTopicParams) (string, error) {
+			GenerateSubscribeTopic: func(params cqrs.EventProcessorGenerateSubscribeTopicParams) (string, error) {
 				return "", nil
 			},
-			SubscriberConstructor: func(params cqrs.EventsSubscriberConstructorParams) (message.Subscriber, error) {
+			SubscriberConstructor: func(params cqrs.EventProcessorSubscriberConstructorParams) (message.Subscriber, error) {
 				return nil, nil
 			},
 			Marshaler: ts.Marshaler,
@@ -133,7 +133,7 @@ func TestEventProcessor_non_pointer_event(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	eventProcessor.AddHandler(handler)
+	eventProcessor.AddHandlers(handler)
 
 	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
 	require.NoError(t, err)
@@ -171,10 +171,10 @@ func TestEventProcessor_multiple_same_event_handlers(t *testing.T) {
 
 	eventProcessor, err := cqrs.NewEventProcessorWithConfig(
 		cqrs.EventProcessorConfig{
-			GenerateHandlerSubscribeTopic: func(params cqrs.GenerateEventHandlerSubscribeTopicParams) (string, error) {
+			GenerateSubscribeTopic: func(params cqrs.EventProcessorGenerateSubscribeTopicParams) (string, error) {
 				return "", nil
 			},
-			SubscriberConstructor: func(params cqrs.EventsSubscriberConstructorParams) (message.Subscriber, error) {
+			SubscriberConstructor: func(params cqrs.EventProcessorSubscriberConstructorParams) (message.Subscriber, error) {
 				return nil, nil
 			},
 			Marshaler: ts.Marshaler,
@@ -183,7 +183,7 @@ func TestEventProcessor_multiple_same_event_handlers(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	eventProcessor.AddHandler(
+	eventProcessor.AddHandlers(
 		&duplicateTestEventHandler1{},
 		&duplicateTestEventHandler2{},
 	)
@@ -226,13 +226,13 @@ func TestNewEventProcessor_OnHandle(t *testing.T) {
 	onHandleCalled := 0
 
 	config := cqrs.EventProcessorConfig{
-		GenerateHandlerSubscribeTopic: func(params cqrs.GenerateEventHandlerSubscribeTopicParams) (string, error) {
+		GenerateSubscribeTopic: func(params cqrs.EventProcessorGenerateSubscribeTopicParams) (string, error) {
 			return "events", nil
 		},
-		SubscriberConstructor: func(params cqrs.EventsSubscriberConstructorParams) (message.Subscriber, error) {
+		SubscriberConstructor: func(params cqrs.EventProcessorSubscriberConstructorParams) (message.Subscriber, error) {
 			return mockSub, nil
 		},
-		OnHandle: func(params cqrs.OnEventHandleParams) error {
+		OnHandle: func(params cqrs.EventProcessorOnHandleParams) error {
 			onHandleCalled++
 
 			assert.IsType(t, &TestEvent{}, params.Event)
@@ -257,7 +257,7 @@ func TestNewEventProcessor_OnHandle(t *testing.T) {
 	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
 	require.NoError(t, err)
 
-	cp.AddHandler(handler)
+	cp.AddHandlers(handler)
 
 	err = cp.AddHandlersToRouter(router)
 	require.NoError(t, err)
@@ -304,10 +304,10 @@ func TestNewEventProcessor_AckOnUnknownEvent(t *testing.T) {
 
 	cp, err := cqrs.NewEventProcessorWithConfig(
 		cqrs.EventProcessorConfig{
-			GenerateHandlerSubscribeTopic: func(params cqrs.GenerateEventHandlerSubscribeTopicParams) (string, error) {
+			GenerateSubscribeTopic: func(params cqrs.EventProcessorGenerateSubscribeTopicParams) (string, error) {
 				return "events", nil
 			},
-			SubscriberConstructor: func(params cqrs.EventsSubscriberConstructorParams) (message.Subscriber, error) {
+			SubscriberConstructor: func(params cqrs.EventProcessorSubscriberConstructorParams) (message.Subscriber, error) {
 				return mockSub, nil
 			},
 			AckOnUnknownEvent: true,
@@ -320,7 +320,7 @@ func TestNewEventProcessor_AckOnUnknownEvent(t *testing.T) {
 	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
 	require.NoError(t, err)
 
-	cp.AddHandler(cqrs.NewEventHandler("test", func(ctx context.Context, cmd *TestEvent) error {
+	cp.AddHandlers(cqrs.NewEventHandler("test", func(ctx context.Context, cmd *TestEvent) error {
 		return nil
 	}))
 
@@ -357,10 +357,10 @@ func TestNewEventProcessor_AckOnUnknownEvent_disabled(t *testing.T) {
 
 	cp, err := cqrs.NewEventProcessorWithConfig(
 		cqrs.EventProcessorConfig{
-			GenerateHandlerSubscribeTopic: func(params cqrs.GenerateEventHandlerSubscribeTopicParams) (string, error) {
+			GenerateSubscribeTopic: func(params cqrs.EventProcessorGenerateSubscribeTopicParams) (string, error) {
 				return "events", nil
 			},
-			SubscriberConstructor: func(params cqrs.EventsSubscriberConstructorParams) (message.Subscriber, error) {
+			SubscriberConstructor: func(params cqrs.EventProcessorSubscriberConstructorParams) (message.Subscriber, error) {
 				return mockSub, nil
 			},
 			AckOnUnknownEvent: false,
@@ -373,7 +373,7 @@ func TestNewEventProcessor_AckOnUnknownEvent_disabled(t *testing.T) {
 	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
 	require.NoError(t, err)
 
-	cp.AddHandler(cqrs.NewEventHandler("test", func(ctx context.Context, cmd *TestEvent) error {
+	cp.AddHandlers(cqrs.NewEventHandler("test", func(ctx context.Context, cmd *TestEvent) error {
 		return nil
 	}))
 
@@ -451,10 +451,10 @@ func TestEventProcessor_AddHandlersToRouter_missing_handlers(t *testing.T) {
 	ts := NewTestServices()
 
 	cp, err := cqrs.NewEventProcessorWithConfig(cqrs.EventProcessorConfig{
-		GenerateHandlerSubscribeTopic: func(params cqrs.GenerateEventHandlerSubscribeTopicParams) (string, error) {
+		GenerateSubscribeTopic: func(params cqrs.EventProcessorGenerateSubscribeTopicParams) (string, error) {
 			return "", nil
 		},
-		SubscriberConstructor: func(params cqrs.EventsSubscriberConstructorParams) (message.Subscriber, error) {
+		SubscriberConstructor: func(params cqrs.EventProcessorSubscriberConstructorParams) (message.Subscriber, error) {
 			return nil, nil
 		},
 		Marshaler: cqrs.JSONMarshaler{},
@@ -466,5 +466,5 @@ func TestEventProcessor_AddHandlersToRouter_missing_handlers(t *testing.T) {
 
 	err = cp.AddHandlersToRouter(router)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "EventProcessor has no handlers, did you call AddHandler or AddHandlersGroup?")
+	assert.Contains(t, err.Error(), "EventProcessor has no handlers, did you call AddHandlers?")
 }

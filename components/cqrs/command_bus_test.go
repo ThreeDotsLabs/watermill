@@ -42,7 +42,7 @@ func TestCommandBusConfig_Validate(t *testing.T) {
 
 		t.Run(tc.Name, func(t *testing.T) {
 			validConfig := cqrs.CommandBusConfig{
-				GeneratePublishTopic: func(params cqrs.GenerateCommandPublishTopicParams) (string, error) {
+				GeneratePublishTopic: func(params cqrs.CommandBusGeneratePublishTopicParams) (string, error) {
 					return "", nil
 				},
 				Marshaler: cqrs.JSONMarshaler{},
@@ -66,7 +66,7 @@ func TestNewCommandBus(t *testing.T) {
 	pub := newPublisherStub()
 
 	config := cqrs.CommandBusConfig{
-		GeneratePublishTopic: func(params cqrs.GenerateCommandPublishTopicParams) (string, error) {
+		GeneratePublishTopic: func(params cqrs.CommandBusGeneratePublishTopicParams) (string, error) {
 			return "", nil
 		},
 		Marshaler: cqrs.JSONMarshaler{},
@@ -94,7 +94,7 @@ func TestCommandBus_Send_ContextPropagation(t *testing.T) {
 	commandBus, err := cqrs.NewCommandBusWithConfig(
 		publisher,
 		cqrs.CommandBusConfig{
-			GeneratePublishTopic: func(params cqrs.GenerateCommandPublishTopicParams) (string, error) {
+			GeneratePublishTopic: func(params cqrs.CommandBusGeneratePublishTopicParams) (string, error) {
 				return "whatever", nil
 			},
 			Marshaler: cqrs.JSONMarshaler{},
@@ -114,7 +114,7 @@ func TestCommandBus_Send_topic_name(t *testing.T) {
 	cb, err := cqrs.NewCommandBusWithConfig(
 		assertPublishTopicPublisher{ExpectedTopic: "cqrs_test.TestCommand", T: t},
 		cqrs.CommandBusConfig{
-			GeneratePublishTopic: func(params cqrs.GenerateCommandPublishTopicParams) (string, error) {
+			GeneratePublishTopic: func(params cqrs.CommandBusGeneratePublishTopicParams) (string, error) {
 				return params.CommandName, nil
 			},
 			Marshaler: cqrs.JSONMarshaler{},
@@ -132,11 +132,11 @@ func TestCommandBus_Send_OnSend(t *testing.T) {
 	cb, err := cqrs.NewCommandBusWithConfig(
 		publisher,
 		cqrs.CommandBusConfig{
-			GeneratePublishTopic: func(params cqrs.GenerateCommandPublishTopicParams) (string, error) {
+			GeneratePublishTopic: func(params cqrs.CommandBusGeneratePublishTopicParams) (string, error) {
 				return "whatever", nil
 			},
 			Marshaler: cqrs.JSONMarshaler{},
-			OnSend: func(params cqrs.OnCommandSendParams) error {
+			OnSend: func(params cqrs.CommandBusOnSendParams) error {
 				params.Message.Metadata.Set("key", "value")
 				return nil
 			},
@@ -158,11 +158,11 @@ func TestCommandBus_Send_OnSend_error(t *testing.T) {
 	cb, err := cqrs.NewCommandBusWithConfig(
 		publisher,
 		cqrs.CommandBusConfig{
-			GeneratePublishTopic: func(params cqrs.GenerateCommandPublishTopicParams) (string, error) {
+			GeneratePublishTopic: func(params cqrs.CommandBusGeneratePublishTopicParams) (string, error) {
 				return "whatever", nil
 			},
 			Marshaler: cqrs.JSONMarshaler{},
-			OnSend: func(params cqrs.OnCommandSendParams) error {
+			OnSend: func(params cqrs.CommandBusOnSendParams) error {
 				return expectedErr
 			},
 		},

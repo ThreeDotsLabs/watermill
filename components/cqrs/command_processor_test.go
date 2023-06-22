@@ -43,9 +43,9 @@ func TestCommandProcessorConfig_Validate(t *testing.T) {
 		{
 			Name: "missing_GenerateHandlerSubscribeTopic",
 			ModifyValidConfig: func(c *cqrs.CommandProcessorConfig) {
-				c.GenerateHandlerSubscribeTopic = nil
+				c.GenerateSubscribeTopic = nil
 			},
-			ExpectedErr: errors.Errorf("missing GenerateHandlerSubscribeTopic"),
+			ExpectedErr: errors.Errorf("missing GenerateSubscribeTopic"),
 		},
 	}
 	for i := range testCases {
@@ -53,10 +53,10 @@ func TestCommandProcessorConfig_Validate(t *testing.T) {
 
 		t.Run(tc.Name, func(t *testing.T) {
 			validConfig := cqrs.CommandProcessorConfig{
-				GenerateHandlerSubscribeTopic: func(params cqrs.GenerateCommandHandlerSubscribeTopicParams) (string, error) {
+				GenerateSubscribeTopic: func(params cqrs.CommandProcessorGenerateSubscribeTopicParams) (string, error) {
 					return "", nil
 				},
-				SubscriberConstructor: func(params cqrs.CommandsSubscriberConstructorParams) (message.Subscriber, error) {
+				SubscriberConstructor: func(params cqrs.CommandProcessorSubscriberConstructorParams) (message.Subscriber, error) {
 					return nil, nil
 				},
 				Marshaler: cqrs.JSONMarshaler{},
@@ -78,10 +78,10 @@ func TestCommandProcessorConfig_Validate(t *testing.T) {
 
 func TestNewCommandProcessor(t *testing.T) {
 	config := cqrs.CommandProcessorConfig{
-		GenerateHandlerSubscribeTopic: func(params cqrs.GenerateCommandHandlerSubscribeTopicParams) (string, error) {
+		GenerateSubscribeTopic: func(params cqrs.CommandProcessorGenerateSubscribeTopicParams) (string, error) {
 			return "", nil
 		},
-		SubscriberConstructor: func(params cqrs.CommandsSubscriberConstructorParams) (message.Subscriber, error) {
+		SubscriberConstructor: func(params cqrs.CommandProcessorSubscriberConstructorParams) (message.Subscriber, error) {
 			return nil, nil
 		},
 		Marshaler: cqrs.JSONMarshaler{},
@@ -122,10 +122,10 @@ func TestCommandProcessor_non_pointer_command(t *testing.T) {
 
 	commandProcessor, err := cqrs.NewCommandProcessorWithConfig(
 		cqrs.CommandProcessorConfig{
-			GenerateHandlerSubscribeTopic: func(params cqrs.GenerateCommandHandlerSubscribeTopicParams) (string, error) {
+			GenerateSubscribeTopic: func(params cqrs.CommandProcessorGenerateSubscribeTopicParams) (string, error) {
 				return "", nil
 			},
-			SubscriberConstructor: func(params cqrs.CommandsSubscriberConstructorParams) (message.Subscriber, error) {
+			SubscriberConstructor: func(params cqrs.CommandProcessorSubscriberConstructorParams) (message.Subscriber, error) {
 				return nil, nil
 			},
 			Marshaler: ts.Marshaler,
@@ -149,10 +149,10 @@ func TestCommandProcessor_multiple_same_command_handlers(t *testing.T) {
 
 	commandProcessor, err := cqrs.NewCommandProcessorWithConfig(
 		cqrs.CommandProcessorConfig{
-			GenerateHandlerSubscribeTopic: func(params cqrs.GenerateCommandHandlerSubscribeTopicParams) (string, error) {
+			GenerateSubscribeTopic: func(params cqrs.CommandProcessorGenerateSubscribeTopicParams) (string, error) {
 				return "", nil
 			},
-			SubscriberConstructor: func(params cqrs.CommandsSubscriberConstructorParams) (message.Subscriber, error) {
+			SubscriberConstructor: func(params cqrs.CommandProcessorSubscriberConstructorParams) (message.Subscriber, error) {
 				return nil, nil
 			},
 			Marshaler: ts.Marshaler,
@@ -212,10 +212,10 @@ func TestCommandProcessor_AckCommandHandlingErrors_option_true(t *testing.T) {
 
 	commandProcessor, err := cqrs.NewCommandProcessorWithConfig(
 		cqrs.CommandProcessorConfig{
-			GenerateHandlerSubscribeTopic: func(params cqrs.GenerateCommandHandlerSubscribeTopicParams) (string, error) {
+			GenerateSubscribeTopic: func(params cqrs.CommandProcessorGenerateSubscribeTopicParams) (string, error) {
 				return "commands", nil
 			},
-			SubscriberConstructor: func(params cqrs.CommandsSubscriberConstructorParams) (message.Subscriber, error) {
+			SubscriberConstructor: func(params cqrs.CommandProcessorSubscriberConstructorParams) (message.Subscriber, error) {
 				return mockSub, nil
 			},
 			Marshaler:                marshaler,
@@ -290,10 +290,10 @@ func TestCommandProcessor_AckCommandHandlingErrors_option_false(t *testing.T) {
 
 	commandProcessor, err := cqrs.NewCommandProcessorWithConfig(
 		cqrs.CommandProcessorConfig{
-			GenerateHandlerSubscribeTopic: func(params cqrs.GenerateCommandHandlerSubscribeTopicParams) (string, error) {
+			GenerateSubscribeTopic: func(params cqrs.CommandProcessorGenerateSubscribeTopicParams) (string, error) {
 				return "commands", nil
 			},
-			SubscriberConstructor: func(params cqrs.CommandsSubscriberConstructorParams) (message.Subscriber, error) {
+			SubscriberConstructor: func(params cqrs.CommandProcessorSubscriberConstructorParams) (message.Subscriber, error) {
 				return mockSub, nil
 			},
 			Marshaler:                marshaler,
@@ -366,13 +366,13 @@ func TestNewCommandProcessor_OnHandle(t *testing.T) {
 	onHandleCalled := 0
 
 	config := cqrs.CommandProcessorConfig{
-		GenerateHandlerSubscribeTopic: func(params cqrs.GenerateCommandHandlerSubscribeTopicParams) (string, error) {
+		GenerateSubscribeTopic: func(params cqrs.CommandProcessorGenerateSubscribeTopicParams) (string, error) {
 			return "commands", nil
 		},
-		SubscriberConstructor: func(params cqrs.CommandsSubscriberConstructorParams) (message.Subscriber, error) {
+		SubscriberConstructor: func(params cqrs.CommandProcessorSubscriberConstructorParams) (message.Subscriber, error) {
 			return mockSub, nil
 		},
-		OnHandle: func(params cqrs.OnCommandHandleParams) error {
+		OnHandle: func(params cqrs.CommandProcessorOnHandleParams) error {
 			onHandleCalled++
 
 			assert.IsType(t, &TestCommand{}, params.Command)
@@ -430,10 +430,10 @@ func TestCommandProcessor_AddHandlersToRouter_missing_handlers(t *testing.T) {
 	ts := NewTestServices()
 
 	cp, err := cqrs.NewCommandProcessorWithConfig(cqrs.CommandProcessorConfig{
-		GenerateHandlerSubscribeTopic: func(params cqrs.GenerateCommandHandlerSubscribeTopicParams) (string, error) {
+		GenerateSubscribeTopic: func(params cqrs.CommandProcessorGenerateSubscribeTopicParams) (string, error) {
 			return "", nil
 		},
-		SubscriberConstructor: func(params cqrs.CommandsSubscriberConstructorParams) (message.Subscriber, error) {
+		SubscriberConstructor: func(params cqrs.CommandProcessorSubscriberConstructorParams) (message.Subscriber, error) {
 			return nil, nil
 		},
 		Marshaler: cqrs.JSONMarshaler{},
@@ -445,5 +445,5 @@ func TestCommandProcessor_AddHandlersToRouter_missing_handlers(t *testing.T) {
 
 	err = cp.AddHandlersToRouter(router)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "CommandProcessor has no handlers, did you call AddHandler?")
+	assert.Contains(t, err.Error(), "CommandProcessor has no handlers, did you call AddHandlers?")
 }

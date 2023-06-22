@@ -77,11 +77,11 @@ func createCqrsComponents(t *testing.T, commandHandler *CaptureCommandHandler, e
 	require.NoError(t, err)
 
 	eventProcessor, err := cqrs.NewEventProcessorWithConfig(cqrs.EventProcessorConfig{
-		GenerateHandlerSubscribeTopic: func(params cqrs.GenerateEventHandlerSubscribeTopicParams) (string, error) {
+		GenerateSubscribeTopic: func(params cqrs.EventProcessorGenerateSubscribeTopicParams) (string, error) {
 			return params.EventName, nil
 		},
 		AckOnUnknownEvent: true,
-		SubscriberConstructor: func(params cqrs.EventsSubscriberConstructorParams) (message.Subscriber, error) {
+		SubscriberConstructor: func(params cqrs.EventProcessorSubscriberConstructorParams) (message.Subscriber, error) {
 			assert.Equal(t, "CaptureEventHandler", params.HandlerName)
 
 			assert.Implements(t, new(cqrs.EventHandler), params.EventHandler)
@@ -94,7 +94,7 @@ func createCqrsComponents(t *testing.T, commandHandler *CaptureCommandHandler, e
 	})
 	require.NoError(t, err)
 
-	eventProcessor.AddHandler(eventHandler)
+	eventProcessor.AddHandlers(eventHandler)
 
 	err = eventProcessor.AddHandlersToRouter(router)
 	require.NoError(t, err)
@@ -125,7 +125,7 @@ func createCqrsComponents(t *testing.T, commandHandler *CaptureCommandHandler, e
 	require.NoError(t, err)
 
 	commandProcessor, err := cqrs.NewCommandProcessorWithConfig(cqrs.CommandProcessorConfig{
-		GenerateHandlerSubscribeTopic: func(params cqrs.GenerateCommandHandlerSubscribeTopicParams) (string, error) {
+		GenerateSubscribeTopic: func(params cqrs.CommandProcessorGenerateSubscribeTopicParams) (string, error) {
 			assert.Equal(t, "cqrs_test.TestCommand", params.CommandName)
 
 			assert.Implements(t, new(cqrs.CommandHandler), params.CommandHandler)
@@ -133,7 +133,7 @@ func createCqrsComponents(t *testing.T, commandHandler *CaptureCommandHandler, e
 
 			return params.CommandName, nil
 		},
-		SubscriberConstructor: func(params cqrs.CommandsSubscriberConstructorParams) (message.Subscriber, error) {
+		SubscriberConstructor: func(params cqrs.CommandProcessorSubscriberConstructorParams) (message.Subscriber, error) {
 			assert.Equal(t, "CaptureCommandHandler", params.HandlerName)
 
 			return ts.CommandsPubSub, nil
@@ -150,7 +150,7 @@ func createCqrsComponents(t *testing.T, commandHandler *CaptureCommandHandler, e
 	require.NoError(t, err)
 
 	commandBus, err := cqrs.NewCommandBusWithConfig(ts.CommandsPubSub, cqrs.CommandBusConfig{
-		GeneratePublishTopic: func(params cqrs.GenerateCommandPublishTopicParams) (string, error) {
+		GeneratePublishTopic: func(params cqrs.CommandBusGeneratePublishTopicParams) (string, error) {
 			assert.Equal(t, "cqrs_test.TestCommand", params.CommandName)
 
 			switch cmd := params.Command.(type) {

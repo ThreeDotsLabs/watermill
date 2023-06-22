@@ -11,17 +11,17 @@ import (
 )
 
 type CommandProcessorConfig struct {
-	// GenerateHandlerSubscribeTopic is used to generate topic for subscribing command.
-	GenerateHandlerSubscribeTopic GenerateCommandHandlerSubscribeTopicFn
+	// GenerateSubscribeTopic is used to generate topic for subscribing command.
+	GenerateSubscribeTopic CommandProcessorGenerateSubscribeTopicFn
 
 	// SubscriberConstructor is used to create subscriber for CommandHandler.
-	SubscriberConstructor CommandsSubscriberConstructorWithParams
+	SubscriberConstructor CommandProcessorSubscriberConstructorFn
 
 	// OnHandle is called before handling command.
 	// OnHandle works in a similar way to middlewares: you can inject additional logic before and after handling a command.
 	//
 	// Because of that, you need to explicitly call params.Handler.Handle() to handle the command.
-	//   func(params OnCommandHandleParams) (err error) {
+	//   func(params CommandProcessorOnHandleParams) (err error) {
 	//       // logic before handle
 	//		 //  (...)
 	//
@@ -34,7 +34,7 @@ type CommandProcessorConfig struct {
 	//	 }
 	//
 	// This option is not required.
-	OnHandle OnCommandHandleFn
+	OnHandle CommandProcessorOnHandleFn
 
 	// Marshaler is used to marshal and unmarshal commands.
 	// It is required.
@@ -62,8 +62,8 @@ func (c CommandProcessorConfig) Validate() error {
 		err = stdErrors.Join(err, errors.New("missing Marshaler"))
 	}
 
-	if c.GenerateHandlerSubscribeTopic == nil {
-		err = stdErrors.Join(err, errors.New("missing GenerateHandlerSubscribeTopic"))
+	if c.GenerateSubscribeTopic == nil {
+		err = stdErrors.Join(err, errors.New("missing GenerateSubscribeTopic"))
 	}
 	if c.SubscriberConstructor == nil {
 		err = stdErrors.Join(err, errors.New("missing SubscriberConstructor"))
@@ -72,25 +72,25 @@ func (c CommandProcessorConfig) Validate() error {
 	return err
 }
 
-type GenerateCommandHandlerSubscribeTopicFn func(GenerateCommandHandlerSubscribeTopicParams) (string, error)
+type CommandProcessorGenerateSubscribeTopicFn func(CommandProcessorGenerateSubscribeTopicParams) (string, error)
 
-type GenerateCommandHandlerSubscribeTopicParams struct {
+type CommandProcessorGenerateSubscribeTopicParams struct {
 	CommandName    string
 	CommandHandler CommandHandler
 }
 
-// CommandsSubscriberConstructorWithParams creates subscriber for CommandHandler.
+// CommandProcessorSubscriberConstructorFn creates subscriber for CommandHandler.
 // It allows you to create a separate customized Subscriber for every command handler.
-type CommandsSubscriberConstructorWithParams func(CommandsSubscriberConstructorParams) (message.Subscriber, error)
+type CommandProcessorSubscriberConstructorFn func(CommandProcessorSubscriberConstructorParams) (message.Subscriber, error)
 
-type CommandsSubscriberConstructorParams struct {
+type CommandProcessorSubscriberConstructorParams struct {
 	HandlerName string
 	Handler     CommandHandler
 }
 
-type OnCommandHandleFn func(params OnCommandHandleParams) error
+type CommandProcessorOnHandleFn func(params CommandProcessorOnHandleParams) error
 
-type OnCommandHandleParams struct {
+type CommandProcessorOnHandleParams struct {
 	Handler CommandHandler
 
 	CommandName string
@@ -139,10 +139,10 @@ func NewCommandProcessor(
 	}
 
 	cp, err := NewCommandProcessorWithConfig(CommandProcessorConfig{
-		GenerateHandlerSubscribeTopic: func(params GenerateCommandHandlerSubscribeTopicParams) (string, error) {
+		GenerateSubscribeTopic: func(params CommandProcessorGenerateSubscribeTopicParams) (string, error) {
 			return generateTopic(params.CommandName), nil
 		},
-		SubscriberConstructor: func(params CommandsSubscriberConstructorParams) (message.Subscriber, error) {
+		SubscriberConstructor: func(params CommandProcessorSubscriberConstructorParams) (message.Subscriber, error) {
 			return subscriberConstructor(params.HandlerName)
 		},
 		Marshaler: marshaler,
@@ -162,7 +162,7 @@ func NewCommandProcessor(
 // CommandsSubscriberConstructor creates subscriber for CommandHandler.
 // It allows you to create a separate customized Subscriber for every command handler.
 //
-// Deprecated: please use CommandsSubscriberConstructorWithParams instead.
+// Deprecated: please use CommandProcessorSubscriberConstructorFn instead.
 type CommandsSubscriberConstructor func(handlerName string) (message.Subscriber, error)
 
 // AddHandler adds a new CommandHandler to the CommandProcessor.
@@ -188,7 +188,7 @@ func (p CommandProcessor) AddHandlersToRouter(r *message.Router) error {
 	handledCommands := map[string]struct{}{}
 
 	if len(p.Handlers()) == 0 {
-		return errors.New("CommandProcessor has no handlers, did you call AddHandler?")
+		return errors.New("CommandProcessor has no handlers, did you call AddHandlers?")
 	}
 
 	for i := range p.Handlers() {
@@ -196,7 +196,7 @@ func (p CommandProcessor) AddHandlersToRouter(r *message.Router) error {
 		handlerName := handler.HandlerName()
 		commandName := p.config.Marshaler.Name(handler.NewCommand())
 
-		topicName, err := p.config.GenerateHandlerSubscribeTopic(GenerateCommandHandlerSubscribeTopicParams{
+		topicName, err := p.config.GenerateSubscribeTopic(CommandProcessorGenerateSubscribeTopicParams{
 			CommandName:    commandName,
 			CommandHandler: handler,
 		})
@@ -221,7 +221,7 @@ func (p CommandProcessor) AddHandlersToRouter(r *message.Router) error {
 
 		logger.Debug("Adding CQRS command handler to router", nil)
 
-		subscriber, err := p.config.SubscriberConstructor(CommandsSubscriberConstructorParams{
+		subscriber, err := p.config.SubscriberConstructor(CommandProcessorSubscriberConstructorParams{
 			HandlerName: handlerName,
 			Handler:     handler,
 		})
@@ -275,14 +275,14 @@ func (p CommandProcessor) routerHandlerFunc(handler CommandHandler, logger water
 			return err
 		}
 
-		handle := func(params OnCommandHandleParams) (err error) {
+		handle := func(params CommandProcessorOnHandleParams) (err error) {
 			return params.Handler.Handle(params.Message.Context(), params.Command)
 		}
 		if p.config.OnHandle != nil {
 			handle = p.config.OnHandle
 		}
 
-		err := handle(OnCommandHandleParams{
+		err := handle(CommandProcessorOnHandleParams{
 			Handler:     handler,
 			CommandName: messageCmdName,
 			Command:     cmd,

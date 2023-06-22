@@ -10,19 +10,19 @@ import (
 )
 
 type EventGroupProcessorConfig struct {
-	// GenerateHandlerGroupSubscribeTopic is used to generate topic for subscribing to events for handler groups.
+	// GenerateSubscribeTopic is used to generate topic for subscribing to events for handler groups.
 	// This option is required for EventProcessor if handler groups are used.
-	GenerateHandlerGroupSubscribeTopic GenerateEventHandlerGroupSubscribeTopicFn
+	GenerateSubscribeTopic EventGroupProcessorGenerateSubscribeTopicFn
 
-	// GroupSubscriberConstructor is used to create subscriber for GroupEventHandler.
+	// SubscriberConstructor is used to create subscriber for GroupEventHandler.
 	// This function is called for every events group once - thanks to that it's possible to have one subscription per group.
 	// It's useful, when we are processing events from one stream and we want to do it in order.
-	GroupSubscriberConstructor EventsGroupSubscriberConstructorWithParams
+	SubscriberConstructor EventGroupProcessorSubscriberConstructorFn
 
-	// OnGroupHandle works like OnHandle, but is called for group handlers instead.
+	// OnHandle works like OnHandle, but is called for group handlers instead.
 	// OnHandle is not called for handlers group.
 	// This option is not required.
-	OnGroupHandle OnGroupEventHandleFn
+	OnHandle EventGroupProcessorOnHandleFn
 
 	// AckOnUnknownEvent is used to decide if message should be acked if event has no handler defined.
 	AckOnUnknownEvent bool
@@ -49,33 +49,33 @@ func (c EventGroupProcessorConfig) Validate() error {
 		err = stdErrors.Join(err, errors.New("missing Marshaler"))
 	}
 
-	if c.GenerateHandlerGroupSubscribeTopic == nil {
-		err = stdErrors.Join(err, errors.New("missing GenerateHandlerGroupTopic while GroupSubscriberConstructor is provided"))
+	if c.GenerateSubscribeTopic == nil {
+		err = stdErrors.Join(err, errors.New("missing GenerateHandlerGroupTopic"))
 	}
-	if c.GroupSubscriberConstructor == nil {
-		err = stdErrors.Join(err, errors.New("missing GroupSubscriberConstructor while GenerateHandlerGroupTopic is provided"))
+	if c.SubscriberConstructor == nil {
+		err = stdErrors.Join(err, errors.New("missing SubscriberConstructor"))
 	}
 
 	return err
 }
 
-type GenerateEventHandlerGroupSubscribeTopicFn func(GenerateEventHandlerGroupTopicParams) (string, error)
+type EventGroupProcessorGenerateSubscribeTopicFn func(EventGroupProcessorGenerateSubscribeTopicParams) (string, error)
 
-type GenerateEventHandlerGroupTopicParams struct {
+type EventGroupProcessorGenerateSubscribeTopicParams struct {
 	EventGroupName     string
 	EventGroupHandlers []GroupEventHandler
 }
 
-type EventsGroupSubscriberConstructorWithParams func(EventsGroupSubscriberConstructorParams) (message.Subscriber, error)
+type EventGroupProcessorSubscriberConstructorFn func(EventGroupProcessorSubscriberConstructorParams) (message.Subscriber, error)
 
-type EventsGroupSubscriberConstructorParams struct {
+type EventGroupProcessorSubscriberConstructorParams struct {
 	EventGroupName     string
 	EventGroupHandlers []GroupEventHandler
 }
 
-type OnGroupEventHandleFn func(params OnGroupEventHandleParams) error
+type EventGroupProcessorOnHandleFn func(params EventGroupProcessorOnHandleParams) error
 
-type OnGroupEventHandleParams struct {
+type EventGroupProcessorOnHandleParams struct {
 	GroupName string
 	Handler   GroupEventHandler
 
@@ -87,15 +87,14 @@ type OnGroupEventHandleParams struct {
 }
 
 // EventGroupProcessor determines which EventHandler should handle event received from event bus.
-// todo!
+// Compared to EventProcessor, EventGroupProcessor allows to have multiple handlers that share the same subscriber instance.
 type EventGroupProcessor struct {
 	groupEventHandlers map[string][]GroupEventHandler
 
 	config EventGroupProcessorConfig
 }
 
-// NewEventProcessorWithConfig creates a new EventProcessor.
-// todo!
+// NewEventGroupProcessorWithConfig creates a new EventGroupProcessor.
 func NewEventGroupProcessorWithConfig(config EventGroupProcessorConfig) (*EventGroupProcessor, error) {
 	config.setDefaults()
 
@@ -111,11 +110,11 @@ func NewEventGroupProcessorWithConfig(config EventGroupProcessorConfig) (*EventG
 
 // AddHandlersGroup adds a new list of GroupEventHandler to the EventProcessor.
 //
-// Compared to AddHandler, AddHandlersGroup allows to have multiple handlers that share the same subscriber instance.
+// Compared to AddHandlers, AddHandlersGroup allows to have multiple handlers that share the same subscriber instance.
 //
-// It's required to call AddHandlersToRouter to add the handlers to the router after calling AddHandlersGroup.
+// IMPORTANT: It's required to call AddHandlersToRouter to add the handlers to the router after calling AddHandlersGroup.
+//
 // Handlers group needs to be unique within the EventProcessor instance.
-// todo: rename?
 func (p *EventGroupProcessor) AddHandlersGroup(handlerName string, handlers ...GroupEventHandler) error {
 	if len(handlers) == 0 {
 		return errors.New("no handlers provided")
@@ -133,7 +132,7 @@ func (p *EventGroupProcessor) AddHandlersGroup(handlerName string, handlers ...G
 // It should be called only once per EventProcessor instance.
 func (p EventGroupProcessor) AddHandlersToRouter(r *message.Router) error {
 	if len(p.groupEventHandlers) == 0 {
-		return errors.New("EventProcessor has no handlers, did you call AddHandler?")
+		return errors.New("EventProcessor has no handlers, did you call AddHandlersGroup?")
 	}
 
 	for groupName := range p.groupEventHandlers {
@@ -151,11 +150,11 @@ func (p EventGroupProcessor) AddHandlersToRouter(r *message.Router) error {
 			}
 		}
 
-		if p.config.GenerateHandlerGroupSubscribeTopic == nil {
-			return errors.New("missing GenerateHandlerGroupSubscribeTopic config option")
+		if p.config.GenerateSubscribeTopic == nil {
+			return errors.New("missing GenerateSubscribeTopic config option")
 		}
 
-		topicName, err := p.config.GenerateHandlerGroupSubscribeTopic(GenerateEventHandlerGroupTopicParams{
+		topicName, err := p.config.GenerateSubscribeTopic(EventGroupProcessorGenerateSubscribeTopicParams{
 			EventGroupName:     groupName,
 			EventGroupHandlers: handlersGroup,
 		})
@@ -173,7 +172,7 @@ func (p EventGroupProcessor) AddHandlersToRouter(r *message.Router) error {
 			return err
 		}
 
-		subscriber, err := p.config.GroupSubscriberConstructor(EventsGroupSubscriberConstructorParams{
+		subscriber, err := p.config.SubscriberConstructor(EventGroupProcessorSubscriberConstructorParams{
 			EventGroupName:     groupName,
 			EventGroupHandlers: handlersGroup,
 		})
@@ -217,14 +216,14 @@ func (p EventGroupProcessor) routerHandlerGroupFunc(handlers []GroupEventHandler
 				return err
 			}
 
-			handle := func(params OnGroupEventHandleParams) error {
+			handle := func(params EventGroupProcessorOnHandleParams) error {
 				return params.Handler.Handle(params.Message.Context(), params.Event)
 			}
-			if p.config.OnGroupHandle != nil {
-				handle = p.config.OnGroupHandle
+			if p.config.OnHandle != nil {
+				handle = p.config.OnHandle
 			}
 
-			err := handle(OnGroupEventHandleParams{
+			err := handle(EventGroupProcessorOnHandleParams{
 				GroupName: groupName,
 				Handler:   handler,
 				EventName: messageEventName,

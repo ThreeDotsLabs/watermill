@@ -12,13 +12,13 @@ import (
 
 type CommandBusConfig struct {
 	// GeneratePublishTopic is used to generate topic for publishing command.
-	GeneratePublishTopic GenerateCommandPublishTopicFn
+	GeneratePublishTopic CommandBusGeneratePublishTopicFn
 
 	// OnSend is called before publishing the command.
 	// The *message.Message can be modified.
 	//
 	// This option is not required.
-	OnSend OnCommandSendFn
+	OnSend CommandBusOnSendFn
 
 	// Marshaler is used to marshal and unmarshal commands.
 	// It is required.
@@ -49,16 +49,16 @@ func (c CommandBusConfig) Validate() error {
 	return err
 }
 
-type GenerateCommandPublishTopicFn func(GenerateCommandPublishTopicParams) (string, error)
+type CommandBusGeneratePublishTopicFn func(CommandBusGeneratePublishTopicParams) (string, error)
 
-type GenerateCommandPublishTopicParams struct {
+type CommandBusGeneratePublishTopicParams struct {
 	CommandName string
 	Command     any
 }
 
-type OnCommandSendFn func(params OnCommandSendParams) error
+type CommandBusOnSendFn func(params CommandBusOnSendParams) error
 
-type OnCommandSendParams struct {
+type CommandBusOnSendParams struct {
 	CommandName string
 	Command     any
 
@@ -105,7 +105,7 @@ func NewCommandBus(
 	}
 
 	return &CommandBus{publisher, CommandBusConfig{
-		GeneratePublishTopic: func(params GenerateCommandPublishTopicParams) (string, error) {
+		GeneratePublishTopic: func(params CommandBusGeneratePublishTopicParams) (string, error) {
 			return generateTopic(params.CommandName), nil
 		},
 		Marshaler: marshaler,
@@ -129,7 +129,7 @@ func (c CommandBus) newMessage(ctx context.Context, command any) (*message.Messa
 	}
 
 	commandName := c.config.Marshaler.Name(command)
-	topicName, err := c.config.GeneratePublishTopic(GenerateCommandPublishTopicParams{
+	topicName, err := c.config.GeneratePublishTopic(CommandBusGeneratePublishTopicParams{
 		CommandName: commandName,
 		Command:     command,
 	})
@@ -140,7 +140,7 @@ func (c CommandBus) newMessage(ctx context.Context, command any) (*message.Messa
 	msg.SetContext(ctx)
 
 	if c.config.OnSend != nil {
-		err := c.config.OnSend(OnCommandSendParams{
+		err := c.config.OnSend(CommandBusOnSendParams{
 			CommandName: commandName,
 			Command:     command,
 			Message:     msg,

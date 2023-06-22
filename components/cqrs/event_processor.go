@@ -11,21 +11,21 @@ import (
 )
 
 type EventProcessorConfig struct {
-	// GenerateHandlerSubscribeTopic is used to generate topic for subscribing to events.
-	// If event processor is using handler groups, GenerateHandlerGroupSubscribeTopic is used instead.
-	GenerateHandlerSubscribeTopic GenerateEventHandlerSubscribeTopicFn
+	// GenerateSubscribeTopic is used to generate topic for subscribing to events.
+	// If event processor is using handler groups, GenerateSubscribeTopic is used instead.
+	GenerateSubscribeTopic EventProcessorGenerateSubscribeTopicFn
 
 	// SubscriberConstructor is used to create subscriber for EventHandler.
 	//
 	// This function is called for every EventHandler instance.
 	// If you want to re-use one subscriber for multiple handlers, use GroupEventProcessor instead.
-	SubscriberConstructor EventsSubscriberConstructorWithParams
+	SubscriberConstructor EventProcessorSubscriberConstructorFn
 
 	// OnHandle is called before handling event.
 	// OnHandle works in a similar way to middlewares: you can inject additional logic before and after handling a event.
 	//
 	// Because of that, you need to explicitly call params.Handler.Handle() to handle the event.
-	//   func(params OnEventHandleParams) (err error) {
+	//   func(params EventProcessorOnHandleParams) (err error) {
 	//       // logic before handle
 	//		 //  (...)
 	//
@@ -39,7 +39,7 @@ type EventProcessorConfig struct {
 	//
 	//
 	// This option is not required.
-	OnHandle OnEventHandleFn
+	OnHandle EventProcessorOnHandleFn
 
 	// AckOnUnknownEvent is used to decide if message should be acked if event has no handler defined.
 	AckOnUnknownEvent bool
@@ -66,7 +66,7 @@ func (c EventProcessorConfig) Validate() error {
 		err = stdErrors.Join(err, errors.New("missing Marshaler"))
 	}
 
-	if c.GenerateHandlerSubscribeTopic == nil {
+	if c.GenerateSubscribeTopic == nil {
 		err = stdErrors.Join(err, errors.New("missing GenerateHandlerTopic"))
 	}
 	if c.SubscriberConstructor == nil {
@@ -76,23 +76,23 @@ func (c EventProcessorConfig) Validate() error {
 	return err
 }
 
-type GenerateEventHandlerSubscribeTopicFn func(GenerateEventHandlerSubscribeTopicParams) (string, error)
+type EventProcessorGenerateSubscribeTopicFn func(EventProcessorGenerateSubscribeTopicParams) (string, error)
 
-type GenerateEventHandlerSubscribeTopicParams struct {
+type EventProcessorGenerateSubscribeTopicParams struct {
 	EventName    string
 	EventHandler EventHandler
 }
 
-type EventsSubscriberConstructorWithParams func(EventsSubscriberConstructorParams) (message.Subscriber, error)
+type EventProcessorSubscriberConstructorFn func(EventProcessorSubscriberConstructorParams) (message.Subscriber, error)
 
-type EventsSubscriberConstructorParams struct {
+type EventProcessorSubscriberConstructorParams struct {
 	HandlerName  string
 	EventHandler EventHandler
 }
 
-type OnEventHandleFn func(params OnEventHandleParams) error
+type EventProcessorOnHandleFn func(params EventProcessorOnHandleParams) error
 
-type OnEventHandleParams struct {
+type EventProcessorOnHandleParams struct {
 	Handler EventHandler
 
 	Event     any
@@ -151,10 +151,10 @@ func NewEventProcessor(
 
 	eventProcessorConfig := EventProcessorConfig{
 		AckOnUnknownEvent: true, // this is the previous default behaviour - keeping backwards compatibility
-		GenerateHandlerSubscribeTopic: func(params GenerateEventHandlerSubscribeTopicParams) (string, error) {
+		GenerateSubscribeTopic: func(params EventProcessorGenerateSubscribeTopicParams) (string, error) {
 			return generateTopic(params.EventName), nil
 		},
-		SubscriberConstructor: func(params EventsSubscriberConstructorParams) (message.Subscriber, error) {
+		SubscriberConstructor: func(params EventProcessorSubscriberConstructorParams) (message.Subscriber, error) {
 			return subscriberConstructor(params.HandlerName)
 		},
 		Marshaler: marshaler,
@@ -168,7 +168,7 @@ func NewEventProcessor(
 	}
 
 	for _, handler := range individualHandlers {
-		ep.AddHandler(handler)
+		ep.AddHandlers(handler)
 	}
 
 	return ep, nil
@@ -178,13 +178,13 @@ func NewEventProcessor(
 // It allows you to create separated customized Subscriber for every command handler.
 //
 // When handler groups are used, handler group is passed as handlerName.
-// Deprecated: please use EventsSubscriberConstructorWithParams instead.
+// Deprecated: please use EventProcessorSubscriberConstructorFn instead.
 type EventsSubscriberConstructor func(handlerName string) (message.Subscriber, error)
 
-// AddHandler adds a new EventHandler to the EventProcessor.
+// AddHandlers adds a new EventHandler to the EventProcessor.
 //
-// It's required to call AddHandlersToRouter to add the handlers to the router after calling AddHandler.
-func (p *EventProcessor) AddHandler(handler ...EventHandler) {
+// IMPORTANT: It's required to call AddHandlersToRouter to add the handlers to the router after calling AddHandlers.
+func (p *EventProcessor) AddHandlers(handler ...EventHandler) {
 	p.individualHandlers = append(p.individualHandlers, handler...)
 }
 
@@ -193,7 +193,7 @@ func (p *EventProcessor) AddHandler(handler ...EventHandler) {
 func (p EventProcessor) AddHandlersToRouter(r *message.Router) error {
 	handlers := p.Handlers()
 	if len(handlers) == 0 {
-		return errors.New("EventProcessor has no handlers, did you call AddHandler or AddHandlersGroup?")
+		return errors.New("EventProcessor has no handlers, did you call AddHandlers?")
 	}
 
 	for i := range p.individualHandlers {
@@ -206,11 +206,11 @@ func (p EventProcessor) AddHandlersToRouter(r *message.Router) error {
 		handlerName := handler.HandlerName()
 		eventName := p.config.Marshaler.Name(handler.NewEvent())
 
-		if p.config.GenerateHandlerSubscribeTopic == nil {
-			return errors.New("missing GenerateHandlerSubscribeTopic config option")
+		if p.config.GenerateSubscribeTopic == nil {
+			return errors.New("missing GenerateSubscribeTopic config option")
 		}
 
-		topicName, err := p.config.GenerateHandlerSubscribeTopic(GenerateEventHandlerSubscribeTopicParams{
+		topicName, err := p.config.GenerateSubscribeTopic(EventProcessorGenerateSubscribeTopicParams{
 			EventName:    eventName,
 			EventHandler: handler,
 		})
@@ -232,7 +232,7 @@ func (p EventProcessor) AddHandlersToRouter(r *message.Router) error {
 			return errors.New("missing SubscriberConstructor config option")
 		}
 
-		subscriber, err := p.config.SubscriberConstructor(EventsSubscriberConstructorParams{
+		subscriber, err := p.config.SubscriberConstructor(EventProcessorSubscriberConstructorParams{
 			HandlerName:  handlerName,
 			EventHandler: handler,
 		})
@@ -315,14 +315,14 @@ func (p EventProcessor) routerHandlerFunc(handler EventHandler, logger watermill
 			return err
 		}
 
-		handle := func(params OnEventHandleParams) error {
+		handle := func(params EventProcessorOnHandleParams) error {
 			return params.Handler.Handle(params.Message.Context(), params.Event)
 		}
 		if p.config.OnHandle != nil {
 			handle = p.config.OnHandle
 		}
 
-		err := handle(OnEventHandleParams{
+		err := handle(EventProcessorOnHandleParams{
 			Handler:   handler,
 			Event:     event,
 			EventName: messageEventName,
