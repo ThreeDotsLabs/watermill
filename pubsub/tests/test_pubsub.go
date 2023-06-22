@@ -28,10 +28,6 @@ import (
 
 var defaultTimeout = time.Second * 15
 
-func init() {
-	rand.Seed(3)
-}
-
 // TestPubSub is a universal test suite. Every Pub/Sub implementation should pass it
 // before it's considered production ready.
 //
