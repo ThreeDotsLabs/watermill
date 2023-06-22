@@ -207,20 +207,12 @@ func main() {
 	// List of available middlewares you can find in message/router/middleware.
 	router.AddMiddleware(middleware.Recoverer)
 
-	commandsConfig := cqrs.CommandConfig{
-		GeneratePublishTopic: func(params cqrs.GenerateCommandPublishTopicParams) (string, error) {
+	commandBus, err := cqrs.NewCommandBusWithConfig(commandsPublisher, cqrs.CommandBusConfig{
+		GeneratePublishTopic: func(params cqrs.CommandBusGeneratePublishTopicParams) (string, error) {
 			// we are using queue RabbitMQ config, so we need to have topic per command type
 			return params.CommandName, nil
 		},
-		GenerateHandlerSubscribeTopic: func(params cqrs.GenerateCommandHandlerSubscribeTopicParams) (string, error) {
-			// we are using queue RabbitMQ config, so we need to have topic per command type
-			return params.CommandName, nil
-		},
-		SubscriberConstructor: func(params cqrs.CommandsSubscriberConstructorParams) (message.Subscriber, error) {
-			// we can reuse subscriber, because all commands have separated topics
-			return commandsSubscriber, nil
-		},
-		OnSend: func(params cqrs.OnCommandSendParams) error {
+		OnSend: func(params cqrs.CommandBusOnSendParams) error {
 			logger.Info("Sending command", watermill.LogFields{
 				"command_name": params.CommandName,
 			})
@@ -229,7 +221,23 @@ func main() {
 
 			return nil
 		},
-		OnHandle: func(params cqrs.OnCommandHandleParams) error {
+		Marshaler: cqrsMarshaler,
+		Logger:    logger,
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	commandProcessor, err := cqrs.NewCommandProcessorWithConfig(cqrs.CommandProcessorConfig{
+		GenerateSubscribeTopic: func(params cqrs.CommandProcessorGenerateSubscribeTopicParams) (string, error) {
+			// we are using queue RabbitMQ config, so we need to have topic per command type
+			return params.CommandName, nil
+		},
+		SubscriberConstructor: func(params cqrs.CommandProcessorSubscriberConstructorParams) (message.Subscriber, error) {
+			// we can reuse subscriber, because all commands have separated topics
+			return commandsSubscriber, nil
+		},
+		OnHandle: func(params cqrs.CommandProcessorOnHandleParams) error {
 			start := time.Now()
 
 			err := params.Handler.Handle(params.Message.Context(), params.Command)
@@ -244,19 +252,12 @@ func main() {
 		},
 		Marshaler: cqrsMarshaler,
 		Logger:    logger,
-	}
-
-	commandBus, err := cqrs.NewCommandBusWithConfig(commandsPublisher, commandsConfig)
+	})
 	if err != nil {
 		panic(err)
 	}
 
-	commandProcessor, err := cqrs.NewCommandProcessorWithConfig(commandsConfig)
-	if err != nil {
-		panic(err)
-	}
-
-	eventsConfig := cqrs.EventConfig{
+	eventBus, err := cqrs.NewEventBusWithConfig(eventsPublisher, cqrs.EventBusConfig{
 		GeneratePublishTopic: func(params cqrs.GenerateEventPublishTopicParams) (string, error) {
 			// because we are using PubSub RabbitMQ config, we can use one topic for all events
 			return "events", nil
@@ -264,17 +265,7 @@ func main() {
 			// we can also use topic per event type
 			// return params.EventName, nil
 		},
-		GenerateHandlerGroupSubscribeTopic: func(params cqrs.GenerateEventHandlerGroupTopicParams) (string, error) {
-			return "events", nil
-		},
-		GroupSubscriberConstructor: func(params cqrs.EventsGroupSubscriberConstructorParams) (message.Subscriber, error) {
-			config := amqp.NewDurablePubSubConfig(
-				amqpAddress,
-				amqp.GenerateQueueNameTopicNameWithSuffix(params.EventGroupName),
-			)
 
-			return amqp.NewSubscriber(config, logger)
-		},
 		OnPublish: func(params cqrs.OnEventSendParams) error {
 			logger.Info("Publishing event", watermill.LogFields{
 				"event_name": params.EventName,
@@ -284,24 +275,10 @@ func main() {
 
 			return nil
 		},
-		OnHandle: func(params cqrs.OnEventHandleParams) error {
-			start := time.Now()
 
-			err := params.Handler.Handle(params.Message.Context(), params.Event)
-
-			logger.Info("Event handled", watermill.LogFields{
-				"event_name": params.EventName,
-				"duration":   time.Since(start),
-				"err":        err,
-			})
-
-			return err
-		},
 		Marshaler: cqrsMarshaler,
 		Logger:    logger,
-	}
-
-	eventBus, err := cqrs.NewEventBusWithConfig(eventsPublisher, eventsConfig)
+	})
 	if err != nil {
 		panic(err)
 	}
@@ -316,7 +293,36 @@ func main() {
 		panic(err)
 	}
 
-	eventProcessor, err := cqrs.NewEventProcessorWithConfig(eventsConfig)
+	eventProcessor, err := cqrs.NewEventGroupProcessorWithConfig(cqrs.EventGroupProcessorConfig{
+		GenerateSubscribeTopic: func(params cqrs.EventGroupProcessorGenerateSubscribeTopicParams) (string, error) {
+			return "events", nil
+		},
+		SubscriberConstructor: func(params cqrs.EventGroupProcessorSubscriberConstructorParams) (message.Subscriber, error) {
+			config := amqp.NewDurablePubSubConfig(
+				amqpAddress,
+				amqp.GenerateQueueNameTopicNameWithSuffix(params.EventGroupName),
+			)
+
+			return amqp.NewSubscriber(config, logger)
+		},
+
+		OnHandle: func(params cqrs.EventGroupProcessorOnHandleParams) error {
+			start := time.Now()
+
+			err := params.Handler.Handle(params.Message.Context(), params.Event)
+
+			logger.Info("Event handled", watermill.LogFields{
+				"event_name": params.EventName,
+				"duration":   time.Since(start),
+				"err":        err,
+			})
+
+			return err
+		},
+
+		Marshaler: cqrsMarshaler,
+		Logger:    logger,
+	})
 	if err != nil {
 		panic(err)
 	}

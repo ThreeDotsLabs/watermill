@@ -22,7 +22,7 @@ The `cqrs` component provides some useful abstractions built on top of Pub/Sub a
 
 You don't need to implement entire CQRS. It's very common to just use event part of this component to build event-driven application.
 
-### Glossary
+### Building blocks
 
 #### Event
 
@@ -34,22 +34,36 @@ The event represents something that already took place. Events are immutable.
 {{% load-snippet-partial file="src-link/components/cqrs/event_bus.go" first_line_contains="// EventBus" last_line_contains="type EventBus" padding_after="0" %}}
 {{% /render-md %}}
 
+{{% render-md %}}
+{{% load-snippet-partial file="src-link/components/cqrs/event_bus.go" first_line_contains="type EventBusConfig" last_line_contains="func (c *EventBusConfig) setDefaults()" padding_after="4" %}}
+{{% /render-md %}}
+
 #### Event Processor
 
 {{% render-md %}}
 {{% load-snippet-partial file="src-link/components/cqrs/event_processor.go" first_line_contains="// EventProcessor" last_line_contains="type EventProcessor" padding_after="0" %}}
 {{% /render-md %}}
 
+{{% render-md %}}
+{{% load-snippet-partial file="src-link/components/cqrs/event_processor.go" first_line_contains="type EventProcessorConfig" last_line_contains="func (c *EventProcessorConfig) setDefaults()" padding_after="4" %}}
+{{% /render-md %}}
+
+#### Event Group Processor
+
+{{% render-md %}}
+{{% load-snippet-partial file="src-link/components/cqrs/event_processor_group.go" first_line_contains="// EventGroupProcessor" last_line_contains="type EventGroupProcessor" padding_after="0" %}}
+{{% /render-md %}}
+
+{{% render-md %}}
+{{% load-snippet-partial file="src-link/components/cqrs/event_processor_group.go" first_line_contains="type EventGroupProcessorConfig" last_line_contains="func (c *EventGroupProcessorConfig) setDefaults()" padding_after="4" %}}
+{{% /render-md %}}
+
+Learn more in [Event Group Processor](#event-handler-groups).
+
 #### Event Handler
 
 {{% render-md %}}
 {{% load-snippet-partial file="src-link/components/cqrs/event_handler.go" first_line_contains="// EventHandler" last_line_contains="type EventHandler" padding_after="0" %}}
-{{% /render-md %}}
-
-#### Event config
-
-{{% render-md %}}
-{{% load-snippet-partial file="src-link/components/cqrs/event_config.go" first_line_contains="// EventConfig" last_line_contains="func (c *EventConfig) setDefaults() " padding_after="5" %}}
 {{% /render-md %}}
 
 #### Command
@@ -62,22 +76,24 @@ The command is a simple data structure, representing the request for executing s
 {{% load-snippet-partial file="src-link/components/cqrs/command_bus.go" first_line_contains="// CommandBus" last_line_contains="type CommandBus" padding_after="0" %}}
 {{% /render-md %}}
 
+{{% render-md %}}
+{{% load-snippet-partial file="src-link/components/cqrs/command_bus.go" first_line_contains="type CommandBusConfig" last_line_contains="func (c *CommandBusConfig) setDefaults()" padding_after="4" %}}
+{{% /render-md %}}
+
 #### Command Processor
 
 {{% render-md %}}
 {{% load-snippet-partial file="src-link/components/cqrs/command_processor.go" first_line_contains="// CommandProcessor" last_line_contains="type CommandProcessor" padding_after="0" %}}
 {{% /render-md %}}
 
+{{% render-md %}}
+{{% load-snippet-partial file="src-link/components/cqrs/command_processor.go" first_line_contains="type CommandProcessorConfig" last_line_contains="func (c *CommandProcessorConfig) setDefaults()" padding_after="4" %}}
+{{% /render-md %}}
+
 #### Command Handler
 
 {{% render-md %}}
 {{% load-snippet-partial file="src-link/components/cqrs/command_handler.go" first_line_contains="// CommandHandler" last_line_contains="type CommandHandler" padding_after="0" %}}
-{{% /render-md %}}
-
-#### Command config
-
-{{% render-md %}}
-{{% load-snippet-partial file="src-link/components/cqrs/command_config.go" first_line_contains="// CommandConfig" last_line_contains="func (c *CommandConfig) setDefaults() " padding_after="5" %}}
 {{% /render-md %}}
 
 #### Command and Event Marshaler
