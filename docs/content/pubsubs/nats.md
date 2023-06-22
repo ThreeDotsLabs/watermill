@@ -27,9 +27,19 @@ NATS Jetstream is a data streaming system powered by NATS, and written in the Go
 
 #### Configuration
 
+Configuration is done through PublisherConfig and SubscriberConfig types.  These share a common JetStreamConfig.  To use the experimental nats-core support, set Disabled=true.
+
+{{% render-md %}}
+{{% load-snippet-partial file="src-link/watermill-nats/pkg/nats/jetstream.go" first_line_contains="// JetStreamConfig contains" last_line_contains="type DurableCalculator =" %}}
+{{% /render-md %}}
+
+PublisherConfig:
+
 {{% render-md %}}
 {{% load-snippet-partial file="src-link/watermill-nats/pkg/nats/publisher.go" first_line_contains="type PublisherConfig struct" last_line_contains="type Publisher struct {" %}}
 {{% /render-md %}}
+
+Subscriber Config:
 
 {{% render-md %}}
 {{% load-snippet-partial file="src-link/watermill-nats/pkg/nats/subscriber.go" first_line_contains="type SubscriberConfig struct" last_line_contains="type Subscriber struct" %}}
