@@ -3,6 +3,7 @@ package cqrs_test
 import (
 	"context"
 	"fmt"
+	"sync/atomic"
 	"testing"
 
 	"github.com/pkg/errors"
@@ -223,7 +224,7 @@ func TestNewEventProcessor_OnHandle(t *testing.T) {
 		return nil
 	})
 
-	onHandleCalled := 0
+	onHandleCalled := int64(0)
 
 	config := cqrs.EventProcessorConfig{
 		GenerateSubscribeTopic: func(params cqrs.EventProcessorGenerateSubscribeTopicParams) (string, error) {
@@ -233,7 +234,7 @@ func TestNewEventProcessor_OnHandle(t *testing.T) {
 			return mockSub, nil
 		},
 		OnHandle: func(params cqrs.EventProcessorOnHandleParams) error {
-			onHandleCalled++
+			atomic.AddInt64(&onHandleCalled, 1)
 
 			assert.IsType(t, &TestEvent{}, params.Event)
 			assert.Equal(t, "cqrs_test.TestEvent", params.EventName)
@@ -284,7 +285,7 @@ func TestNewEventProcessor_OnHandle(t *testing.T) {
 		// nack received
 	}
 
-	assert.Equal(t, 2, onHandleCalled)
+	assert.EqualValues(t, 2, onHandleCalled)
 }
 
 type UnknownEvent struct {

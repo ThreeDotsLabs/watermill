@@ -3,6 +3,7 @@ package cqrs_test
 import (
 	"context"
 	"fmt"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -106,7 +107,7 @@ func TestNewEventProcessor_OnGroupHandle(t *testing.T) {
 		return nil
 	})
 
-	onHandleCalled := 0
+	onHandleCalled := int64(0)
 
 	config := cqrs.EventGroupProcessorConfig{
 		GenerateSubscribeTopic: func(params cqrs.EventGroupProcessorGenerateSubscribeTopicParams) (string, error) {
@@ -116,7 +117,7 @@ func TestNewEventProcessor_OnGroupHandle(t *testing.T) {
 			return mockSub, nil
 		},
 		OnHandle: func(params cqrs.EventGroupProcessorOnHandleParams) error {
-			onHandleCalled++
+			atomic.AddInt64(&onHandleCalled, 1)
 
 			assert.Equal(t, "some_group", params.GroupName)
 
@@ -170,7 +171,7 @@ func TestNewEventProcessor_OnGroupHandle(t *testing.T) {
 		// nack received
 	}
 
-	assert.Equal(t, 2, onHandleCalled)
+	assert.EqualValues(t, 2, onHandleCalled)
 }
 
 func TestNewEventProcessor_AckOnUnknownEvent_handler_group(t *testing.T) {

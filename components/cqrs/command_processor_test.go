@@ -400,6 +400,7 @@ func TestNewCommandProcessor_OnHandle(t *testing.T) {
 	cp.AddHandler(handler)
 
 	err = cp.AddHandlersToRouter(router)
+	require.NoError(t, err)
 
 	go func() {
 		err := router.Run(context.Background())
