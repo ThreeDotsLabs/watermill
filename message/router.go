@@ -391,6 +391,8 @@ func (r *Router) RunHandlers(ctx context.Context) error {
 	r.handlersLock.Lock()
 	defer r.handlersLock.Unlock()
 
+	r.logger.Info("Running router handlers", watermill.LogFields{"count": len(r.handlers)})
+
 	for name, h := range r.handlers {
 		name := name
 		h := h
