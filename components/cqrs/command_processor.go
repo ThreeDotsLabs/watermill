@@ -1,6 +1,7 @@
 package cqrs
 
 import (
+	stdErrors "errors"
 	"fmt"
 
 	"github.com/pkg/errors"
@@ -9,17 +10,107 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
+type CommandProcessorConfig struct {
+	// GenerateHandlerSubscribeTopic is used to generate topic for subscribing command.
+	GenerateHandlerSubscribeTopic GenerateCommandHandlerSubscribeTopicFn
+
+	// SubscriberConstructor is used to create subscriber for CommandHandler.
+	SubscriberConstructor CommandsSubscriberConstructorWithParams
+
+	// OnHandle is called before handling command.
+	// OnHandle works in a similar way to middlewares: you can inject additional logic before and after handling a command.
+	//
+	// Because of that, you need to explicitly call params.Handler.Handle() to handle the command.
+	//   func(params OnCommandHandleParams) (err error) {
+	//       // logic before handle
+	//		 //  (...)
+	//
+	//	     err := params.Handler.Handle(params.Message.Context(), params.Command)
+	//
+	//       // logic after handle
+	//		 //  (...)
+	//
+	//		 return err
+	//	 }
+	//
+	// This option is not required.
+	OnHandle OnCommandHandleFn
+
+	// Marshaler is used to marshal and unmarshal commands.
+	// It is required.
+	Marshaler CommandEventMarshaler
+
+	// Logger instance used to log.
+	// If not provided, watermill.NopLogger is used.
+	Logger watermill.LoggerAdapter
+
+	// If true, CommandProcessor will ack messages even if CommandHandler returns an error.
+	// If RequestReplyEnabled is enabled and sending reply fails, the message will be nack-ed anyway.
+	AckCommandHandlingErrors bool
+}
+
+func (c *CommandProcessorConfig) setDefaults() {
+	if c.Logger == nil {
+		c.Logger = watermill.NopLogger{}
+	}
+}
+
+func (c CommandProcessorConfig) Validate() error {
+	var err error
+
+	if c.Marshaler == nil {
+		err = stdErrors.Join(err, errors.New("missing Marshaler"))
+	}
+
+	if c.GenerateHandlerSubscribeTopic == nil {
+		err = stdErrors.Join(err, errors.New("missing GenerateHandlerSubscribeTopic"))
+	}
+	if c.SubscriberConstructor == nil {
+		err = stdErrors.Join(err, errors.New("missing SubscriberConstructor"))
+	}
+
+	return err
+}
+
+type GenerateCommandHandlerSubscribeTopicFn func(GenerateCommandHandlerSubscribeTopicParams) (string, error)
+
+type GenerateCommandHandlerSubscribeTopicParams struct {
+	CommandName    string
+	CommandHandler CommandHandler
+}
+
+// CommandsSubscriberConstructorWithParams creates subscriber for CommandHandler.
+// It allows you to create a separate customized Subscriber for every command handler.
+type CommandsSubscriberConstructorWithParams func(CommandsSubscriberConstructorParams) (message.Subscriber, error)
+
+type CommandsSubscriberConstructorParams struct {
+	HandlerName string
+	Handler     CommandHandler
+}
+
+type OnCommandHandleFn func(params OnCommandHandleParams) error
+
+type OnCommandHandleParams struct {
+	Handler CommandHandler
+
+	CommandName string
+	Command     any
+
+	// Message is never nil and can be modified.
+	Message *message.Message
+}
+
 // CommandProcessor determines which CommandHandler should handle the command received from the command bus.
 type CommandProcessor struct {
 	handlers []CommandHandler
 
-	config CommandConfig
+	config CommandProcessorConfig
 }
 
-func NewCommandProcessorWithConfig(config CommandConfig) (*CommandProcessor, error) {
+func NewCommandProcessorWithConfig(config CommandProcessorConfig) (*CommandProcessor, error) {
 	config.setDefaults()
 
-	if err := config.ValidateForProcessor(); err != nil {
+	if err := config.Validate(); err != nil {
 		return nil, err
 	}
 
@@ -47,7 +138,7 @@ func NewCommandProcessor(
 		return nil, errors.New("missing subscriberConstructor")
 	}
 
-	cp, err := NewCommandProcessorWithConfig(CommandConfig{
+	cp, err := NewCommandProcessorWithConfig(CommandProcessorConfig{
 		GenerateHandlerSubscribeTopic: func(params GenerateCommandHandlerSubscribeTopicParams) (string, error) {
 			return generateTopic(params.CommandName), nil
 		},
@@ -67,6 +158,12 @@ func NewCommandProcessor(
 
 	return cp, nil
 }
+
+// CommandsSubscriberConstructor creates subscriber for CommandHandler.
+// It allows you to create a separate customized Subscriber for every command handler.
+//
+// Deprecated: please use CommandsSubscriberConstructorWithParams instead.
+type CommandsSubscriberConstructor func(handlerName string) (message.Subscriber, error)
 
 // AddHandler adds a new CommandHandler to the CommandProcessor.
 //

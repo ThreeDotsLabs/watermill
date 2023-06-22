@@ -15,8 +15,69 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestCommandProcessorConfig_Validate(t *testing.T) {
+	testCases := []struct {
+		Name              string
+		ModifyValidConfig func(*cqrs.CommandProcessorConfig)
+		ExpectedErr       error
+	}{
+		{
+			Name:              "valid_config",
+			ModifyValidConfig: nil,
+			ExpectedErr:       nil,
+		},
+		{
+			Name: "missing_Marshaler",
+			ModifyValidConfig: func(c *cqrs.CommandProcessorConfig) {
+				c.Marshaler = nil
+			},
+			ExpectedErr: errors.Errorf("missing Marshaler"),
+		},
+		{
+			Name: "missing_SubscriberConstructor",
+			ModifyValidConfig: func(c *cqrs.CommandProcessorConfig) {
+				c.SubscriberConstructor = nil
+			},
+			ExpectedErr: errors.Errorf("missing SubscriberConstructor"),
+		},
+		{
+			Name: "missing_GenerateHandlerSubscribeTopic",
+			ModifyValidConfig: func(c *cqrs.CommandProcessorConfig) {
+				c.GenerateHandlerSubscribeTopic = nil
+			},
+			ExpectedErr: errors.Errorf("missing GenerateHandlerSubscribeTopic"),
+		},
+	}
+	for i := range testCases {
+		tc := testCases[i]
+
+		t.Run(tc.Name, func(t *testing.T) {
+			validConfig := cqrs.CommandProcessorConfig{
+				GenerateHandlerSubscribeTopic: func(params cqrs.GenerateCommandHandlerSubscribeTopicParams) (string, error) {
+					return "", nil
+				},
+				SubscriberConstructor: func(params cqrs.CommandsSubscriberConstructorParams) (message.Subscriber, error) {
+					return nil, nil
+				},
+				Marshaler: cqrs.JSONMarshaler{},
+			}
+
+			if tc.ModifyValidConfig != nil {
+				tc.ModifyValidConfig(&validConfig)
+			}
+
+			err := validConfig.Validate()
+			if tc.ExpectedErr == nil {
+				assert.NoError(t, err)
+			} else {
+				assert.EqualError(t, err, tc.ExpectedErr.Error())
+			}
+		})
+	}
+}
+
 func TestNewCommandProcessor(t *testing.T) {
-	commandConfig := cqrs.CommandConfig{
+	config := cqrs.CommandProcessorConfig{
 		GenerateHandlerSubscribeTopic: func(params cqrs.GenerateCommandHandlerSubscribeTopicParams) (string, error) {
 			return "", nil
 		},
@@ -25,16 +86,16 @@ func TestNewCommandProcessor(t *testing.T) {
 		},
 		Marshaler: cqrs.JSONMarshaler{},
 	}
-	require.NoError(t, commandConfig.ValidateForProcessor())
+	require.NoError(t, config.Validate())
 
-	cp, err := cqrs.NewCommandProcessorWithConfig(commandConfig)
+	cp, err := cqrs.NewCommandProcessorWithConfig(config)
 	assert.NotNil(t, cp)
 	assert.NoError(t, err)
 
-	commandConfig.SubscriberConstructor = nil
-	require.Error(t, commandConfig.ValidateForProcessor())
+	config.SubscriberConstructor = nil
+	require.Error(t, config.Validate())
 
-	cp, err = cqrs.NewCommandProcessorWithConfig(commandConfig)
+	cp, err = cqrs.NewCommandProcessorWithConfig(config)
 	assert.Nil(t, cp)
 	assert.Error(t, err)
 }
@@ -60,7 +121,7 @@ func TestCommandProcessor_non_pointer_command(t *testing.T) {
 	handler := nonPointerCommandHandler{}
 
 	commandProcessor, err := cqrs.NewCommandProcessorWithConfig(
-		cqrs.CommandConfig{
+		cqrs.CommandProcessorConfig{
 			GenerateHandlerSubscribeTopic: func(params cqrs.GenerateCommandHandlerSubscribeTopicParams) (string, error) {
 				return "", nil
 			},
@@ -87,7 +148,7 @@ func TestCommandProcessor_multiple_same_command_handlers(t *testing.T) {
 	ts := NewTestServices()
 
 	commandProcessor, err := cqrs.NewCommandProcessorWithConfig(
-		cqrs.CommandConfig{
+		cqrs.CommandProcessorConfig{
 			GenerateHandlerSubscribeTopic: func(params cqrs.GenerateCommandHandlerSubscribeTopicParams) (string, error) {
 				return "", nil
 			},
@@ -150,10 +211,7 @@ func TestCommandProcessor_AckCommandHandlingErrors_option_true(t *testing.T) {
 	}
 
 	commandProcessor, err := cqrs.NewCommandProcessorWithConfig(
-		cqrs.CommandConfig{
-			GeneratePublishTopic: func(params cqrs.GenerateCommandPublishTopicParams) (string, error) {
-				return "commands", nil
-			},
+		cqrs.CommandProcessorConfig{
 			GenerateHandlerSubscribeTopic: func(params cqrs.GenerateCommandHandlerSubscribeTopicParams) (string, error) {
 				return "commands", nil
 			},
@@ -231,10 +289,7 @@ func TestCommandProcessor_AckCommandHandlingErrors_option_false(t *testing.T) {
 	}
 
 	commandProcessor, err := cqrs.NewCommandProcessorWithConfig(
-		cqrs.CommandConfig{
-			GeneratePublishTopic: func(params cqrs.GenerateCommandPublishTopicParams) (string, error) {
-				return "commands", nil
-			},
+		cqrs.CommandProcessorConfig{
 			GenerateHandlerSubscribeTopic: func(params cqrs.GenerateCommandHandlerSubscribeTopicParams) (string, error) {
 				return "commands", nil
 			},
@@ -310,11 +365,8 @@ func TestNewCommandProcessor_OnHandle(t *testing.T) {
 
 	onHandleCalled := 0
 
-	config := cqrs.CommandConfig{
+	config := cqrs.CommandProcessorConfig{
 		GenerateHandlerSubscribeTopic: func(params cqrs.GenerateCommandHandlerSubscribeTopicParams) (string, error) {
-			return "commands", nil
-		},
-		GeneratePublishTopic: func(params cqrs.GenerateCommandPublishTopicParams) (string, error) {
 			return "commands", nil
 		},
 		SubscriberConstructor: func(params cqrs.CommandsSubscriberConstructorParams) (message.Subscriber, error) {
@@ -377,7 +429,7 @@ func TestNewCommandProcessor_OnHandle(t *testing.T) {
 func TestCommandProcessor_AddHandlersToRouter_missing_handlers(t *testing.T) {
 	ts := NewTestServices()
 
-	cp, err := cqrs.NewCommandProcessorWithConfig(cqrs.CommandConfig{
+	cp, err := cqrs.NewCommandProcessorWithConfig(cqrs.CommandProcessorConfig{
 		GenerateHandlerSubscribeTopic: func(params cqrs.GenerateCommandHandlerSubscribeTopicParams) (string, error) {
 			return "", nil
 		},

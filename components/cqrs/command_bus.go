@@ -2,27 +2,85 @@ package cqrs
 
 import (
 	"context"
+	stdErrors "errors"
 
+	"github.com/ThreeDotsLabs/watermill"
 	"github.com/pkg/errors"
 
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
+type CommandBusConfig struct {
+	// GeneratePublishTopic is used to generate topic for publishing command.
+	GeneratePublishTopic GenerateCommandPublishTopicFn
+
+	// OnSend is called before publishing the command.
+	// The *message.Message can be modified.
+	//
+	// This option is not required.
+	OnSend OnCommandSendFn
+
+	// Marshaler is used to marshal and unmarshal commands.
+	// It is required.
+	Marshaler CommandEventMarshaler
+
+	// Logger instance used to log.
+	// If not provided, watermill.NopLogger is used.
+	Logger watermill.LoggerAdapter
+}
+
+func (c *CommandBusConfig) setDefaults() {
+	if c.Logger == nil {
+		c.Logger = watermill.NopLogger{}
+	}
+}
+
+func (c CommandBusConfig) Validate() error {
+	var err error
+
+	if c.Marshaler == nil {
+		err = stdErrors.Join(err, errors.New("missing Marshaler"))
+	}
+
+	if c.GeneratePublishTopic == nil {
+		err = stdErrors.Join(err, errors.New("missing GeneratePublishTopic"))
+	}
+
+	return err
+}
+
+type GenerateCommandPublishTopicFn func(GenerateCommandPublishTopicParams) (string, error)
+
+type GenerateCommandPublishTopicParams struct {
+	CommandName string
+	Command     any
+}
+
+type OnCommandSendFn func(params OnCommandSendParams) error
+
+type OnCommandSendParams struct {
+	CommandName string
+	Command     any
+
+	// Message is never nil and can be modified.
+	Message *message.Message
+}
+
 // CommandBus transports commands to command handlers.
 type CommandBus struct {
 	publisher message.Publisher
 
-	config CommandConfig
+	config CommandBusConfig
 }
 
 // NewCommandBusWithConfig creates a new CommandBus.
-func NewCommandBusWithConfig(publisher message.Publisher, config CommandConfig) (*CommandBus, error) {
+func NewCommandBusWithConfig(publisher message.Publisher, config CommandBusConfig) (*CommandBus, error) {
 	if publisher == nil {
 		return nil, errors.New("missing publisher")
 	}
 
 	config.setDefaults()
-	if err := config.ValidateForBus(); err != nil {
+	if err := config.Validate(); err != nil {
 		return nil, errors.Wrap(err, "invalid config")
 	}
 
@@ -46,7 +104,7 @@ func NewCommandBus(
 		return nil, errors.New("missing marshaler")
 	}
 
-	return &CommandBus{publisher, CommandConfig{
+	return &CommandBus{publisher, CommandBusConfig{
 		GeneratePublishTopic: func(params GenerateCommandPublishTopicParams) (string, error) {
 			return generateTopic(params.CommandName), nil
 		},

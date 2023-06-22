@@ -2,6 +2,7 @@ package cqrs_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/ThreeDotsLabs/watermill/components/cqrs"
@@ -9,6 +10,57 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestEventBusConfig_Validate(t *testing.T) {
+	testCases := []struct {
+		Name              string
+		ModifyValidConfig func(*cqrs.EventBusConfig)
+		ExpectedErr       error
+	}{
+		{
+			Name:              "valid_config",
+			ModifyValidConfig: nil,
+			ExpectedErr:       nil,
+		},
+		{
+			Name: "missing_GenerateEventPublishTopic",
+			ModifyValidConfig: func(config *cqrs.EventBusConfig) {
+				config.GeneratePublishTopic = nil
+			},
+			ExpectedErr: fmt.Errorf("missing GenerateHandlerTopic"),
+		},
+		{
+			Name: "missing_marshaler",
+			ModifyValidConfig: func(config *cqrs.EventBusConfig) {
+				config.Marshaler = nil
+			},
+			ExpectedErr: fmt.Errorf("missing Marshaler"),
+		},
+	}
+	for i := range testCases {
+		tc := testCases[i]
+
+		t.Run(tc.Name, func(t *testing.T) {
+			validConfig := cqrs.EventBusConfig{
+				GeneratePublishTopic: func(params cqrs.GenerateEventPublishTopicParams) (string, error) {
+					return "", nil
+				},
+				Marshaler: cqrs.JSONMarshaler{},
+			}
+
+			if tc.ModifyValidConfig != nil {
+				tc.ModifyValidConfig(&validConfig)
+			}
+
+			err := validConfig.Validate()
+			if tc.ExpectedErr == nil {
+				assert.NoError(t, err)
+			} else {
+				assert.EqualError(t, err, tc.ExpectedErr.Error())
+			}
+		})
+	}
+}
 
 func TestNewEventBus(t *testing.T) {
 	pub := newPublisherStub()
@@ -73,7 +125,7 @@ func TestEventBus_Send_OnPublish(t *testing.T) {
 
 	eb, err := cqrs.NewEventBusWithConfig(
 		publisher,
-		cqrs.EventConfig{
+		cqrs.EventBusConfig{
 			GeneratePublishTopic: func(params cqrs.GenerateEventPublishTopicParams) (string, error) {
 				return "whatever", nil
 			},
@@ -99,7 +151,7 @@ func TestEventBus_Send_OnPublish_error(t *testing.T) {
 
 	eb, err := cqrs.NewEventBusWithConfig(
 		publisher,
-		cqrs.EventConfig{
+		cqrs.EventBusConfig{
 			GeneratePublishTopic: func(params cqrs.GenerateEventPublishTopicParams) (string, error) {
 				return "whatever", nil
 			},

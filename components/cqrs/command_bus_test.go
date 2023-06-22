@@ -11,26 +11,77 @@ import (
 	"github.com/ThreeDotsLabs/watermill/components/cqrs"
 )
 
+func TestCommandBusConfig_Validate(t *testing.T) {
+	testCases := []struct {
+		Name              string
+		ModifyValidConfig func(*cqrs.CommandBusConfig)
+		ExpectedErr       error
+	}{
+		{
+			Name:              "valid_config",
+			ModifyValidConfig: nil,
+			ExpectedErr:       nil,
+		},
+		{
+			Name: "missing_Marshaler",
+			ModifyValidConfig: func(c *cqrs.CommandBusConfig) {
+				c.Marshaler = nil
+			},
+			ExpectedErr: errors.Errorf("missing Marshaler"),
+		},
+		{
+			Name: "missing_GeneratePublishTopic",
+			ModifyValidConfig: func(c *cqrs.CommandBusConfig) {
+				c.GeneratePublishTopic = nil
+			},
+			ExpectedErr: errors.Errorf("missing GeneratePublishTopic"),
+		},
+	}
+	for i := range testCases {
+		tc := testCases[i]
+
+		t.Run(tc.Name, func(t *testing.T) {
+			validConfig := cqrs.CommandBusConfig{
+				GeneratePublishTopic: func(params cqrs.GenerateCommandPublishTopicParams) (string, error) {
+					return "", nil
+				},
+				Marshaler: cqrs.JSONMarshaler{},
+			}
+
+			if tc.ModifyValidConfig != nil {
+				tc.ModifyValidConfig(&validConfig)
+			}
+
+			err := validConfig.Validate()
+			if tc.ExpectedErr == nil {
+				assert.NoError(t, err)
+			} else {
+				assert.EqualError(t, err, tc.ExpectedErr.Error())
+			}
+		})
+	}
+}
+
 func TestNewCommandBus(t *testing.T) {
 	pub := newPublisherStub()
 
-	commandConfig := cqrs.CommandConfig{
+	config := cqrs.CommandBusConfig{
 		GeneratePublishTopic: func(params cqrs.GenerateCommandPublishTopicParams) (string, error) {
 			return "", nil
 		},
 		Marshaler: cqrs.JSONMarshaler{},
 	}
 
-	require.NoError(t, commandConfig.ValidateForBus())
+	require.NoError(t, config.Validate())
 
-	cb, err := cqrs.NewCommandBusWithConfig(pub, commandConfig)
+	cb, err := cqrs.NewCommandBusWithConfig(pub, config)
 	assert.NotNil(t, cb)
 	assert.NoError(t, err)
 
-	commandConfig.GeneratePublishTopic = nil
-	require.Error(t, commandConfig.ValidateForBus())
+	config.GeneratePublishTopic = nil
+	require.Error(t, config.Validate())
 
-	cb, err = cqrs.NewCommandBusWithConfig(pub, commandConfig)
+	cb, err = cqrs.NewCommandBusWithConfig(pub, config)
 	assert.Nil(t, cb)
 	assert.Error(t, err)
 }
@@ -42,7 +93,7 @@ func TestCommandBus_Send_ContextPropagation(t *testing.T) {
 
 	commandBus, err := cqrs.NewCommandBusWithConfig(
 		publisher,
-		cqrs.CommandConfig{
+		cqrs.CommandBusConfig{
 			GeneratePublishTopic: func(params cqrs.GenerateCommandPublishTopicParams) (string, error) {
 				return "whatever", nil
 			},
@@ -62,7 +113,7 @@ func TestCommandBus_Send_ContextPropagation(t *testing.T) {
 func TestCommandBus_Send_topic_name(t *testing.T) {
 	cb, err := cqrs.NewCommandBusWithConfig(
 		assertPublishTopicPublisher{ExpectedTopic: "cqrs_test.TestCommand", T: t},
-		cqrs.CommandConfig{
+		cqrs.CommandBusConfig{
 			GeneratePublishTopic: func(params cqrs.GenerateCommandPublishTopicParams) (string, error) {
 				return params.CommandName, nil
 			},
@@ -80,7 +131,7 @@ func TestCommandBus_Send_OnSend(t *testing.T) {
 
 	cb, err := cqrs.NewCommandBusWithConfig(
 		publisher,
-		cqrs.CommandConfig{
+		cqrs.CommandBusConfig{
 			GeneratePublishTopic: func(params cqrs.GenerateCommandPublishTopicParams) (string, error) {
 				return "whatever", nil
 			},
@@ -106,7 +157,7 @@ func TestCommandBus_Send_OnSend_error(t *testing.T) {
 
 	cb, err := cqrs.NewCommandBusWithConfig(
 		publisher,
-		cqrs.CommandConfig{
+		cqrs.CommandBusConfig{
 			GeneratePublishTopic: func(params cqrs.GenerateCommandPublishTopicParams) (string, error) {
 				return "whatever", nil
 			},

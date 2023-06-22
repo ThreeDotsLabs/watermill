@@ -76,15 +76,7 @@ func createCqrsComponents(t *testing.T, commandHandler *CaptureCommandHandler, e
 	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
 	require.NoError(t, err)
 
-	eventConfig := cqrs.EventConfig{
-		GeneratePublishTopic: func(params cqrs.GenerateEventPublishTopicParams) (string, error) {
-			assert.Equal(t, "cqrs_test.TestEvent", params.EventName)
-
-			assert.IsType(t, &TestEvent{}, params.Event)
-			assert.NotEmpty(t, params.Event)
-
-			return params.EventName, nil
-		},
+	eventProcessor, err := cqrs.NewEventProcessorWithConfig(cqrs.EventProcessorConfig{
 		GenerateHandlerSubscribeTopic: func(params cqrs.GenerateEventHandlerSubscribeTopicParams) (string, error) {
 			return params.EventName, nil
 		},
@@ -99,8 +91,7 @@ func createCqrsComponents(t *testing.T, commandHandler *CaptureCommandHandler, e
 		},
 		Marshaler: ts.Marshaler,
 		Logger:    ts.Logger,
-	}
-	eventProcessor, err := cqrs.NewEventProcessorWithConfig(eventConfig)
+	})
 	require.NoError(t, err)
 
 	eventProcessor.AddHandler(eventHandler)
@@ -108,34 +99,32 @@ func createCqrsComponents(t *testing.T, commandHandler *CaptureCommandHandler, e
 	err = eventProcessor.AddHandlersToRouter(router)
 	require.NoError(t, err)
 
-	eventBus, err := cqrs.NewEventBus(
+	eventBus, err := cqrs.NewEventBusWithConfig(
 		ts.EventsPubSub,
-		func(eventName string) string {
-			assert.Equal(t, "cqrs_test.TestEvent", eventName)
+		cqrs.EventBusConfig{
+			GeneratePublishTopic: func(params cqrs.GenerateEventPublishTopicParams) (string, error) {
+				assert.Equal(t, "cqrs_test.TestEvent", params.EventName)
 
-			return eventName
+				switch cmd := params.Event.(type) {
+				case *TestEvent:
+					assert.NotEmpty(t, cmd.ID)
+				case TestEvent:
+					assert.NotEmpty(t, cmd.ID)
+				default:
+					assert.Fail(t, "unexpected command type: %T", cmd)
+				}
+
+				assert.NotEmpty(t, params.Event)
+
+				return params.EventName, nil
+			},
+			Marshaler: ts.Marshaler,
+			Logger:    ts.Logger,
 		},
-		ts.Marshaler,
 	)
 	require.NoError(t, err)
 
-	commandConfig := cqrs.CommandConfig{
-		GeneratePublishTopic: func(params cqrs.GenerateCommandPublishTopicParams) (string, error) {
-			assert.Equal(t, "cqrs_test.TestCommand", params.CommandName)
-
-			switch cmd := params.Command.(type) {
-			case *TestCommand:
-				assert.NotEmpty(t, cmd.ID)
-			case TestCommand:
-				assert.NotEmpty(t, cmd.ID)
-			default:
-				assert.Fail(t, "unexpected command type: %T", cmd)
-			}
-
-			assert.NotNil(t, params.Command)
-
-			return params.CommandName, nil
-		},
+	commandProcessor, err := cqrs.NewCommandProcessorWithConfig(cqrs.CommandProcessorConfig{
 		GenerateHandlerSubscribeTopic: func(params cqrs.GenerateCommandHandlerSubscribeTopicParams) (string, error) {
 			assert.Equal(t, "cqrs_test.TestCommand", params.CommandName)
 
@@ -152,9 +141,7 @@ func createCqrsComponents(t *testing.T, commandHandler *CaptureCommandHandler, e
 		Marshaler:                ts.Marshaler,
 		Logger:                   ts.Logger,
 		AckCommandHandlingErrors: false,
-	}
-
-	commandProcessor, err := cqrs.NewCommandProcessorWithConfig(commandConfig)
+	})
 	require.NoError(t, err)
 
 	commandProcessor.AddHandler(commandHandler)
@@ -162,7 +149,26 @@ func createCqrsComponents(t *testing.T, commandHandler *CaptureCommandHandler, e
 	err = commandProcessor.AddHandlersToRouter(router)
 	require.NoError(t, err)
 
-	commandBus, err := cqrs.NewCommandBusWithConfig(ts.CommandsPubSub, commandConfig)
+	commandBus, err := cqrs.NewCommandBusWithConfig(ts.CommandsPubSub, cqrs.CommandBusConfig{
+		GeneratePublishTopic: func(params cqrs.GenerateCommandPublishTopicParams) (string, error) {
+			assert.Equal(t, "cqrs_test.TestCommand", params.CommandName)
+
+			switch cmd := params.Command.(type) {
+			case *TestCommand:
+				assert.NotEmpty(t, cmd.ID)
+			case TestCommand:
+				assert.NotEmpty(t, cmd.ID)
+			default:
+				assert.Fail(t, "unexpected command type: %T", cmd)
+			}
+
+			assert.NotNil(t, params.Command)
+
+			return params.CommandName, nil
+		},
+		Marshaler: ts.Marshaler,
+		Logger:    ts.Logger,
+	})
 	require.NoError(t, err)
 
 	go func() {
