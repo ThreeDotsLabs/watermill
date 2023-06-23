@@ -1,6 +1,6 @@
 +++
 title = "CQRS Component"
-description = "Command Query Responsibility Segregation (CQRS) Component"
+description = "Build CQRS and Event-Driven applications"
 date = 2019-02-12T12:47:30+01:00
 weight = -400
 draft = false

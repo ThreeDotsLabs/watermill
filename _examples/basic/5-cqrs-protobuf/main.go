@@ -228,31 +228,34 @@ func main() {
 		panic(err)
 	}
 
-	commandProcessor, err := cqrs.NewCommandProcessorWithConfig(cqrs.CommandProcessorConfig{
-		GenerateSubscribeTopic: func(params cqrs.CommandProcessorGenerateSubscribeTopicParams) (string, error) {
-			// we are using queue RabbitMQ config, so we need to have topic per command type
-			return params.CommandName, nil
-		},
-		SubscriberConstructor: func(params cqrs.CommandProcessorSubscriberConstructorParams) (message.Subscriber, error) {
-			// we can reuse subscriber, because all commands have separated topics
-			return commandsSubscriber, nil
-		},
-		OnHandle: func(params cqrs.CommandProcessorOnHandleParams) error {
-			start := time.Now()
+	commandProcessor, err := cqrs.NewCommandProcessorWithConfig(
+		router,
+		cqrs.CommandProcessorConfig{
+			GenerateSubscribeTopic: func(params cqrs.CommandProcessorGenerateSubscribeTopicParams) (string, error) {
+				// we are using queue RabbitMQ config, so we need to have topic per command type
+				return params.CommandName, nil
+			},
+			SubscriberConstructor: func(params cqrs.CommandProcessorSubscriberConstructorParams) (message.Subscriber, error) {
+				// we can reuse subscriber, because all commands have separated topics
+				return commandsSubscriber, nil
+			},
+			OnHandle: func(params cqrs.CommandProcessorOnHandleParams) error {
+				start := time.Now()
 
-			err := params.Handler.Handle(params.Message.Context(), params.Command)
+				err := params.Handler.Handle(params.Message.Context(), params.Command)
 
-			logger.Info("Command handled", watermill.LogFields{
-				"command_name": params.CommandName,
-				"duration":     time.Since(start),
-				"err":          err,
-			})
+				logger.Info("Command handled", watermill.LogFields{
+					"command_name": params.CommandName,
+					"duration":     time.Since(start),
+					"err":          err,
+				})
 
-			return err
+				return err
+			},
+			Marshaler: cqrsMarshaler,
+			Logger:    logger,
 		},
-		Marshaler: cqrsMarshaler,
-		Logger:    logger,
-	})
+	)
 	if err != nil {
 		panic(err)
 	}
@@ -283,46 +286,47 @@ func main() {
 		panic(err)
 	}
 
-	eventProcessor, err := cqrs.NewEventGroupProcessorWithConfig(cqrs.EventGroupProcessorConfig{
-		GenerateSubscribeTopic: func(params cqrs.EventGroupProcessorGenerateSubscribeTopicParams) (string, error) {
-			return "events", nil
+	eventProcessor, err := cqrs.NewEventGroupProcessorWithConfig(
+		router,
+		cqrs.EventGroupProcessorConfig{
+			GenerateSubscribeTopic: func(params cqrs.EventGroupProcessorGenerateSubscribeTopicParams) (string, error) {
+				return "events", nil
+			},
+			SubscriberConstructor: func(params cqrs.EventGroupProcessorSubscriberConstructorParams) (message.Subscriber, error) {
+				config := amqp.NewDurablePubSubConfig(
+					amqpAddress,
+					amqp.GenerateQueueNameTopicNameWithSuffix(params.EventGroupName),
+				)
+
+				return amqp.NewSubscriber(config, logger)
+			},
+
+			OnHandle: func(params cqrs.EventGroupProcessorOnHandleParams) error {
+				start := time.Now()
+
+				err := params.Handler.Handle(params.Message.Context(), params.Event)
+
+				logger.Info("Event handled", watermill.LogFields{
+					"event_name": params.EventName,
+					"duration":   time.Since(start),
+					"err":        err,
+				})
+
+				return err
+			},
+
+			Marshaler: cqrsMarshaler,
+			Logger:    logger,
 		},
-		SubscriberConstructor: func(params cqrs.EventGroupProcessorSubscriberConstructorParams) (message.Subscriber, error) {
-			config := amqp.NewDurablePubSubConfig(
-				amqpAddress,
-				amqp.GenerateQueueNameTopicNameWithSuffix(params.EventGroupName),
-			)
-
-			return amqp.NewSubscriber(config, logger)
-		},
-
-		OnHandle: func(params cqrs.EventGroupProcessorOnHandleParams) error {
-			start := time.Now()
-
-			err := params.Handler.Handle(params.Message.Context(), params.Event)
-
-			logger.Info("Event handled", watermill.LogFields{
-				"event_name": params.EventName,
-				"duration":   time.Since(start),
-				"err":        err,
-			})
-
-			return err
-		},
-
-		Marshaler: cqrsMarshaler,
-		Logger:    logger,
-	})
+	)
 	if err != nil {
 		panic(err)
 	}
 
-	commandProcessor.AddHandler(
+	err = commandProcessor.AddHandlers(
 		BookRoomHandler{eventBus},
 		OrderBeerHandler{eventBus},
 	)
-
-	err = commandProcessor.AddHandlersToRouter(router)
 	if err != nil {
 		panic(err)
 	}
@@ -341,10 +345,6 @@ func main() {
 		}),
 	)
 	if err != nil {
-		panic(err)
-	}
-
-	if err := eventProcessor.AddHandlersToRouter(router); err != nil {
 		panic(err)
 	}
 

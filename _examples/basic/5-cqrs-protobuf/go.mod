@@ -1,7 +1,7 @@
 module main.go
 
 require (
-	github.com/ThreeDotsLabs/watermill v1.2.1-0.20230622094202-6eb02dc0b0b8
+	github.com/ThreeDotsLabs/watermill v1.2.1-0.20230623082929-7fe0ca7ad2cc
 	github.com/ThreeDotsLabs/watermill-amqp/v2 v2.0.7
 	github.com/golang/protobuf v1.5.2
 	github.com/pkg/errors v0.9.1
