@@ -108,7 +108,7 @@ func NewEventGroupProcessorWithConfig(config EventGroupProcessorConfig) (*EventG
 	}, nil
 }
 
-// AddHandlersGroup adds a new list of GroupEventHandler to the EventProcessor.
+// AddHandlersGroup adds a new list of GroupEventHandler to the EventGroupProcessor.
 //
 // Compared to AddHandlers, AddHandlersGroup allows to have multiple handlers that share the same subscriber instance.
 //

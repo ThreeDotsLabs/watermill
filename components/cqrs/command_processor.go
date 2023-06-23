@@ -28,7 +28,7 @@ type CommandProcessorConfig struct {
 	//	     err := params.Handler.Handle(params.Message.Context(), params.Command)
 	//
 	//       // logic after handle
-	//		 //  (...)
+	//	 //  (...)
 	//
 	//		 return err
 	//	 }

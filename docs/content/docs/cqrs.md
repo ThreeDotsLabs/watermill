@@ -18,9 +18,9 @@ toc = true
 
 ![CQRS Schema](https://threedots.tech/watermill-io/cqrs-big-picture.svg)
 
-The `cqrs` component provides some useful abstractions built on top of Pub/Sub and Router that helps to implement CQRS pattern.
+The `cqrs` component provides some useful abstractions built on top of Pub/Sub and Router that help to implement the CQRS pattern.
 
-You don't need to implement entire CQRS. It's very common to just use event part of this component to build event-driven application.
+You don't need to implement the entire CQRS. It's very common to use just the event part of this component to build event-driven applications.
 
 ### Building blocks
 

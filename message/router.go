@@ -487,15 +487,15 @@ func (r *Router) closeWhenAllHandlersStopped() {
 //	<- r.Running()
 //	fmt.Println("Router is running")
 //
-// Warning: for the historical reasons this channel is not aware of router closing - the channel will be closed when router was running and was closed.
+// Warning: for historical reasons, this channel is not aware of router closing - the channel will be closed if the router has been running and closed.
 func (r *Router) Running() chan struct{} {
 	return r.running
 }
 
 // IsRunning returns true when router is running.
 //
-// Warning: for the historical reasons this method is not aware of router closing.
-// If you want to know if router was closed, use IsClosed.
+// Warning: for historical reasons, this method is not aware of router closing.
+// If you want to know if the router was closed, use IsClosed.
 func (r *Router) IsRunning() bool {
 	select {
 	case <-r.running:
