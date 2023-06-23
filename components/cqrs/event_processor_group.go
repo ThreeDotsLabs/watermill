@@ -20,7 +20,6 @@ type EventGroupProcessorConfig struct {
 	SubscriberConstructor EventGroupProcessorSubscriberConstructorFn
 
 	// OnHandle works like OnHandle, but is called for group handlers instead.
-	// OnHandle is not called for handlers group.
 	// This option is not required.
 	OnHandle EventGroupProcessorOnHandleFn
 
@@ -115,15 +114,17 @@ func NewEventGroupProcessorWithConfig(config EventGroupProcessorConfig) (*EventG
 // IMPORTANT: It's required to call AddHandlersToRouter to add the handlers to the router after calling AddHandlersGroup.
 //
 // Handlers group needs to be unique within the EventProcessor instance.
-func (p *EventGroupProcessor) AddHandlersGroup(handlerName string, handlers ...GroupEventHandler) error {
+//
+// Handler group name is used as handler's name in router.
+func (p *EventGroupProcessor) AddHandlersGroup(groupName string, handlers ...GroupEventHandler) error {
 	if len(handlers) == 0 {
 		return errors.New("no handlers provided")
 	}
-	if _, ok := p.groupEventHandlers[handlerName]; ok {
-		return fmt.Errorf("event handler group '%s' already exists", handlerName)
+	if _, ok := p.groupEventHandlers[groupName]; ok {
+		return fmt.Errorf("event handler group '%s' already exists", groupName)
 	}
 
-	p.groupEventHandlers[handlerName] = handlers
+	p.groupEventHandlers[groupName] = handlers
 
 	return nil
 }
@@ -140,18 +141,14 @@ func (p EventGroupProcessor) AddHandlersToRouter(r *message.Router) error {
 
 		for i, handler := range handlersGroup {
 			if err := validateEvent(handler.NewEvent()); err != nil {
-				return fmt.Errorf(
-					"invalid event for handler %T (num %d) in group %s: %w",
+				return errors.Wrapf(
+					err,
+					"invalid event for handler %T (num %d) in group %s",
 					handler,
 					i,
 					groupName,
-					err,
 				)
 			}
-		}
-
-		if p.config.GenerateSubscribeTopic == nil {
-			return errors.New("missing GenerateSubscribeTopic config option")
 		}
 
 		topicName, err := p.config.GenerateSubscribeTopic(EventGroupProcessorGenerateSubscribeTopicParams{

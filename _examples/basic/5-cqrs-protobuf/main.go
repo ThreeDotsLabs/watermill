@@ -283,16 +283,6 @@ func main() {
 		panic(err)
 	}
 
-	commandProcessor.AddHandler(
-		BookRoomHandler{eventBus},
-		OrderBeerHandler{eventBus},
-	)
-
-	err = commandProcessor.AddHandlersToRouter(router)
-	if err != nil {
-		panic(err)
-	}
-
 	eventProcessor, err := cqrs.NewEventGroupProcessorWithConfig(cqrs.EventGroupProcessorConfig{
 		GenerateSubscribeTopic: func(params cqrs.EventGroupProcessorGenerateSubscribeTopicParams) (string, error) {
 			return "events", nil
@@ -323,6 +313,16 @@ func main() {
 		Marshaler: cqrsMarshaler,
 		Logger:    logger,
 	})
+	if err != nil {
+		panic(err)
+	}
+
+	commandProcessor.AddHandler(
+		BookRoomHandler{eventBus},
+		OrderBeerHandler{eventBus},
+	)
+
+	err = commandProcessor.AddHandlersToRouter(router)
 	if err != nil {
 		panic(err)
 	}

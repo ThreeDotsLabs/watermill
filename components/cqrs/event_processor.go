@@ -25,6 +25,7 @@ type EventProcessorConfig struct {
 	// OnHandle works in a similar way to middlewares: you can inject additional logic before and after handling a event.
 	//
 	// Because of that, you need to explicitly call params.Handler.Handle() to handle the event.
+	//
 	//   func(params EventProcessorOnHandleParams) (err error) {
 	//       // logic before handle
 	//		 //  (...)
@@ -36,7 +37,6 @@ type EventProcessorConfig struct {
 	//
 	//		 return err
 	//	 }
-	//
 	//
 	// This option is not required.
 	OnHandle EventProcessorOnHandleFn
@@ -205,10 +205,6 @@ func (p EventProcessor) AddHandlersToRouter(r *message.Router) error {
 
 		handlerName := handler.HandlerName()
 		eventName := p.config.Marshaler.Name(handler.NewEvent())
-
-		if p.config.GenerateSubscribeTopic == nil {
-			return errors.New("missing GenerateSubscribeTopic config option")
-		}
 
 		topicName, err := p.config.GenerateSubscribeTopic(EventProcessorGenerateSubscribeTopicParams{
 			EventName:    eventName,

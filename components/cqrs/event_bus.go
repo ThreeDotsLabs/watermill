@@ -10,6 +10,7 @@ import (
 )
 
 type EventBusConfig struct {
+	// GeneratePublishTopic is used to generate topic name for publishing event.
 	GeneratePublishTopic GenerateEventPublishTopicFn
 
 	// OnPublish is called before sending the event.
