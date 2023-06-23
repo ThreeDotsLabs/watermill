@@ -88,30 +88,34 @@ type EventGroupProcessorOnHandleParams struct {
 // EventGroupProcessor determines which EventHandler should handle event received from event bus.
 // Compared to EventProcessor, EventGroupProcessor allows to have multiple handlers that share the same subscriber instance.
 type EventGroupProcessor struct {
+	router *message.Router
+
 	groupEventHandlers map[string][]GroupEventHandler
 
 	config EventGroupProcessorConfig
 }
 
 // NewEventGroupProcessorWithConfig creates a new EventGroupProcessor.
-func NewEventGroupProcessorWithConfig(config EventGroupProcessorConfig) (*EventGroupProcessor, error) {
+func NewEventGroupProcessorWithConfig(router *message.Router, config EventGroupProcessorConfig) (*EventGroupProcessor, error) {
 	config.setDefaults()
 
 	if err := config.Validate(); err != nil {
 		return nil, errors.Wrap(err, "invalid config EventProcessor")
 	}
+	if router == nil {
+		return nil, errors.New("missing router")
+	}
 
 	return &EventGroupProcessor{
+		router:             router,
 		groupEventHandlers: map[string][]GroupEventHandler{},
 		config:             config,
 	}, nil
 }
 
-// AddHandlersGroup adds a new list of GroupEventHandler to the EventGroupProcessor.
+// AddHandlersGroup adds a new list of GroupEventHandler to the EventGroupProcessor and adds it to the router.
 //
 // Compared to AddHandlers, AddHandlersGroup allows to have multiple handlers that share the same subscriber instance.
-//
-// IMPORTANT: It's required to call AddHandlersToRouter to add the handlers to the router after calling AddHandlersGroup.
 //
 // Handlers group needs to be unique within the EventProcessor instance.
 //
@@ -124,62 +128,56 @@ func (p *EventGroupProcessor) AddHandlersGroup(groupName string, handlers ...Gro
 		return fmt.Errorf("event handler group '%s' already exists", groupName)
 	}
 
+	if err := p.addHandlerToRouter(p.router, groupName, handlers); err != nil {
+		return err
+	}
+
 	p.groupEventHandlers[groupName] = handlers
 
 	return nil
 }
 
-// AddHandlersToRouter adds the EventProcessor's handlers to the given router.
-// It should be called only once per EventProcessor instance.
-func (p EventGroupProcessor) AddHandlersToRouter(r *message.Router) error {
-	if len(p.groupEventHandlers) == 0 {
-		return errors.New("EventProcessor has no handlers, did you call AddHandlersGroup?")
+func (p EventGroupProcessor) addHandlerToRouter(r *message.Router, groupName string, handlersGroup []GroupEventHandler) error {
+	for i, handler := range handlersGroup {
+		if err := validateEvent(handler.NewEvent()); err != nil {
+			return errors.Wrapf(
+				err,
+				"invalid event for handler %T (num %d) in group %s",
+				handler,
+				i,
+				groupName,
+			)
+		}
 	}
 
-	for groupName := range p.groupEventHandlers {
-		handlersGroup := p.groupEventHandlers[groupName]
+	topicName, err := p.config.GenerateSubscribeTopic(EventGroupProcessorGenerateSubscribeTopicParams{
+		EventGroupName:     groupName,
+		EventGroupHandlers: handlersGroup,
+	})
+	if err != nil {
+		return errors.Wrapf(err, "cannot generate topic name for handler group %s", groupName)
+	}
 
-		for i, handler := range handlersGroup {
-			if err := validateEvent(handler.NewEvent()); err != nil {
-				return errors.Wrapf(
-					err,
-					"invalid event for handler %T (num %d) in group %s",
-					handler,
-					i,
-					groupName,
-				)
-			}
-		}
+	logger := p.config.Logger.With(watermill.LogFields{
+		"event_handler_group_name": groupName,
+		"topic":                    topicName,
+	})
 
-		topicName, err := p.config.GenerateSubscribeTopic(EventGroupProcessorGenerateSubscribeTopicParams{
-			EventGroupName:     groupName,
-			EventGroupHandlers: handlersGroup,
-		})
-		if err != nil {
-			return errors.Wrapf(err, "cannot generate topic name for handler group %s", groupName)
-		}
+	handlerFunc, err := p.routerHandlerGroupFunc(handlersGroup, groupName, logger)
+	if err != nil {
+		return err
+	}
 
-		logger := p.config.Logger.With(watermill.LogFields{
-			"event_handler_group_name": groupName,
-			"topic":                    topicName,
-		})
+	subscriber, err := p.config.SubscriberConstructor(EventGroupProcessorSubscriberConstructorParams{
+		EventGroupName:     groupName,
+		EventGroupHandlers: handlersGroup,
+	})
+	if err != nil {
+		return errors.Wrap(err, "cannot create subscriber for event processor")
+	}
 
-		handlerFunc, err := p.routerHandlerGroupFunc(handlersGroup, groupName, logger)
-		if err != nil {
-			return err
-		}
-
-		subscriber, err := p.config.SubscriberConstructor(EventGroupProcessorSubscriberConstructorParams{
-			EventGroupName:     groupName,
-			EventGroupHandlers: handlersGroup,
-		})
-		if err != nil {
-			return errors.Wrap(err, "cannot create subscriber for event processor")
-		}
-
-		if err := addHandlerToRouter(p.config.Logger, r, groupName, topicName, handlerFunc, subscriber); err != nil {
-			return err
-		}
+	if err := addHandlerToRouter(p.config.Logger, r, groupName, topicName, handlerFunc, subscriber); err != nil {
+		return err
 	}
 
 	return nil
@@ -245,13 +243,4 @@ func (p EventGroupProcessor) routerHandlerGroupFunc(handlers []GroupEventHandler
 			return nil
 		}
 	}, nil
-}
-
-type groupEventHandlerToEventHandlerAdapter struct {
-	GroupEventHandler
-	handlerName string
-}
-
-func (g groupEventHandlerToEventHandlerAdapter) HandlerName() string {
-	return g.handlerName
 }

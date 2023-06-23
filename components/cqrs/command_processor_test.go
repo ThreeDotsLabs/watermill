@@ -88,14 +88,17 @@ func TestNewCommandProcessor(t *testing.T) {
 	}
 	require.NoError(t, config.Validate())
 
-	cp, err := cqrs.NewCommandProcessorWithConfig(config)
+	router, err := message.NewRouter(message.RouterConfig{}, watermill.NewStdLogger(false, false))
+	require.NoError(t, err)
+
+	cp, err := cqrs.NewCommandProcessorWithConfig(router, config)
 	assert.NotNil(t, cp)
 	assert.NoError(t, err)
 
 	config.SubscriberConstructor = nil
 	require.Error(t, config.Validate())
 
-	cp, err = cqrs.NewCommandProcessorWithConfig(config)
+	cp, err = cqrs.NewCommandProcessorWithConfig(router, config)
 	assert.Nil(t, cp)
 	assert.Error(t, err)
 }
@@ -120,7 +123,11 @@ func TestCommandProcessor_non_pointer_command(t *testing.T) {
 
 	handler := nonPointerCommandHandler{}
 
+	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
+	require.NoError(t, err)
+
 	commandProcessor, err := cqrs.NewCommandProcessorWithConfig(
+		router,
 		cqrs.CommandProcessorConfig{
 			GenerateSubscribeTopic: func(params cqrs.CommandProcessorGenerateSubscribeTopicParams) (string, error) {
 				return "", nil
@@ -134,12 +141,7 @@ func TestCommandProcessor_non_pointer_command(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	commandProcessor.AddHandler(handler)
-
-	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
-	require.NoError(t, err)
-
-	err = commandProcessor.AddHandlersToRouter(router)
+	err = commandProcessor.AddHandlers(handler)
 	assert.IsType(t, cqrs.NonPointerError{}, errors.Cause(err))
 }
 
@@ -147,7 +149,11 @@ func TestCommandProcessor_non_pointer_command(t *testing.T) {
 func TestCommandProcessor_multiple_same_command_handlers(t *testing.T) {
 	ts := NewTestServices()
 
+	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
+	require.NoError(t, err)
+
 	commandProcessor, err := cqrs.NewCommandProcessorWithConfig(
+		router,
 		cqrs.CommandProcessorConfig{
 			GenerateSubscribeTopic: func(params cqrs.CommandProcessorGenerateSubscribeTopicParams) (string, error) {
 				return "", nil
@@ -161,15 +167,11 @@ func TestCommandProcessor_multiple_same_command_handlers(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	commandProcessor.AddHandler(
+	err = commandProcessor.AddHandlers(
 		&CaptureCommandHandler{},
 		&CaptureCommandHandler{},
 	)
-
-	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
-	require.NoError(t, err)
-
-	err = commandProcessor.AddHandlersToRouter(router)
+	require.Error(t, err)
 	assert.EqualValues(t, cqrs.DuplicateCommandHandlerError{CommandName: "cqrs_test.TestCommand"}, err)
 	assert.Equal(t, "command handler for command cqrs_test.TestCommand already exists", err.Error())
 }
@@ -210,7 +212,11 @@ func TestCommandProcessor_AckCommandHandlingErrors_option_true(t *testing.T) {
 		},
 	}
 
+	router, err := message.NewRouter(message.RouterConfig{}, logger)
+	require.NoError(t, err)
+
 	commandProcessor, err := cqrs.NewCommandProcessorWithConfig(
+		router,
 		cqrs.CommandProcessorConfig{
 			GenerateSubscribeTopic: func(params cqrs.CommandProcessorGenerateSubscribeTopicParams) (string, error) {
 				return "commands", nil
@@ -227,16 +233,11 @@ func TestCommandProcessor_AckCommandHandlingErrors_option_true(t *testing.T) {
 
 	expectedErr := errors.New("test error")
 
-	commandProcessor.AddHandler(cqrs.NewCommandHandler(
+	err = commandProcessor.AddHandlers(cqrs.NewCommandHandler(
 		"handler", func(ctx context.Context, cmd *TestCommand) error {
 			return expectedErr
 		}),
 	)
-
-	router, err := message.NewRouter(message.RouterConfig{}, logger)
-	require.NoError(t, err)
-
-	err = commandProcessor.AddHandlersToRouter(router)
 	require.NoError(t, err)
 
 	go func() {
@@ -288,7 +289,11 @@ func TestCommandProcessor_AckCommandHandlingErrors_option_false(t *testing.T) {
 		},
 	}
 
+	router, err := message.NewRouter(message.RouterConfig{}, logger)
+	require.NoError(t, err)
+
 	commandProcessor, err := cqrs.NewCommandProcessorWithConfig(
+		router,
 		cqrs.CommandProcessorConfig{
 			GenerateSubscribeTopic: func(params cqrs.CommandProcessorGenerateSubscribeTopicParams) (string, error) {
 				return "commands", nil
@@ -305,16 +310,11 @@ func TestCommandProcessor_AckCommandHandlingErrors_option_false(t *testing.T) {
 
 	expectedErr := errors.New("test error")
 
-	commandProcessor.AddHandler(cqrs.NewCommandHandler(
+	err = commandProcessor.AddHandlers(cqrs.NewCommandHandler(
 		"handler", func(ctx context.Context, cmd *TestCommand) error {
 			return expectedErr
 		}),
 	)
-
-	router, err := message.NewRouter(message.RouterConfig{}, logger)
-	require.NoError(t, err)
-
-	err = commandProcessor.AddHandlersToRouter(router)
 	require.NoError(t, err)
 
 	go func() {
@@ -350,6 +350,9 @@ func TestNewCommandProcessor_OnHandle(t *testing.T) {
 			msg2,
 		},
 	}
+
+	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
+	require.NoError(t, err)
 
 	handlerCalled := 0
 
@@ -391,15 +394,10 @@ func TestNewCommandProcessor_OnHandle(t *testing.T) {
 		Marshaler: ts.Marshaler,
 		Logger:    ts.Logger,
 	}
-	cp, err := cqrs.NewCommandProcessorWithConfig(config)
+	cp, err := cqrs.NewCommandProcessorWithConfig(router, config)
 	require.NoError(t, err)
 
-	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
-	require.NoError(t, err)
-
-	cp.AddHandler(handler)
-
-	err = cp.AddHandlersToRouter(router)
+	err = cp.AddHandlers(handler)
 	require.NoError(t, err)
 
 	go func() {
@@ -427,24 +425,27 @@ func TestNewCommandProcessor_OnHandle(t *testing.T) {
 	assert.Equal(t, 2, onHandleCalled)
 }
 
-func TestCommandProcessor_AddHandlersToRouter_missing_handlers(t *testing.T) {
+func TestCommandProcessor_AddHandlersToRouter_without_disableRouterAutoAddHandlers(t *testing.T) {
 	ts := NewTestServices()
-
-	cp, err := cqrs.NewCommandProcessorWithConfig(cqrs.CommandProcessorConfig{
-		GenerateSubscribeTopic: func(params cqrs.CommandProcessorGenerateSubscribeTopicParams) (string, error) {
-			return "", nil
-		},
-		SubscriberConstructor: func(params cqrs.CommandProcessorSubscriberConstructorParams) (message.Subscriber, error) {
-			return nil, nil
-		},
-		Marshaler: cqrs.JSONMarshaler{},
-	})
-	assert.NoError(t, err)
 
 	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
 	require.NoError(t, err)
 
+	cp, err := cqrs.NewCommandProcessorWithConfig(
+		router,
+		cqrs.CommandProcessorConfig{
+			GenerateSubscribeTopic: func(params cqrs.CommandProcessorGenerateSubscribeTopicParams) (string, error) {
+				return "commands", nil
+			},
+			SubscriberConstructor: func(params cqrs.CommandProcessorSubscriberConstructorParams) (message.Subscriber, error) {
+				return ts.CommandsPubSub, nil
+			},
+			Marshaler: ts.Marshaler,
+			Logger:    ts.Logger,
+		},
+	)
+	require.NoError(t, err)
+
 	err = cp.AddHandlersToRouter(router)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "CommandProcessor has no handlers, did you call AddHandlers?")
+	assert.ErrorContains(t, err, "AddHandlersToRouter should be called only when using deprecated NewCommandProcessor")
 }

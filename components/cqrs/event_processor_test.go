@@ -88,14 +88,17 @@ func TestNewEventProcessor(t *testing.T) {
 	}
 	require.NoError(t, eventConfig.Validate())
 
-	cp, err := cqrs.NewEventProcessorWithConfig(eventConfig)
+	router, err := message.NewRouter(message.RouterConfig{}, nil)
+	require.NoError(t, err)
+
+	cp, err := cqrs.NewEventProcessorWithConfig(router, eventConfig)
 	assert.NotNil(t, cp)
 	assert.NoError(t, err)
 
 	eventConfig.SubscriberConstructor = nil
 	require.Error(t, eventConfig.Validate())
 
-	cp, err = cqrs.NewEventProcessorWithConfig(eventConfig)
+	cp, err = cqrs.NewEventProcessorWithConfig(router, eventConfig)
 	assert.Nil(t, cp)
 	assert.Error(t, err)
 }
@@ -120,7 +123,11 @@ func TestEventProcessor_non_pointer_event(t *testing.T) {
 
 	handler := nonPointerEventProcessor{}
 
+	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
+	require.NoError(t, err)
+
 	eventProcessor, err := cqrs.NewEventProcessorWithConfig(
+		router,
 		cqrs.EventProcessorConfig{
 			GenerateSubscribeTopic: func(params cqrs.EventProcessorGenerateSubscribeTopicParams) (string, error) {
 				return "", nil
@@ -134,12 +141,7 @@ func TestEventProcessor_non_pointer_event(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	eventProcessor.AddHandlers(handler)
-
-	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
-	require.NoError(t, err)
-
-	err = eventProcessor.AddHandlersToRouter(router)
+	err = eventProcessor.AddHandlers(handler)
 	assert.IsType(t, cqrs.NonPointerError{}, errors.Cause(err))
 }
 
@@ -170,7 +172,11 @@ func (h *duplicateTestEventHandler2) Handle(ctx context.Context, event interface
 func TestEventProcessor_multiple_same_event_handlers(t *testing.T) {
 	ts := NewTestServices()
 
+	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
+	require.NoError(t, err)
+
 	eventProcessor, err := cqrs.NewEventProcessorWithConfig(
+		router,
 		cqrs.EventProcessorConfig{
 			GenerateSubscribeTopic: func(params cqrs.EventProcessorGenerateSubscribeTopicParams) (string, error) {
 				return "", nil
@@ -184,15 +190,10 @@ func TestEventProcessor_multiple_same_event_handlers(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	eventProcessor.AddHandlers(
+	err = eventProcessor.AddHandlers(
 		&duplicateTestEventHandler1{},
 		&duplicateTestEventHandler2{},
 	)
-
-	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
-	require.NoError(t, err)
-
-	err = eventProcessor.AddHandlersToRouter(router)
 	require.NoError(t, err)
 }
 
@@ -224,6 +225,9 @@ func TestNewEventProcessor_OnHandle(t *testing.T) {
 		return nil
 	})
 
+	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
+	require.NoError(t, err)
+
 	onHandleCalled := int64(0)
 
 	config := cqrs.EventProcessorConfig{
@@ -252,15 +256,10 @@ func TestNewEventProcessor_OnHandle(t *testing.T) {
 		Marshaler: ts.Marshaler,
 		Logger:    ts.Logger,
 	}
-	cp, err := cqrs.NewEventProcessorWithConfig(config)
+	cp, err := cqrs.NewEventProcessorWithConfig(router, config)
 	require.NoError(t, err)
 
-	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
-	require.NoError(t, err)
-
-	cp.AddHandlers(handler)
-
-	err = cp.AddHandlersToRouter(router)
+	err = cp.AddHandlers(handler)
 	require.NoError(t, err)
 
 	go func() {
@@ -303,7 +302,11 @@ func TestNewEventProcessor_AckOnUnknownEvent(t *testing.T) {
 		},
 	}
 
+	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
+	require.NoError(t, err)
+
 	cp, err := cqrs.NewEventProcessorWithConfig(
+		router,
 		cqrs.EventProcessorConfig{
 			GenerateSubscribeTopic: func(params cqrs.EventProcessorGenerateSubscribeTopicParams) (string, error) {
 				return "events", nil
@@ -318,14 +321,11 @@ func TestNewEventProcessor_AckOnUnknownEvent(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
-	require.NoError(t, err)
-
-	cp.AddHandlers(cqrs.NewEventHandler("test", func(ctx context.Context, cmd *TestEvent) error {
-		return nil
-	}))
-
-	err = cp.AddHandlersToRouter(router)
+	err = cp.AddHandlers(
+		cqrs.NewEventHandler("test", func(ctx context.Context, cmd *TestEvent) error {
+			return nil
+		}),
+	)
 	require.NoError(t, err)
 
 	go func() {
@@ -356,7 +356,11 @@ func TestNewEventProcessor_AckOnUnknownEvent_disabled(t *testing.T) {
 		},
 	}
 
+	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
+	require.NoError(t, err)
+
 	cp, err := cqrs.NewEventProcessorWithConfig(
+		router,
 		cqrs.EventProcessorConfig{
 			GenerateSubscribeTopic: func(params cqrs.EventProcessorGenerateSubscribeTopicParams) (string, error) {
 				return "events", nil
@@ -371,14 +375,11 @@ func TestNewEventProcessor_AckOnUnknownEvent_disabled(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
-	require.NoError(t, err)
-
-	cp.AddHandlers(cqrs.NewEventHandler("test", func(ctx context.Context, cmd *TestEvent) error {
-		return nil
-	}))
-
-	err = cp.AddHandlersToRouter(router)
+	err = cp.AddHandlers(
+		cqrs.NewEventHandler("test", func(ctx context.Context, cmd *TestEvent) error {
+			return nil
+		}),
+	)
 	require.NoError(t, err)
 
 	go func() {
@@ -448,24 +449,28 @@ func TestNewEventProcessor_backward_compatibility_of_AckOnUnknownEvent(t *testin
 	}
 }
 
-func TestEventProcessor_AddHandlersToRouter_missing_handlers(t *testing.T) {
+func TestEventProcessor_AddHandlersToRouter_without_disableRouterAutoAddHandlers(t *testing.T) {
 	ts := NewTestServices()
-
-	cp, err := cqrs.NewEventProcessorWithConfig(cqrs.EventProcessorConfig{
-		GenerateSubscribeTopic: func(params cqrs.EventProcessorGenerateSubscribeTopicParams) (string, error) {
-			return "", nil
-		},
-		SubscriberConstructor: func(params cqrs.EventProcessorSubscriberConstructorParams) (message.Subscriber, error) {
-			return nil, nil
-		},
-		Marshaler: cqrs.JSONMarshaler{},
-	})
-	assert.NoError(t, err)
 
 	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
 	require.NoError(t, err)
 
+	cp, err := cqrs.NewEventProcessorWithConfig(
+		router,
+		cqrs.EventProcessorConfig{
+			GenerateSubscribeTopic: func(params cqrs.EventProcessorGenerateSubscribeTopicParams) (string, error) {
+				return "events", nil
+			},
+			SubscriberConstructor: func(params cqrs.EventProcessorSubscriberConstructorParams) (message.Subscriber, error) {
+				return ts.EventsPubSub, nil
+			},
+			AckOnUnknownEvent: false,
+			Marshaler:         ts.Marshaler,
+			Logger:            ts.Logger,
+		},
+	)
+	require.NoError(t, err)
+
 	err = cp.AddHandlersToRouter(router)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "EventProcessor has no handlers, did you call AddHandlers?")
+	assert.ErrorContains(t, err, "AddHandlersToRouter should be called only when using deprecated NewEventProcessor")
 }

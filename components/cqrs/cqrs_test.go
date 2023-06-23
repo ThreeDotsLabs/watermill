@@ -76,27 +76,28 @@ func createCqrsComponents(t *testing.T, commandHandler *CaptureCommandHandler, e
 	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
 	require.NoError(t, err)
 
-	eventProcessor, err := cqrs.NewEventProcessorWithConfig(cqrs.EventProcessorConfig{
-		GenerateSubscribeTopic: func(params cqrs.EventProcessorGenerateSubscribeTopicParams) (string, error) {
-			return params.EventName, nil
-		},
-		AckOnUnknownEvent: true,
-		SubscriberConstructor: func(params cqrs.EventProcessorSubscriberConstructorParams) (message.Subscriber, error) {
-			assert.Equal(t, "CaptureEventHandler", params.HandlerName)
+	eventProcessor, err := cqrs.NewEventProcessorWithConfig(
+		router,
+		cqrs.EventProcessorConfig{
+			GenerateSubscribeTopic: func(params cqrs.EventProcessorGenerateSubscribeTopicParams) (string, error) {
+				return params.EventName, nil
+			},
+			AckOnUnknownEvent: true,
+			SubscriberConstructor: func(params cqrs.EventProcessorSubscriberConstructorParams) (message.Subscriber, error) {
+				assert.Equal(t, "CaptureEventHandler", params.HandlerName)
 
-			assert.Implements(t, new(cqrs.EventHandler), params.EventHandler)
-			assert.NotNil(t, params.EventHandler)
+				assert.Implements(t, new(cqrs.EventHandler), params.EventHandler)
+				assert.NotNil(t, params.EventHandler)
 
-			return ts.EventsPubSub, nil
+				return ts.EventsPubSub, nil
+			},
+			Marshaler: ts.Marshaler,
+			Logger:    ts.Logger,
 		},
-		Marshaler: ts.Marshaler,
-		Logger:    ts.Logger,
-	})
+	)
 	require.NoError(t, err)
 
-	eventProcessor.AddHandlers(eventHandler)
-
-	err = eventProcessor.AddHandlersToRouter(router)
+	err = eventProcessor.AddHandlers(eventHandler)
 	require.NoError(t, err)
 
 	eventBus, err := cqrs.NewEventBusWithConfig(
@@ -124,29 +125,30 @@ func createCqrsComponents(t *testing.T, commandHandler *CaptureCommandHandler, e
 	)
 	require.NoError(t, err)
 
-	commandProcessor, err := cqrs.NewCommandProcessorWithConfig(cqrs.CommandProcessorConfig{
-		GenerateSubscribeTopic: func(params cqrs.CommandProcessorGenerateSubscribeTopicParams) (string, error) {
-			assert.Equal(t, "cqrs_test.TestCommand", params.CommandName)
+	commandProcessor, err := cqrs.NewCommandProcessorWithConfig(
+		router,
+		cqrs.CommandProcessorConfig{
+			GenerateSubscribeTopic: func(params cqrs.CommandProcessorGenerateSubscribeTopicParams) (string, error) {
+				assert.Equal(t, "cqrs_test.TestCommand", params.CommandName)
 
-			assert.Implements(t, new(cqrs.CommandHandler), params.CommandHandler)
-			assert.NotNil(t, params.CommandHandler)
+				assert.Implements(t, new(cqrs.CommandHandler), params.CommandHandler)
+				assert.NotNil(t, params.CommandHandler)
 
-			return params.CommandName, nil
+				return params.CommandName, nil
+			},
+			SubscriberConstructor: func(params cqrs.CommandProcessorSubscriberConstructorParams) (message.Subscriber, error) {
+				assert.Equal(t, "CaptureCommandHandler", params.HandlerName)
+
+				return ts.CommandsPubSub, nil
+			},
+			Marshaler:                ts.Marshaler,
+			Logger:                   ts.Logger,
+			AckCommandHandlingErrors: false,
 		},
-		SubscriberConstructor: func(params cqrs.CommandProcessorSubscriberConstructorParams) (message.Subscriber, error) {
-			assert.Equal(t, "CaptureCommandHandler", params.HandlerName)
-
-			return ts.CommandsPubSub, nil
-		},
-		Marshaler:                ts.Marshaler,
-		Logger:                   ts.Logger,
-		AckCommandHandlingErrors: false,
-	})
+	)
 	require.NoError(t, err)
 
-	commandProcessor.AddHandler(commandHandler)
-
-	err = commandProcessor.AddHandlersToRouter(router)
+	err = commandProcessor.AddHandlers(commandHandler)
 	require.NoError(t, err)
 
 	commandBus, err := cqrs.NewCommandBusWithConfig(ts.CommandsPubSub, cqrs.CommandBusConfig{

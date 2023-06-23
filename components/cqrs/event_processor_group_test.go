@@ -109,6 +109,9 @@ func TestNewEventProcessor_OnGroupHandle(t *testing.T) {
 
 	onHandleCalled := int64(0)
 
+	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
+	require.NoError(t, err)
+
 	config := cqrs.EventGroupProcessorConfig{
 		GenerateSubscribeTopic: func(params cqrs.EventGroupProcessorGenerateSubscribeTopicParams) (string, error) {
 			return "events", nil
@@ -137,16 +140,10 @@ func TestNewEventProcessor_OnGroupHandle(t *testing.T) {
 		Marshaler: ts.Marshaler,
 		Logger:    ts.Logger,
 	}
-	cp, err := cqrs.NewEventGroupProcessorWithConfig(config)
-	require.NoError(t, err)
-
-	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
+	cp, err := cqrs.NewEventGroupProcessorWithConfig(router, config)
 	require.NoError(t, err)
 
 	err = cp.AddHandlersGroup("some_group", handler)
-	require.NoError(t, err)
-
-	err = cp.AddHandlersToRouter(router)
 	require.NoError(t, err)
 
 	go func() {
@@ -186,7 +183,11 @@ func TestNewEventProcessor_AckOnUnknownEvent_handler_group(t *testing.T) {
 		},
 	}
 
+	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
+	require.NoError(t, err)
+
 	cp, err := cqrs.NewEventGroupProcessorWithConfig(
+		router,
 		cqrs.EventGroupProcessorConfig{
 			GenerateSubscribeTopic: func(params cqrs.EventGroupProcessorGenerateSubscribeTopicParams) (string, error) {
 				return "events", nil
@@ -201,18 +202,12 @@ func TestNewEventProcessor_AckOnUnknownEvent_handler_group(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
-	require.NoError(t, err)
-
 	err = cp.AddHandlersGroup(
 		"foo",
 		cqrs.NewEventHandler("test", func(ctx context.Context, cmd *TestEvent) error {
 			return nil
 		}),
 	)
-	require.NoError(t, err)
-
-	err = cp.AddHandlersToRouter(router)
 	require.NoError(t, err)
 
 	go func() {
@@ -243,7 +238,11 @@ func TestNewEventProcessor_AckOnUnknownEvent_disabled_handler_group(t *testing.T
 		},
 	}
 
+	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
+	require.NoError(t, err)
+
 	cp, err := cqrs.NewEventGroupProcessorWithConfig(
+		router,
 		cqrs.EventGroupProcessorConfig{
 			GenerateSubscribeTopic: func(params cqrs.EventGroupProcessorGenerateSubscribeTopicParams) (string, error) {
 				return "events", nil
@@ -258,18 +257,12 @@ func TestNewEventProcessor_AckOnUnknownEvent_disabled_handler_group(t *testing.T
 	)
 	require.NoError(t, err)
 
-	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
-	require.NoError(t, err)
-
 	err = cp.AddHandlersGroup(
 		"foo",
 		cqrs.NewEventHandler("test", func(ctx context.Context, cmd *TestEvent) error {
 			return nil
 		}),
 	)
-	require.NoError(t, err)
-
-	err = cp.AddHandlersToRouter(router)
 	require.NoError(t, err)
 
 	go func() {
@@ -327,7 +320,11 @@ func TestEventProcessor_handler_group(t *testing.T) {
 		}),
 	}
 
+	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
+	require.NoError(t, err)
+
 	eventProcessor, err := cqrs.NewEventGroupProcessorWithConfig(
+		router,
 		cqrs.EventGroupProcessorConfig{
 			GenerateSubscribeTopic: func(params cqrs.EventGroupProcessorGenerateSubscribeTopicParams) (string, error) {
 				assert.Equal(t, "some_group", params.EventGroupName)
@@ -363,12 +360,6 @@ func TestEventProcessor_handler_group(t *testing.T) {
 		"some_group_2",
 	)
 	require.ErrorContains(t, err, "no handlers provided")
-
-	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
-	require.NoError(t, err)
-
-	err = eventProcessor.AddHandlersToRouter(router)
-	require.NoError(t, err)
 
 	go func() {
 		err := router.Run(context.Background())

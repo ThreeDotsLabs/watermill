@@ -51,6 +51,11 @@ type EventProcessorConfig struct {
 	// Logger instance used to log.
 	// If not provided, watermill.NopLogger is used.
 	Logger watermill.LoggerAdapter
+
+	// disableRouterAutoAddHandlers is used to keep backwards compatibility.
+	// it is set when EventProcessor is created by NewEventProcessor.
+	// Deprecated: please migrate to NewEventProcessorWithConfig.
+	disableRouterAutoAddHandlers bool
 }
 
 func (c *EventProcessorConfig) setDefaults() {
@@ -104,23 +109,25 @@ type EventProcessorOnHandleParams struct {
 
 // EventProcessor determines which EventHandler should handle event received from event bus.
 type EventProcessor struct {
-	individualHandlers []EventHandler
-	groupEventHandlers map[string][]GroupEventHandler
-
-	config EventProcessorConfig
+	router   *message.Router
+	handlers []EventHandler
+	config   EventProcessorConfig
 }
 
 // NewEventProcessorWithConfig creates a new EventProcessor.
-func NewEventProcessorWithConfig(config EventProcessorConfig) (*EventProcessor, error) {
+func NewEventProcessorWithConfig(router *message.Router, config EventProcessorConfig) (*EventProcessor, error) {
 	config.setDefaults()
 
 	if err := config.Validate(); err != nil {
 		return nil, errors.Wrap(err, "invalid config EventProcessor")
 	}
+	if router == nil && !config.disableRouterAutoAddHandlers {
+		return nil, errors.New("missing router")
+	}
 
 	return &EventProcessor{
-		groupEventHandlers: map[string][]GroupEventHandler{},
-		config:             config,
+		router: router,
+		config: config,
 	}, nil
 }
 
@@ -157,18 +164,21 @@ func NewEventProcessor(
 		SubscriberConstructor: func(params EventProcessorSubscriberConstructorParams) (message.Subscriber, error) {
 			return subscriberConstructor(params.HandlerName)
 		},
-		Marshaler: marshaler,
-		Logger:    logger,
+		Marshaler:                    marshaler,
+		Logger:                       logger,
+		disableRouterAutoAddHandlers: true,
 	}
 	eventProcessorConfig.setDefaults()
 
-	ep, err := NewEventProcessorWithConfig(eventProcessorConfig)
+	ep, err := NewEventProcessorWithConfig(nil, eventProcessorConfig)
 	if err != nil {
 		return nil, err
 	}
 
 	for _, handler := range individualHandlers {
-		ep.AddHandlers(handler)
+		if err := ep.AddHandlers(handler); err != nil {
+			return nil, err
+		}
 	}
 
 	return ep, nil
@@ -181,62 +191,38 @@ func NewEventProcessor(
 // Deprecated: please use EventProcessorSubscriberConstructorFn instead.
 type EventsSubscriberConstructor func(handlerName string) (message.Subscriber, error)
 
-// AddHandlers adds a new EventHandler to the EventProcessor.
-//
-// IMPORTANT: It's required to call AddHandlersToRouter to add the handlers to the router after calling AddHandlers.
-func (p *EventProcessor) AddHandlers(handler ...EventHandler) {
-	p.individualHandlers = append(p.individualHandlers, handler...)
+// AddHandlers adds a new EventHandler to the EventProcessor and adds it to the router.
+func (p *EventProcessor) AddHandlers(handlers ...EventHandler) error {
+	if p.config.disableRouterAutoAddHandlers {
+		p.handlers = append(p.handlers, handlers...)
+		return nil
+	}
+
+	for _, handler := range handlers {
+		if err := p.addHandlerToRouter(p.router, handler); err != nil {
+			return err
+		}
+
+		p.handlers = append(p.handlers, handler)
+	}
+
+	return nil
 }
 
 // AddHandlersToRouter adds the EventProcessor's handlers to the given router.
 // It should be called only once per EventProcessor instance.
+//
+// It is required to call AddHandlersToRouter only if command processor is created with NewEventProcessor (disableRouterAutoAddHandlers is set to true).
+// Deprecated: please migrate to event processor created by NewEventProcessorWithConfig.
 func (p EventProcessor) AddHandlersToRouter(r *message.Router) error {
-	handlers := p.Handlers()
-	if len(handlers) == 0 {
-		return errors.New("EventProcessor has no handlers, did you call AddHandlers?")
+	if !p.config.disableRouterAutoAddHandlers {
+		return errors.New("AddHandlersToRouter should be called only when using deprecated NewEventProcessor")
 	}
 
-	for i := range p.individualHandlers {
-		handler := p.individualHandlers[i]
+	for i := range p.handlers {
+		handler := p.handlers[i]
 
-		if err := validateEvent(handler.NewEvent()); err != nil {
-			return errors.Wrapf(err, "invalid event for handler %s", handler.HandlerName())
-		}
-
-		handlerName := handler.HandlerName()
-		eventName := p.config.Marshaler.Name(handler.NewEvent())
-
-		topicName, err := p.config.GenerateSubscribeTopic(EventProcessorGenerateSubscribeTopicParams{
-			EventName:    eventName,
-			EventHandler: handler,
-		})
-		if err != nil {
-			return errors.Wrapf(err, "cannot generate topic name for handler %s", handlerName)
-		}
-
-		logger := p.config.Logger.With(watermill.LogFields{
-			"event_handler_name": handlerName,
-			"topic":              topicName,
-		})
-
-		handlerFunc, err := p.routerHandlerFunc(handler, logger)
-		if err != nil {
-			return err
-		}
-
-		if p.config.SubscriberConstructor == nil {
-			return errors.New("missing SubscriberConstructor config option")
-		}
-
-		subscriber, err := p.config.SubscriberConstructor(EventProcessorSubscriberConstructorParams{
-			HandlerName:  handlerName,
-			EventHandler: handler,
-		})
-		if err != nil {
-			return errors.Wrap(err, "cannot create subscriber for event processor")
-		}
-
-		if err := addHandlerToRouter(p.config.Logger, r, handlerName, topicName, handlerFunc, subscriber); err != nil {
+		if err := p.addHandlerToRouter(r, handler); err != nil {
 			return err
 		}
 	}
@@ -244,19 +230,53 @@ func (p EventProcessor) AddHandlersToRouter(r *message.Router) error {
 	return nil
 }
 
-func (p EventProcessor) Handlers() []EventHandler {
-	var groupHandlers []EventHandler
-
-	for groupName, handlers := range p.groupEventHandlers {
-		for i := range handlers {
-			groupHandlers = append(groupHandlers, groupEventHandlerToEventHandlerAdapter{
-				GroupEventHandler: p.groupEventHandlers[groupName][i],
-				handlerName:       groupName,
-			})
-		}
+func (p EventProcessor) addHandlerToRouter(r *message.Router, handler EventHandler) error {
+	if err := validateEvent(handler.NewEvent()); err != nil {
+		return errors.Wrapf(err, "invalid event for handler %s", handler.HandlerName())
 	}
 
-	return append(p.individualHandlers, groupHandlers...)
+	handlerName := handler.HandlerName()
+	eventName := p.config.Marshaler.Name(handler.NewEvent())
+
+	topicName, err := p.config.GenerateSubscribeTopic(EventProcessorGenerateSubscribeTopicParams{
+		EventName:    eventName,
+		EventHandler: handler,
+	})
+	if err != nil {
+		return errors.Wrapf(err, "cannot generate topic name for handler %s", handlerName)
+	}
+
+	logger := p.config.Logger.With(watermill.LogFields{
+		"event_handler_name": handlerName,
+		"topic":              topicName,
+	})
+
+	handlerFunc, err := p.routerHandlerFunc(handler, logger)
+	if err != nil {
+		return err
+	}
+
+	if p.config.SubscriberConstructor == nil {
+		return errors.New("missing SubscriberConstructor config option")
+	}
+
+	subscriber, err := p.config.SubscriberConstructor(EventProcessorSubscriberConstructorParams{
+		HandlerName:  handlerName,
+		EventHandler: handler,
+	})
+	if err != nil {
+		return errors.Wrap(err, "cannot create subscriber for event processor")
+	}
+
+	if err := addHandlerToRouter(p.config.Logger, r, handlerName, topicName, handlerFunc, subscriber); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (p EventProcessor) Handlers() []EventHandler {
+	return p.handlers
 }
 
 func addHandlerToRouter(logger watermill.LoggerAdapter, r *message.Router, handlerName string, topicName string, handlerFunc message.NoPublishHandlerFunc, subscriber message.Subscriber) error {
