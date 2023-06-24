@@ -21,17 +21,17 @@ type CommandProcessorConfig struct {
 	// OnHandle works in a similar way to middlewares: you can inject additional logic before and after handling a command.
 	//
 	// Because of that, you need to explicitly call params.Handler.Handle() to handle the command.
-	//   func(params CommandProcessorOnHandleParams) (err error) {
-	//       // logic before handle
-	//		 //  (...)
+	//  func(params CommandProcessorOnHandleParams) (err error) {
+	//      // logic before handle
+	//      //  (...)
 	//
-	//	     err := params.Handler.Handle(params.Message.Context(), params.Command)
+	//      err := params.Handler.Handle(params.Message.Context(), params.Command)
 	//
-	//       // logic after handle
-	//	 	 //  (...)
+	//      // logic after handle
+	//      //  (...)
 	//
-	//		 return err
-	//	 }
+	//      return err
+	//  }
 	//
 	// This option is not required.
 	OnHandle CommandProcessorOnHandleFn

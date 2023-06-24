@@ -26,17 +26,17 @@ type EventProcessorConfig struct {
 	//
 	// Because of that, you need to explicitly call params.Handler.Handle() to handle the event.
 	//
-	//   func(params EventProcessorOnHandleParams) (err error) {
-	//       // logic before handle
-	//		 //  (...)
+	//  func(params EventProcessorOnHandleParams) (err error) {
+	//      // logic before handle
+	//      //  (...)
 	//
-	//	     err := params.Handler.Handle(params.Message.Context(), params.Event)
+	//      err := params.Handler.Handle(params.Message.Context(), params.Event)
 	//
-	//       // logic after handle
-	//		 //  (...)
+	//      // logic after handle
+	//      //  (...)
 	//
-	//		 return err
-	//	 }
+	//      return err
+	//  }
 	//
 	// This option is not required.
 	OnHandle EventProcessorOnHandleFn

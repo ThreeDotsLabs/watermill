@@ -19,7 +19,23 @@ type EventGroupProcessorConfig struct {
 	// It's useful, when we are processing events from one stream and we want to do it in order.
 	SubscriberConstructor EventGroupProcessorSubscriberConstructorFn
 
-	// OnHandle works like OnHandle, but is called for group handlers instead.
+	// OnHandle is called before handling event.
+	// OnHandle works in a similar way to middlewares: you can inject additional logic before and after handling a event.
+	//
+	// Because of that, you need to explicitly call params.Handler.Handle() to handle the event.
+	//
+	//  func(params EventGroupProcessorOnHandleParams) (err error) {
+	//      // logic before handle
+	//      //  (...)
+	//
+	//      err := params.Handler.Handle(params.Message.Context(), params.Event)
+	//
+	//      // logic after handle
+	//      //  (...)
+	//
+	//      return err
+	//  }
+	//
 	// This option is not required.
 	OnHandle EventGroupProcessorOnHandleFn
 
