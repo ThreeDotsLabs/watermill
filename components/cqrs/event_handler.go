@@ -29,7 +29,7 @@ type EventHandler interface {
 }
 
 type genericEventHandler[T any] struct {
-	handleFunc  func(ctx context.Context, cmd *T) error
+	handleFunc  func(ctx context.Context, event *T) error
 	handlerName string
 }
 
@@ -51,8 +51,8 @@ func (c genericEventHandler[T]) NewEvent() any {
 	return tVar
 }
 
-func (c genericEventHandler[T]) Handle(ctx context.Context, cmd any) error {
-	event := cmd.(*T)
+func (c genericEventHandler[T]) Handle(ctx context.Context, e any) error {
+	event := e.(*T)
 	return c.handleFunc(ctx, event)
 }
 
