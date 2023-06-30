@@ -391,6 +391,8 @@ func (r *Router) RunHandlers(ctx context.Context) error {
 	r.handlersLock.Lock()
 	defer r.handlersLock.Unlock()
 
+	r.logger.Info("Running router handlers", watermill.LogFields{"count": len(r.handlers)})
+
 	for name, h := range r.handlers {
 		name := name
 		h := h
@@ -465,7 +467,7 @@ func (r *Router) closeWhenAllHandlersStopped() {
 	}
 
 	r.handlersWg.Wait()
-	if r.isClosed() {
+	if r.IsClosed() {
 		// already closed
 		return
 	}
@@ -484,11 +486,16 @@ func (r *Router) closeWhenAllHandlersStopped() {
 //	go r.Run(ctx)
 //	<- r.Running()
 //	fmt.Println("Router is running")
+//
+// Warning: for historical reasons, this channel is not aware of router closing - the channel will be closed if the router has been running and closed.
 func (r *Router) Running() chan struct{} {
 	return r.running
 }
 
 // IsRunning returns true when router is running.
+//
+// Warning: for historical reasons, this method is not aware of router closing.
+// If you want to know if the router was closed, use IsClosed.
 func (r *Router) IsRunning() bool {
 	select {
 	case <-r.running:
@@ -544,7 +551,7 @@ func (r *Router) waitForHandlers() bool {
 	return sync_internal.WaitGroupTimeout(&waitGroup, r.config.CloseTimeout)
 }
 
-func (r *Router) isClosed() bool {
+func (r *Router) IsClosed() bool {
 	r.closedLock.Lock()
 	defer r.closedLock.Unlock()
 
