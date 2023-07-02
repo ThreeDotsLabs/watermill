@@ -365,7 +365,7 @@ func (r *Router) Run(ctx context.Context) (err error) {
 
 	close(r.running)
 
-	go r.closeWhenAllHandlersStopped()
+	go r.closeWhenAllHandlersStopped(ctx)
 
 	<-r.closingInProgressCh
 	cancel()
@@ -449,7 +449,7 @@ func (r *Router) RunHandlers(ctx context.Context) error {
 
 // closeWhenAllHandlersStopped closed router, when all handlers has stopped,
 // because for example all subscriptions are closed.
-func (r *Router) closeWhenAllHandlersStopped() {
+func (r *Router) closeWhenAllHandlersStopped(ctx context.Context) {
 	r.handlersLock.RLock()
 	hasHandlers := len(r.handlers) == 0
 	r.handlersLock.RUnlock()
@@ -472,7 +472,12 @@ func (r *Router) closeWhenAllHandlersStopped() {
 		return
 	}
 
-	r.logger.Error("All handlers stopped, closing router", errors.New("all router handlers stopped"), nil)
+	// Only log an error if the context was not canceled, but handlers were stopped.
+	select {
+	case <-ctx.Done():
+	default:
+		r.logger.Error("All handlers stopped, closing router", errors.New("all router handlers stopped"), nil)
+	}
 
 	if err := r.Close(); err != nil {
 		r.logger.Error("Cannot close router", err, nil)
