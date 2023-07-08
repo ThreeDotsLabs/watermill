@@ -1,8 +1,8 @@
 +++
 title = "SQL"
-description = "SQL-based Pub/Sub"
+description = "Pub/Sub based on MySQL or PostgreSQL."
 date = 2019-07-06T22:30:00+02:00
-bref = "SQL-based Pub/Sub"
+bref = "Pub/Sub based on MySQL or PostgreSQL."
 weight = -50
 type = "docs"
 toc = false
@@ -22,20 +22,22 @@ on some kind of message queue.
 The SQL publisher simply inserts consumed messages into the chosen table. A common approach would be to use it as a persistent
 log of events that were published on a queue with short message expiration time.
 
+SQL Pub/Sub is also a good choice for implementing Outbox pattern with [Forwarder](/docs/forwarder/) component.
+
 See also the [SQL example](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/pubsubs/sql).
 
 ### Installation
 
-    go get github.com/ThreeDotsLabs/watermill-sql
+    go get github.com/ThreeDotsLabs/watermill-sql/v2
 
 #### Characteristics
 
-| Feature             | Implements | Note |
-| ------------------- | ---------- | ---- |
+| Feature             | Implements | Note                                      |
+|---------------------|------------|-------------------------------------------|
 | ConsumerGroups      | yes        | See `ConsumerGroup` in `SubscriberConfig` |
-| ExactlyOnceDelivery | yes        | |
-| GuaranteedOrder     | yes        | |
-| Persistent          | yes        | |
+| ExactlyOnceDelivery | yes*       | Just for MySQL implementation             |
+| GuaranteedOrder     | yes        |                                           |
+| Persistent          | yes        |                                           |
 
 #### Schema
 
