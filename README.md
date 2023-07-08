@@ -101,7 +101,7 @@ Supported Pub/Subs:
 - Kafka Pub/Sub [(`github.com/ThreeDotsLabs/watermill-kafka/v2`)](https://github.com/ThreeDotsLabs/watermill-kafka/)
 - NATS Pub/Sub [(`github.com/ThreeDotsLabs/watermill-nats`)](https://github.com/ThreeDotsLabs/watermill-nats/)
 - Redis Stream Pub/Sub [(`github.com/ThreeDotsLabs/watermill-redisstream`)](https://github.com/ThreeDotsLabs/watermill-redisstream/)
-- SQL Pub/Sub [(`github.com/ThreeDotsLabs/watermill-sql`)](https://github.com/ThreeDotsLabs/watermill-sql/)
+- SQL Pub/Sub [(`github.com/ThreeDotsLabs/watermill-sql/v2`)](https://github.com/ThreeDotsLabs/watermill-sql/)
 
 
 All Pub/Subs implementation documentation can be found in the [documentation](https://watermill.io/pubsubs/).

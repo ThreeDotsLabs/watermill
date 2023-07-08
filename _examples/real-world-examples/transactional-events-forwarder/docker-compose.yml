@@ -1,7 +1,7 @@
 version: '3'
 services:
   server:
-    image: golang:1.19
+    image: golang:1.20
     environment:
       - PUBSUB_EMULATOR_HOST=googlecloud:8085
     depends_on:
