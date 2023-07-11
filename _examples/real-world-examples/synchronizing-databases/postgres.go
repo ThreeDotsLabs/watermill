@@ -2,25 +2,26 @@ package main
 
 import (
 	"bytes"
-	stdSQL "database/sql"
 	"encoding/gob"
 	"errors"
 	"fmt"
 	"strings"
 	"time"
 
-	"github.com/ThreeDotsLabs/watermill-sql/pkg/sql"
+	"github.com/ThreeDotsLabs/watermill-sql/v2/pkg/sql"
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
 type postgresUser struct {
-	ID        int
+	ID        int64
 	Username  string
 	FullName  string
 	CreatedAt time.Time
 }
 
-type postgresSchemaAdapter struct{}
+type postgresSchemaAdapter struct {
+	sql.DefaultPostgreSQLSchema
+}
 
 func (p postgresSchemaAdapter) SchemaInitializingQueries(topic string) []string {
 	return []string{
@@ -61,6 +62,6 @@ func (p postgresSchemaAdapter) SelectQuery(topic string, consumerGroup string, o
 	return "", nil
 }
 
-func (p postgresSchemaAdapter) UnmarshalMessage(row *stdSQL.Row) (offset int, msg *message.Message, err error) {
-	return 0, nil, errors.New("not implemented")
+func (p postgresSchemaAdapter) UnmarshalMessage(row sql.Scanner) (sql.Row, error) {
+	return sql.Row{}, errors.New("not implemented")
 }

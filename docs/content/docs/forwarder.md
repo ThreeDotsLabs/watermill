@@ -1,6 +1,6 @@
 +++
-title = "Transactional publishing of messages"
-description = "Publishing messages in transactional way with help of Forwarder component"
+title = "Forwarder component"
+description = "Implement outbox pattern by bublishing messages in transactional way"
 date = 2021-01-13T12:47:30+01:00
 weight = -400
 draft = false

@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ThreeDotsLabs/watermill"
@@ -111,4 +112,6 @@ func TestFanOut_RouterClosed(t *testing.T) {
 
 	err = fanout.Close()
 	require.NoError(t, err)
+
+	assert.True(t, fanout.IsClosed())
 }
