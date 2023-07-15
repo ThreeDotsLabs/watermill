@@ -91,6 +91,10 @@ func NewRouter(config RouterConfig, logger watermill.LoggerAdapter) (*Router, er
 		return nil, errors.Wrap(err, "invalid config")
 	}
 
+	if logger == nil {
+		logger = watermill.NopLogger{}
+	}
+
 	return &Router{
 		config: config,
 
