@@ -12,6 +12,8 @@ import (
 )
 
 func TestCircuitBreaker(t *testing.T) {
+	t.Parallel()
+
 	count := 0
 	failing := true
 
