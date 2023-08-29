@@ -6,23 +6,27 @@ import (
 	"strings"
 	"testing"
 
+	"log/slog"
+
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/exp/slog"
 )
 
 func TestSlogLoggerAdapter(t *testing.T) {
 	b := &bytes.Buffer{}
 
-	logger := NewSlogLogger(slog.New(slog.HandlerOptions{
-		Level: LevelTrace,
-		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
-			if a.Key == "time" && len(groups) == 0 {
-				// omit time stamp to make the test idempotent
-				a.Value = slog.StringValue("[omit]")
-			}
-			return a
+	logger := NewSlogLogger(slog.New(slog.NewTextHandler(
+		b, // output
+		&slog.HandlerOptions{
+			Level: LevelTrace,
+			ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
+				if a.Key == "time" && len(groups) == 0 {
+					// omit time stamp to make the test idempotent
+					a.Value = slog.StringValue("[omit]")
+				}
+				return a
+			},
 		},
-	}.NewTextHandler(b)))
+	)))
 
 	logger = logger.With(LogFields{
 		"common1": "commonvalue",

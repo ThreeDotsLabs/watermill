@@ -1,6 +1,8 @@
 package watermill
 
-import "golang.org/x/exp/slog"
+import (
+	"log/slog"
+)
 
 // LevelTrace must be added, because [slog] package does not have one by default. Generate it by subtracting 4 levels from [slog.Debug] following the example of [slog.LevelWarn] and [slog.LevelError] which are set to 4 and 8.
 const LevelTrace slog.Level = slog.LevelDebug - 4

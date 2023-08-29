@@ -1,6 +1,6 @@
 module github.com/ThreeDotsLabs/watermill
 
-go 1.17
+go 1.21.0
 
 require (
 	github.com/cenkalti/backoff/v3 v3.2.2
@@ -28,7 +28,6 @@ require (
 	github.com/prometheus/client_model v0.3.0 // indirect
 	github.com/prometheus/common v0.39.0 // indirect
 	github.com/prometheus/procfs v0.9.0 // indirect
-	golang.org/x/exp v0.0.0-20230310171629-522b1b587ee0 // indirect
 	golang.org/x/sys v0.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
