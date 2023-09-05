@@ -69,6 +69,7 @@ func unwrapMessageFromEnvelope(msg *message.Message) (destinationTopic string, u
 
 	watermillMessage := message.NewMessage(envelopedMsg.UUID, envelopedMsg.Payload)
 	watermillMessage.Metadata = envelopedMsg.Metadata
+	watermillMessage.SetContext(envelopedMsg.Context())
 
 	return envelopedMsg.DestinationTopic, watermillMessage, nil
 }
