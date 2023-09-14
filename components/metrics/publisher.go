@@ -20,6 +20,7 @@ type PublisherPrometheusMetricsDecorator struct {
 	pub                message.Publisher
 	publisherName      string
 	publishTimeSeconds *prometheus.HistogramVec
+	customLabels       []metricLabel
 }
 
 // Publish updates the relevant publisher metrics and calls the wrapped publisher's Publish.
@@ -36,6 +37,9 @@ func (m PublisherPrometheusMetricsDecorator) Publish(topic string, messages ...*
 	}
 	if labels[labelKeyHandlerName] == "" {
 		labels[labelKeyHandlerName] = labelValueNoHandler
+	}
+	for _, customLabel := range m.customLabels {
+		labels[customLabel.label] = customLabel.computeFn(ctx)
 	}
 	start := time.Now()
 

@@ -7,12 +7,28 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-func NewPrometheusMetricsBuilder(prometheusRegistry prometheus.Registerer, namespace string, subsystem string) PrometheusMetricsBuilder {
-	return PrometheusMetricsBuilder{
+type Option func(b *PrometheusMetricsBuilder)
+
+// CustomLabel allow to provide a custom metric label and a function to compute the value
+func CustomLabel(label string, fn LabelComputeFn) Option {
+	return func(b *PrometheusMetricsBuilder) {
+		b.customLabels = append(b.customLabels, metricLabel{
+			label:     label,
+			computeFn: fn,
+		})
+	}
+}
+
+func NewPrometheusMetricsBuilder(prometheusRegistry prometheus.Registerer, namespace string, subsystem string, opts ...Option) PrometheusMetricsBuilder {
+	builder := PrometheusMetricsBuilder{
 		Namespace:          namespace,
 		Subsystem:          subsystem,
 		PrometheusRegistry: prometheusRegistry,
 	}
+	for _, opt := range opts {
+		opt(&builder)
+	}
+	return builder
 }
 
 // PrometheusMetricsBuilder provides methods to decorate publishers, subscribers and handlers.
@@ -22,6 +38,8 @@ type PrometheusMetricsBuilder struct {
 
 	Namespace string
 	Subsystem string
+
+	customLabels []metricLabel
 }
 
 // AddPrometheusRouterMetrics is a convenience function that acts on the message router to add the metrics middleware
@@ -38,6 +56,7 @@ func (b PrometheusMetricsBuilder) DecoratePublisher(pub message.Publisher) (mess
 	d := PublisherPrometheusMetricsDecorator{
 		pub:           pub,
 		publisherName: internal.StructName(pub),
+		customLabels:  b.customLabels,
 	}
 
 	d.publishTimeSeconds, err = b.registerHistogramVec(prometheus.NewHistogramVec(
@@ -47,7 +66,7 @@ func (b PrometheusMetricsBuilder) DecoratePublisher(pub message.Publisher) (mess
 			Name:      "publish_time_seconds",
 			Help:      "The time that a publishing attempt (success or not) took in seconds",
 		},
-		publisherLabelKeys,
+		appendCustomLabels(publisherLabelKeys, b.customLabels),
 	))
 	if err != nil {
 		return nil, errors.Wrap(err, "could not register publish time metric")
@@ -61,6 +80,7 @@ func (b PrometheusMetricsBuilder) DecorateSubscriber(sub message.Subscriber) (me
 	d := &SubscriberPrometheusMetricsDecorator{
 		closing:        make(chan struct{}),
 		subscriberName: internal.StructName(sub),
+		customLabels:   b.customLabels,
 	}
 
 	d.subscriberMessagesReceivedTotal, err = b.registerCounterVec(prometheus.NewCounterVec(
@@ -70,7 +90,7 @@ func (b PrometheusMetricsBuilder) DecorateSubscriber(sub message.Subscriber) (me
 			Name:      "subscriber_messages_received_total",
 			Help:      "The total number of messages received by the subscriber",
 		},
-		append(subscriberLabelKeys, labelAcked),
+		appendCustomLabels(append(subscriberLabelKeys, labelAcked), b.customLabels),
 	))
 	if err != nil {
 		return nil, errors.Wrap(err, "could not register time to ack metric")

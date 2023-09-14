@@ -18,6 +18,7 @@ type SubscriberPrometheusMetricsDecorator struct {
 	subscriberName                  string
 	subscriberMessagesReceivedTotal *prometheus.CounterVec
 	closing                         chan struct{}
+	customLabels                    []metricLabel
 }
 
 func (s SubscriberPrometheusMetricsDecorator) recordMetrics(msg *message.Message) {
@@ -32,6 +33,9 @@ func (s SubscriberPrometheusMetricsDecorator) recordMetrics(msg *message.Message
 	}
 	if labels[labelKeyHandlerName] == "" {
 		labels[labelKeyHandlerName] = labelValueNoHandler
+	}
+	for _, customLabel := range s.customLabels {
+		labels[customLabel.label] = customLabel.computeFn(ctx)
 	}
 
 	go func() {

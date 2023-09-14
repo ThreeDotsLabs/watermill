@@ -46,3 +46,17 @@ func labelsFromCtx(ctx context.Context, labels ...string) prometheus.Labels {
 
 	return ctxLabels
 }
+
+type LabelComputeFn func(msgCtx context.Context) string
+
+type metricLabel struct {
+	label     string
+	computeFn LabelComputeFn
+}
+
+func appendCustomLabels(labels []string, customs []metricLabel) []string {
+	for _, label := range customs {
+		labels = append(labels, label.label)
+	}
+	return labels
+}
