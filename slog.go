@@ -5,14 +5,17 @@ import (
 )
 
 // LevelTrace must be added, because [slog] package does not have one by default. Generate it by subtracting 4 levels from [slog.Debug] following the example of [slog.LevelWarn] and [slog.LevelError] which are set to 4 and 8.
-const LevelTrace slog.Level = slog.LevelDebug - 4
+const LevelTrace = slog.LevelDebug - 4
 
-func slogAttrsFromFields(fields LogFields) (result []any) {
+func slogAttrsFromFields(fields LogFields) []any {
+	result := make([]any, 0, len(fields)*2)
+
 	for key, value := range fields {
 		// result = append(result, slog.Any(key, value))
 		result = append(result, key, value)
 	}
-	return
+
+	return result
 }
 
 // SlogLoggerAdapter wraps [slog.Logger].
@@ -38,7 +41,13 @@ func (s *SlogLoggerAdapter) Debug(msg string, fields LogFields) {
 // Trace logs a message to [LevelTrace].
 func (s *SlogLoggerAdapter) Trace(msg string, fields LogFields) {
 	s.slog.Log(
-		nil, // void context, following slog example
+		// Void context, following the slog example
+		// as it treats context slighly differently from
+		// normal usage, minding contextual
+		// values, but ignoring contextual deadline.
+		// See the [slog] package documentation
+		// for more details.
+		nil,
 		LevelTrace,
 		msg,
 		slogAttrsFromFields(fields)...,
@@ -50,10 +59,10 @@ func (s *SlogLoggerAdapter) With(fields LogFields) LoggerAdapter {
 	return &SlogLoggerAdapter{slog: s.slog.With(slogAttrsFromFields(fields)...)}
 }
 
-// NewSlogLogger creates an adapter to the standard library's experimental structured logging package.
+// NewSlogLogger creates an adapter to the standard library's structured logging package. A `nil` logger is substituted for the result of [slog.Default].
 func NewSlogLogger(logger *slog.Logger) LoggerAdapter {
 	if logger == nil {
-		panic("cannot use a <nil> logger")
+		logger = slog.Default()
 	}
 	return &SlogLoggerAdapter{
 		slog: logger,
