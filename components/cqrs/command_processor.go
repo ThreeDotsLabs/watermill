@@ -1,6 +1,7 @@
 package cqrs
 
 import (
+	"context"
 	stdErrors "errors"
 	"fmt"
 
@@ -45,7 +46,9 @@ type CommandProcessorConfig struct {
 	Logger watermill.LoggerAdapter
 
 	// If true, CommandProcessor will ack messages even if CommandHandler returns an error.
-	// If RequestReplyEnabled is enabled and sending reply fails, the message will be nack-ed anyway.
+	// If RequestReplyBackend is not null and sending reply fails, the message will be nack-ed anyway. todo: verify
+	// todo: test if it works properly with RequestReply (it should nack by default as well?)
+	// todo: describe that it doesn't affect RequestReplyBackend filures - sending reply failure will always nack the message
 	AckCommandHandlingErrors bool
 
 	// disableRouterAutoAddHandlers is used to keep backwards compatibility.
@@ -313,6 +316,10 @@ func (p CommandProcessor) routerHandlerFunc(handler CommandHandler, logger water
 			"message_uuid":          msg.UUID,
 			"received_command_type": messageCmdName,
 		})
+
+		// todo: test!
+		ctx := context.WithValue(msg.Context(), originalMessage, msg)
+		msg.SetContext(ctx)
 
 		if err := p.config.Marshaler.Unmarshal(msg, cmd); err != nil {
 			return err
