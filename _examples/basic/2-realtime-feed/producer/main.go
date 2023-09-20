@@ -28,8 +28,6 @@ func main() {
 	logger := watermill.NewStdLogger(false, false)
 	logger.Info("Starting the producer", watermill.LogFields{})
 
-	rand.Seed(time.Now().Unix())
-
 	publisher, err := kafka.NewPublisher(
 		kafka.PublisherConfig{
 			Brokers:   brokers,

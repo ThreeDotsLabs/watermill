@@ -1,0 +1,1257 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <title>Watermill Consumer Groups Example</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-GLhlTQ8iRABdZLl6O3oVMWSktQOp6b7In1Zl3/Jr59b6EGGoI1aFkw7cmDA6j6gD" crossorigin="anonymous">
+    <link href="https://unpkg.com/@highlightjs/cdn-assets@11.7.0/styles/default.min.css" rel="stylesheet">
+    <style>
+    </style>
+</head>
+
+<body>
+
+<nav class="navbar bg-body-tertiary mb-5">
+    <div class="container-fluid">
+        <span class="navbar-brand mb-0 h1">Watermill Consumer Groups Example</span>
+    </div>
+</nav>
+
+<div id="root"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js" integrity="sha384-w76AqPfDkMBDXo30jS1Sgez6pr3x5MlQ1ZAGC+nuZB+EYdgRZgiwxhTBTkF7CXvN" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://unpkg.com/@highlightjs/cdn-assets@11.7.0/highlight.min.js"></script>
+
+<script type="text/babel">
+    function App() {
+        const [chapters, setChapters] = React.useState([
+            {
+                number: 0,
+                title: "Consumer Groups",
+                description: `
+                <p>Consumer groups let you decide which handler receives a message.</p>
+                <p>They are related to subscribers.</p>
+                <p>Some Pub/Sub take a different approach, but the idea stays the same.</p>
+                <p>Follow the tabs above to see all examples in order.</p>
+                `,
+                services: [],
+                code: [],
+            },
+            {
+                number: 1,
+                title: "Signing up for the newsletter",
+                description: `
+                    <p>When a user signs up, a <span class="badge bg-dark">UserSignedUp</span> event is published.</p>
+
+                    <p>In the simplest scenario, there's a single service with one handler subscribed to this event.
+                    It's adds the user to the newsletter list.
+                    </p>
+
+                    <p>Flip the switch below to start sending messages and see what happens.</p>
+                `,
+                topic: "UserSignedUp-1",
+                services: [
+                    {
+                        name: "newsletter-service-1",
+                        handlers: [
+                            {
+                                name: "OnUserSignedUp",
+                                group: null,
+                                received_message_id: "",
+                                received_message_at: 0,
+                            }
+                        ]
+                    }
+                ],
+                code: [{
+                    service: 'newsletter-service',
+                    code: `router.AddNoPublisherHandler(
+    "OnUserSignedUp",
+    "UserSignedUp",
+    subscriber,
+    func(msg *message.Message) error {
+        var event common.UserSignedUp
+        err := json.Unmarshal(msg.Payload, &event)
+        if err != nil {
+            return err
+        }
+
+        if !event.Consents.Marketing {
+            return nil
+        }
+
+        fmt.Println("Adding user", event.UserID, "to the promotions list")
+
+        return nil
+    },
+)`
+                }],
+            },
+            {
+                number: 2,
+                title: "Introducing the CRM service",
+                description: `
+                <p>We add one more service. It adds the signed up users to the CRM software.</p>
+                <p>Handlers in both services receive the same message.</p>
+                `,
+                topic: "UserSignedUp-2",
+                services: [
+                    {
+                        name: "newsletter-service-1",
+                        handlers: [
+                            {
+                                name: "OnUserSignedUp",
+                                group: null,
+                                received_message_id: "",
+                                received_message_at: 0,
+                            }
+                        ]
+                    },
+                    {
+                        name: "crm-service-1",
+                        handlers: [
+                            {
+                                name: "OnUserSignedUp",
+                                group: null,
+                                received_message_id: "",
+                                received_message_at: 0,
+                            }
+                        ]
+                    }
+                ],
+                code: [{
+                    service: 'newsletter-service',
+                    code: `router.AddNoPublisherHandler(
+    "OnUserSignedUp",
+    "UserSignedUp",
+    subscriber,
+    func(msg *message.Message) error {
+        var event common.UserSignedUp
+        err := json.Unmarshal(msg.Payload, &event)
+        if err != nil {
+            return err
+        }
+
+        if !event.Consents.Marketing {
+            return nil
+        }
+
+        fmt.Println("Adding user", event.UserID, "to the promotions list")
+
+        return nil
+    },
+)`,
+                }, {
+                    service: 'crm-service',
+                    code: `router.AddNoPublisherHandler(
+    "OnUserSignedUp",
+    "UserSignedUp",
+    subscriber,
+    func(msg *message.Message) error {
+        var event common.UserSignedUp
+        err := json.Unmarshal(msg.Payload, &event)
+        if err != nil {
+            return err
+        }
+
+        fmt.Println("Adding user", event.UserID, "to the CRM")
+
+        return nil
+    },
+)`,
+                }],
+            },
+            {
+                number: 3,
+                topic: "UserSignedUp-3",
+                title: "Two replicas of the newsletter service",
+                description: `
+<p>We scale the newsletter service horizontally, adding an identical replica.</p>
+
+<p>This can be done for performance or availability reasons.</p>
+
+<div class="alert alert-warning" role="alert">
+    <strong>Anti-pattern:</strong> each message is processed twice.
+</div>
+`,
+                services: [
+                    {
+                        name: "newsletter-service-1",
+                        handlers: [
+                            {
+                                name: "OnUserSignedUp",
+                                group: null,
+                                received_message_id: "",
+                                received_message_at: 0,
+                            }
+                        ]
+                    },
+                    {
+                        name: "newsletter-service-2",
+                        handlers: [
+                            {
+                                name: "OnUserSignedUp",
+                                group: null,
+                                received_message_id: "",
+                                received_message_at: 0,
+                            }
+                        ]
+                    },
+                ],
+                code: [{
+                    service: 'newsletter-service',
+                    code: `router.AddNoPublisherHandler(
+    "OnUserSignedUp",
+    "UserSignedUp",
+    subscriber,
+    func(msg *message.Message) error {
+        var event common.UserSignedUp
+        err := json.Unmarshal(msg.Payload, &event)
+        if err != nil {
+            return err
+        }
+
+        if !event.Consents.Marketing {
+            return nil
+        }
+
+        fmt.Println("Adding user", event.UserID, "to the promotions list")
+
+        return nil
+    },
+)`
+                }],
+            },
+            {
+                number: 4,
+                title: "Introducing a consumer group",
+                description: `
+                <p>Introducing a consumer group makes messages delivered in a round-robin fashion.</p>
+                <p>Each message is processed only once. It is delivered to the group, and the Pub/Sub decides which subscriber receives it.</p>
+
+                <p>The consumer group is a string.</p>
+                <p>Some Pub/Subs use different primitives to achieve the same thing (e.g., AMQP).</p>
+`,
+                topic: "UserSignedUp-4",
+                services: [
+                    {
+                        name: "newsletter-service-1",
+                        handlers: [
+                            {
+                                name: "OnUserSignedUp",
+                                group: {
+                                    name: "newsletter-service",
+                                    color: "primary",
+                                },
+                                received_message_id: "",
+                                received_message_at: 0,
+                            }
+                        ]
+                    },
+                    {
+                        name: "newsletter-service-2",
+                        handlers: [
+                            {
+                                name: "OnUserSignedUp",
+                                group: {
+                                    name: "newsletter-service",
+                                    color: "primary",
+                                },
+                                received_message_id: "",
+                                received_message_at: 0,
+                            }
+                        ]
+                    },
+                ],
+                code: [{
+                    service: 'newsletter-service',
+                    code: `newsletterServiceGroupSubscriber, err := redisstream.NewSubscriber(
+    redisstream.SubscriberConfig{
+        Client:        subClient,
+        ConsumerGroup: "newsletter-service",
+    },
+    logger,
+)
+
+router.AddNoPublisherHandler(
+    "OnUserSignedUp",
+    "UserSignedUp",
+    newsletterServiceGroupSubscriber,
+    func(msg *message.Message) error {
+        var event common.UserSignedUp
+        err := json.Unmarshal(msg.Payload, &event)
+        if err != nil {
+            return err
+        }
+
+        if !event.Consents.Marketing {
+            return nil
+        }
+
+        fmt.Println("Adding user", event.UserID, "to the promotions list")
+
+        return nil
+    },
+)`
+                }],
+            },
+            {
+                number: 5,
+                title: "Adding a second handler to the newsletter service",
+                description: `
+<p>We now have two newsletter lists: one for promotions, and one for news.</p>
+
+<p>We add another handler subscribed to the same event.</p>
+
+<p>Note: we changed the first handler's name.</p>
+
+<p>We keep the same consumer groups.</p>
+
+<div class="alert alert-warning" role="alert">
+    <strong>Anti-pattern:</strong> every other message is delivered to a different handler.
+</div>
+`,
+                topic: "UserSignedUp-5",
+                services: [
+                    {
+                        name: "newsletter-service-1",
+                        handlers: [
+                            {
+                                name: "AddToPromotionsList",
+                                group: {
+                                    name: "newsletter-service",
+                                    color: "primary",
+                                },
+                                received_message_id: "",
+                                received_message_at: 0,
+                            },
+                            {
+                                name: "AddToNewsList",
+                                group: {
+                                    name: "newsletter-service",
+                                    color: "primary",
+                                },
+                                received_message_id: "",
+                                received_message_at: 0,
+                            }
+                        ]
+                    },
+                ],
+                code: [{
+                    service: 'newsletter-service',
+                    code: `newsletterServiceGroupSubscriber, err := redisstream.NewSubscriber(
+    redisstream.SubscriberConfig{
+        Client:        subClient,
+        ConsumerGroup: "newsletter-service",
+    },
+    logger,
+)
+
+router.AddNoPublisherHandler(
+    "AddToPromotionsList",
+    "UserSignedUp",
+    newsletterServiceGroupSubscriber,
+    func(msg *message.Message) error {
+        var event common.UserSignedUp
+        err := json.Unmarshal(msg.Payload, &event)
+        if err != nil {
+            return err
+        }
+
+        if !event.Consents.Marketing {
+            return nil
+        }
+
+        fmt.Println("Adding user", event.UserID, "to the promotions list")
+
+        return nil
+    },
+)
+
+router.AddNoPublisherHandler(
+    "AddToNewsList",
+    "UserSignedUp",
+    newsletterServiceGroupSubscriber,
+    func(msg *message.Message) error {
+        var event common.UserSignedUp
+        err := json.Unmarshal(msg.Payload, &event)
+        if err != nil {
+            return err
+        }
+
+        if !event.Consents.News {
+            return nil
+        }
+
+        fmt.Println("Adding user", event.UserID, "to the news list")
+
+        return nil
+    },
+)`
+                }],
+            },
+            {
+                number: 6,
+                title: "Changing the consumer group to the handler name",
+                description: `
+                <p>Introducing a consumer group per handler makes messages delivered to both handlers.</p>
+`,
+                topic: "UserSignedUp-6",
+                services: [
+                    {
+                        name: "newsletter-service-1",
+                        handlers: [
+                            {
+                                name: "AddToPromotionsList",
+                                group: {
+                                    name: "AddToPromotionsList",
+                                    color: "primary",
+                                },
+                                received_message_id: "",
+                                received_message_at: 0,
+                            },
+                            {
+                                name: "AddToNewsList",
+                                group: {
+                                    name: "AddToNewsList",
+                                    color: "warning",
+                                },
+                                received_message_id: "",
+                                received_message_at: 0,
+                            }
+                        ]
+                    },
+                ],
+                code: [{
+                    service: 'newsletter-service',
+                    code: `addToPromotionsListGroupSubscriber, err := redisstream.NewSubscriber(
+    redisstream.SubscriberConfig{
+        Client:        subClient,
+        ConsumerGroup: "AddToPromotionsList",
+    },
+    logger,
+)
+
+addToNewsListGroupSubscriber, err := redisstream.NewSubscriber(
+    redisstream.SubscriberConfig{
+        Client:        subClient,
+        ConsumerGroup: "AddToNewsList",
+    },
+    logger,
+)
+
+router.AddNoPublisherHandler(
+    "AddToPromotionsList",
+    "UserSignedUp",
+    addToPromotionsListGroupSubscriber,
+    func(msg *message.Message) error {
+        var event common.UserSignedUp
+        err := json.Unmarshal(msg.Payload, &event)
+        if err != nil {
+            return err
+        }
+
+        if !event.Consents.Marketing {
+            return nil
+        }
+
+        fmt.Println("Adding user", event.UserID, "to the promotions list")
+
+        return nil
+    },
+)
+
+router.AddNoPublisherHandler(
+    "AddToNewsList",
+    "UserSignedUp",
+    addToNewsListGroupSubscriber,
+    func(msg *message.Message) error {
+        var event common.UserSignedUp
+        err := json.Unmarshal(msg.Payload, &event)
+        if err != nil {
+            return err
+        }
+
+        if !event.Consents.News {
+            return nil
+        }
+
+        fmt.Println("Adding user", event.UserID, "to the news list")
+
+        return nil
+    },
+)`
+                }],
+            },
+            {
+                number: 7,
+                title: "Two replicas with two handlers",
+                description: `
+                <p>We keep one consumer group per handler.</p>
+                <p>Events are delivered to each handler in a round-robin fashion.</p>
+`,
+                topic: "UserSignedUp-7",
+                services: [
+                    {
+                        name: "newsletter-service-1",
+                        handlers: [
+                            {
+                                name: "AddToPromotionsList",
+                                group: {
+                                    name: "AddToPromotionsList",
+                                    color: "primary",
+                                },
+                                received_message_id: "",
+                                received_message_at: 0,
+                            },
+                            {
+                                name: "AddToNewsList",
+                                group: {
+                                    name: "AddToNewsList",
+                                    color: "warning",
+                                },
+                                received_message_id: "",
+                                received_message_at: 0,
+                            }
+                        ]
+                    },
+                    {
+                        name: "newsletter-service-2",
+                        handlers: [
+                            {
+                                name: "AddToPromotionsList",
+                                group: {
+                                    name: "AddToPromotionsList",
+                                    color: "primary",
+                                },
+                                received_message_id: "",
+                                received_message_at: 0,
+                            },
+                            {
+                                name: "AddToNewsList",
+                                group: {
+                                    name: "AddToNewsList",
+                                    color: "warning",
+                                },
+                                received_message_id: "",
+                                received_message_at: 0,
+                            }
+                        ]
+                    },
+                ],
+                code: [{
+                    service: 'newsletter-service',
+                    code: `addToPromotionsListGroupSubscriber, err := redisstream.NewSubscriber(
+    redisstream.SubscriberConfig{
+        Client:        subClient,
+        ConsumerGroup: "AddToPromotionsList",
+    },
+    logger,
+)
+
+addToNewsListGroupSubscriber, err := redisstream.NewSubscriber(
+    redisstream.SubscriberConfig{
+        Client:        subClient,
+        ConsumerGroup: "AddToNewsList",
+    },
+    logger,
+)
+
+router.AddNoPublisherHandler(
+    "AddToPromotionsList",
+    "UserSignedUp",
+    addToPromotionsListGroupSubscriber,
+    func(msg *message.Message) error {
+        var event common.UserSignedUp
+        err := json.Unmarshal(msg.Payload, &event)
+        if err != nil {
+            return err
+        }
+
+        if !event.Consents.Marketing {
+            return nil
+        }
+
+        fmt.Println("Adding user", event.UserID, "to the promotions list")
+
+        return nil
+    },
+)
+
+router.AddNoPublisherHandler(
+    "AddToNewsList",
+    "UserSignedUp",
+    addToNewsListGroupSubscriber,
+    func(msg *message.Message) error {
+        var event common.UserSignedUp
+        err := json.Unmarshal(msg.Payload, &event)
+        if err != nil {
+            return err
+        }
+
+        if !event.Consents.News {
+            return nil
+        }
+
+        fmt.Println("Adding user", event.UserID, "to the news list")
+
+        return nil
+    },
+)`
+                }],
+            },
+            {
+                number: 8,
+                title: "Adding a second handler to the CRM service",
+                description: `
+                <p>The CRM service now has one more responsibility: adding users to the Support software.</p>
+
+                <p>Handler names as consumer groups still make sense. However, a good practice is to include the service name as well.</p>
+
+                <p>Thanks to this, there's no risk of conflicts of the handler names between services.</p>
+
+                <p>Note: the replica number is not part of the service name!</p>
+
+                <p>This example features Watermill's CQRS component for easier creation of subscribers.</p>
+`,
+                topic: "UserSignedUp-8",
+                services: [
+                    {
+                        name: "newsletter-service-1",
+                        handlers: [
+                            {
+                                name: "AddToPromotionsList",
+                                group: {
+                                    name: "newsletter-service_AddToPromotionsList",
+                                    color: "primary",
+                                },
+                                received_message_id: "",
+                                received_message_at: 0,
+                            },
+                            {
+                                name: "AddToNewsList",
+                                group: {
+                                    name: "newsletter-service_AddToNewsList",
+                                    color: "warning",
+                                },
+                                received_message_id: "",
+                                received_message_at: 0,
+                            }
+                        ]
+                    },
+                    {
+                        name: "crm-service-1",
+                        handlers: [
+                            {
+                                name: "AddToCRM",
+                                group: {
+                                    name: "crm-service_AddToCRM",
+                                    color: "danger",
+                                },
+                                received_message_id: "",
+                                received_message_at: 0,
+                            },
+                            {
+                                name: "AddToSupport",
+                                group: {
+                                    name: "crm-service_AddToSupport",
+                                    color: "info",
+                                },
+                                received_message_id: "",
+                                received_message_at: 0,
+                            }
+                        ]
+                    },
+                ],
+                code: [{
+                    service: 'newsletter-service',
+                    code: `_, err = cqrs.NewFacade(cqrs.FacadeConfig{
+    GenerateEventsTopic: func(eventName string) string {
+        return eventName
+    },
+    EventsPublisher: publisher,
+    EventHandlers: func(commandBus *cqrs.CommandBus, eventBus *cqrs.EventBus) []cqrs.EventHandler {
+        return []cqrs.EventHandler{
+            AddToPromotionsListHandler{},
+            AddToNewsListHandler{},
+        }
+    },
+    EventsSubscriberConstructor: func(handlerName string) (message.Subscriber, error) {
+        return redisstream.NewSubscriber(
+            redisstream.SubscriberConfig{
+                Client:        subClient,
+                ConsumerGroup: fmt.Sprintf("%s_%s", serviceName, handlerName),
+            },
+            logger,
+        )
+    },
+    Router: router,
+    CommandEventMarshaler: cqrs.JSONMarshaler{
+        GenerateName: cqrs.StructName,
+    },
+    Logger: logger,
+})
+
+type AddToPromotionsListHandler struct{}
+
+func (h AddToPromotionsListHandler) HandlerName() string {
+	return "AddToPromotionsList"
+}
+
+func (h AddToPromotionsListHandler) NewEvent() interface{} {
+	return &common.UserSignedUp{}
+}
+
+func (h AddToPromotionsListHandler) Handle(ctx context.Context, event interface{}) error {
+	e := event.(*common.UserSignedUp)
+
+	if !e.Consents.Marketing {
+		return nil
+	}
+
+	fmt.Println("Adding user", e.UserID, "to the promotions list")
+
+	return nil
+}
+
+type AddToNewsListHandler struct{}
+
+func (h AddToNewsListHandler) HandlerName() string {
+	return "AddToNewsList"
+}
+
+func (h AddToNewsListHandler) NewEvent() interface{} {
+	return &common.UserSignedUp{}
+}
+
+func (h AddToNewsListHandler) Handle(ctx context.Context, event interface{}) error {
+	e := event.(*common.UserSignedUp)
+
+	if !e.Consents.News {
+		return nil
+	}
+	fmt.Println("Adding user", e.UserID, "to the news list")
+
+	return nil
+}`,
+                }, {
+                    service: 'crm-service',
+                    code: `_, err = cqrs.NewFacade(cqrs.FacadeConfig{
+    GenerateEventsTopic: func(eventName string) string {
+        return eventName
+    },
+    EventsPublisher: publisher,
+    EventHandlers: func(commandBus *cqrs.CommandBus, eventBus *cqrs.EventBus) []cqrs.EventHandler {
+        return []cqrs.EventHandler{
+            AddToCRMHandler{},
+            AddToSupportHandler{},
+        }
+    },
+    EventsSubscriberConstructor: func(handlerName string) (message.Subscriber, error) {
+        return redisstream.NewSubscriber(
+            redisstream.SubscriberConfig{
+                Client:        subClient,
+                ConsumerGroup: fmt.Sprintf("%s_%s", serviceName, handlerName),
+            },
+            logger,
+        )
+    },
+    Router: router,
+    CommandEventMarshaler: cqrs.JSONMarshaler{
+        GenerateName: cqrs.StructName,
+    },
+    Logger: logger,
+})
+
+type AddToCRMHandler struct{}
+
+func (h AddToCRMHandler) HandlerName() string {
+	return "AddToCRM"
+}
+
+func (h AddToCRMHandler) NewEvent() interface{} {
+	return &common.UserSignedUp{}
+}
+
+func (h AddToCRMHandler) Handle(ctx context.Context, event interface{}) error {
+	e := event.(*common.UserSignedUp)
+
+	fmt.Println("Adding user", e.UserID, "to the CRM")
+
+	return nil
+}
+
+type AddToSupportHandler struct{}
+
+func (h AddToSupportHandler) HandlerName() string {
+	return "AddToSupport"
+}
+
+func (h AddToSupportHandler) NewEvent() interface{} {
+	return &common.UserSignedUp{}
+}
+
+func (h AddToSupportHandler) Handle(ctx context.Context, event interface{}) error {
+	e := event.(*common.UserSignedUp)
+
+	fmt.Println("Adding user", e.UserID, "to the support channel")
+
+	return nil
+}`
+                }],
+            },
+            {
+                number: 9,
+                title: "Running two replicas of both services",
+                description: `
+                <p>This example is identical as the previous one except both services run two replicas.</p>
+                `,
+                topic: "UserSignedUp-9",
+                services: [
+                    {
+                        name: "newsletter-service-1",
+                        handlers: [
+                            {
+                                name: "AddToPromotionsList",
+                                group: {
+                                    name: "newsletter-service_AddToPromotionsList",
+                                    color: "primary",
+                                },
+                                received_message_id: "",
+                                received_message_at: 0,
+                            },
+                            {
+                                name: "AddToNewsList",
+                                group: {
+                                    name: "newsletter-service_AddToNewsList",
+                                    color: "warning",
+                                },
+                                received_message_id: "",
+                                received_message_at: 0,
+                            }
+                        ]
+                    },
+                    {
+                        name: "crm-service-1",
+                        handlers: [
+                            {
+                                name: "AddToCRM",
+                                group: {
+                                    name: "crm-service_AddToCRM",
+                                    color: "danger",
+                                },
+                                received_message_id: "",
+                                received_message_at: 0,
+                            },
+                            {
+                                name: "AddToSupport",
+                                group: {
+                                    name: "crm-service_AddToSupport",
+                                    color: "info",
+                                },
+                                received_message_id: "",
+                                received_message_at: 0,
+                            }
+                        ]
+                    },
+                    {
+                        name: "newsletter-service-2",
+                        handlers: [
+                            {
+                                name: "AddToPromotionsList",
+                                group: {
+                                    name: "newsletter-service_AddToPromotionsList",
+                                    color: "primary",
+                                },
+                                received_message_id: "",
+                                received_message_at: 0,
+                            },
+                            {
+                                name: "AddToNewsList",
+                                group: {
+                                    name: "newsletter-service_AddToNewsList",
+                                    color: "warning",
+                                },
+                                received_message_id: "",
+                                received_message_at: 0,
+                            }
+                        ]
+                    },
+                    {
+                        name: "crm-service-2",
+                        handlers: [
+                            {
+                                name: "AddToCRM",
+                                group: {
+                                    name: "crm-service_AddToCRM",
+                                    color: "danger",
+                                },
+                                received_message_id: "",
+                                received_message_at: 0,
+                            },
+                            {
+                                name: "AddToSupport",
+                                group: {
+                                    name: "crm-service_AddToSupport",
+                                    color: "info",
+                                },
+                                received_message_id: "",
+                                received_message_at: 0,
+                            }
+                        ]
+                    },
+                ],
+                code: [{
+                    service: "newsletter-service",
+                    code: `_, err = cqrs.NewFacade(cqrs.FacadeConfig{
+    GenerateEventsTopic: func(eventName string) string {
+        return eventName
+    },
+    EventsPublisher: publisher,
+    EventHandlers: func(commandBus *cqrs.CommandBus, eventBus *cqrs.EventBus) []cqrs.EventHandler {
+        return []cqrs.EventHandler{
+            AddToPromotionsListHandler{},
+            AddToNewsListHandler{},
+        }
+    },
+    EventsSubscriberConstructor: func(handlerName string) (message.Subscriber, error) {
+        return redisstream.NewSubscriber(
+            redisstream.SubscriberConfig{
+                Client:        subClient,
+                ConsumerGroup: fmt.Sprintf("%s_%s", serviceName, handlerName),
+            },
+            logger,
+        )
+    },
+    Router: router,
+    CommandEventMarshaler: cqrs.JSONMarshaler{
+        GenerateName: cqrs.StructName,
+    },
+    Logger: logger,
+})
+
+type AddToPromotionsListHandler struct{}
+
+func (h AddToPromotionsListHandler) HandlerName() string {
+	return "AddToPromotionsList"
+}
+
+func (h AddToPromotionsListHandler) NewEvent() interface{} {
+	return &common.UserSignedUp{}
+}
+
+func (h AddToPromotionsListHandler) Handle(ctx context.Context, event interface{}) error {
+	e := event.(*common.UserSignedUp)
+
+	if !e.Consents.Marketing {
+		return nil
+	}
+
+	fmt.Println("Adding user", e.UserID, "to the promotions list")
+
+	return nil
+}
+
+type AddToNewsListHandler struct{}
+
+func (h AddToNewsListHandler) HandlerName() string {
+	return "AddToNewsList"
+}
+
+func (h AddToNewsListHandler) NewEvent() interface{} {
+	return &common.UserSignedUp{}
+}
+
+func (h AddToNewsListHandler) Handle(ctx context.Context, event interface{}) error {
+	e := event.(*common.UserSignedUp)
+
+	if !e.Consents.News {
+		return nil
+	}
+
+	fmt.Println("Adding user", e.UserID, "to the news list")
+
+	return nil
+}`,
+                }, {
+                    service: "crm-service",
+                    code: `_, err = cqrs.NewFacade(cqrs.FacadeConfig{
+    GenerateEventsTopic: func(eventName string) string {
+        return eventName
+    },
+    EventsPublisher: publisher,
+    EventHandlers: func(commandBus *cqrs.CommandBus, eventBus *cqrs.EventBus) []cqrs.EventHandler {
+        return []cqrs.EventHandler{
+            AddToCRMHandler{},
+            AddToSupportHandler{},
+        }
+    },
+    EventsSubscriberConstructor: func(handlerName string) (message.Subscriber, error) {
+        return redisstream.NewSubscriber(
+            redisstream.SubscriberConfig{
+                Client:        subClient,
+                ConsumerGroup: fmt.Sprintf("%s_%s", serviceName, handlerName),
+            },
+            logger,
+        )
+    },
+    Router: router,
+    CommandEventMarshaler: cqrs.JSONMarshaler{
+        GenerateName: cqrs.StructName,
+    },
+    Logger: logger,
+})
+
+type AddToCRMHandler struct{}
+
+func (h AddToCRMHandler) HandlerName() string {
+	return "AddToCRM"
+}
+
+func (h AddToCRMHandler) NewEvent() interface{} {
+	return &common.UserSignedUp{}
+}
+
+func (h AddToCRMHandler) Handle(ctx context.Context, event interface{}) error {
+	e := event.(*common.UserSignedUp)
+
+	fmt.Println("Adding user", e.UserID, "to the CRM")
+
+	return nil
+}
+
+type AddToSupportHandler struct{}
+
+func (h AddToSupportHandler) HandlerName() string {
+	return "AddToSupport"
+}
+
+func (h AddToSupportHandler) NewEvent() interface{} {
+	return &common.UserSignedUp{}
+}
+
+func (h AddToSupportHandler) Handle(ctx context.Context, event interface{}) error {
+	e := event.(*common.UserSignedUp)
+
+	fmt.Println("Adding user", e.UserID, "to the support channel")
+
+	return nil
+}`
+                }],
+            },
+        ]);
+
+        React.useEffect(() => {
+            const es = new EventSource("/api/messages");
+            es.addEventListener('data', event => {
+                console.log(event.data);
+                const data = JSON.parse(event.data);
+
+                let newChapters = [...chapters];
+
+                const now = Date.now();
+
+                for (let message of data) {
+                    for (let i = 0; i < newChapters.length; i++) {
+                        const chapter = newChapters[i];
+                        if (chapter.topic === message.topic) {
+                            for (let j = 0; j < chapter.services.length; j++) {
+                                const service = chapter.services[j];
+                                if (service.name === message.service) {
+                                    for (let k = 0; k < service.handlers.length; k++) {
+                                        const handler = service.handlers[k];
+                                        if (handler.name === message.handler) {
+                                            handler.received_message_id = message.id;
+                                            handler.received_message_at = now;
+                                            break;
+                                        }
+                                    }
+                                    break;
+                                }
+                            }
+                            break;
+                        }
+                    }
+                }
+
+                setChapters(newChapters);
+            }, false);
+        }, []);
+
+        React.useEffect(() => {
+            const interval = setInterval(() => {
+                let newChapters = [...chapters];
+
+                const now = Date.now();
+
+                for (let i = 0; i < newChapters.length; i++) {
+                    const chapter = newChapters[i];
+                    for (let j = 0; j < chapter.services.length; j++) {
+                        const service = chapter.services[j];
+                        for (let k = 0; k < service.handlers.length; k++) {
+                            const handler = service.handlers[k];
+                            if (now - handler.received_message_at > 1200) {
+                                handler.received_message_at = 0;
+                            }
+                        }
+                    }
+                }
+
+                setChapters(newChapters);
+            }, 100);
+            return () => clearInterval(interval);
+        }, []);
+
+        return (
+            <div className="container">
+                <ul className="nav nav-tabs" role="tablist" style={{borderBottom: 0}}>
+                    {chapters.map(chapter => (
+                        <li key={chapter.number} className="nav-item mx-1" role="presentation">
+                            <button
+                                className={`nav-link ${chapter.number === 0 ? "active" : ""}`}
+                                id={"example-tab-" + chapter.number }
+                                data-bs-toggle="tab"
+                                data-bs-target={"#tab-pane-" + chapter.number}
+                                type="button"
+                                role="tab"
+                                aria-controls={"tab-pane-" + chapter.number}
+                                aria-selected={chapter.number === 0 ? "true" : "false"}><span className="px-1">{chapter.number}</span></button>
+                        </li>
+                    ))}
+                </ul>
+                <div className="tab-content">
+                    {chapters.map(chapter => <Chapter key={chapter.number} chapter={chapter} />)}
+                </div>
+            </div>
+        );
+    }
+
+    function Chapter(props) {
+        const [sending, setSending] = React.useState(false);
+
+        React.useEffect(() => {
+            const interval = setInterval(() => {
+                if (!sending) {
+                    return;
+                }
+                fetch('/api/messages/' + props.chapter.topic, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                    }
+                });
+            }, 1500);
+            return () => clearInterval(interval);
+        }, [sending]);
+
+        const columns = 2;
+        const rows = props.chapter.services.map((service, i) => {
+            return <Service key={i} service={service} />
+        }).reduce((r, element, index) => {
+            if (index % columns === 0) {
+                r.push([]);
+            }
+            r[r.length - 1].push(element);
+            return r;
+        }, []).map((row, i) => {
+            return (
+                <div key={i} className="row my-3">
+                    {row}
+                </div>
+            );
+        })
+
+        React.useEffect(() => {
+            hljs.highlightAll();
+        }, []);
+
+        return (
+            <div
+                className={`tab-pane fade ${props.chapter.number === 0 ? " show active" : ""}`}
+                id={"tab-pane-" + props.chapter.number}
+                role="tabpanel"
+                aria-labelledby={"tab-" + props.chapter.number}
+                tabIndex="0"
+            >
+                <div className="card">
+                    <div className="card-header">
+                        <h3>{props.chapter.number}. {props.chapter.title}</h3>
+                    </div>
+                    <div className="card-body">
+                        <p dangerouslySetInnerHTML={{__html: props.chapter.description}}></p>
+
+                        {props.chapter.services.length > 0 &&
+                            <div className="form-check form-switch mx-3 mt-5 mb-4">
+                                <input className="form-check-input" onChange={() => setSending(!sending) } type="checkbox" role="switch" id={`flexSwitchCheckDefault-${props.chapter.number}`} />
+                                <label className="form-check-label" htmlFor={`flexSwitchCheckDefault-${props.chapter.number}`}>Send <span className="badge bg-dark">UserSignedUp</span> Events</label>
+                                {sending && <div className="mx-3 spinner-grow spinner-grow-sm text-success" role="status"></div>}
+                            </div>
+                        }
+
+                        <div className="container">
+                            {rows}
+                        </div>
+
+                            <div className="accordion mt-5" id={"code" + props.chapter.number}>
+                                {props.chapter.code.map(code => (
+                                    <div className="accordion-item">
+                                        <h2 className="accordion-header" id={"codeHeader" + props.chapter.number+code.service}>
+                                            <button className="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target={"#codeCollapse" + props.chapter.number+code.service} aria-expanded="false" aria-controls={"#codeCollapse" + props.chapter.number+code.service}>
+                                                Code: {code.service}
+                                            </button>
+                                        </h2>
+                                        <div id={"codeCollapse" + props.chapter.number + code.service} className="accordion-collapse collapse" aria-labelledby={"codeHeader"+props.chapter.number+code.service} data-bs-parent={"code"+props.chapter.number+code.service}>
+                                            <div className="accordion-body">
+                                            <pre>
+                                                <code className="language-go">
+                                                    {code.code}
+                                                </code>
+                                            </pre>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    function Service(props) {
+        return (
+            <div className="col-6">
+                <div className="card">
+                    <div className="card-header">
+                        <h3>{props.service.name}</h3>
+                    </div>
+                    <ul className="list-group list-group-flush">
+                        {props.service.handlers.map(handler => <Handler key={handler.name} handler={handler} />)}
+                    </ul>
+                </div>
+            </div>
+        );
+    }
+
+    function Handler(props) {
+        return (
+            <li className="list-group-item">
+                <h4>{props.handler.name}</h4>
+                {props.handler.group &&
+                    <h4><span className={`badge text-bg-${props.handler.group.color}`}>Group: {props.handler.group.name}</span></h4>
+                }
+                <h1><span className={"badge " + (props.handler.received_message_at > 0 ? "text-bg-success" : "text-bg-light")}>{props.handler.received_message_id > 0 ? `Received #${props.handler.received_message_id}` : "Waiting for messages..."}</span></h1>
+            </li>
+        );
+    }
+
+    const container = document.getElementById('root');
+    const root = ReactDOM.createRoot(container);
+    root.render(<App />);
+
+</script>
+</body>
+</html>

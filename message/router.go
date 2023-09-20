@@ -91,6 +91,10 @@ func NewRouter(config RouterConfig, logger watermill.LoggerAdapter) (*Router, er
 		return nil, errors.Wrap(err, "invalid config")
 	}
 
+	if logger == nil {
+		logger = watermill.NopLogger{}
+	}
+
 	return &Router{
 		config: config,
 
@@ -365,7 +369,7 @@ func (r *Router) Run(ctx context.Context) (err error) {
 
 	close(r.running)
 
-	go r.closeWhenAllHandlersStopped()
+	go r.closeWhenAllHandlersStopped(ctx)
 
 	<-r.closingInProgressCh
 	cancel()
@@ -390,6 +394,8 @@ func (r *Router) RunHandlers(ctx context.Context) error {
 
 	r.handlersLock.Lock()
 	defer r.handlersLock.Unlock()
+
+	r.logger.Info("Running router handlers", watermill.LogFields{"count": len(r.handlers)})
 
 	for name, h := range r.handlers {
 		name := name
@@ -447,7 +453,7 @@ func (r *Router) RunHandlers(ctx context.Context) error {
 
 // closeWhenAllHandlersStopped closed router, when all handlers has stopped,
 // because for example all subscriptions are closed.
-func (r *Router) closeWhenAllHandlersStopped() {
+func (r *Router) closeWhenAllHandlersStopped(ctx context.Context) {
 	r.handlersLock.RLock()
 	hasHandlers := len(r.handlers) == 0
 	r.handlersLock.RUnlock()
@@ -465,12 +471,17 @@ func (r *Router) closeWhenAllHandlersStopped() {
 	}
 
 	r.handlersWg.Wait()
-	if r.isClosed() {
+	if r.IsClosed() {
 		// already closed
 		return
 	}
 
-	r.logger.Error("All handlers stopped, closing router", errors.New("all router handlers stopped"), nil)
+	// Only log an error if the context was not canceled, but handlers were stopped.
+	select {
+	case <-ctx.Done():
+	default:
+		r.logger.Error("All handlers stopped, closing router", errors.New("all router handlers stopped"), nil)
+	}
 
 	if err := r.Close(); err != nil {
 		r.logger.Error("Cannot close router", err, nil)
@@ -484,11 +495,16 @@ func (r *Router) closeWhenAllHandlersStopped() {
 //	go r.Run(ctx)
 //	<- r.Running()
 //	fmt.Println("Router is running")
+//
+// Warning: for historical reasons, this channel is not aware of router closing - the channel will be closed if the router has been running and closed.
 func (r *Router) Running() chan struct{} {
 	return r.running
 }
 
 // IsRunning returns true when router is running.
+//
+// Warning: for historical reasons, this method is not aware of router closing.
+// If you want to know if the router was closed, use IsClosed.
 func (r *Router) IsRunning() bool {
 	select {
 	case <-r.running:
@@ -544,7 +560,7 @@ func (r *Router) waitForHandlers() bool {
 	return sync_internal.WaitGroupTimeout(&waitGroup, r.config.CloseTimeout)
 }
 
-func (r *Router) isClosed() bool {
+func (r *Router) IsClosed() bool {
 	r.closedLock.Lock()
 	defer r.closedLock.Unlock()
 

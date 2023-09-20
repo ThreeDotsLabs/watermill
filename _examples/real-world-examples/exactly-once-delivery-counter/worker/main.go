@@ -13,7 +13,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill-sql/pkg/sql"
+	"github.com/ThreeDotsLabs/watermill-sql/v2/pkg/sql"
 )
 
 const topic = "counter"

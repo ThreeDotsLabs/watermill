@@ -27,9 +27,11 @@ type namedStruct interface {
 }
 
 // NamedStruct returns the name from a message implementing the following interface:
-// 		type namedStruct interface {
-// 			Name() string
-// 		}
+//
+//	type namedStruct interface {
+//		Name() string
+//	}
+//
 // It ignores if the value is a pointer or not.
 func NamedStruct(fallback func(v interface{}) string) func(v interface{}) string {
 	return func(v interface{}) string {

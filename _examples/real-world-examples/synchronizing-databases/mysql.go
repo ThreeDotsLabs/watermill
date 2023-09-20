@@ -2,26 +2,27 @@ package main
 
 import (
 	"bytes"
-	stdSQL "database/sql"
 	"encoding/gob"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill-sql/pkg/sql"
+	"github.com/ThreeDotsLabs/watermill-sql/v2/pkg/sql"
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
 type mysqlUser struct {
-	ID        int
+	ID        int64
 	User      string
 	FirstName string
 	LastName  string
 	CreatedAt time.Time
 }
 
-type mysqlSchemaAdapter struct{}
+type mysqlSchemaAdapter struct {
+	sql.DefaultMySQLSchema
+}
 
 func (m mysqlSchemaAdapter) SchemaInitializingQueries(topic string) []string {
 	return []string{
@@ -71,11 +72,11 @@ func (m mysqlSchemaAdapter) SelectQuery(topic string, consumerGroup string, offs
 	return selectQuery, nextOffsetArgs
 }
 
-func (m mysqlSchemaAdapter) UnmarshalMessage(row *stdSQL.Row) (offset int, msg *message.Message, err error) {
+func (m mysqlSchemaAdapter) UnmarshalMessage(row sql.Scanner) (_ sql.Row, err error) {
 	user := mysqlUser{}
 	err = row.Scan(&user.ID, &user.User, &user.FirstName, &user.LastName, &user.CreatedAt)
 	if err != nil {
-		return 0, nil, err
+		return sql.Row{}, err
 	}
 
 	var payload bytes.Buffer
@@ -83,10 +84,13 @@ func (m mysqlSchemaAdapter) UnmarshalMessage(row *stdSQL.Row) (offset int, msg *
 
 	err = encoder.Encode(user)
 	if err != nil {
-		return 0, nil, err
+		return sql.Row{}, err
 	}
 
-	msg = message.NewMessage(watermill.NewULID(), payload.Bytes())
+	msg := message.NewMessage(watermill.NewULID(), payload.Bytes())
 
-	return user.ID, msg, nil
+	return sql.Row{
+		Offset: user.ID,
+		Msg:    msg,
+	}, nil
 }

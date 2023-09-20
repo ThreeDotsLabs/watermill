@@ -17,41 +17,174 @@ import (
 
 // TestCQRS is functional test of CQRS command handler and event handler.
 func TestCQRS(t *testing.T) {
-	ts := NewTestServices()
+	testCases := []struct {
+		Name       string
+		CreateCqrs func(t *testing.T, cc *CaptureCommandHandler, ce *CaptureEventHandler) (*message.Router, *cqrs.CommandBus, *cqrs.EventBus)
+	}{
+		{
+			// facade is deprecated, testing backwards compatibility
+			Name: "facade",
+			CreateCqrs: func(t *testing.T, cc *CaptureCommandHandler, ce *CaptureEventHandler) (*message.Router, *cqrs.CommandBus, *cqrs.EventBus) {
+				router, cqrsFacade := createRouterAndFacade(t, cc, ce)
+				return router, cqrsFacade.CommandBus(), cqrsFacade.EventBus()
+			},
+		},
+		{
+			Name:       "constructors",
+			CreateCqrs: createCqrsComponents,
+		},
+	}
+	for i := range testCases {
+		tc := testCases[i]
 
-	captureCommandHandler := &CaptureCommandHandler{}
-	captureEventHandler := &CaptureEventHandler{}
+		t.Run(tc.Name, func(t *testing.T) {
+			captureCommandHandler := &CaptureCommandHandler{}
+			captureEventHandler := &CaptureEventHandler{}
 
-	router, cqrsFacade := createRouterAndFacade(ts, t, captureCommandHandler, captureEventHandler)
+			router, commandBus, eventBus := tc.CreateCqrs(t, captureCommandHandler, captureEventHandler)
 
-	pointerCmd := &TestCommand{ID: watermill.NewULID()}
-	require.NoError(t, cqrsFacade.CommandBus().Send(context.Background(), pointerCmd))
-	assert.EqualValues(t, []interface{}{pointerCmd}, captureCommandHandler.HandledCommands())
-	captureCommandHandler.Reset()
+			pointerCmd := &TestCommand{ID: watermill.NewULID()}
+			require.NoError(t, commandBus.Send(context.Background(), pointerCmd))
+			assert.EqualValues(t, []interface{}{pointerCmd}, captureCommandHandler.HandledCommands())
+			captureCommandHandler.Reset()
 
-	nonPointerCmd := TestCommand{ID: watermill.NewULID()}
-	require.NoError(t, cqrsFacade.CommandBus().Send(context.Background(), nonPointerCmd))
-	// command is always unmarshaled to pointer value
-	assert.EqualValues(t, []interface{}{&nonPointerCmd}, captureCommandHandler.HandledCommands())
-	captureCommandHandler.Reset()
+			nonPointerCmd := TestCommand{ID: watermill.NewULID()}
+			require.NoError(t, commandBus.Send(context.Background(), nonPointerCmd))
+			// command is always unmarshaled to pointer value
+			assert.EqualValues(t, []interface{}{&nonPointerCmd}, captureCommandHandler.HandledCommands())
+			captureCommandHandler.Reset()
 
-	pointerEvent := &TestEvent{ID: watermill.NewULID()}
-	require.NoError(t, cqrsFacade.EventBus().Publish(context.Background(), pointerEvent))
-	assert.EqualValues(t, []interface{}{pointerEvent}, captureEventHandler.HandledEvents())
-	captureEventHandler.Reset()
+			pointerEvent := &TestEvent{ID: watermill.NewULID()}
+			require.NoError(t, eventBus.Publish(context.Background(), pointerEvent))
+			assert.EqualValues(t, []interface{}{pointerEvent}, captureEventHandler.HandledEvents())
+			captureEventHandler.Reset()
 
-	nonPointerEvent := TestEvent{ID: watermill.NewULID()}
-	require.NoError(t, cqrsFacade.EventBus().Publish(context.Background(), nonPointerEvent))
-	// event is always unmarshaled to pointer value
-	assert.EqualValues(t, []interface{}{&nonPointerEvent}, captureEventHandler.HandledEvents())
-	captureEventHandler.Reset()
+			nonPointerEvent := TestEvent{ID: watermill.NewULID()}
+			require.NoError(t, eventBus.Publish(context.Background(), nonPointerEvent))
+			// event is always unmarshaled to pointer value
+			assert.EqualValues(t, []interface{}{&nonPointerEvent}, captureEventHandler.HandledEvents())
+			captureEventHandler.Reset()
 
-	assert.NoError(t, router.Close())
-
-	assert.Equal(t, cqrsFacade.CommandEventMarshaler(), ts.Marshaler)
+			assert.NoError(t, router.Close())
+		})
+	}
 }
 
-func createRouterAndFacade(ts TestServices, t *testing.T, commandHandler *CaptureCommandHandler, eventHandler *CaptureEventHandler) (*message.Router, *cqrs.Facade) {
+func createCqrsComponents(t *testing.T, commandHandler *CaptureCommandHandler, eventHandler *CaptureEventHandler) (*message.Router, *cqrs.CommandBus, *cqrs.EventBus) {
+	ts := NewTestServices()
+
+	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
+	require.NoError(t, err)
+
+	eventProcessor, err := cqrs.NewEventProcessorWithConfig(
+		router,
+		cqrs.EventProcessorConfig{
+			GenerateSubscribeTopic: func(params cqrs.EventProcessorGenerateSubscribeTopicParams) (string, error) {
+				return params.EventName, nil
+			},
+			AckOnUnknownEvent: true,
+			SubscriberConstructor: func(params cqrs.EventProcessorSubscriberConstructorParams) (message.Subscriber, error) {
+				assert.Equal(t, "CaptureEventHandler", params.HandlerName)
+
+				assert.Implements(t, new(cqrs.EventHandler), params.EventHandler)
+				assert.NotNil(t, params.EventHandler)
+
+				return ts.EventsPubSub, nil
+			},
+			Marshaler: ts.Marshaler,
+			Logger:    ts.Logger,
+		},
+	)
+	require.NoError(t, err)
+
+	err = eventProcessor.AddHandlers(eventHandler)
+	require.NoError(t, err)
+
+	eventBus, err := cqrs.NewEventBusWithConfig(
+		ts.EventsPubSub,
+		cqrs.EventBusConfig{
+			GeneratePublishTopic: func(params cqrs.GenerateEventPublishTopicParams) (string, error) {
+				assert.Equal(t, "cqrs_test.TestEvent", params.EventName)
+
+				switch cmd := params.Event.(type) {
+				case *TestEvent:
+					assert.NotEmpty(t, cmd.ID)
+				case TestEvent:
+					assert.NotEmpty(t, cmd.ID)
+				default:
+					assert.Fail(t, "unexpected command type: %T", cmd)
+				}
+
+				assert.NotEmpty(t, params.Event)
+
+				return params.EventName, nil
+			},
+			Marshaler: ts.Marshaler,
+			Logger:    ts.Logger,
+		},
+	)
+	require.NoError(t, err)
+
+	commandProcessor, err := cqrs.NewCommandProcessorWithConfig(
+		router,
+		cqrs.CommandProcessorConfig{
+			GenerateSubscribeTopic: func(params cqrs.CommandProcessorGenerateSubscribeTopicParams) (string, error) {
+				assert.Equal(t, "cqrs_test.TestCommand", params.CommandName)
+
+				assert.Implements(t, new(cqrs.CommandHandler), params.CommandHandler)
+				assert.NotNil(t, params.CommandHandler)
+
+				return params.CommandName, nil
+			},
+			SubscriberConstructor: func(params cqrs.CommandProcessorSubscriberConstructorParams) (message.Subscriber, error) {
+				assert.Equal(t, "CaptureCommandHandler", params.HandlerName)
+
+				return ts.CommandsPubSub, nil
+			},
+			Marshaler:                ts.Marshaler,
+			Logger:                   ts.Logger,
+			AckCommandHandlingErrors: false,
+		},
+	)
+	require.NoError(t, err)
+
+	err = commandProcessor.AddHandlers(commandHandler)
+	require.NoError(t, err)
+
+	commandBus, err := cqrs.NewCommandBusWithConfig(ts.CommandsPubSub, cqrs.CommandBusConfig{
+		GeneratePublishTopic: func(params cqrs.CommandBusGeneratePublishTopicParams) (string, error) {
+			assert.Equal(t, "cqrs_test.TestCommand", params.CommandName)
+
+			switch cmd := params.Command.(type) {
+			case *TestCommand:
+				assert.NotEmpty(t, cmd.ID)
+			case TestCommand:
+				assert.NotEmpty(t, cmd.ID)
+			default:
+				assert.Fail(t, "unexpected command type: %T", cmd)
+			}
+
+			assert.NotNil(t, params.Command)
+
+			return params.CommandName, nil
+		},
+		Marshaler: ts.Marshaler,
+		Logger:    ts.Logger,
+	})
+	require.NoError(t, err)
+
+	go func() {
+		require.NoError(t, router.Run(context.Background()))
+	}()
+
+	<-router.Running()
+
+	return router, commandBus, eventBus
+}
+
+func createRouterAndFacade(t *testing.T, commandHandler *CaptureCommandHandler, eventHandler *CaptureEventHandler) (*message.Router, *cqrs.Facade) {
+	ts := NewTestServices()
+
 	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
 	require.NoError(t, err)
 
@@ -101,6 +234,8 @@ func createRouterAndFacade(ts TestServices, t *testing.T, commandHandler *Captur
 	}()
 
 	<-router.Running()
+
+	assert.Equal(t, c.CommandEventMarshaler(), ts.Marshaler)
 
 	return router, c
 }
@@ -161,6 +296,10 @@ func (h *CaptureCommandHandler) Handle(ctx context.Context, cmd interface{}) err
 type TestEvent struct {
 	ID   string
 	When time.Time
+}
+
+type AnotherTestEvent struct {
+	ID string
 }
 
 type CaptureEventHandler struct {
