@@ -7,28 +7,27 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-type Option func(b *PrometheusMetricsBuilder)
-
-// CustomLabel allow to provide a custom metric label and a function to compute the value
-func CustomLabel(label string, fn LabelComputeFn) Option {
-	return func(b *PrometheusMetricsBuilder) {
-		b.customLabels = append(b.customLabels, metricLabel{
-			label:     label,
-			computeFn: fn,
-		})
-	}
+type PrometheusMetricsBuilderConfig struct {
+	Namespace        string
+	Subsystem        string
+	AdditionalLabels []MetricLabel
 }
 
-func NewPrometheusMetricsBuilder(prometheusRegistry prometheus.Registerer, namespace string, subsystem string, opts ...Option) PrometheusMetricsBuilder {
+func NewPrometheusMetricsBuilderWithConfig(prometheusRegistry prometheus.Registerer, config PrometheusMetricsBuilderConfig) PrometheusMetricsBuilder {
 	builder := PrometheusMetricsBuilder{
-		Namespace:          namespace,
-		Subsystem:          subsystem,
+		Namespace:          config.Namespace,
+		Subsystem:          config.Subsystem,
 		PrometheusRegistry: prometheusRegistry,
-	}
-	for _, opt := range opts {
-		opt(&builder)
+		additionalLabels:   config.AdditionalLabels,
 	}
 	return builder
+}
+
+func NewPrometheusMetricsBuilder(prometheusRegistry prometheus.Registerer, namespace string, subsystem string) PrometheusMetricsBuilder {
+	return NewPrometheusMetricsBuilderWithConfig(prometheusRegistry, PrometheusMetricsBuilderConfig{
+		Namespace: namespace,
+		Subsystem: subsystem,
+	})
 }
 
 // PrometheusMetricsBuilder provides methods to decorate publishers, subscribers and handlers.
@@ -39,7 +38,7 @@ type PrometheusMetricsBuilder struct {
 	Namespace string
 	Subsystem string
 
-	customLabels []metricLabel
+	additionalLabels []MetricLabel
 }
 
 // AddPrometheusRouterMetrics is a convenience function that acts on the message router to add the metrics middleware
@@ -54,9 +53,9 @@ func (b PrometheusMetricsBuilder) AddPrometheusRouterMetrics(r *message.Router) 
 func (b PrometheusMetricsBuilder) DecoratePublisher(pub message.Publisher) (message.Publisher, error) {
 	var err error
 	d := PublisherPrometheusMetricsDecorator{
-		pub:           pub,
-		publisherName: internal.StructName(pub),
-		customLabels:  b.customLabels,
+		pub:              pub,
+		publisherName:    internal.StructName(pub),
+		additionalLabels: b.additionalLabels,
 	}
 
 	d.publishTimeSeconds, err = b.registerHistogramVec(prometheus.NewHistogramVec(
@@ -66,7 +65,7 @@ func (b PrometheusMetricsBuilder) DecoratePublisher(pub message.Publisher) (mess
 			Name:      "publish_time_seconds",
 			Help:      "The time that a publishing attempt (success or not) took in seconds",
 		},
-		appendCustomLabels(publisherLabelKeys, b.customLabels),
+		toLabelsSlice(publisherLabelKeys, b.additionalLabels),
 	))
 	if err != nil {
 		return nil, errors.Wrap(err, "could not register publish time metric")
@@ -78,9 +77,9 @@ func (b PrometheusMetricsBuilder) DecoratePublisher(pub message.Publisher) (mess
 func (b PrometheusMetricsBuilder) DecorateSubscriber(sub message.Subscriber) (message.Subscriber, error) {
 	var err error
 	d := &SubscriberPrometheusMetricsDecorator{
-		closing:        make(chan struct{}),
-		subscriberName: internal.StructName(sub),
-		customLabels:   b.customLabels,
+		closing:          make(chan struct{}),
+		subscriberName:   internal.StructName(sub),
+		additionalLabels: b.additionalLabels,
 	}
 
 	d.subscriberMessagesReceivedTotal, err = b.registerCounterVec(prometheus.NewCounterVec(
@@ -90,7 +89,7 @@ func (b PrometheusMetricsBuilder) DecorateSubscriber(sub message.Subscriber) (me
 			Name:      "subscriber_messages_received_total",
 			Help:      "The total number of messages received by the subscriber",
 		},
-		appendCustomLabels(append(subscriberLabelKeys, labelAcked), b.customLabels),
+		toLabelsSlice(append(subscriberLabelKeys, labelAcked), b.additionalLabels),
 	))
 	if err != nil {
 		return nil, errors.Wrap(err, "could not register time to ack metric")
