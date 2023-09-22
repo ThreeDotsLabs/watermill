@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill/components/cqrs"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/pkg/errors"
 )
@@ -26,6 +25,10 @@ type CommandReply[Response any] struct {
 	ReplyMsg *message.Message
 }
 
+type CommandBus interface {
+	SendWithModifiedMessage(ctx context.Context, cmd any, modify func(*message.Message) error) error
+}
+
 // todo: use interface for command bus?
 
 // todo: test
@@ -34,7 +37,7 @@ type CommandReply[Response any] struct {
 // SendAndWait sends command to the command bus and waits for the command execution.
 func SendAndWait[Response any](
 	ctx context.Context,
-	c *cqrs.CommandBus,
+	c CommandBus,
 	backend Backend[Response],
 	cmd any,
 ) (<-chan CommandReply[Response], error) {
