@@ -1,7 +1,6 @@
 package cqrs
 
 import (
-	"context"
 	stdErrors "errors"
 	"fmt"
 
@@ -317,8 +316,7 @@ func (p CommandProcessor) routerHandlerFunc(handler CommandHandler, logger water
 			"received_command_type": messageCmdName,
 		})
 
-		// todo: test!
-		ctx := context.WithValue(msg.Context(), originalMessage, msg)
+		ctx := CtxWithOriginalMessage(msg.Context(), msg)
 		msg.SetContext(ctx)
 
 		if err := p.config.Marshaler.Unmarshal(msg, cmd); err != nil {
@@ -326,7 +324,7 @@ func (p CommandProcessor) routerHandlerFunc(handler CommandHandler, logger water
 		}
 
 		handle := func(params CommandProcessorOnHandleParams) (err error) {
-			return params.Handler.Handle(params.Message.Context(), params.Command)
+			return params.Handler.Handle(ctx, params.Command)
 		}
 		if p.config.OnHandle != nil {
 			handle = p.config.OnHandle

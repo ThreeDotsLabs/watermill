@@ -17,6 +17,7 @@ type CommandReply[Response any] struct {
 	// If error from handler is returned, CommandHandlerError is returned.
 	// If listening for reply timed out, HandlerErr is ReplyTimeoutError.
 	// If processing was successful, HandlerErr is nil.
+	// todo: it's not always handler err!!!!
 	HandlerErr error
 
 	// todo: should it be present? what if no pubsub backend is used?
@@ -29,12 +30,11 @@ type CommandBus interface {
 	SendWithModifiedMessage(ctx context.Context, cmd any, modify func(*message.Message) error) error
 }
 
-// todo: use interface for command bus?
-
-// todo: test
 // todo: add cancel func?
 // todo: doc that ctx cancelation is super important
 // SendAndWait sends command to the command bus and waits for the command execution.
+// todo: doc when it unblocks
+// todo: rename? it's not waiting
 func SendAndWait[Response any](
 	ctx context.Context,
 	c CommandBus,
@@ -43,8 +43,7 @@ func SendAndWait[Response any](
 ) (<-chan CommandReply[Response], error) {
 	notificationID := watermill.NewUUID()
 
-	// todo: wait for 1 reply by default?
-	replyChan, err := backend.ListenForNotifications(ctx, ListenForNotificationsParams{
+	replyChan, err := backend.ListenForNotifications(ctx, BackendListenForNotificationsParams{
 		Command:        cmd,
 		NotificationID: notificationID,
 	})

@@ -15,6 +15,18 @@ func (e ReplyTimeoutError) Error() string {
 	return fmt.Sprintf("reply timeout after %s: %s", e.Duration, e.Err)
 }
 
+type ReplyUnmarshalError struct {
+	Err error
+}
+
+func (r ReplyUnmarshalError) Error() string {
+	return fmt.Sprintf("cannot unmarshal reply: %s", r.Err)
+}
+
+func (r ReplyUnmarshalError) Unwrap() error {
+	return r.Err
+}
+
 // CommandHandlerError is returned when the command handler returns an error.
 type CommandHandlerError struct {
 	Err error

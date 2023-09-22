@@ -3,7 +3,6 @@ package requestreply
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/ThreeDotsLabs/watermill"
@@ -11,17 +10,18 @@ import (
 	"github.com/pkg/errors"
 )
 
-// PubSubRequestReply is a Backend that uses Pub/Sub to transport commands and replies.
-type PubSubRequestReply[Response any] struct {
-	config    PubSubRequestReplyConfig
-	marshaler Marshaler[Response]
+// PubSubBackend is a Backend that uses Pub/Sub to transport commands and replies.
+type PubSubBackend[Response any] struct {
+	config    PubSubBackendConfig
+	marshaler BackendPubsubMarshaler[Response]
 }
 
-// NewPubSubRequestReply creates a new PubSubRequestReply.
-func NewPubSubRequestReply[Response any](
-	config PubSubRequestReplyConfig,
-	marshaler Marshaler[Response],
-) (*PubSubRequestReply[Response], error) {
+// NewPubSubBackend creates a new PubSubBackend.
+// todo: doc usage
+func NewPubSubBackend[Response any](
+	config PubSubBackendConfig,
+	marshaler BackendPubsubMarshaler[Response],
+) (*PubSubBackend[Response], error) {
 	config.setDefaults()
 
 	if err := config.Validate(); err != nil {
@@ -31,81 +31,94 @@ func NewPubSubRequestReply[Response any](
 		return nil, errors.New("marshaler cannot be nil")
 	}
 
-	return &PubSubRequestReply[Response]{
+	return &PubSubBackend[Response]{
 		config:    config,
 		marshaler: marshaler,
 	}, nil
 }
 
-type PubSubRequestReplySubscriberContext struct {
+type PubSubBackendSubscribeParams struct {
 	Command any
 
 	// todo: doc everywhere
 	NotificationID string
 }
 
-type PubSubRequestReplyOnCommandProcessedContext struct {
-	HandleErr error
+type PubSubBackendSubscriberConstructorFn func(PubSubBackendSubscribeParams) (message.Subscriber, error)
 
-	PubSubRequestReplySubscriberContext
+type PubSubBackendGenerateSubscribeTopicFn func(PubSubBackendSubscribeParams) (string, error)
+
+type PubSubBackendPublishParams struct {
+	Command any
+
+	CommandMessage *message.Message
+
+	// todo: doc everywhere
+	NotificationID string
 }
 
-type PubSubRequestReplySubscriberConstructorFn func(PubSubRequestReplySubscriberContext) (message.Subscriber, error)
+type PubSubBackendGeneratePublishTopicFn func(PubSubBackendPublishParams) (string, error)
 
-type PubSubRequestReplyTopicGeneratorFn func(PubSubRequestReplySubscriberContext) (string, error)
+type PubSubBackendOnCommandProcessedParams struct {
+	HandleErr error
 
-// todo: rename
-type PubSubRequestReplyConfig struct {
-	Publisher                      message.Publisher
-	SubscriberConstructor          PubSubRequestReplySubscriberConstructorFn
-	GenerateReplyNotificationTopic PubSubRequestReplyTopicGeneratorFn
+	PubSubBackendPublishParams
+}
+
+type PubSubBackendModifyNotificationMessageFn func(msg *message.Message, params PubSubBackendOnCommandProcessedParams) error
+
+type PubSubBackendOnListenForReplyFinishedFn func(ctx context.Context, params PubSubBackendSubscribeParams)
+
+type PubSubBackendConfig struct {
+	Publisher             message.Publisher
+	SubscriberConstructor PubSubBackendSubscriberConstructorFn
+
+	GeneratePublishTopic   PubSubBackendGeneratePublishTopicFn
+	GenerateSubscribeTopic PubSubBackendGenerateSubscribeTopicFn
 
 	Logger watermill.LoggerAdapter
 
 	ListenForReplyTimeout *time.Duration
 
-	ModifyNotificationMessage func(msg *message.Message, context PubSubRequestReplyOnCommandProcessedContext) error
+	ModifyNotificationMessage PubSubBackendModifyNotificationMessageFn
 
-	OnListenForReplyFinished func(context.Context, PubSubRequestReplySubscriberContext)
+	OnListenForReplyFinished PubSubBackendOnListenForReplyFinishedFn
+
+	AckCommandErrors bool
 }
 
-func (p *PubSubRequestReplyConfig) setDefaults() {
+func (p *PubSubBackendConfig) setDefaults() {
 	if p.Logger == nil {
 		p.Logger = watermill.NopLogger{}
 	}
 }
 
-func (p *PubSubRequestReplyConfig) Validate() error {
+func (p *PubSubBackendConfig) Validate() error {
 	if p.Publisher == nil {
 		return errors.New("publisher cannot be nil")
 	}
 	if p.SubscriberConstructor == nil {
 		return errors.New("subscriber constructor cannot be nil")
 	}
-	if p.GenerateReplyNotificationTopic == nil {
-		return errors.New("GenerateReplyNotificationTopic cannot be nil")
+	if p.GeneratePublishTopic == nil {
+		return errors.New("GeneratePublishTopic cannot be nil")
+	}
+	if p.GenerateSubscribeTopic == nil {
+		return errors.New("GenerateSubscribeTopic cannot be nil")
 	}
 
 	return nil
 }
 
-const notifyWhenExecutedMetadataKey = "_watermill_notify_when_executed"
-
-//func (p PubSubRequestReply) ModifyCommandMessageBeforePublish(cmdMsg *message.Message, command any) error {
-//	cmdMsg.Metadata.Set(notifyWhenExecutedMetadataKey, "1")
-//
-//	return nil
-//}
-
-func (p PubSubRequestReply[Response]) ListenForNotifications(
+func (p PubSubBackend[Response]) ListenForNotifications(
 	ctx context.Context,
-	params ListenForNotificationsParams,
+	params BackendListenForNotificationsParams,
 ) (<-chan CommandReply[Response], error) {
 	start := time.Now()
 
-	replyContext := PubSubRequestReplySubscriberContext{
+	replyContext := PubSubBackendSubscribeParams{
 		Command:        params.Command,
-		NotificationID: params.NotificationID, // todo: test it!
+		NotificationID: params.NotificationID,
 	}
 
 	// this needs to be done before publishing the message to avoid race condition
@@ -114,7 +127,7 @@ func (p PubSubRequestReply[Response]) ListenForNotifications(
 		return nil, errors.Wrap(err, "cannot create request/reply notifications subscriber")
 	}
 
-	replyNotificationTopic, err := p.config.GenerateReplyNotificationTopic(replyContext)
+	replyNotificationTopic, err := p.config.GenerateSubscribeTopic(replyContext)
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot generate request/reply notifications topic")
 	}
@@ -140,34 +153,6 @@ func (p PubSubRequestReply[Response]) ListenForNotifications(
 	)
 
 	replyChan := make(chan CommandReply[Response], 1)
-
-	//replyChan := make(chan CommandReply[Response], 1)
-	//
-	//go func() {
-	//	defer close(replyChan)
-	//
-	//	for {
-	//		select {
-	//		case <-ctx.Done():
-	//			return
-	//		case notificationMsg, ok := <-notificationMsgsChannel:
-	//			if !ok {
-	//				return
-	//			}
-	//
-	//			reply, err := marshaler.UnmarshalReply(notificationMsg)
-	//			if err != nil {
-	//				// todo: doc it
-	//				replyChan <- CommandReply[Response]{
-	//					Err:      errors.Wrap(err, "cannot unmarshal reply"),
-	//					ReplyMsg: notificationMsg,
-	//				}
-	//			} else {
-	//				replyChan <- reply
-	//			}
-	//		}
-	//	}
-	//}()
 
 	go func() {
 		defer func() {
@@ -198,17 +183,18 @@ func (p PubSubRequestReply[Response]) ListenForNotifications(
 
 				resp, ok, unmarshalErr := p.handleNotifyMsg(notifyMsg, params.NotificationID, p.marshaler)
 				if unmarshalErr != nil {
-					// todo!!! log?
+					replyChan <- CommandReply[Response]{
+						HandlerErr: ReplyUnmarshalError{unmarshalErr},
+					}
 				} else if ok {
-					reply := CommandReply[Response]{
+					replyChan <- CommandReply[Response]{
 						HandlerResponse: resp.HandlerResponse,
 						HandlerErr:      resp.HandlerErr,
 						ReplyMsg:        notifyMsg,
 					}
-
-					replyChan <- reply
-					// we assume that more messages may arrive (in case of fan-out commands handling)
 				}
+
+				// we assume that more messages may arrive (in case of fan-out commands handling) - we don't exit yet
 			}
 		}
 	}()
@@ -218,44 +204,28 @@ func (p PubSubRequestReply[Response]) ListenForNotifications(
 
 const NotificationIdMetadataKey = "_watermill_command_message_uuid"
 
-func (p PubSubRequestReply[Response]) OnCommandProcessed(ctx context.Context, params OnCommandProcessedParams[Response]) error {
-	//if !p.isRequestReplyEnabled(params.CmdMsg) {
-	//	p.config.Logger.Debug(fmt.Sprintf("RequestReply is enabled, but %s is missing", notifyWhenExecutedMetadataKey), nil)
-	//	return nil
-	//}
-
+func (p PubSubBackend[Response]) OnCommandProcessed(ctx context.Context, params BackendOnCommandProcessedParams[Response]) error {
 	p.config.Logger.Debug("Sending request reply", nil)
 
-	//// we are using protobuf message, so it will work both with proto and json marshaler
-	//notification := &RequestReplyNotification{}
-	//if params.HandleErr != nil {
-	//	notification.Error = params.HandleErr.Error()
-	//	notification.HasError = true
-	//}
-
-	notificationMsg, err := p.marshaler.MarshalReply(
-		params,
-		CommandReply[Response]{
-			HandlerResponse: params.HandlerResponse,
-			HandlerErr:      params.HandleErr,
-			ReplyMsg:        nil,
-		},
-	)
+	notificationMsg, err := p.marshaler.MarshalReply(params)
 	if err != nil {
 		return errors.Wrap(err, "cannot marshal request reply notification")
 	}
-
-	// todo: doc - why needed?
 	notificationMsg.SetContext(ctx)
-	// todo: doc
-	notificationMsg.Metadata.Set(NotificationIdMetadataKey, params.CmdMsg.Metadata.Get(NotificationIdMetadataKey))
+
+	notificationID := params.CommandMessage.Metadata.Get(NotificationIdMetadataKey)
+	if notificationID == "" {
+		return errors.Errorf("cannot get notification ID from command message metadata, key: %s", NotificationIdMetadataKey)
+	}
+	notificationMsg.Metadata.Set(NotificationIdMetadataKey, notificationID)
 
 	if p.config.ModifyNotificationMessage != nil {
-		processedContext := PubSubRequestReplyOnCommandProcessedContext{
+		processedContext := PubSubBackendOnCommandProcessedParams{
 			HandleErr: params.HandleErr,
-			PubSubRequestReplySubscriberContext: PubSubRequestReplySubscriberContext{
-				Command:        params.Cmd,
-				NotificationID: params.CmdMsg.Metadata.Get(NotificationIdMetadataKey), // todo: test it
+			PubSubBackendPublishParams: PubSubBackendPublishParams{
+				Command:        params.Command,
+				CommandMessage: params.CommandMessage,
+				NotificationID: notificationID,
 			},
 		}
 		if err := p.config.ModifyNotificationMessage(notificationMsg, processedContext); err != nil {
@@ -263,8 +233,10 @@ func (p PubSubRequestReply[Response]) OnCommandProcessed(ctx context.Context, pa
 		}
 	}
 
-	replyTopic, err := p.config.GenerateReplyNotificationTopic(PubSubRequestReplySubscriberContext{
-		Command: params.Cmd,
+	replyTopic, err := p.config.GeneratePublishTopic(PubSubBackendPublishParams{
+		Command:        params.Command,
+		CommandMessage: params.CommandMessage,
+		NotificationID: notificationID,
 	})
 	if err != nil {
 		return errors.Wrap(err, "cannot generate request/reply notify topic")
@@ -274,25 +246,24 @@ func (p PubSubRequestReply[Response]) OnCommandProcessed(ctx context.Context, pa
 		return errors.Wrap(err, "cannot publish command executed message")
 	}
 
-	return nil
+	if p.config.AckCommandErrors {
+		// we are ignoring handler error - message will be acked
+		return nil
+	} else {
+		// if handler returned error, it will nack the message
+		// if params.HandleErr is nil, message will be acked
+		return params.HandleErr
+	}
 }
 
-func (p PubSubRequestReply[Response]) isRequestReplyEnabled(cmdMsg *message.Message) bool {
-	notificationEnabled := cmdMsg.Metadata.Get(notifyWhenExecutedMetadataKey)
-	enabled, _ := strconv.ParseBool(notificationEnabled)
-
-	return enabled
-}
-
-func (p PubSubRequestReply[Response]) handleNotifyMsg(
+func (p PubSubBackend[Response]) handleNotifyMsg(
 	msg *message.Message,
 	expectedCommandUuid string,
-	marshaler Marshaler[Response],
+	marshaler BackendPubsubMarshaler[Response],
 ) (CommandReply[Response], bool, error) {
 	defer msg.Ack()
 
 	if msg.Metadata.Get(NotificationIdMetadataKey) != expectedCommandUuid {
-		// todo: test
 		p.config.Logger.Debug("Received notify message with different command UUID", nil)
 		return CommandReply[Response]{}, false, nil
 	}
@@ -300,30 +271,3 @@ func (p PubSubRequestReply[Response]) handleNotifyMsg(
 	res, unmarshalErr := marshaler.UnmarshalReply(msg)
 	return res, true, unmarshalErr
 }
-
-//// todo: make it configurable?
-//var defaultPubSubRequestReplyMarshalerMarshaler = JSONMarshaler{}
-//
-//// todo: doc
-//type DefaultPubSubRequestReplyMarshaler[Response any] struct{}
-//
-//func (d DefaultPubSubRequestReplyMarshaler[Response]) Marshal(params OnCommandProcessedParams[Response], response any) (*message.Message, error) {
-//	payload, err := defaultPubSubRequestReplyMarshalerMarshaler.Marshal(response)
-//	if err != nil {
-//		return nil, errors.Wrap(err, "DefaultPubSubRequestReplyMarshaler: cannot marshal response")
-//	}
-//
-//	msg := message.NewMessage(watermill.NewUUID(), payload)
-//	msg.Metadata.Set(ErrorMetadataKey, params.HandleErr.Error())
-//	if params.HandleErr != nil {
-//		msg.Metadata.Set(HasErrorMetadataKey, "1")
-//	} else {
-//		msg.Metadata.Set(HasErrorMetadataKey, "0")
-//	}
-//
-//	return msg, nil
-//}
-//
-//func (d DefaultPubSubRequestReplyMarshaler) Unmarshal(msg *message.Message) (reply CommandReply, err error) {
-//
-//}

@@ -20,3 +20,8 @@ func OriginalMessageFromCtx(ctx context.Context) *message.Message {
 	}
 	return val
 }
+
+// CtxWithOriginalMessage returns a new context with the original message attached.
+func CtxWithOriginalMessage(ctx context.Context, msg *message.Message) context.Context {
+	return context.WithValue(ctx, originalMessage, msg)
+}

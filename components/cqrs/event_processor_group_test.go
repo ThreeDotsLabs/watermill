@@ -385,3 +385,67 @@ func TestEventProcessor_handler_group(t *testing.T) {
 	assert.Equal(t, 1, handler1Calls)
 	assert.Equal(t, 1, handler2Calls)
 }
+
+func TestEventGroupProcessor_original_msg_set_to_ctx(t *testing.T) {
+	ts := NewTestServices()
+
+	msg, err := ts.Marshaler.Marshal(&TestEvent{})
+	require.NoError(t, err)
+
+	mockSub := &mockSubscriber{
+		MessagesToSend: []*message.Message{
+			msg,
+		},
+	}
+
+	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
+	require.NoError(t, err)
+
+	cp, err := cqrs.NewEventGroupProcessorWithConfig(
+		router,
+		cqrs.EventGroupProcessorConfig{
+			GenerateSubscribeTopic: func(params cqrs.EventGroupProcessorGenerateSubscribeTopicParams) (string, error) {
+				return "events", nil
+			},
+			SubscriberConstructor: func(params cqrs.EventGroupProcessorSubscriberConstructorParams) (message.Subscriber, error) {
+				return mockSub, nil
+			},
+			AckOnUnknownEvent: true,
+			Marshaler:         ts.Marshaler,
+			Logger:            ts.Logger,
+		},
+	)
+	require.NoError(t, err)
+
+	var msgFromCtx *message.Message
+
+	err = cp.AddHandlersGroup(
+		"some_group",
+		cqrs.NewGroupEventHandler(
+			func(ctx context.Context, cmd *TestEvent) error {
+				msgFromCtx = cqrs.OriginalMessageFromCtx(ctx)
+				return nil
+			}),
+	)
+	require.NoError(t, err)
+
+	go func() {
+		err := router.Run(context.Background())
+		assert.NoError(t, err)
+	}()
+
+	<-router.Running()
+
+	select {
+	case <-msg.Acked():
+		// ok
+	case <-msg.Nacked():
+		// nack received
+		t.Fatal("nack received, message should be acked")
+	case <-time.After(1 * time.Second):
+		t.Fatal("timeout waiting for ack")
+	}
+
+	require.NotNil(t, msgFromCtx)
+	assert.Equal(t, msg, msgFromCtx)
+}
