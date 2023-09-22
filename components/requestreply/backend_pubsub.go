@@ -39,6 +39,9 @@ func NewPubSubRequestReply[Response any](
 
 type PubSubRequestReplySubscriberContext struct {
 	Command any
+
+	// todo: doc everywhere
+	NotificationID string
 }
 
 type PubSubRequestReplyOnCommandProcessedContext struct {
@@ -51,6 +54,7 @@ type PubSubRequestReplySubscriberConstructorFn func(PubSubRequestReplySubscriber
 
 type PubSubRequestReplyTopicGeneratorFn func(PubSubRequestReplySubscriberContext) (string, error)
 
+// todo: rename
 type PubSubRequestReplyConfig struct {
 	Publisher                      message.Publisher
 	SubscriberConstructor          PubSubRequestReplySubscriberConstructorFn
@@ -100,7 +104,8 @@ func (p PubSubRequestReply[Response]) ListenForNotifications(
 	start := time.Now()
 
 	replyContext := PubSubRequestReplySubscriberContext{
-		Command: params.Command,
+		Command:        params.Command,
+		NotificationID: params.NotificationID, // todo: test it!
 	}
 
 	// this needs to be done before publishing the message to avoid race condition
@@ -249,7 +254,8 @@ func (p PubSubRequestReply[Response]) OnCommandProcessed(ctx context.Context, pa
 		processedContext := PubSubRequestReplyOnCommandProcessedContext{
 			HandleErr: params.HandleErr,
 			PubSubRequestReplySubscriberContext: PubSubRequestReplySubscriberContext{
-				Command: params.Cmd,
+				Command:        params.Cmd,
+				NotificationID: params.CmdMsg.Metadata.Get(NotificationIdMetadataKey), // todo: test it
 			},
 		}
 		if err := p.config.ModifyNotificationMessage(notificationMsg, processedContext); err != nil {
