@@ -591,7 +591,7 @@ func TestRequestReply_parallel_different_handlers(t *testing.T) {
 		i := 0
 
 		for reply := range replyCh {
-			assert.EqualValues(t, TestCommandResult{ID: cmd.ID}, reply.HandlerResult)
+			assert.EqualValues(t, TestCommandResult(cmd), reply.HandlerResult)
 			require.Error(t, reply.Error)
 			assert.Equal(t, fmt.Sprintf("error 1 %s", cmd.ID), reply.Error.Error())
 			i++
@@ -623,7 +623,7 @@ func TestRequestReply_parallel_different_handlers(t *testing.T) {
 		i := 0
 
 		for reply := range replyCh {
-			assert.EqualValues(t, TestCommandResult{ID: cmd.ID}, reply.HandlerResult)
+			assert.EqualValues(t, TestCommandResult(cmd), reply.HandlerResult)
 			require.Error(t, reply.Error)
 			assert.Equal(t, fmt.Sprintf("error 2 %s", cmd.ID), reply.Error.Error())
 			i++
@@ -682,10 +682,10 @@ func TestRequestReply_parallel_same_handler(t *testing.T) {
 
 			select {
 			case reply := <-replyCh:
-				assert.EqualValues(t, TestCommandResult{ID: cmd.ID}, reply.HandlerResult)
+				assert.EqualValues(t, TestCommandResult(cmd), reply.HandlerResult)
 				assert.NoError(t, reply.Error)
 			case <-time.After(time.Millisecond * 100):
-				t.Fatal("timeout")
+				t.Error("timeout")
 			}
 		}()
 	}

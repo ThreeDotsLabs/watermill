@@ -115,10 +115,7 @@ func (p PubSubBackend[Result]) ListenForNotifications(
 ) (<-chan Reply[Result], error) {
 	start := time.Now()
 
-	replyContext := PubSubBackendSubscribeParams{
-		Command:     params.Command,
-		OperationID: params.OperationID,
-	}
+	replyContext := PubSubBackendSubscribeParams(params)
 
 	// this needs to be done before publishing the message to avoid race condition
 	notificationsSubscriber, err := p.config.SubscriberConstructor(replyContext)
