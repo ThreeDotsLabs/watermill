@@ -18,7 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type TestServices[Response any] struct {
+type TestServices[Result any] struct {
 	Logger    watermill.LoggerAdapter
 	Marshaler cqrs.CommandEventMarshaler
 	PubSub    *gochannel.GoChannel
@@ -27,7 +27,7 @@ type TestServices[Response any] struct {
 	CommandBus       *cqrs.CommandBus
 	CommandProcessor *cqrs.CommandProcessor
 
-	RequestReplyBackend *requestreply.PubSubBackend[Response]
+	RequestReplyBackend *requestreply.PubSubBackend[Result]
 }
 
 type TestServicesConfig struct {
@@ -39,7 +39,7 @@ type TestServicesConfig struct {
 	DoNotBlockPublishUntilSubscriberAck bool
 }
 
-func NewTestServices[Response any](t *testing.T, c TestServicesConfig) TestServices[Response] {
+func NewTestServices[Result any](t *testing.T, c TestServicesConfig) TestServices[Result] {
 	t.Helper()
 
 	logger := watermill.NewStdLogger(true, true)
@@ -50,23 +50,23 @@ func NewTestServices[Response any](t *testing.T, c TestServicesConfig) TestServi
 		logger,
 	)
 
-	backend, err := requestreply.NewPubSubBackend[Response](
+	backend, err := requestreply.NewPubSubBackend[Result](
 		requestreply.PubSubBackendConfig{
 			Publisher: pubSub,
 			SubscriberConstructor: func(subscriberContext requestreply.PubSubBackendSubscribeParams) (message.Subscriber, error) {
-				assert.NotEmpty(t, subscriberContext.NotificationID)
+				assert.NotEmpty(t, subscriberContext.OperationID)
 				assert.NotEmpty(t, subscriberContext.Command)
 
 				return pubSub, nil
 			},
 			GenerateSubscribeTopic: func(subscriberContext requestreply.PubSubBackendSubscribeParams) (string, error) {
-				assert.NotEmpty(t, subscriberContext.NotificationID)
+				assert.NotEmpty(t, subscriberContext.OperationID)
 				assert.NotEmpty(t, subscriberContext.Command)
 
 				return "reply", nil
 			},
 			GeneratePublishTopic: func(subscriberContext requestreply.PubSubBackendPublishParams) (string, error) {
-				assert.NotEmpty(t, subscriberContext.NotificationID)
+				assert.NotEmpty(t, subscriberContext.OperationID)
 				assert.NotEmpty(t, subscriberContext.Command)
 				assert.NotEmpty(t, subscriberContext.CommandMessage)
 
@@ -77,7 +77,7 @@ func NewTestServices[Response any](t *testing.T, c TestServicesConfig) TestServi
 				// to make it deterministic
 				msg.UUID = "1"
 
-				assert.NotEmpty(t, params.NotificationID)
+				assert.NotEmpty(t, params.OperationID)
 				assert.NotEmpty(t, params.Command)
 				assert.NotEmpty(t, params.CommandMessage)
 
@@ -91,7 +91,7 @@ func NewTestServices[Response any](t *testing.T, c TestServicesConfig) TestServi
 			AckCommandErrors:      !c.DoNotAckOnCommandErrors,
 			ListenForReplyTimeout: c.ListenForReplyTimeout,
 		},
-		requestreply.BackendPubsubJSONMarshaler[Response]{},
+		requestreply.BackendPubsubJSONMarshaler[Result]{},
 	)
 	require.NoError(t, err)
 
@@ -119,7 +119,7 @@ func NewTestServices[Response any](t *testing.T, c TestServicesConfig) TestServi
 	})
 	require.NoError(t, err)
 
-	return TestServices[Response]{
+	return TestServices[Result]{
 		Logger: logger,
 		PubSub: gochannel.NewGoChannel(
 			gochannel.Config{BlockPublishUntilSubscriberAck: !c.DoNotBlockPublishUntilSubscriberAck},
@@ -133,7 +133,7 @@ func NewTestServices[Response any](t *testing.T, c TestServicesConfig) TestServi
 	}
 }
 
-func (ts TestServices[Response]) RunRouter() {
+func (ts TestServices[Result]) RunRouter() {
 	go func() {
 		err := ts.Router.Run(context.Background())
 		if err != nil {
@@ -152,12 +152,12 @@ type TestCommand2 struct {
 	ID string `json:"id"`
 }
 
-type TestCommandResponse struct {
+type TestCommandResult struct {
 	ID string `json:"id"`
 }
 
-func TestRequestReply_without_response_no_error(t *testing.T) {
-	ts := NewTestServices[struct{}](t, TestServicesConfig{
+func TestRequestReply_without_result_no_error(t *testing.T) {
+	ts := NewTestServices[requestreply.NoResult](t, TestServicesConfig{
 		AssertNotificationMessage: func(t *testing.T, msg *message.Message) {
 			assert.NotEmpty(t, msg.Metadata.Get(requestreply.HasErrorMetadataKey))
 		},
@@ -176,7 +176,7 @@ func TestRequestReply_without_response_no_error(t *testing.T) {
 
 	ts.RunRouter()
 
-	replyCh, err := requestreply.SendAndWait[struct{}](
+	replyCh, cancel, err := requestreply.SendWithReply[requestreply.NoResult](
 		context.Background(),
 		ts.CommandBus,
 		ts.RequestReplyBackend,
@@ -184,20 +184,21 @@ func TestRequestReply_without_response_no_error(t *testing.T) {
 	)
 	require.NoError(t, err)
 	require.NotNil(t, replyCh)
+	defer cancel()
 
 	select {
 	case reply := <-replyCh:
-		assert.Empty(t, reply.HandlerResponse)
-		assert.NoError(t, reply.HandlerErr)
+		assert.Empty(t, reply.HandlerResult)
+		assert.NoError(t, reply.Error)
 
-		assert.NotEmpty(t, reply.ReplyMsg.Metadata.Get(requestreply.NotificationIdMetadataKey))
+		assert.NotEmpty(t, reply.NotificationMessage.Metadata.Get(requestreply.OperationIDMetadataKey))
 	case <-time.After(time.Millisecond * 100):
 		t.Fatal("timeout")
 	}
 }
 
-func TestRequestReply_without_response_with_error(t *testing.T) {
-	ts := NewTestServices[struct{}](t, TestServicesConfig{
+func TestRequestReply_without_result_with_error(t *testing.T) {
+	ts := NewTestServices[requestreply.NoResult](t, TestServicesConfig{
 		AssertNotificationMessage: func(t *testing.T, msg *message.Message) {
 			assert.NotEmpty(t, msg.Metadata.Get(requestreply.HasErrorMetadataKey))
 			assert.NotEmpty(t, msg.Metadata.Get(requestreply.ErrorMetadataKey))
@@ -219,7 +220,7 @@ func TestRequestReply_without_response_with_error(t *testing.T) {
 
 	ts.RunRouter()
 
-	replyCh, err := requestreply.SendAndWait[struct{}](
+	replyCh, cancel, err := requestreply.SendWithReply[requestreply.NoResult](
 		context.Background(),
 		ts.CommandBus,
 		ts.RequestReplyBackend,
@@ -227,36 +228,37 @@ func TestRequestReply_without_response_with_error(t *testing.T) {
 	)
 	require.NoError(t, err)
 	require.NotNil(t, replyCh)
+	defer cancel()
 
 	select {
 	case reply := <-replyCh:
-		assert.Empty(t, reply.HandlerResponse)
+		assert.Empty(t, reply.HandlerResult)
 
-		require.Error(t, reply.HandlerErr)
-		assert.Equal(t, expectedErr.Error(), reply.HandlerErr.Error())
+		require.Error(t, reply.Error)
+		assert.Equal(t, expectedErr.Error(), reply.Error.Error())
 
-		assert.NotEmpty(t, reply.ReplyMsg.Metadata.Get(requestreply.NotificationIdMetadataKey))
+		assert.NotEmpty(t, reply.NotificationMessage.Metadata.Get(requestreply.OperationIDMetadataKey))
 	case <-time.After(time.Millisecond * 100):
 		t.Fatal("timeout")
 	}
 }
 
-func TestRequestReply_with_response_no_error(t *testing.T) {
-	ts := NewTestServices[TestCommandResponse](t, TestServicesConfig{
+func TestRequestReply_with_result_no_error(t *testing.T) {
+	ts := NewTestServices[TestCommandResult](t, TestServicesConfig{
 		AssertNotificationMessage: func(t *testing.T, msg *message.Message) {
 			assert.NotEmpty(t, msg.Metadata.Get(requestreply.HasErrorMetadataKey))
-			assert.NotEmpty(t, msg.Metadata.Get(requestreply.ResponseMetadataKey))
+			assert.NotEmpty(t, msg.Metadata.Get(requestreply.ResultMetadataKey))
 		},
 	})
 
-	expectedResponse := TestCommandResponse{ID: "123"}
+	expectedResult := TestCommandResult{ID: "123"}
 
 	err := ts.CommandProcessor.AddHandlers(
-		requestreply.NewCommandHandlerWithResponse[TestCommand, TestCommandResponse](
+		requestreply.NewCommandHandlerWithResult[TestCommand, TestCommandResult](
 			"test_handler",
 			ts.RequestReplyBackend,
-			func(ctx context.Context, cmd *TestCommand) (TestCommandResponse, error) {
-				return expectedResponse, nil
+			func(ctx context.Context, cmd *TestCommand) (TestCommandResult, error) {
+				return expectedResult, nil
 			},
 		),
 	)
@@ -264,7 +266,7 @@ func TestRequestReply_with_response_no_error(t *testing.T) {
 
 	ts.RunRouter()
 
-	replyCh, err := requestreply.SendAndWait[TestCommandResponse](
+	replyCh, cancel, err := requestreply.SendWithReply[TestCommandResult](
 		context.Background(),
 		ts.CommandBus,
 		ts.RequestReplyBackend,
@@ -272,29 +274,30 @@ func TestRequestReply_with_response_no_error(t *testing.T) {
 	)
 	require.NoError(t, err)
 	require.NotNil(t, replyCh)
+	defer cancel()
 
 	select {
 	case reply := <-replyCh:
-		assert.EqualValues(t, expectedResponse, reply.HandlerResponse)
-		assert.NoError(t, reply.HandlerErr)
-		assert.NotEmpty(t, reply.ReplyMsg.Metadata.Get(requestreply.NotificationIdMetadataKey))
+		assert.EqualValues(t, expectedResult, reply.HandlerResult)
+		assert.NoError(t, reply.Error)
+		assert.NotEmpty(t, reply.NotificationMessage.Metadata.Get(requestreply.OperationIDMetadataKey))
 	case <-time.After(time.Millisecond * 100):
 		t.Fatal("timeout")
 	}
 }
 
-func TestRequestReply_with_response_with_error(t *testing.T) {
-	ts := NewTestServices[TestCommandResponse](t, TestServicesConfig{})
+func TestRequestReply_with_result_with_error(t *testing.T) {
+	ts := NewTestServices[TestCommandResult](t, TestServicesConfig{})
 
-	expectedResponse := TestCommandResponse{ID: "123"}
+	expectedResult := TestCommandResult{ID: "123"}
 	expectedErr := errors.New("some error")
 
 	err := ts.CommandProcessor.AddHandlers(
-		requestreply.NewCommandHandlerWithResponse[TestCommand, TestCommandResponse](
+		requestreply.NewCommandHandlerWithResult[TestCommand, TestCommandResult](
 			"test_handler",
 			ts.RequestReplyBackend,
-			func(ctx context.Context, cmd *TestCommand) (TestCommandResponse, error) {
-				return expectedResponse, expectedErr
+			func(ctx context.Context, cmd *TestCommand) (TestCommandResult, error) {
+				return expectedResult, expectedErr
 			},
 		),
 	)
@@ -302,7 +305,7 @@ func TestRequestReply_with_response_with_error(t *testing.T) {
 
 	ts.RunRouter()
 
-	replyCh, err := requestreply.SendAndWait[TestCommandResponse](
+	replyCh, cancel, err := requestreply.SendWithReply[TestCommandResult](
 		context.Background(),
 		ts.CommandBus,
 		ts.RequestReplyBackend,
@@ -310,39 +313,40 @@ func TestRequestReply_with_response_with_error(t *testing.T) {
 	)
 	require.NoError(t, err)
 	require.NotNil(t, replyCh)
+	defer cancel()
 
 	select {
 	case reply := <-replyCh:
-		assert.EqualValues(t, TestCommandResponse{ID: "123"}, reply.HandlerResponse)
+		assert.EqualValues(t, TestCommandResult{ID: "123"}, reply.HandlerResult)
 
-		require.Error(t, reply.HandlerErr)
-		assert.Equal(t, expectedErr.Error(), reply.HandlerErr.Error())
+		require.Error(t, reply.Error)
+		assert.Equal(t, expectedErr.Error(), reply.Error.Error())
 
-		assert.NotEmpty(t, reply.ReplyMsg.Metadata.Get(requestreply.NotificationIdMetadataKey))
+		assert.NotEmpty(t, reply.NotificationMessage.Metadata.Get(requestreply.OperationIDMetadataKey))
 	case <-time.After(time.Millisecond * 100):
 		t.Fatal("timeout")
 	}
 }
 
-func TestRequestReply_without_response_multiple_replies(t *testing.T) {
-	ts := NewTestServices[TestCommandResponse](t, TestServicesConfig{
+func TestRequestReply_without_result_multiple_replies(t *testing.T) {
+	ts := NewTestServices[TestCommandResult](t, TestServicesConfig{
 		DoNotAckOnCommandErrors: true,
 	})
 
 	i := 0
 
 	err := ts.CommandProcessor.AddHandlers(
-		requestreply.NewCommandHandlerWithResponse[TestCommand, TestCommandResponse](
+		requestreply.NewCommandHandlerWithResult[TestCommand, TestCommandResult](
 			"test_handler",
 			ts.RequestReplyBackend,
-			func(ctx context.Context, cmd *TestCommand) (TestCommandResponse, error) {
+			func(ctx context.Context, cmd *TestCommand) (TestCommandResult, error) {
 				i++
 
 				if i == 3 {
-					return TestCommandResponse{ID: fmt.Sprintf("%d", i)}, nil
+					return TestCommandResult{ID: fmt.Sprintf("%d", i)}, nil
 				}
 
-				return TestCommandResponse{ID: fmt.Sprintf("%d", i)}, fmt.Errorf("error %d", i)
+				return TestCommandResult{ID: fmt.Sprintf("%d", i)}, fmt.Errorf("error %d", i)
 			},
 		),
 	)
@@ -350,7 +354,7 @@ func TestRequestReply_without_response_multiple_replies(t *testing.T) {
 
 	ts.RunRouter()
 
-	replyCh, err := requestreply.SendAndWait[TestCommandResponse](
+	replyCh, cancel, err := requestreply.SendWithReply[TestCommandResult](
 		context.Background(),
 		ts.CommandBus,
 		ts.RequestReplyBackend,
@@ -358,38 +362,39 @@ func TestRequestReply_without_response_multiple_replies(t *testing.T) {
 	)
 	require.NoError(t, err)
 	require.NotNil(t, replyCh)
+	defer cancel()
 
 	select {
 	case reply := <-replyCh:
-		assert.EqualValues(t, TestCommandResponse{ID: "1"}, reply.HandlerResponse)
+		assert.EqualValues(t, TestCommandResult{ID: "1"}, reply.HandlerResult)
 
-		require.Error(t, reply.HandlerErr)
-		assert.Equal(t, "error 1", reply.HandlerErr.Error())
+		require.Error(t, reply.Error)
+		assert.Equal(t, "error 1", reply.Error.Error())
 
-		assert.NotEmpty(t, reply.ReplyMsg.Metadata.Get(requestreply.NotificationIdMetadataKey))
+		assert.NotEmpty(t, reply.NotificationMessage.Metadata.Get(requestreply.OperationIDMetadataKey))
 	case <-time.After(time.Millisecond * 100):
 		t.Fatal("timeout")
 	}
 
 	select {
 	case reply := <-replyCh:
-		assert.EqualValues(t, TestCommandResponse{ID: "2"}, reply.HandlerResponse)
+		assert.EqualValues(t, TestCommandResult{ID: "2"}, reply.HandlerResult)
 
-		require.Error(t, reply.HandlerErr)
-		assert.Equal(t, "error 2", reply.HandlerErr.Error())
+		require.Error(t, reply.Error)
+		assert.Equal(t, "error 2", reply.Error.Error())
 
-		assert.NotEmpty(t, reply.ReplyMsg.Metadata.Get(requestreply.NotificationIdMetadataKey))
+		assert.NotEmpty(t, reply.NotificationMessage.Metadata.Get(requestreply.OperationIDMetadataKey))
 	case <-time.After(time.Millisecond * 100):
 		t.Fatal("timeout")
 	}
 
 	select {
 	case reply := <-replyCh:
-		assert.EqualValues(t, TestCommandResponse{ID: "3"}, reply.HandlerResponse)
+		assert.EqualValues(t, TestCommandResult{ID: "3"}, reply.HandlerResult)
 
-		require.NoError(t, reply.HandlerErr)
+		require.NoError(t, reply.Error)
 
-		assert.NotEmpty(t, reply.ReplyMsg.Metadata.Get(requestreply.NotificationIdMetadataKey))
+		assert.NotEmpty(t, reply.NotificationMessage.Metadata.Get(requestreply.OperationIDMetadataKey))
 	case <-time.After(time.Millisecond * 100):
 		t.Fatal("timeout")
 	}
@@ -398,7 +403,7 @@ func TestRequestReply_without_response_multiple_replies(t *testing.T) {
 func TestRequestReply_timout(t *testing.T) {
 	timeout := time.Millisecond * 10
 
-	ts := NewTestServices[struct{}](t, TestServicesConfig{
+	ts := NewTestServices[requestreply.NoResult](t, TestServicesConfig{
 		ListenForReplyTimeout: &timeout,
 	})
 
@@ -416,7 +421,7 @@ func TestRequestReply_timout(t *testing.T) {
 
 	ts.RunRouter()
 
-	replyCh, err := requestreply.SendAndWait[struct{}](
+	replyCh, cancel, err := requestreply.SendWithReply[requestreply.NoResult](
 		context.Background(),
 		ts.CommandBus,
 		ts.RequestReplyBackend,
@@ -424,14 +429,15 @@ func TestRequestReply_timout(t *testing.T) {
 	)
 	require.NoError(t, err)
 	require.NotNil(t, replyCh)
+	defer cancel()
 
 	select {
 	case reply := <-replyCh:
-		assert.Empty(t, reply.HandlerResponse)
-		require.Error(t, reply.HandlerErr)
-		require.IsType(t, requestreply.ReplyTimeoutError{}, reply.HandlerErr)
+		assert.Empty(t, reply.HandlerResult)
+		require.Error(t, reply.Error)
+		require.IsType(t, requestreply.ReplyTimeoutError{}, reply.Error)
 
-		replyTimeoutError := reply.HandlerErr.(requestreply.ReplyTimeoutError)
+		replyTimeoutError := reply.Error.(requestreply.ReplyTimeoutError)
 		assert.Equal(t, context.DeadlineExceeded, replyTimeoutError.Err)
 		assert.NotEmpty(t, replyTimeoutError.Duration)
 	case <-time.After(time.Millisecond * 100):
@@ -458,7 +464,7 @@ func TestRequestReply_context_cancellation(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	replyCh, err := requestreply.SendAndWait[struct{}](
+	replyCh, _, err := requestreply.SendWithReply[struct{}](
 		ctx,
 		ts.CommandBus,
 		ts.RequestReplyBackend,
@@ -471,11 +477,11 @@ func TestRequestReply_context_cancellation(t *testing.T) {
 
 	select {
 	case reply := <-replyCh:
-		assert.Empty(t, reply.HandlerResponse)
-		require.Error(t, reply.HandlerErr)
-		require.IsType(t, requestreply.ReplyTimeoutError{}, reply.HandlerErr)
+		assert.Empty(t, reply.HandlerResult)
+		require.Error(t, reply.Error)
+		require.IsType(t, requestreply.ReplyTimeoutError{}, reply.Error)
 
-		replyTimeoutError := reply.HandlerErr.(requestreply.ReplyTimeoutError)
+		replyTimeoutError := reply.Error.(requestreply.ReplyTimeoutError)
 		assert.Equal(t, context.Canceled, replyTimeoutError.Err)
 		assert.NotEmpty(t, replyTimeoutError.Duration)
 	case <-time.After(time.Millisecond * 100):
@@ -483,30 +489,77 @@ func TestRequestReply_context_cancellation(t *testing.T) {
 	}
 }
 
+func TestRequestReply_fn_cancellation(t *testing.T) {
+	ts := NewTestServices[struct{}](t, TestServicesConfig{})
+
+	err := ts.CommandProcessor.AddHandlers(
+		requestreply.NewCommandHandler[TestCommand](
+			"test_handler",
+			ts.RequestReplyBackend,
+			func(ctx context.Context, cmd *TestCommand) error {
+				time.Sleep(time.Second)
+				return nil
+			},
+		),
+	)
+	require.NoError(t, err)
+
+	ts.RunRouter()
+
+	replyCh, cancel, err := requestreply.SendWithReply[requestreply.NoResult](
+		context.Background(),
+		ts.CommandBus,
+		ts.RequestReplyBackend,
+		&TestCommand{ID: "1"},
+	)
+	require.NoError(t, err)
+	require.NotNil(t, replyCh)
+
+	cancel()
+
+	select {
+	case reply := <-replyCh:
+		assert.Empty(t, reply.HandlerResult)
+		require.Error(t, reply.Error)
+		require.IsType(t, requestreply.ReplyTimeoutError{}, reply.Error)
+
+		replyTimeoutError := reply.Error.(requestreply.ReplyTimeoutError)
+		assert.Contains(
+			t,
+			// it depends on which switch will be executed first
+			[]string{"subscriber closed", "context canceled"},
+			replyTimeoutError.Err.Error(),
+		)
+		assert.NotEmpty(t, replyTimeoutError.Duration)
+	case <-time.After(time.Millisecond * 100):
+		t.Fatal("timeout")
+	}
+}
+
 func TestRequestReply_parallel_different_handlers(t *testing.T) {
-	ts := NewTestServices[TestCommandResponse](t, TestServicesConfig{
+	ts := NewTestServices[TestCommandResult](t, TestServicesConfig{
 		DoNotAckOnCommandErrors: true,
 	})
 
 	err := ts.CommandProcessor.AddHandlers(
-		requestreply.NewCommandHandlerWithResponse[TestCommand, TestCommandResponse](
+		requestreply.NewCommandHandlerWithResult[TestCommand, TestCommandResult](
 			"test_handler_1",
 			ts.RequestReplyBackend,
-			func(ctx context.Context, cmd *TestCommand) (TestCommandResponse, error) {
+			func(ctx context.Context, cmd *TestCommand) (TestCommandResult, error) {
 
-				return TestCommandResponse{ID: cmd.ID}, fmt.Errorf("error 1 %s", cmd.ID)
+				return TestCommandResult{ID: cmd.ID}, fmt.Errorf("error 1 %s", cmd.ID)
 			},
 		),
 	)
 	require.NoError(t, err)
 
 	err = ts.CommandProcessor.AddHandlers(
-		requestreply.NewCommandHandlerWithResponse[TestCommand2, TestCommandResponse](
+		requestreply.NewCommandHandlerWithResult[TestCommand2, TestCommandResult](
 			"test_handler_2",
 			ts.RequestReplyBackend,
-			func(ctx context.Context, cmd *TestCommand2) (TestCommandResponse, error) {
+			func(ctx context.Context, cmd *TestCommand2) (TestCommandResult, error) {
 
-				return TestCommandResponse{ID: cmd.ID}, fmt.Errorf("error 2 %s", cmd.ID)
+				return TestCommandResult{ID: cmd.ID}, fmt.Errorf("error 2 %s", cmd.ID)
 			},
 		),
 	)
@@ -525,7 +578,7 @@ func TestRequestReply_parallel_different_handlers(t *testing.T) {
 
 		cmd := TestCommand{ID: watermill.NewUUID()}
 
-		replyCh, err := requestreply.SendAndWait[TestCommandResponse](
+		replyCh, cancel, err := requestreply.SendWithReply[TestCommandResult](
 			context.Background(),
 			ts.CommandBus,
 			ts.RequestReplyBackend,
@@ -533,13 +586,14 @@ func TestRequestReply_parallel_different_handlers(t *testing.T) {
 		)
 		require.NoError(t, err)
 		require.NotNil(t, replyCh)
+		defer cancel()
 
 		i := 0
 
 		for reply := range replyCh {
-			assert.EqualValues(t, TestCommandResponse{ID: cmd.ID}, reply.HandlerResponse)
-			require.Error(t, reply.HandlerErr)
-			assert.Equal(t, fmt.Sprintf("error 1 %s", cmd.ID), reply.HandlerErr.Error())
+			assert.EqualValues(t, TestCommandResult{ID: cmd.ID}, reply.HandlerResult)
+			require.Error(t, reply.Error)
+			assert.Equal(t, fmt.Sprintf("error 1 %s", cmd.ID), reply.Error.Error())
 			i++
 
 			if i > 100 {
@@ -556,7 +610,7 @@ func TestRequestReply_parallel_different_handlers(t *testing.T) {
 
 		cmd := TestCommand2{ID: watermill.NewUUID()}
 
-		replyCh, err := requestreply.SendAndWait[TestCommandResponse](
+		replyCh, cancel, err := requestreply.SendWithReply[TestCommandResult](
 			context.Background(),
 			ts.CommandBus,
 			ts.RequestReplyBackend,
@@ -564,13 +618,14 @@ func TestRequestReply_parallel_different_handlers(t *testing.T) {
 		)
 		require.NoError(t, err)
 		require.NotNil(t, replyCh)
+		defer cancel()
 
 		i := 0
 
 		for reply := range replyCh {
-			assert.EqualValues(t, TestCommandResponse{ID: cmd.ID}, reply.HandlerResponse)
-			require.Error(t, reply.HandlerErr)
-			assert.Equal(t, fmt.Sprintf("error 2 %s", cmd.ID), reply.HandlerErr.Error())
+			assert.EqualValues(t, TestCommandResult{ID: cmd.ID}, reply.HandlerResult)
+			require.Error(t, reply.Error)
+			assert.Equal(t, fmt.Sprintf("error 2 %s", cmd.ID), reply.Error.Error())
 			i++
 
 			if i > 100 {
@@ -585,16 +640,16 @@ func TestRequestReply_parallel_different_handlers(t *testing.T) {
 }
 
 func TestRequestReply_parallel_same_handler(t *testing.T) {
-	ts := NewTestServices[TestCommandResponse](t, TestServicesConfig{
+	ts := NewTestServices[TestCommandResult](t, TestServicesConfig{
 		DoNotBlockPublishUntilSubscriberAck: true,
 	})
 
 	err := ts.CommandProcessor.AddHandlers(
-		requestreply.NewCommandHandlerWithResponse[TestCommand, TestCommandResponse](
+		requestreply.NewCommandHandlerWithResult[TestCommand, TestCommandResult](
 			"test_handler",
 			ts.RequestReplyBackend,
-			func(ctx context.Context, cmd *TestCommand) (TestCommandResponse, error) {
-				return TestCommandResponse{ID: cmd.ID}, nil
+			func(ctx context.Context, cmd *TestCommand) (TestCommandResult, error) {
+				return TestCommandResult{ID: cmd.ID}, nil
 			},
 		),
 	)
@@ -615,7 +670,7 @@ func TestRequestReply_parallel_same_handler(t *testing.T) {
 			<-start
 
 			cmd := TestCommand{ID: uuid.NewString()}
-			replyCh, err := requestreply.SendAndWait[TestCommandResponse](
+			replyCh, cancel, err := requestreply.SendWithReply[TestCommandResult](
 				context.Background(),
 				ts.CommandBus,
 				ts.RequestReplyBackend,
@@ -623,11 +678,12 @@ func TestRequestReply_parallel_same_handler(t *testing.T) {
 			)
 			require.NoError(t, err)
 			require.NotNil(t, replyCh)
+			defer cancel()
 
 			select {
 			case reply := <-replyCh:
-				assert.EqualValues(t, TestCommandResponse{ID: cmd.ID}, reply.HandlerResponse)
-				assert.NoError(t, reply.HandlerErr)
+				assert.EqualValues(t, TestCommandResult{ID: cmd.ID}, reply.HandlerResult)
+				assert.NoError(t, reply.Error)
 			case <-time.After(time.Millisecond * 100):
 				t.Fatal("timeout")
 			}

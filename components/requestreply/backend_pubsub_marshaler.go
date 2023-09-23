@@ -8,21 +8,21 @@ import (
 	"github.com/pkg/errors"
 )
 
-type BackendPubsubMarshaler[Response any] interface {
-	MarshalReply(params BackendOnCommandProcessedParams[Response]) (*message.Message, error)
-	UnmarshalReply(msg *message.Message) (reply CommandReply[Response], err error)
+type BackendPubsubMarshaler[Result any] interface {
+	MarshalReply(params BackendOnCommandProcessedParams[Result]) (*message.Message, error)
+	UnmarshalReply(msg *message.Message) (reply Reply[Result], err error)
 }
 
 const (
 	ErrorMetadataKey    = "_watermill_requestreply_error"
 	HasErrorMetadataKey = "_watermill_requestreply_has_error"
-	ResponseMetadataKey = "_watermill_requestreply_response"
+	ResultMetadataKey   = "_watermill_requestreply_result"
 )
 
-type BackendPubsubJSONMarshaler[Response any] struct{}
+type BackendPubsubJSONMarshaler[Result any] struct{}
 
-func (m BackendPubsubJSONMarshaler[Response]) MarshalReply(
-	params BackendOnCommandProcessedParams[Response],
+func (m BackendPubsubJSONMarshaler[Result]) MarshalReply(
+	params BackendOnCommandProcessedParams[Result],
 ) (*message.Message, error) {
 	msg := message.NewMessage(watermill.NewUUID(), nil)
 
@@ -33,28 +33,28 @@ func (m BackendPubsubJSONMarshaler[Response]) MarshalReply(
 		msg.Metadata.Set(HasErrorMetadataKey, "0")
 	}
 
-	b, err := json.Marshal(params.HandlerResponse)
+	b, err := json.Marshal(params.HandlerResult)
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot marshal reply")
 	}
 
-	msg.Metadata.Set(ResponseMetadataKey, string(b))
+	msg.Metadata.Set(ResultMetadataKey, string(b))
 
 	return msg, nil
 }
 
-func (m BackendPubsubJSONMarshaler[Response]) UnmarshalReply(msg *message.Message) (CommandReply[Response], error) {
-	reply := CommandReply[Response]{}
+func (m BackendPubsubJSONMarshaler[Result]) UnmarshalReply(msg *message.Message) (Reply[Result], error) {
+	reply := Reply[Result]{}
 
 	if msg.Metadata.Get(HasErrorMetadataKey) == "1" {
-		reply.HandlerErr = errors.New(msg.Metadata.Get(ErrorMetadataKey))
+		reply.Error = errors.New(msg.Metadata.Get(ErrorMetadataKey))
 	}
 
-	var response Response
-	if err := json.Unmarshal([]byte(msg.Metadata.Get(ResponseMetadataKey)), &response); err != nil {
-		return CommandReply[Response]{}, errors.Wrap(err, "cannot unmarshal response")
+	var result Result
+	if err := json.Unmarshal([]byte(msg.Metadata.Get(ResultMetadataKey)), &result); err != nil {
+		return Reply[Result]{}, errors.Wrap(err, "cannot unmarshal result")
 	}
-	reply.HandlerResponse = response
+	reply.HandlerResult = result
 
 	return reply, nil
 }

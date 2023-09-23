@@ -8,55 +8,69 @@ import (
 	"github.com/pkg/errors"
 )
 
-type CommandReply[Response any] struct {
-	// add Handler prefix? for Err as well?
-	HandlerResponse Response
-
-	// HandlerErr contains the error returned by the command handler or by Backend if sending reply failed.
-	//
-	// If error from handler is returned, CommandHandlerError is returned.
-	// If listening for reply timed out, HandlerErr is ReplyTimeoutError.
-	// If processing was successful, HandlerErr is nil.
-	// todo: it's not always handler err!!!!
-	HandlerErr error
-
-	// todo: should it be present? what if no pubsub backend is used?
-	// ReplyMsg contains the reply message from the command handler.
-	// Warning: ReplyMsg is nil if timeout occurred.
-	ReplyMsg *message.Message
-}
-
 type CommandBus interface {
 	SendWithModifiedMessage(ctx context.Context, cmd any, modify func(*message.Message) error) error
 }
 
-// todo: add cancel func?
-// todo: doc that ctx cancelation is super important
-// SendAndWait sends command to the command bus and waits for the command execution.
-// todo: doc when it unblocks
-// todo: rename? it's not waiting
-func SendAndWait[Response any](
+// SendWithReply sends command to the command bus and receives a replies of the command handler.
+// It returns a channel with replies, cancel function and error.
+//
+// SendWithReply can be cancelled by calling cancel function or by cancelling context or
+// When SendWithReply is canceled, the returned channel is closed as well.
+// by exceeding the timeout set in the backend (if set).
+// Warning: It's important to cancel the function, because it's listening for the replies in the background.
+// Lack of cancelling the function can lead to subscriber leak.
+//
+// SendWithReply can listen for handlers with results (NewCommandHandlerWithResult) and without results (NewCommandHandler).
+// If you are listening for handlers without results, you should pass `NoResult` or `struct{}` as `Result` generic type:
+//
+//	 replyCh, cancel, err := requestreply.SendWithReply[requestreply.NoResult](
+//			context.Background(),
+//			ts.CommandBus,
+//			ts.RequestReplyBackend,
+//			&TestCommand{ID: "1"},
+//		)
+//
+// If `NewCommandHandlerWithResult` handler returns a specific type, you should pass it as `Result` generic type:
+//
+//	 replyCh, cancel, err := requestreply.SendWithReply[SomeTypeReturnedByHandler](
+//			context.Background(),
+//			ts.CommandBus,
+//			ts.RequestReplyBackend,
+//			&TestCommand{ID: "1"},
+//		)
+//
+// SendWithReply will send the replies to the channel until the context is cancelled or the timeout is exceeded.
+func SendWithReply[Result any](
 	ctx context.Context,
 	c CommandBus,
-	backend Backend[Response],
+	backend Backend[Result],
 	cmd any,
-) (<-chan CommandReply[Response], error) {
-	notificationID := watermill.NewUUID()
+) (replCh <-chan Reply[Result], cancel func(), err error) {
+	ctx, cancel = context.WithCancel(ctx)
+
+	defer func() {
+		if err != nil {
+			cancel()
+		}
+	}()
+
+	operationID := watermill.NewUUID()
 
 	replyChan, err := backend.ListenForNotifications(ctx, BackendListenForNotificationsParams{
-		Command:        cmd,
-		NotificationID: notificationID,
+		Command:     cmd,
+		OperationID: OperationID(operationID),
 	})
 	if err != nil {
-		return nil, errors.Wrap(err, "cannot listen for reply")
+		return nil, cancel, errors.Wrap(err, "cannot listen for reply")
 	}
 
 	if err := c.SendWithModifiedMessage(ctx, cmd, func(m *message.Message) error {
-		m.Metadata.Set(NotificationIdMetadataKey, notificationID)
+		m.Metadata.Set(OperationIDMetadataKey, operationID)
 		return nil
 	}); err != nil {
-		return nil, errors.Wrap(err, "cannot send command")
+		return nil, cancel, errors.Wrap(err, "cannot send command")
 	}
 
-	return replyChan, nil
+	return replyChan, cancel, nil
 }

@@ -8,8 +8,11 @@ import (
 	"github.com/pkg/errors"
 )
 
-// NewCommandHandler creates a new CommandHandler implementation based on provided function
-// and command type inferred from function argument.
+// NewCommandHandler creates a new CommandHandler which supports request-reply pattern.
+// The result handler, is handler compatible with cqrs.CommandHandler.
+//
+// The logic if command should be acked or not is based on logic of the Backend.
+// For example, for the PubSubBackend, it depends on `PubSubBackendConfig.AckCommandErrors` option.
 func NewCommandHandler[Command any](
 	handlerName string,
 	backend Backend[struct{}],
@@ -23,7 +26,6 @@ func NewCommandHandler[Command any](
 			return err
 		}
 
-		// todo: test and describe logic that handlerErr is ignored
 		return backend.OnCommandProcessed(ctx, BackendOnCommandProcessedParams[struct{}]{
 			Command:        cmd,
 			CommandMessage: originalMessage,
@@ -32,11 +34,20 @@ func NewCommandHandler[Command any](
 	})
 }
 
-// todo: not needed? or keep that (as we don't recommend it in general? but it's not cqrs so whatever)
-func NewCommandHandlerWithResponse[Command any, Response any](
+// NewCommandHandlerWithResult creates a new CommandHandler which supports request-reply pattern with result.
+// The result handler, is handler compatible with cqrs.CommandHandler.
+//
+// In addition to cqrs.CommandHandler, it also allows to return result from handler.
+// The result is passed to the Backend implementation and sent to the caller.
+//
+// The logic if command should be acked or not is based on logic of the Backend.
+// For example, for the PubSubBackend, it depends on `PubSubBackendConfig.AckCommandErrors` option.
+//
+// The reply is sent to the caller, even if handler returns an error.
+func NewCommandHandlerWithResult[Command any, Result any](
 	handlerName string,
-	backend Backend[Response],
-	handleFunc func(ctx context.Context, cmd *Command) (Response, error),
+	backend Backend[Result],
+	handleFunc func(ctx context.Context, cmd *Command) (Result, error),
 ) cqrs.CommandHandler {
 	return cqrs.NewCommandHandler(handlerName, func(ctx context.Context, cmd *Command) error {
 		resp, handlerErr := handleFunc(ctx, cmd)
@@ -46,12 +57,11 @@ func NewCommandHandlerWithResponse[Command any, Response any](
 			return err
 		}
 
-		// todo: test and describe logic that handlerErr is ignored
-		return backend.OnCommandProcessed(ctx, BackendOnCommandProcessedParams[Response]{
-			Command:         cmd,
-			CommandMessage:  originalMessage,
-			HandlerResponse: resp,
-			HandleErr:       handlerErr,
+		return backend.OnCommandProcessed(ctx, BackendOnCommandProcessedParams[Result]{
+			Command:        cmd,
+			CommandMessage: originalMessage,
+			HandlerResult:  resp,
+			HandleErr:      handlerErr,
 		})
 	})
 }
@@ -59,8 +69,11 @@ func NewCommandHandlerWithResponse[Command any, Response any](
 func originalCommandMsgFromCtx(ctx context.Context) (*message.Message, error) {
 	originalMessage := cqrs.OriginalMessageFromCtx(ctx)
 	if originalMessage == nil {
+		// this should not happen, as long as cqrs.CommandProcessor is used - but it's not mandatory
+		// in this case it's enough to use cqrs.CtxWithOriginalMessage
 		return nil, errors.New(
-			"original message not found in context, did you used cqrs.CommandProcessor? " +
+			"original message not found in context, did you passed context correctly everywhere? " +
+				"did you used cqrs.CommandProcessor? " +
 				"if you are using custom implementation, please call cqrs.CtxWithOriginalMessage on context passed to handler",
 		)
 	}

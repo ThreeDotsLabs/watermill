@@ -11,17 +11,18 @@ import (
 )
 
 // PubSubBackend is a Backend that uses Pub/Sub to transport commands and replies.
-type PubSubBackend[Response any] struct {
+type PubSubBackend[Result any] struct {
 	config    PubSubBackendConfig
-	marshaler BackendPubsubMarshaler[Response]
+	marshaler BackendPubsubMarshaler[Result]
 }
 
 // NewPubSubBackend creates a new PubSubBackend.
-// todo: doc usage
-func NewPubSubBackend[Response any](
+//
+// If you want to use backend together with `NewCommandHandler` (without result), you should pass `NoResult` or `struct{}` as Result type.
+func NewPubSubBackend[Result any](
 	config PubSubBackendConfig,
-	marshaler BackendPubsubMarshaler[Response],
-) (*PubSubBackend[Response], error) {
+	marshaler BackendPubsubMarshaler[Result],
+) (*PubSubBackend[Result], error) {
 	config.setDefaults()
 
 	if err := config.Validate(); err != nil {
@@ -31,7 +32,7 @@ func NewPubSubBackend[Response any](
 		return nil, errors.New("marshaler cannot be nil")
 	}
 
-	return &PubSubBackend[Response]{
+	return &PubSubBackend[Result]{
 		config:    config,
 		marshaler: marshaler,
 	}, nil
@@ -40,8 +41,7 @@ func NewPubSubBackend[Response any](
 type PubSubBackendSubscribeParams struct {
 	Command any
 
-	// todo: doc everywhere
-	NotificationID string
+	OperationID OperationID
 }
 
 type PubSubBackendSubscriberConstructorFn func(PubSubBackendSubscribeParams) (message.Subscriber, error)
@@ -53,8 +53,7 @@ type PubSubBackendPublishParams struct {
 
 	CommandMessage *message.Message
 
-	// todo: doc everywhere
-	NotificationID string
+	OperationID OperationID
 }
 
 type PubSubBackendGeneratePublishTopicFn func(PubSubBackendPublishParams) (string, error)
@@ -110,15 +109,15 @@ func (p *PubSubBackendConfig) Validate() error {
 	return nil
 }
 
-func (p PubSubBackend[Response]) ListenForNotifications(
+func (p PubSubBackend[Result]) ListenForNotifications(
 	ctx context.Context,
 	params BackendListenForNotificationsParams,
-) (<-chan CommandReply[Response], error) {
+) (<-chan Reply[Result], error) {
 	start := time.Now()
 
 	replyContext := PubSubBackendSubscribeParams{
-		Command:        params.Command,
-		NotificationID: params.NotificationID,
+		Command:     params.Command,
+		OperationID: params.OperationID,
 	}
 
 	// this needs to be done before publishing the message to avoid race condition
@@ -152,7 +151,7 @@ func (p PubSubBackend[Response]) ListenForNotifications(
 		},
 	)
 
-	replyChan := make(chan CommandReply[Response], 1)
+	replyChan := make(chan Reply[Result], 1)
 
 	go func() {
 		defer func() {
@@ -168,29 +167,29 @@ func (p PubSubBackend[Response]) ListenForNotifications(
 		for {
 			select {
 			case <-ctx.Done():
-				replyChan <- CommandReply[Response]{
-					HandlerErr: ReplyTimeoutError{time.Since(start), ctx.Err()},
+				replyChan <- Reply[Result]{
+					Error: ReplyTimeoutError{time.Since(start), ctx.Err()},
 				}
 				return
 			case notifyMsg, ok := <-notifyMsgs:
 				if !ok {
 					// subscriber is closed
-					replyChan <- CommandReply[Response]{
-						HandlerErr: ReplyTimeoutError{time.Since(start), fmt.Errorf("subscriber closed")},
+					replyChan <- Reply[Result]{
+						Error: ReplyTimeoutError{time.Since(start), fmt.Errorf("subscriber closed")},
 					}
 					return
 				}
 
-				resp, ok, unmarshalErr := p.handleNotifyMsg(notifyMsg, params.NotificationID, p.marshaler)
+				resp, ok, unmarshalErr := p.handleNotifyMsg(notifyMsg, string(params.OperationID), p.marshaler)
 				if unmarshalErr != nil {
-					replyChan <- CommandReply[Response]{
-						HandlerErr: ReplyUnmarshalError{unmarshalErr},
+					replyChan <- Reply[Result]{
+						Error: ReplyUnmarshalError{unmarshalErr},
 					}
 				} else if ok {
-					replyChan <- CommandReply[Response]{
-						HandlerResponse: resp.HandlerResponse,
-						HandlerErr:      resp.HandlerErr,
-						ReplyMsg:        notifyMsg,
+					replyChan <- Reply[Result]{
+						HandlerResult:       resp.HandlerResult,
+						Error:               resp.Error,
+						NotificationMessage: notifyMsg,
 					}
 				}
 
@@ -202,9 +201,9 @@ func (p PubSubBackend[Response]) ListenForNotifications(
 	return replyChan, nil
 }
 
-const NotificationIdMetadataKey = "_watermill_command_message_uuid"
+const OperationIDMetadataKey = "_watermill_requestreply_op_id"
 
-func (p PubSubBackend[Response]) OnCommandProcessed(ctx context.Context, params BackendOnCommandProcessedParams[Response]) error {
+func (p PubSubBackend[Result]) OnCommandProcessed(ctx context.Context, params BackendOnCommandProcessedParams[Result]) error {
 	p.config.Logger.Debug("Sending request reply", nil)
 
 	notificationMsg, err := p.marshaler.MarshalReply(params)
@@ -213,11 +212,11 @@ func (p PubSubBackend[Response]) OnCommandProcessed(ctx context.Context, params 
 	}
 	notificationMsg.SetContext(ctx)
 
-	notificationID := params.CommandMessage.Metadata.Get(NotificationIdMetadataKey)
-	if notificationID == "" {
-		return errors.Errorf("cannot get notification ID from command message metadata, key: %s", NotificationIdMetadataKey)
+	operationID, err := operationIDFromMetadata(params.CommandMessage)
+	if err != nil {
+		return err
 	}
-	notificationMsg.Metadata.Set(NotificationIdMetadataKey, notificationID)
+	notificationMsg.Metadata.Set(OperationIDMetadataKey, string(operationID))
 
 	if p.config.ModifyNotificationMessage != nil {
 		processedContext := PubSubBackendOnCommandProcessedParams{
@@ -225,7 +224,7 @@ func (p PubSubBackend[Response]) OnCommandProcessed(ctx context.Context, params 
 			PubSubBackendPublishParams: PubSubBackendPublishParams{
 				Command:        params.Command,
 				CommandMessage: params.CommandMessage,
-				NotificationID: notificationID,
+				OperationID:    operationID,
 			},
 		}
 		if err := p.config.ModifyNotificationMessage(notificationMsg, processedContext); err != nil {
@@ -236,7 +235,7 @@ func (p PubSubBackend[Response]) OnCommandProcessed(ctx context.Context, params 
 	replyTopic, err := p.config.GeneratePublishTopic(PubSubBackendPublishParams{
 		Command:        params.Command,
 		CommandMessage: params.CommandMessage,
-		NotificationID: notificationID,
+		OperationID:    operationID,
 	})
 	if err != nil {
 		return errors.Wrap(err, "cannot generate request/reply notify topic")
@@ -256,16 +255,25 @@ func (p PubSubBackend[Response]) OnCommandProcessed(ctx context.Context, params 
 	}
 }
 
-func (p PubSubBackend[Response]) handleNotifyMsg(
+func operationIDFromMetadata(msg *message.Message) (OperationID, error) {
+	operationID := msg.Metadata.Get(OperationIDMetadataKey)
+	if operationID == "" {
+		return "", errors.Errorf("cannot get notification ID from command message metadata, key: %s", OperationIDMetadataKey)
+	}
+
+	return OperationID(operationID), nil
+}
+
+func (p PubSubBackend[Result]) handleNotifyMsg(
 	msg *message.Message,
 	expectedCommandUuid string,
-	marshaler BackendPubsubMarshaler[Response],
-) (CommandReply[Response], bool, error) {
+	marshaler BackendPubsubMarshaler[Result],
+) (Reply[Result], bool, error) {
 	defer msg.Ack()
 
-	if msg.Metadata.Get(NotificationIdMetadataKey) != expectedCommandUuid {
+	if msg.Metadata.Get(OperationIDMetadataKey) != expectedCommandUuid {
 		p.config.Logger.Debug("Received notify message with different command UUID", nil)
-		return CommandReply[Response]{}, false, nil
+		return Reply[Result]{}, false, nil
 	}
 
 	res, unmarshalErr := marshaler.UnmarshalReply(msg)
