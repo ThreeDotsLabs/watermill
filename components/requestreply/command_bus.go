@@ -41,6 +41,10 @@ type CommandBus interface {
 //		)
 //
 // SendWithReply will send the replies to the channel until the context is cancelled or the timeout is exceeded.
+// They are multiple cases when more than one reply can be sent:
+//   - when the handler returns an error, and backend is configured to nack the message on error
+//     (for the PubSubBackend, it depends on `PubSubBackendConfig.AckCommandErrors` option.),
+//   - when you are using fan-out mechanism and commands are handled multiple times,
 func SendWithReply[Result any](
 	ctx context.Context,
 	c CommandBus,

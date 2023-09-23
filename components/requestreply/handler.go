@@ -13,6 +13,9 @@ import (
 //
 // The logic if command should be acked or not is based on logic of the Backend.
 // For example, for the PubSubBackend, it depends on `PubSubBackendConfig.AckCommandErrors` option.
+//
+// The logic if command should be acked or not is based on logic of the Backend.
+// For example, for the PubSubBackend, it depends on `PubSubBackendConfig.AckCommandErrors` option.
 func NewCommandHandler[Command any](
 	handlerName string,
 	backend Backend[struct{}],
