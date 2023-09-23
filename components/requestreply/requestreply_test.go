@@ -482,7 +482,12 @@ func TestRequestReply_context_cancellation(t *testing.T) {
 		require.IsType(t, requestreply.ReplyTimeoutError{}, reply.Error)
 
 		replyTimeoutError := reply.Error.(requestreply.ReplyTimeoutError)
-		assert.Equal(t, context.Canceled, replyTimeoutError.Err)
+		assert.Contains(
+			t,
+			// it depends on which switch will be executed first
+			[]string{"subscriber closed", context.Canceled.Error()},
+			replyTimeoutError.Err.Error(),
+		)
 		assert.NotEmpty(t, replyTimeoutError.Duration)
 	case <-time.After(time.Millisecond * 100):
 		t.Fatal("timeout")
@@ -527,7 +532,7 @@ func TestRequestReply_fn_cancellation(t *testing.T) {
 		assert.Contains(
 			t,
 			// it depends on which switch will be executed first
-			[]string{"subscriber closed", "context canceled"},
+			[]string{"subscriber closed", context.Canceled.Error()},
 			replyTimeoutError.Err.Error(),
 		)
 		assert.NotEmpty(t, replyTimeoutError.Duration)
