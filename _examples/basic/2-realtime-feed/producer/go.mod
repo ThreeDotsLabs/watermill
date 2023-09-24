@@ -38,4 +38,4 @@ require (
 	golang.org/x/net v0.5.0 // indirect
 )
 
-go 1.19
+go 1.21

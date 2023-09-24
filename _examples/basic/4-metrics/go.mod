@@ -26,4 +26,4 @@ require (
 // uncomment to use local sources
 // replace github.com/ThreeDotsLabs/watermill => ../../../../watermill
 
-go 1.19
+go 1.21
