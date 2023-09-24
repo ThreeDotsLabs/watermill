@@ -69,12 +69,12 @@ func NewCommandHandlerWithResult[Command any, Result any](
 func originalCommandMsgFromCtx(ctx context.Context) (*message.Message, error) {
 	originalMessage := cqrs.OriginalMessageFromCtx(ctx)
 	if originalMessage == nil {
-		// this should not happen, as long as cqrs.CommandProcessor is used - but it's not mandatory
-		// in this case it's enough to use cqrs.CtxWithOriginalMessage
+		// This should not happen, as long as cqrs.CommandProcessor is used - but it's not mandatory.
+		// In this case, it's enough to use cqrs.CtxWithOriginalMessage
 		return nil, errors.New(
-			"original message not found in context, did you passed context correctly everywhere? " +
-				"did you used cqrs.CommandProcessor? " +
-				"if you are using custom implementation, please call cqrs.CtxWithOriginalMessage on context passed to handler",
+			"original message not found in context, did you pass context correctly everywhere? " +
+				"did you use cqrs.CommandProcessor? " +
+				"if you are using custom implementation, please call cqrs.CtxWithOriginalMessage on the context passed to the handler",
 		)
 	}
 	return originalMessage, nil
