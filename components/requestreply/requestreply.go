@@ -12,24 +12,24 @@ import (
 type NoResult = struct{}
 
 type Reply[Result any] struct {
-	// HandlerResult contains handler result.
-	// It's preset only when NewCommandHandlerWithResult was used. If NewCommandHandler was used, HandlerResult will be empty.
+	// HandlerResult contains the handler result.
+	// It's preset only when NewCommandHandlerWithResult is used. If NewCommandHandler is used, HandlerResult is empty.
 	//
-	// Result is sent even if handler returned error.
+	// Result is sent even if the handler returns an error.
 	HandlerResult Result
 
-	// Error contains the error returned by the command handler or by Backend when handling notification failed.
-	// Handling notification can fail for example during unmarshaling message or timeout.
-	// If listening for reply timed out or context was canceled, Error is ReplyTimeoutError.
+	// Error contains the error returned by the command handler or the Backend when handling notification fails.
+	// Handling the notification can fail, for example, when unmarshaling the message or if there's a timeout.
+	// If listening for a reply times out or the context is canceled, the Error is ReplyTimeoutError.
 	//
-	// If error from handler is returned, CommandHandlerError is returned.
+	// If an error from the handler is returned, CommandHandlerError is returned.
 	// If processing was successful, Error is nil.
 	Error error
 
-	// NotificationMessage contains the notification message send after command is handled.
-	// It's only present if the request/reply backend is using Pub/Sub for notifications (for example: PubSubBackend).
+	// NotificationMessage contains the notification message sent after the command is handled.
+	// It's present only if the request/reply backend uses a Pub/Sub for notifications (for example, PubSubBackend).
 	//
-	// Warning: NotificationMessage is nil if timeout occurred.
+	// Warning: NotificationMessage is nil if a timeout occurs.
 	NotificationMessage *message.Message
 }
 
