@@ -43,3 +43,12 @@ jobs:
       - run: make test_stress
         if: ${{ inputs.stress-tests }}
 
+  codecov:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - uses: actions/setup-go@v2
+        with:
+          go-version: '^1.21.1'
+      - run: make test_codecov
+      - uses: codecov/codecov-action@v3

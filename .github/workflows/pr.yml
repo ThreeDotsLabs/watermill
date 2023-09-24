@@ -3,4 +3,4 @@ on:
   pull_request:
 jobs:
   ci:
-    uses: ThreeDotsLabs/watermill/.github/workflows/tests.yml@lint
+    uses: ThreeDotsLabs/watermill/.github/workflows/tests.yml@main
