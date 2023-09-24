@@ -12,7 +12,6 @@ func slogAttrsFromFields(fields LogFields) []any {
 	result := make([]any, 0, len(fields)*2)
 
 	for key, value := range fields {
-		// result = append(result, slog.Any(key, value))
 		result = append(result, key, value)
 	}
 
