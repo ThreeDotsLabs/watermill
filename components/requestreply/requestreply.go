@@ -52,7 +52,7 @@ type BackendOnCommandProcessedParams[Result any] struct {
 }
 
 // OperationID is a unique identifier of a command.
-// It's used to correlate command with reply between bus and handler.
+// It correlates commands with replies between the bus and the handler.
 type OperationID string
 
 // ReplyTimeoutError is returned when the reply timeout is exceeded.
