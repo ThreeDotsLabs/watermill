@@ -1,6 +1,7 @@
 package watermill
 
 import (
+	"context"
 	"log/slog"
 )
 
@@ -47,7 +48,7 @@ func (s *SlogLoggerAdapter) Trace(msg string, fields LogFields) {
 		// values, but ignoring contextual deadline.
 		// See the [slog] package documentation
 		// for more details.
-		nil,
+		context.Background(),
 		LevelTrace,
 		msg,
 		slogAttrsFromFields(fields)...,
