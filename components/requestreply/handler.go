@@ -8,14 +8,11 @@ import (
 	"github.com/pkg/errors"
 )
 
-// NewCommandHandler creates a new CommandHandler which supports request-reply pattern.
-// The result handler, is handler compatible with cqrs.CommandHandler.
+// NewCommandHandler creates a new CommandHandler which supports the request-reply pattern.
+// The result handler is handler compatible with cqrs.CommandHandler.
 //
-// The logic if command should be acked or not is based on logic of the Backend.
-// For example, for the PubSubBackend, it depends on `PubSubBackendConfig.AckCommandErrors` option.
-//
-// The logic if command should be acked or not is based on logic of the Backend.
-// For example, for the PubSubBackend, it depends on `PubSubBackendConfig.AckCommandErrors` option.
+// The logic if a command should be acked or not is based on the logic of the Backend.
+// For example, for the PubSubBackend, it depends on the `PubSubBackendConfig.AckCommandErrors` option.
 func NewCommandHandler[Command any](
 	handlerName string,
 	backend Backend[struct{}],
