@@ -1,6 +1,6 @@
 module github.com/ThreeDotsLabs/watermill
 
-go 1.21.0
+go 1.21
 
 require (
 	github.com/cenkalti/backoff/v3 v3.2.2
