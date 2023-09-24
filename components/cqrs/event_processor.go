@@ -327,12 +327,15 @@ func (p EventProcessor) routerHandlerFunc(handler EventHandler, logger watermill
 			"received_event_type": messageEventName,
 		})
 
+		ctx := CtxWithOriginalMessage(msg.Context(), msg)
+		msg.SetContext(ctx)
+
 		if err := p.config.Marshaler.Unmarshal(msg, event); err != nil {
 			return err
 		}
 
 		handle := func(params EventProcessorOnHandleParams) error {
-			return params.Handler.Handle(params.Message.Context(), params.Event)
+			return params.Handler.Handle(ctx, params.Event)
 		}
 		if p.config.OnHandle != nil {
 			handle = p.config.OnHandle

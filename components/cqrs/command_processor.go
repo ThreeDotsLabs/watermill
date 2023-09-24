@@ -45,7 +45,13 @@ type CommandProcessorConfig struct {
 	Logger watermill.LoggerAdapter
 
 	// If true, CommandProcessor will ack messages even if CommandHandler returns an error.
-	// If RequestReplyEnabled is enabled and sending reply fails, the message will be nack-ed anyway.
+	// If RequestReplyBackend is not null and sending reply fails, the message will be nack-ed anyway.
+	//
+	// Warning: It's not recommended to use this option when you are using requestreply component
+	// (requestreply.NewCommandHandler or requestreply.NewCommandHandlerWithResult), as it may ack the
+	// command when sending reply failed.
+	//
+	// When you are using requestreply, you should use requestreply.PubSubBackendConfig.AckCommandErrors.
 	AckCommandHandlingErrors bool
 
 	// disableRouterAutoAddHandlers is used to keep backwards compatibility.
@@ -314,12 +320,15 @@ func (p CommandProcessor) routerHandlerFunc(handler CommandHandler, logger water
 			"received_command_type": messageCmdName,
 		})
 
+		ctx := CtxWithOriginalMessage(msg.Context(), msg)
+		msg.SetContext(ctx)
+
 		if err := p.config.Marshaler.Unmarshal(msg, cmd); err != nil {
 			return err
 		}
 
 		handle := func(params CommandProcessorOnHandleParams) (err error) {
-			return params.Handler.Handle(params.Message.Context(), params.Command)
+			return params.Handler.Handle(ctx, params.Command)
 		}
 		if p.config.OnHandle != nil {
 			handle = p.config.OnHandle
