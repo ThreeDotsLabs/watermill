@@ -176,7 +176,7 @@ func TestRequestReply_without_result_no_error(t *testing.T) {
 
 	ts.RunRouter()
 
-	replyCh, cancel, err := requestreply.SendWithReply[requestreply.NoResult](
+	replyCh, cancel, err := requestreply.SendWithReplies[requestreply.NoResult](
 		context.Background(),
 		ts.CommandBus,
 		ts.RequestReplyBackend,
@@ -220,7 +220,7 @@ func TestRequestReply_without_result_with_error(t *testing.T) {
 
 	ts.RunRouter()
 
-	replyCh, cancel, err := requestreply.SendWithReply[requestreply.NoResult](
+	replyCh, cancel, err := requestreply.SendWithReplies[requestreply.NoResult](
 		context.Background(),
 		ts.CommandBus,
 		ts.RequestReplyBackend,
@@ -247,7 +247,6 @@ func TestRequestReply_with_result_no_error(t *testing.T) {
 	ts := NewTestServices[TestCommandResult](t, TestServicesConfig{
 		AssertNotificationMessage: func(t *testing.T, msg *message.Message) {
 			assert.NotEmpty(t, msg.Metadata.Get(requestreply.HasErrorMetadataKey))
-			assert.NotEmpty(t, msg.Metadata.Get(requestreply.ResultMetadataKey))
 		},
 	})
 
@@ -266,7 +265,7 @@ func TestRequestReply_with_result_no_error(t *testing.T) {
 
 	ts.RunRouter()
 
-	replyCh, cancel, err := requestreply.SendWithReply[TestCommandResult](
+	replyCh, cancel, err := requestreply.SendWithReplies[TestCommandResult](
 		context.Background(),
 		ts.CommandBus,
 		ts.RequestReplyBackend,
@@ -305,7 +304,7 @@ func TestRequestReply_with_result_with_error(t *testing.T) {
 
 	ts.RunRouter()
 
-	replyCh, cancel, err := requestreply.SendWithReply[TestCommandResult](
+	replyCh, cancel, err := requestreply.SendWithReplies[TestCommandResult](
 		context.Background(),
 		ts.CommandBus,
 		ts.RequestReplyBackend,
@@ -326,6 +325,41 @@ func TestRequestReply_with_result_with_error(t *testing.T) {
 	case <-time.After(time.Millisecond * 100):
 		t.Fatal("timeout")
 	}
+}
+
+func TestSendWithReply(t *testing.T) {
+	ts := NewTestServices[TestCommandResult](t, TestServicesConfig{})
+
+	expectedResult := TestCommandResult{ID: "123"}
+	expectedErr := errors.New("some error")
+
+	err := ts.CommandProcessor.AddHandlers(
+		requestreply.NewCommandHandlerWithResult[TestCommand, TestCommandResult](
+			"test_handler",
+			ts.RequestReplyBackend,
+			func(ctx context.Context, cmd *TestCommand) (TestCommandResult, error) {
+				return expectedResult, expectedErr
+			},
+		),
+	)
+	require.NoError(t, err)
+
+	ts.RunRouter()
+
+	reply, err := requestreply.SendWithReply[TestCommandResult](
+		context.Background(),
+		ts.CommandBus,
+		ts.RequestReplyBackend,
+		&TestCommand{ID: "1"},
+	)
+	require.NoError(t, err)
+
+	assert.EqualValues(t, TestCommandResult{ID: "123"}, reply.HandlerResult)
+
+	require.Error(t, reply.Error)
+	assert.Equal(t, expectedErr.Error(), reply.Error.Error())
+
+	assert.NotEmpty(t, reply.NotificationMessage.Metadata.Get(requestreply.OperationIDMetadataKey))
 }
 
 func TestRequestReply_without_result_multiple_replies(t *testing.T) {
@@ -354,7 +388,7 @@ func TestRequestReply_without_result_multiple_replies(t *testing.T) {
 
 	ts.RunRouter()
 
-	replyCh, cancel, err := requestreply.SendWithReply[TestCommandResult](
+	replyCh, cancel, err := requestreply.SendWithReplies[TestCommandResult](
 		context.Background(),
 		ts.CommandBus,
 		ts.RequestReplyBackend,
@@ -421,7 +455,7 @@ func TestRequestReply_timout(t *testing.T) {
 
 	ts.RunRouter()
 
-	replyCh, cancel, err := requestreply.SendWithReply[requestreply.NoResult](
+	replyCh, cancel, err := requestreply.SendWithReplies[requestreply.NoResult](
 		context.Background(),
 		ts.CommandBus,
 		ts.RequestReplyBackend,
@@ -464,7 +498,7 @@ func TestRequestReply_context_cancellation(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	replyCh, _, err := requestreply.SendWithReply[struct{}](
+	replyCh, _, err := requestreply.SendWithReplies[struct{}](
 		ctx,
 		ts.CommandBus,
 		ts.RequestReplyBackend,
@@ -511,7 +545,7 @@ func TestRequestReply_fn_cancellation(t *testing.T) {
 
 	ts.RunRouter()
 
-	replyCh, cancel, err := requestreply.SendWithReply[requestreply.NoResult](
+	replyCh, cancel, err := requestreply.SendWithReplies[requestreply.NoResult](
 		context.Background(),
 		ts.CommandBus,
 		ts.RequestReplyBackend,
@@ -583,7 +617,7 @@ func TestRequestReply_parallel_different_handlers(t *testing.T) {
 
 		cmd := TestCommand{ID: watermill.NewUUID()}
 
-		replyCh, cancel, err := requestreply.SendWithReply[TestCommandResult](
+		replyCh, cancel, err := requestreply.SendWithReplies[TestCommandResult](
 			context.Background(),
 			ts.CommandBus,
 			ts.RequestReplyBackend,
@@ -615,7 +649,7 @@ func TestRequestReply_parallel_different_handlers(t *testing.T) {
 
 		cmd := TestCommand2{ID: watermill.NewUUID()}
 
-		replyCh, cancel, err := requestreply.SendWithReply[TestCommandResult](
+		replyCh, cancel, err := requestreply.SendWithReplies[TestCommandResult](
 			context.Background(),
 			ts.CommandBus,
 			ts.RequestReplyBackend,
@@ -675,7 +709,7 @@ func TestRequestReply_parallel_same_handler(t *testing.T) {
 			<-start
 
 			cmd := TestCommand{ID: uuid.NewString()}
-			replyCh, cancel, err := requestreply.SendWithReply[TestCommandResult](
+			replyCh, cancel, err := requestreply.SendWithReplies[TestCommandResult](
 				context.Background(),
 				ts.CommandBus,
 				ts.RequestReplyBackend,

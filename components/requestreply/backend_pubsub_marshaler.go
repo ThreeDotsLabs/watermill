@@ -16,7 +16,6 @@ type BackendPubsubMarshaler[Result any] interface {
 const (
 	ErrorMetadataKey    = "_watermill_requestreply_error"
 	HasErrorMetadataKey = "_watermill_requestreply_has_error"
-	ResultMetadataKey   = "_watermill_requestreply_result"
 )
 
 type BackendPubsubJSONMarshaler[Result any] struct{}
@@ -37,8 +36,7 @@ func (m BackendPubsubJSONMarshaler[Result]) MarshalReply(
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot marshal reply")
 	}
-
-	msg.Metadata.Set(ResultMetadataKey, string(b))
+	msg.Payload = b
 
 	return msg, nil
 }
@@ -51,7 +49,7 @@ func (m BackendPubsubJSONMarshaler[Result]) UnmarshalReply(msg *message.Message)
 	}
 
 	var result Result
-	if err := json.Unmarshal([]byte(msg.Metadata.Get(ResultMetadataKey)), &result); err != nil {
+	if err := json.Unmarshal(msg.Payload, &result); err != nil {
 		return Reply[Result]{}, errors.Wrap(err, "cannot unmarshal result")
 	}
 	reply.HandlerResult = result

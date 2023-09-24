@@ -37,16 +37,16 @@ func NewCommandHandler[Command any](
 	})
 }
 
-// NewCommandHandlerWithResult creates a new CommandHandler which supports request-reply pattern with result.
-// The result handler, is handler compatible with cqrs.CommandHandler.
+// NewCommandHandlerWithResult creates a new CommandHandler which supports the request-reply pattern with a result.
+// The result handler is handler compatible with cqrs.CommandHandler.
 //
-// In addition to cqrs.CommandHandler, it also allows to return result from handler.
+// In addition to cqrs.CommandHandler, it also allows returninga result from the handler.
 // The result is passed to the Backend implementation and sent to the caller.
 //
-// The logic if command should be acked or not is based on logic of the Backend.
-// For example, for the PubSubBackend, it depends on `PubSubBackendConfig.AckCommandErrors` option.
+// The logic if a command should be acked or not is based on the logic of the Backend.
+// For example, for the PubSubBackend, it depends on the `PubSubBackendConfig.AckCommandErrors` option.
 //
-// The reply is sent to the caller, even if handler returns an error.
+// The reply is sent to the caller, even if the handler returns an error.
 func NewCommandHandlerWithResult[Command any, Result any](
 	handlerName string,
 	backend Backend[Result],

@@ -83,6 +83,10 @@ type PubSubBackendConfig struct {
 
 	OnListenForReplyFinished PubSubBackendOnListenForReplyFinishedFn
 
+	// AckCommandErrors determines if the command should be acked or nacked when handler returns an error.
+	// Command will be always nacked, when sending reply fails.
+	// You should use this option instead of cqrs.CommandProcessorConfig.AckCommandHandlingErrors, as it's aware
+	// if error was returned by handler or sending reply failed.
 	AckCommandErrors bool
 }
 
