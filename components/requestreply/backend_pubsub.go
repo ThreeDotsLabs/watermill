@@ -7,6 +7,7 @@ import (
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 )
 
@@ -97,20 +98,22 @@ func (p *PubSubBackendConfig) setDefaults() {
 }
 
 func (p *PubSubBackendConfig) Validate() error {
+	var err error
+
 	if p.Publisher == nil {
-		return errors.New("publisher cannot be nil")
+		err = multierror.Append(err, errors.New("publisher cannot be nil"))
 	}
 	if p.SubscriberConstructor == nil {
-		return errors.New("subscriber constructor cannot be nil")
+		err = multierror.Append(err, errors.New("subscriber constructor cannot be nil"))
 	}
 	if p.GeneratePublishTopic == nil {
-		return errors.New("GeneratePublishTopic cannot be nil")
+		err = multierror.Append(err, errors.New("GeneratePublishTopic cannot be nil"))
 	}
 	if p.GenerateSubscribeTopic == nil {
-		return errors.New("GenerateSubscribeTopic cannot be nil")
+		err = multierror.Append(err, errors.New("GenerateSubscribeTopic cannot be nil"))
 	}
 
-	return nil
+	return err
 }
 
 func (p PubSubBackend[Result]) ListenForNotifications(

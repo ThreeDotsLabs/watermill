@@ -28,6 +28,7 @@ type TestServices[Result any] struct {
 	CommandProcessor *cqrs.CommandProcessor
 
 	RequestReplyBackend *requestreply.PubSubBackend[Result]
+	BackendConfig       requestreply.PubSubBackendConfig
 }
 
 type TestServicesConfig struct {
@@ -50,47 +51,48 @@ func NewTestServices[Result any](t *testing.T, c TestServicesConfig) TestService
 		logger,
 	)
 
-	backend, err := requestreply.NewPubSubBackend[Result](
-		requestreply.PubSubBackendConfig{
-			Publisher: pubSub,
-			SubscriberConstructor: func(subscriberContext requestreply.PubSubBackendSubscribeParams) (message.Subscriber, error) {
-				assert.NotEmpty(t, subscriberContext.OperationID)
-				assert.NotEmpty(t, subscriberContext.Command)
+	backendConfig := requestreply.PubSubBackendConfig{
+		Publisher: pubSub,
+		SubscriberConstructor: func(subscriberContext requestreply.PubSubBackendSubscribeParams) (message.Subscriber, error) {
+			assert.NotEmpty(t, subscriberContext.OperationID)
+			assert.NotEmpty(t, subscriberContext.Command)
 
-				return pubSub, nil
-			},
-			GenerateSubscribeTopic: func(subscriberContext requestreply.PubSubBackendSubscribeParams) (string, error) {
-				assert.NotEmpty(t, subscriberContext.OperationID)
-				assert.NotEmpty(t, subscriberContext.Command)
-
-				return "reply", nil
-			},
-			GeneratePublishTopic: func(subscriberContext requestreply.PubSubBackendPublishParams) (string, error) {
-				assert.NotEmpty(t, subscriberContext.OperationID)
-				assert.NotEmpty(t, subscriberContext.Command)
-				assert.NotEmpty(t, subscriberContext.CommandMessage)
-
-				return "reply", nil
-			},
-			Logger: logger,
-			ModifyNotificationMessage: func(msg *message.Message, params requestreply.PubSubBackendOnCommandProcessedParams) error {
-				// to make it deterministic
-				msg.UUID = "1"
-
-				assert.NotEmpty(t, params.OperationID)
-				assert.NotEmpty(t, params.Command)
-				assert.NotEmpty(t, params.CommandMessage)
-
-				// to ensure backward compatibility
-				if c.AssertNotificationMessage != nil {
-					c.AssertNotificationMessage(t, msg)
-				}
-
-				return nil
-			},
-			AckCommandErrors:      !c.DoNotAckOnCommandErrors,
-			ListenForReplyTimeout: c.ListenForReplyTimeout,
+			return pubSub, nil
 		},
+		GenerateSubscribeTopic: func(subscriberContext requestreply.PubSubBackendSubscribeParams) (string, error) {
+			assert.NotEmpty(t, subscriberContext.OperationID)
+			assert.NotEmpty(t, subscriberContext.Command)
+
+			return "reply", nil
+		},
+		GeneratePublishTopic: func(subscriberContext requestreply.PubSubBackendPublishParams) (string, error) {
+			assert.NotEmpty(t, subscriberContext.OperationID)
+			assert.NotEmpty(t, subscriberContext.Command)
+			assert.NotEmpty(t, subscriberContext.CommandMessage)
+
+			return "reply", nil
+		},
+		Logger: logger,
+		ModifyNotificationMessage: func(msg *message.Message, params requestreply.PubSubBackendOnCommandProcessedParams) error {
+			// to make it deterministic
+			msg.UUID = "1"
+
+			assert.NotEmpty(t, params.OperationID)
+			assert.NotEmpty(t, params.Command)
+			assert.NotEmpty(t, params.CommandMessage)
+
+			// to ensure backward compatibility
+			if c.AssertNotificationMessage != nil {
+				c.AssertNotificationMessage(t, msg)
+			}
+
+			return nil
+		},
+		AckCommandErrors:      !c.DoNotAckOnCommandErrors,
+		ListenForReplyTimeout: c.ListenForReplyTimeout,
+	}
+	backend, err := requestreply.NewPubSubBackend[Result](
+		backendConfig,
 		requestreply.BackendPubsubJSONMarshaler[Result]{},
 	)
 	require.NoError(t, err)
@@ -130,6 +132,7 @@ func NewTestServices[Result any](t *testing.T, c TestServicesConfig) TestService
 		CommandBus:          commandBus,
 		CommandProcessor:    commandProcessor,
 		Marshaler:           marshaler,
+		BackendConfig:       backendConfig,
 	}
 }
 
@@ -732,4 +735,32 @@ func TestRequestReply_parallel_same_handler(t *testing.T) {
 	// sync workers
 	close(start)
 	wg.Wait()
+}
+
+func TestNewPubSubBackend_missing_values(t *testing.T) {
+	t.Run("invalid_config", func(t *testing.T) {
+		invalidConfig := requestreply.PubSubBackendConfig{}
+		require.Error(t, invalidConfig.Validate())
+
+		backend, err := requestreply.NewPubSubBackend[requestreply.NoResult](
+			invalidConfig,
+			requestreply.BackendPubsubJSONMarshaler[requestreply.NoResult]{},
+		)
+		assert.Error(t, err)
+		assert.ErrorContains(t, err, "invalid config")
+		assert.Nil(t, backend)
+	})
+
+	t.Run("missing_marshaler", func(t *testing.T) {
+		ts := NewTestServices[struct{}](t, TestServicesConfig{})
+		require.NoError(t, ts.BackendConfig.Validate())
+
+		backend, err := requestreply.NewPubSubBackend[requestreply.NoResult](
+			ts.BackendConfig,
+			nil,
+		)
+		assert.Error(t, err)
+		assert.ErrorContains(t, err, "marshaler cannot be nil")
+		assert.Nil(t, backend)
+	})
 }
