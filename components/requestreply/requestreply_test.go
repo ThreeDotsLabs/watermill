@@ -370,20 +370,22 @@ func TestRequestReply_without_result_multiple_replies(t *testing.T) {
 		DoNotAckOnCommandErrors: true,
 	})
 
-	i := 0
+	type toSend struct {
+		ID  string
+		Err error
+	}
+
+	toSendCh := make(chan toSend, 1)
+	toSendCh <- toSend{ID: "1", Err: fmt.Errorf("error 1")}
 
 	err := ts.CommandProcessor.AddHandlers(
 		requestreply.NewCommandHandlerWithResult[TestCommand, TestCommandResult](
 			"test_handler",
 			ts.RequestReplyBackend,
 			func(ctx context.Context, cmd *TestCommand) (TestCommandResult, error) {
-				i++
+				toSend := <-toSendCh
 
-				if i == 3 {
-					return TestCommandResult{ID: fmt.Sprintf("%d", i)}, nil
-				}
-
-				return TestCommandResult{ID: fmt.Sprintf("%d", i)}, fmt.Errorf("error %d", i)
+				return TestCommandResult{ID: toSend.ID}, toSend.Err
 			},
 		),
 	)
@@ -413,6 +415,8 @@ func TestRequestReply_without_result_multiple_replies(t *testing.T) {
 		t.Fatal("timeout")
 	}
 
+	toSendCh <- toSend{ID: "2", Err: fmt.Errorf("error 2")}
+
 	select {
 	case reply := <-replyCh:
 		assert.EqualValues(t, TestCommandResult{ID: "2"}, reply.HandlerResult)
@@ -424,6 +428,8 @@ func TestRequestReply_without_result_multiple_replies(t *testing.T) {
 	case <-time.After(time.Millisecond * 100):
 		t.Fatal("timeout")
 	}
+
+	toSendCh <- toSend{ID: "3", Err: nil}
 
 	select {
 	case reply := <-replyCh:

@@ -2,6 +2,7 @@ package cqrs_test
 
 import (
 	"context"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -366,7 +367,7 @@ func TestNewCommandProcessor_OnHandle(t *testing.T) {
 		return nil
 	})
 
-	onHandleCalled := 0
+	onHandleCalled := int64(0)
 
 	config := cqrs.CommandProcessorConfig{
 		GenerateSubscribeTopic: func(params cqrs.CommandProcessorGenerateSubscribeTopicParams) (string, error) {
@@ -376,7 +377,7 @@ func TestNewCommandProcessor_OnHandle(t *testing.T) {
 			return mockSub, nil
 		},
 		OnHandle: func(params cqrs.CommandProcessorOnHandleParams) error {
-			onHandleCalled++
+			atomic.AddInt64(&onHandleCalled, 1)
 
 			assert.IsType(t, &TestCommand{}, params.Command)
 			assert.Equal(t, "cqrs_test.TestCommand", params.CommandName)
@@ -422,7 +423,7 @@ func TestNewCommandProcessor_OnHandle(t *testing.T) {
 		// nack received
 	}
 
-	assert.Equal(t, 2, onHandleCalled)
+	assert.EqualValues(t, 2, onHandleCalled)
 }
 
 func TestCommandProcessor_AddHandlersToRouter_without_disableRouterAutoAddHandlers(t *testing.T) {
