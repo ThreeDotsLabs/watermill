@@ -1,6 +1,6 @@
 module github.com/ThreeDotsLabs/watermill
 
-go 1.21
+go 1.18
 
 require (
 	github.com/cenkalti/backoff/v3 v3.2.2
@@ -13,7 +13,6 @@ require (
 	github.com/oklog/ulid v1.3.1
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.14.0
-	github.com/sony/gobreaker v0.5.0
 	github.com/stretchr/testify v1.8.4
 	google.golang.org/protobuf v1.28.1
 )
