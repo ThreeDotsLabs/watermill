@@ -248,9 +248,9 @@ func (p EventGroupProcessor) routerHandlerGroupFunc(handlers []GroupEventHandler
 				logger.Debug("Error when handling event", watermill.LogFields{"err": err})
 				return err
 			}
-
-			return nil
 		}
+
+		return nil
 
 		if !p.config.AckOnUnknownEvent {
 			return fmt.Errorf("no handler found for event %s", p.config.Marshaler.NameFromMessage(msg))
