@@ -93,8 +93,12 @@ func (g *GoChannel) Publish(topic string, messages ...*message.Message) error {
 	g.subscribersLock.RLock()
 	defer g.subscribersLock.RUnlock()
 
-	subLock, _ := g.subscribersByTopicLock.LoadOrStore(topic, &sync.Mutex{})
+	subLock, loaded := g.subscribersByTopicLock.LoadOrStore(topic, &sync.Mutex{})
 	subLock.(*sync.Mutex).Lock()
+
+	if !loaded {
+		defer g.subscribersByTopicLock.Delete(topic)
+	}
 	defer subLock.(*sync.Mutex).Unlock()
 
 	if g.config.Persistent {
