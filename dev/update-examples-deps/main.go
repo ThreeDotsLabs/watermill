@@ -70,7 +70,7 @@ func getGomods() []string {
 }
 
 func goModTidy(dir string, file string) error {
-	cmd2 := exec.Command("go", "mod", "tidy", "-go=1.19")
+	cmd2 := exec.Command("go", "mod", "tidy", "-go=1.21")
 	cmd2.Dir = dir
 	cmd2.Stderr = os.Stderr
 	cmd2.Stdout = os.Stdout

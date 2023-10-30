@@ -2,6 +2,7 @@ package cqrs_test
 
 import (
 	"context"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -366,7 +367,7 @@ func TestNewCommandProcessor_OnHandle(t *testing.T) {
 		return nil
 	})
 
-	onHandleCalled := 0
+	onHandleCalled := int64(0)
 
 	config := cqrs.CommandProcessorConfig{
 		GenerateSubscribeTopic: func(params cqrs.CommandProcessorGenerateSubscribeTopicParams) (string, error) {
@@ -376,7 +377,7 @@ func TestNewCommandProcessor_OnHandle(t *testing.T) {
 			return mockSub, nil
 		},
 		OnHandle: func(params cqrs.CommandProcessorOnHandleParams) error {
-			onHandleCalled++
+			atomic.AddInt64(&onHandleCalled, 1)
 
 			assert.IsType(t, &TestCommand{}, params.Command)
 			assert.Equal(t, "cqrs_test.TestCommand", params.CommandName)
@@ -422,7 +423,7 @@ func TestNewCommandProcessor_OnHandle(t *testing.T) {
 		// nack received
 	}
 
-	assert.Equal(t, 2, onHandleCalled)
+	assert.EqualValues(t, 2, onHandleCalled)
 }
 
 func TestCommandProcessor_AddHandlersToRouter_without_disableRouterAutoAddHandlers(t *testing.T) {
@@ -448,4 +449,68 @@ func TestCommandProcessor_AddHandlersToRouter_without_disableRouterAutoAddHandle
 
 	err = cp.AddHandlersToRouter(router)
 	assert.ErrorContains(t, err, "AddHandlersToRouter should be called only when using deprecated NewCommandProcessor")
+}
+
+func TestCommandProcessor_original_msg_set_to_ctx(t *testing.T) {
+	logger := watermill.NewCaptureLogger()
+
+	marshaler := cqrs.JSONMarshaler{}
+
+	msgToSend, err := marshaler.Marshal(&TestCommand{ID: "1"})
+	require.NoError(t, err)
+
+	mockSub := &mockSubscriber{
+		MessagesToSend: []*message.Message{
+			msgToSend,
+		},
+	}
+
+	router, err := message.NewRouter(message.RouterConfig{}, logger)
+	require.NoError(t, err)
+
+	commandProcessor, err := cqrs.NewCommandProcessorWithConfig(
+		router,
+		cqrs.CommandProcessorConfig{
+			GenerateSubscribeTopic: func(params cqrs.CommandProcessorGenerateSubscribeTopicParams) (string, error) {
+				return "commands", nil
+			},
+			SubscriberConstructor: func(params cqrs.CommandProcessorSubscriberConstructorParams) (message.Subscriber, error) {
+				return mockSub, nil
+			},
+			Marshaler:                marshaler,
+			Logger:                   logger,
+			AckCommandHandlingErrors: true,
+		},
+	)
+	require.NoError(t, err)
+
+	var msgFromCtx *message.Message
+
+	err = commandProcessor.AddHandlers(cqrs.NewCommandHandler(
+		"handler", func(ctx context.Context, cmd *TestCommand) error {
+			msgFromCtx = cqrs.OriginalMessageFromCtx(ctx)
+			return nil
+		}),
+	)
+	require.NoError(t, err)
+
+	go func() {
+		err := router.Run(context.Background())
+		assert.NoError(t, err)
+	}()
+
+	<-router.Running()
+
+	select {
+	case <-msgToSend.Acked():
+		// ok
+	case <-msgToSend.Nacked():
+		// nack received
+		t.Fatal("nack received, message should be acked")
+	case <-time.After(1 * time.Second):
+		t.Fatal("timeout waiting for ack")
+	}
+
+	require.NotNil(t, msgFromCtx)
+	assert.Equal(t, msgToSend, msgFromCtx)
 }
