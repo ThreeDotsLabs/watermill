@@ -1,7 +1,7 @@
 version: '3'
 services:
   webhooks-server:
-    image: golang:1.19
+    image: golang:1.21
     restart: unless-stopped
     volumes:
     - .:/app
@@ -10,7 +10,7 @@ services:
     command: go run main.go
 
   router:
-    image: golang:1.19
+    image: golang:1.21
     restart: unless-stopped
     depends_on:
       - kafka
@@ -21,7 +21,7 @@ services:
     command: go run main.go
 
   producer:
-    image: golang:1.19
+    image: golang:1.21
     restart: unless-stopped
     depends_on:
     - kafka

@@ -138,16 +138,16 @@ Keep in mind that the results can be vastly different, depending on the setup an
 
 Here's the short version for message size of 16 bytes.
 
-| Pub/Sub              | Publish (messages / s) | Subscribe (messages / s) |
-| -------------------- | ---------------------- | ------------------------ |
-| Kafka (one node)     | 63,506                 | 110,811                  |
-| Kafka (5 nodes)      | 70,252                 | 117,529                  |
-| NATS                 | 76,208                 | 38,169                   |
-| SQL (MySQL)          | 7,299                  | 154                      |
-| SQL (PostgreSQL)     | 4,142                  | 98                       |
-| Google Cloud Pub/Sub | 7,416                  | 39,591                   |
-| AMQP                 | 2,408                  | 10,608                   |
-| GoChannel            | 272,938                | 101,371                  |
+| Pub/Sub                         | Publish (messages / s) | Subscribe (messages / s) |
+|---------------------------------|------------------------|--------------------------|
+| GoChannel                       | 331,882                | 118,943                  |
+| Redis Streams                   | 61,642                 | 11,213                   |
+| NATS Jetstream (16 Subscribers) | 49,255                 | 33,009                   |
+| Kafka (one node)                | 44,090                 | 108,285                  |
+| SQL (MySQL)                     | 5,599                  | 167                      |
+| SQL (PostgreSQL, batch size=1)  | 3,834                  | 455                      |
+| Google Cloud Pub/Sub            | 3,689                  | 30,229                   |
+| AMQP                            | 2,702                  | 13,192                   |
 
 ## Support
 

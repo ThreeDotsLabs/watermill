@@ -114,12 +114,26 @@ func NewCommandBus(
 
 // Send sends command to the command bus.
 func (c CommandBus) Send(ctx context.Context, cmd any) error {
+	return c.SendWithModifiedMessage(ctx, cmd, nil)
+}
+
+func (c CommandBus) SendWithModifiedMessage(ctx context.Context, cmd any, modify func(*message.Message) error) error {
 	msg, topicName, err := c.newMessage(ctx, cmd)
 	if err != nil {
 		return err
 	}
 
-	return c.publisher.Publish(topicName, msg)
+	if modify != nil {
+		if err := modify(msg); err != nil {
+			return errors.Wrap(err, "cannot modify message")
+		}
+	}
+
+	if err := c.publisher.Publish(topicName, msg); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (c CommandBus) newMessage(ctx context.Context, command any) (*message.Message, string, error) {
