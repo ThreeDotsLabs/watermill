@@ -774,7 +774,7 @@ func (h *handler) handleMessage(msg *Message, handler HandlerFunc) {
 
 	producedMessages, err := handler(msg)
 	if err != nil {
-		h.logger.Error("Handler returned error", err, nil)
+		h.logger.Error("Handler returned error", err, msgFields)
 		msg.Nack()
 		return
 	}
