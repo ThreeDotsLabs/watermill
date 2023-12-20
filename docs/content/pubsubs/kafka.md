@@ -14,16 +14,16 @@ Apache Kafka is one of the most popular Pub/Subs. We are providing Pub/Sub imple
 
 ### Installation
 
-    go get github.com/ThreeDotsLabs/watermill-kafka/v2
+    go get github.com/ascendsoftware/watermill-kafka/v2
 
 #### Characteristics
 
-| Feature | Implements | Note |
-| ------- | ---------- | ---- |
-| ConsumerGroups | yes | |
-| ExactlyOnceDelivery | no | in theory can be achieved with [Transactions](https://www.confluent.io/blog/transactions-apache-kafka/), currently no support for any Golang client  |
-| GuaranteedOrder | yes | require [partition key usage](#partitioning)  |
-| Persistent | yes| |
+| Feature             | Implements | Note                                                                                                                                                |
+| ------------------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ConsumerGroups      | yes        |                                                                                                                                                     |
+| ExactlyOnceDelivery | no         | in theory can be achieved with [Transactions](https://www.confluent.io/blog/transactions-apache-kafka/), currently no support for any Golang client |
+| GuaranteedOrder     | yes        | require [partition key usage](#partitioning)                                                                                                        |
+| Persistent          | yes        |                                                                                                                                                     |
 
 #### Configuration
 

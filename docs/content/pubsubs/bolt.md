@@ -22,7 +22,7 @@ Bolt documentation: https://github.com/etcd-io/bbolt
 
 ### Installation
 
-    go get github.com/ThreeDotsLabs/watermill-bolt
+    go get github.com/ascendsoftware/watermill-bolt
 
 #### Characteristics
 

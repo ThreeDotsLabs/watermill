@@ -1,7 +1,7 @@
 package metrics
 
 import (
-	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ascendsoftware/watermill/message"
 	"github.com/prometheus/client_golang/prometheus"
 )
 

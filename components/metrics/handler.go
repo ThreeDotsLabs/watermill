@@ -6,7 +6,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ascendsoftware/watermill/message"
 )
 
 var (

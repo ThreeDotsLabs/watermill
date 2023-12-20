@@ -32,7 +32,7 @@ fmt:
 
 generate_gomod:
 	rm go.mod go.sum || true
-	go mod init github.com/ThreeDotsLabs/watermill
+	go mod init github.com/ascendsoftware/watermill
 
 	go install ./...
 	sed -i '\|go |d' go.mod

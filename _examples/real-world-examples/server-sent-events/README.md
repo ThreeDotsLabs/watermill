@@ -41,7 +41,7 @@ Also, you probably won't need to use it for most use cases. Be pragmatic!
 
 ### SSE Router
 
-The `SSERouter` comes from [watermill-http](https://github.com/ThreeDotsLabs/watermill-http).
+The `SSERouter` comes from [watermill-http](https://github.com/ascendsoftware/watermill-http).
 When creating a new router, you pass an upstream subscriber. Messages coming from that subscriber will trigger pushing updates over HTTP.
 
 In this example, we use [NATS](https://nats.io/) as Pub/Sub, but this can be any Pub/Sub supported by Watermill.

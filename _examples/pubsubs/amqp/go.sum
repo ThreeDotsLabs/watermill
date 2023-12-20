@@ -1,7 +1,7 @@
-github.com/ThreeDotsLabs/watermill v1.2.0-rc.11 h1:tQJ3L/AnfliXaxaq+ElHOfzi0Vx+AN8cAnIOLcUTrxo=
-github.com/ThreeDotsLabs/watermill v1.2.0-rc.11/go.mod h1:QLZSaklpSZ/7yv288LL2DFOgCEi86VYEmQvzmaMlHoA=
-github.com/ThreeDotsLabs/watermill-amqp/v2 v2.0.7 h1:AUSXLqdsA1LXWuoQSkIRG9FhMo6EYM9GSgd+bnf1W0w=
-github.com/ThreeDotsLabs/watermill-amqp/v2 v2.0.7/go.mod h1:DKOBUoMVtPMV8jBEbRP3NL6TgnOMyRvVza3W297cdqU=
+github.com/ascendsoftware/watermill v1.2.0-rc.11 h1:tQJ3L/AnfliXaxaq+ElHOfzi0Vx+AN8cAnIOLcUTrxo=
+github.com/ascendsoftware/watermill v1.2.0-rc.11/go.mod h1:QLZSaklpSZ/7yv288LL2DFOgCEi86VYEmQvzmaMlHoA=
+github.com/ascendsoftware/watermill-amqp/v2 v2.0.7 h1:AUSXLqdsA1LXWuoQSkIRG9FhMo6EYM9GSgd+bnf1W0w=
+github.com/ascendsoftware/watermill-amqp/v2 v2.0.7/go.mod h1:DKOBUoMVtPMV8jBEbRP3NL6TgnOMyRvVza3W297cdqU=
 github.com/cenkalti/backoff/v3 v3.2.2 h1:cfUAAO3yvKMYKPrvhDuHSwQnhZNk/RMHKdZqKTxfm6M=
 github.com/cenkalti/backoff/v3 v3.2.2/go.mod h1:cIeZDE3IrqwwJl6VUwCN6trj1oXrTS4rc0ij+ULvLYs=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

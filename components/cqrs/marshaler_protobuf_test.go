@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill/components/cqrs"
+	"github.com/ascendsoftware/watermill"
+	"github.com/ascendsoftware/watermill/components/cqrs"
 )
 
 func TestProtobufMarshaler(t *testing.T) {

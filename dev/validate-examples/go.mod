@@ -1,4 +1,4 @@
-module github.com/ThreeDotsLabs/watermill/dev/validate-examples
+module github.com/ascendsoftware/watermill/dev/validate-examples
 
 go 1.21
 

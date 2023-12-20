@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill-nats/pkg/nats"
-	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
+	"github.com/ascendsoftware/watermill"
+	"github.com/ascendsoftware/watermill-nats/pkg/nats"
+	"github.com/ascendsoftware/watermill/message"
+	"github.com/ascendsoftware/watermill/message/router/middleware"
 	"github.com/nats-io/stan.go"
 )
 

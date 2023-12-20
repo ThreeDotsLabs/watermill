@@ -9,7 +9,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/ThreeDotsLabs/watermill/components/metrics"
+	"github.com/ascendsoftware/watermill/components/metrics"
 )
 
 func TestCreateRegistryAndServeHTTP_metrics_endpoint(t *testing.T) {

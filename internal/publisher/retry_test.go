@@ -6,11 +6,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill/internal/publisher"
+	"github.com/ascendsoftware/watermill"
+	"github.com/ascendsoftware/watermill/internal/publisher"
 	"github.com/stretchr/testify/require"
 
-	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ascendsoftware/watermill/message"
 	"github.com/pkg/errors"
 )
 

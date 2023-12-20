@@ -10,8 +10,8 @@ There are multiple ways in which you can help us.
 
 You can pick one of the existing issues. Most of the issues should have an estimation (S - small, M - medium, L - large).
 
-- [Good first issues list](https://github.com/ThreeDotsLabs/watermill/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) - simple issues to begin with
-- [Help wanted issues list](https://github.com/ThreeDotsLabs/watermill/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22) - tasks that are already more or less clear, and you can start to implement them pretty quickly
+- [Good first issues list](https://github.com/ascendsoftware/watermill/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) - simple issues to begin with
+- [Help wanted issues list](https://github.com/ascendsoftware/watermill/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22) - tasks that are already more or less clear, and you can start to implement them pretty quickly
 
 ### New Pub/Sub implementations
 
@@ -45,4 +45,4 @@ Useful commands:
 - [CodeReviewComments](https://github.com/golang/go/wiki/CodeReviewComments)
 - [Effective Go](https://golang.org/doc/effective_go.html)
 - SOLID
-- code should be open for configuration and not coupled to any serialization method (for example: [AMQP marshaler](https://github.com/ThreeDotsLabs/watermill-amqp/blob/master/pkg/amqp/marshaler.go), [AMQP Config](https://github.com/ThreeDotsLabs/watermill-amqp/blob/master/pkg/amqp/config.go)
+- code should be open for configuration and not coupled to any serialization method (for example: [AMQP marshaler](https://github.com/ascendsoftware/watermill-amqp/blob/master/pkg/amqp/marshaler.go), [AMQP Config](https://github.com/ascendsoftware/watermill-amqp/blob/master/pkg/amqp/config.go)

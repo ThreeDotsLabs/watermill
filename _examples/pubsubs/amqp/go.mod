@@ -1,8 +1,8 @@
 module main.go
 
 require (
-	github.com/ThreeDotsLabs/watermill v1.2.0-rc.11
-	github.com/ThreeDotsLabs/watermill-amqp/v2 v2.0.7
+	github.com/ascendsoftware/watermill v1.2.0-rc.11
+	github.com/ascendsoftware/watermill-amqp/v2 v2.0.7
 )
 
 require (

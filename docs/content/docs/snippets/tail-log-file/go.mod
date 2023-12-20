@@ -1,10 +1,10 @@
-module github.com/ThreeDotsLabs/watermill/docs/content/docs/snippets/tail-log-file
+module github.com/ascendsoftware/watermill/docs/content/docs/snippets/tail-log-file
 
 go 1.21
 
 require (
-	github.com/ThreeDotsLabs/watermill v1.2.0-rc.11
-	github.com/ThreeDotsLabs/watermill-io v1.0.3
+	github.com/ascendsoftware/watermill v1.2.0-rc.11
+	github.com/ascendsoftware/watermill-io v1.0.3
 )
 
 require (

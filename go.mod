@@ -1,4 +1,4 @@
-module github.com/ThreeDotsLabs/watermill
+module github.com/ascendsoftware/watermill
 
 go 1.21
 

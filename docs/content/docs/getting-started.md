@@ -35,7 +35,7 @@ After looking at the examples, you should be able to quickly integrate Watermill
 ### Install
 
 ```bash
-go get -u github.com/ThreeDotsLabs/watermill
+go get -u github.com/ascendsoftware/watermill
 ```
 
 ### One Minute Background
@@ -312,16 +312,16 @@ The second option is useful when your handler requires some dependencies like da
 
 You can run this example by `go run main.go`.
 
-You've just created your first application with Watermill. You can find the full source in [/_examples/basic/3-router/main.go](https://github.com/ThreeDotsLabs/watermill/blob/master/_examples/basic/3-router/main.go).
+You've just created your first application with Watermill. You can find the full source in [/_examples/basic/3-router/main.go](https://github.com/ascendsoftware/watermill/blob/master/_examples/basic/3-router/main.go).
 
 ### Logging
 
-To see Watermill's logs, you have to pass any logger that implements the [LoggerAdapter](https://github.com/ThreeDotsLabs/watermill/blob/master/log.go).
+To see Watermill's logs, you have to pass any logger that implements the [LoggerAdapter](https://github.com/ascendsoftware/watermill/blob/master/log.go).
 For experimental development, you can use `NewStdLogger`.
 
 ### Testing
 
-Watermill provides [a set of test scenarios](https://github.com/ThreeDotsLabs/watermill/blob/master/pubsub/tests/test_pubsub.go)
+Watermill provides [a set of test scenarios](https://github.com/ascendsoftware/watermill/blob/master/pubsub/tests/test_pubsub.go)
 that any Pub/Sub implementation can use. Each test suite needs to declare what features it supports and how to construct a new Pub/Sub.
 These scenarios check both basic usage and more uncommon use cases. Stress tests are also included.
 
@@ -335,17 +335,17 @@ For more detailed documentation check [documentation topics]({{< ref "/docs" >}}
 
 #### Examples
 
-Check out the [examples](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples) that will show you how to start using Watermill.
+Check out the [examples](https://github.com/ascendsoftware/watermill/tree/master/_examples) that will show you how to start using Watermill.
 
-The recommended entry point is [Your first Watermill application](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/basic/1-your-first-app).
+The recommended entry point is [Your first Watermill application](https://github.com/ascendsoftware/watermill/tree/master/_examples/basic/1-your-first-app).
 It contains the entire environment in `docker-compose.yml`, including Golang and Kafka, which you can run with one command.
 
-After that, you can see the [Realtime feed](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/basic/2-realtime-feed) example.
+After that, you can see the [Realtime feed](https://github.com/ascendsoftware/watermill/tree/master/_examples/basic/2-realtime-feed) example.
 It uses more middlewares and contains two handlers. There is also a separate application for publishing messages.
 
-For a different subscriber implementation, namely **HTTP**, refer to the [receiving-webhooks](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/real-world-examples/receiving-webhooks) example. It is a very simple application that saves webhooks to Kafka.
+For a different subscriber implementation, namely **HTTP**, refer to the [receiving-webhooks](https://github.com/ascendsoftware/watermill/tree/master/_examples/real-world-examples/receiving-webhooks) example. It is a very simple application that saves webhooks to Kafka.
 
-Full list of examples can be found in the project's [README](https://github.com/ThreeDotsLabs/watermill#examples).
+Full list of examples can be found in the project's [README](https://github.com/ascendsoftware/watermill#examples).
 
 #### Support
 

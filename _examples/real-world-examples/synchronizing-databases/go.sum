@@ -1,7 +1,7 @@
-github.com/ThreeDotsLabs/watermill v1.3.1 h1:Fm+K9soLPEO/N2U90OkdwoyrIm4X8YsCDPxmuyniOR8=
-github.com/ThreeDotsLabs/watermill v1.3.1/go.mod h1:zn/7F0TGOr1K/RX7bFbVxii6p1abOMLllAMpVpKinQg=
-github.com/ThreeDotsLabs/watermill-sql/v2 v2.0.0 h1:wswlLYY0Jc0tloj3lty4Y+VTEA8AM1vYfrIDwWtqyJk=
-github.com/ThreeDotsLabs/watermill-sql/v2 v2.0.0/go.mod h1:83l/4sKaLHwoHJlrAsDLaXcHN+QOHHntAAyabNmiuO4=
+github.com/ascendsoftware/watermill v1.3.1 h1:Fm+K9soLPEO/N2U90OkdwoyrIm4X8YsCDPxmuyniOR8=
+github.com/ascendsoftware/watermill v1.3.1/go.mod h1:zn/7F0TGOr1K/RX7bFbVxii6p1abOMLllAMpVpKinQg=
+github.com/ascendsoftware/watermill-sql/v2 v2.0.0 h1:wswlLYY0Jc0tloj3lty4Y+VTEA8AM1vYfrIDwWtqyJk=
+github.com/ascendsoftware/watermill-sql/v2 v2.0.0/go.mod h1:83l/4sKaLHwoHJlrAsDLaXcHN+QOHHntAAyabNmiuO4=
 github.com/brianvoe/gofakeit/v6 v6.20.1 h1:8ihJ60OvPnPJ2W6wZR7M+TTeaZ9bml0z6oy4gvyJ/ek=
 github.com/brianvoe/gofakeit/v6 v6.20.1/go.mod h1:Ow6qC71xtwm79anlwKRlWZW6zVq9D2XHE4QSSMP/rU8=
 github.com/cenkalti/backoff/v3 v3.2.2 h1:cfUAAO3yvKMYKPrvhDuHSwQnhZNk/RMHKdZqKTxfm6M=

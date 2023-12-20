@@ -3,8 +3,8 @@ module main
 go 1.21
 
 require (
-	github.com/ThreeDotsLabs/watermill v1.2.0
-	github.com/ThreeDotsLabs/watermill-nats/v2 v2.0.0
+	github.com/ascendsoftware/watermill v1.2.0
+	github.com/ascendsoftware/watermill-nats/v2 v2.0.0
 	github.com/nats-io/nats.go v1.23.0
 )
 

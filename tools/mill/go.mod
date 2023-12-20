@@ -1,15 +1,15 @@
-module github.com/ThreeDotsLabs/watermill/tools/mill
+module github.com/ascendsoftware/watermill/tools/mill
 
 go 1.21
 
 require (
 	cloud.google.com/go/pubsub v1.28.0
 	github.com/Shopify/sarama v1.38.0
-	github.com/ThreeDotsLabs/watermill v1.2.0-rc.11
-	github.com/ThreeDotsLabs/watermill-amqp/v2 v2.0.7
-	github.com/ThreeDotsLabs/watermill-googlecloud v1.0.13
-	github.com/ThreeDotsLabs/watermill-io v1.0.3
-	github.com/ThreeDotsLabs/watermill-kafka/v2 v2.2.2
+	github.com/ascendsoftware/watermill v1.2.0-rc.11
+	github.com/ascendsoftware/watermill-amqp/v2 v2.0.7
+	github.com/ascendsoftware/watermill-googlecloud v1.0.13
+	github.com/ascendsoftware/watermill-io v1.0.3
+	github.com/ascendsoftware/watermill-kafka/v2 v2.2.2
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.6.1

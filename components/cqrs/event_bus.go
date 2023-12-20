@@ -4,8 +4,8 @@ import (
 	"context"
 	stdErrors "errors"
 
-	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ascendsoftware/watermill"
+	"github.com/ascendsoftware/watermill/message"
 	"github.com/pkg/errors"
 )
 

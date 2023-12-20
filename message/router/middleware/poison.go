@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ascendsoftware/watermill/message"
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 )

@@ -3,9 +3,9 @@ module main.go
 go 1.21
 
 require (
-	github.com/ThreeDotsLabs/watermill v1.2.0-rc.11
-	github.com/ThreeDotsLabs/watermill-http v1.1.4
-	github.com/ThreeDotsLabs/watermill-nats v1.0.7
+	github.com/ascendsoftware/watermill v1.2.0-rc.11
+	github.com/ascendsoftware/watermill-http v1.1.4
+	github.com/ascendsoftware/watermill-nats v1.0.7
 	github.com/cenkalti/backoff/v3 v3.2.2 // indirect
 	github.com/go-chi/chi/v5 v5.0.8
 	github.com/go-chi/render v1.0.2

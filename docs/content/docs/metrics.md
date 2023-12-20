@@ -59,9 +59,9 @@ Here is an example of its use in practice:
 
 ### Example application
 
-To see how the metrics dashboard works in practice, you can check out the [metrics example](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/basic/4-metrics). 
+To see how the metrics dashboard works in practice, you can check out the [metrics example](https://github.com/ascendsoftware/watermill/tree/master/_examples/basic/4-metrics). 
 
-Follow the instructions in the example's [README](https://github.com/ThreeDotsLabs/watermill/blob/master/_examples/basic/4-metrics/README.md) to make it run and add the Prometheus data source to Grafana.
+Follow the instructions in the example's [README](https://github.com/ascendsoftware/watermill/blob/master/_examples/basic/4-metrics/README.md) to make it run and add the Prometheus data source to Grafana.
 
 ### Grafana dashboard
 
@@ -131,7 +131,7 @@ For more information on Prometheus metric types, please refer to [Prometheus doc
   </tr>
 </table>
 
-Additionally, every metric has the `node` label, provided by Prometheus, with value corresponding to the instance that the metric comes from, and `job`, which is the job name specified in the [Prometheus configuration file](https://github.com/ThreeDotsLabs/watermill/blob/master/_examples/basic/4-metrics/prometheus.yml).
+Additionally, every metric has the `node` label, provided by Prometheus, with value corresponding to the instance that the metric comes from, and `job`, which is the job name specified in the [Prometheus configuration file](https://github.com/ascendsoftware/watermill/blob/master/_examples/basic/4-metrics/prometheus.yml).
 
 **NOTE**: As described [above](#wrapping-publishers-subscribers-and-handlers), using non-empty `namespace` or `subsystem` will result in prefixed metric names. You might need to adjust for it, for example in the definitions of panels in the Grafana dashboard.
 

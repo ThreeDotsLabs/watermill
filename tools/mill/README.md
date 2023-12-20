@@ -16,7 +16,7 @@ See Watermill's [Supported Pub/Subs](https://watermill.io/pubsubs) for more deta
 To install this tool, just execute:
 
 ```bash
-go get -u github.com/ThreeDotsLabs/watermill/tools/mill
+go get -u github.com/ascendsoftware/watermill/tools/mill
 ```
 
 This will install a `mill` binary in your system.

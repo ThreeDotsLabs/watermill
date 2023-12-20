@@ -1,6 +1,6 @@
 # Persistent Event Log (Google Cloud Pub/Sub to MySQL)
 
-This example shows how to use the SQL Publisher from [SQL Pub/Sub](https://github.com/ThreeDotsLabs/watermill-sql).
+This example shows how to use the SQL Publisher from [SQL Pub/Sub](https://github.com/ascendsoftware/watermill-sql).
 
 ## Background
 

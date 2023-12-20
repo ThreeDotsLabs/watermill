@@ -9,9 +9,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill-nats/v2/pkg/nats"
-	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ascendsoftware/watermill"
+	"github.com/ascendsoftware/watermill-nats/v2/pkg/nats"
+	"github.com/ascendsoftware/watermill/message"
 	nc "github.com/nats-io/nats.go"
 )
 

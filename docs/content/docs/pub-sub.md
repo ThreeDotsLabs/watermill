@@ -73,9 +73,9 @@ To check available Pub/Sub implementations, see [Supported Pub/Subs]({{< ref "/p
 See [Implementing custom Pub/Sub]({{< ref "/docs/pub-sub-implementing" >}}) for instructions on how to introduce support for
 a new Pub/Sub.
 
-We will also be thankful for submitting [pull requests](https://github.com/ThreeDotsLabs/watermill/pulls) with the new Pub/Sub implementations.
+We will also be thankful for submitting [pull requests](https://github.com/ascendsoftware/watermill/pulls) with the new Pub/Sub implementations.
 
-You can also request a new Pub/Sub implementation by submitting a [new issue](https://github.com/ThreeDotsLabs/watermill/issues).
+You can also request a new Pub/Sub implementation by submitting a [new issue](https://github.com/ascendsoftware/watermill/issues).
 
 ### Keep going!
 

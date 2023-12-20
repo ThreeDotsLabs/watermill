@@ -1,6 +1,6 @@
 package middleware
 
-import "github.com/ThreeDotsLabs/watermill/message"
+import "github.com/ascendsoftware/watermill/message"
 
 // InstantAck makes the handler instantly acknowledge the incoming message, regardless of any errors.
 // It may be used to gain throughput, but at a cost:

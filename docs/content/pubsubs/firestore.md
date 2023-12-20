@@ -25,18 +25,18 @@ wasn't saved or messages weren't emitted even though the data was saved. After
 transactionally publishing messages in Firestore you can then subscribe to them
 and relay them to a different Pub/Sub system.
 
-Godoc: <https://pkg.go.dev/github.com/ThreeDotsLabs/watermill-firestore>
+Godoc: <https://pkg.go.dev/github.com/ascendsoftware/watermill-firestore>
 
 Firestore documentation: <https://firebase.google.com/docs/firestore/>
 
 ### Installation
 
-    go get github.com/ThreeDotsLabs/watermill-firestore
+    go get github.com/ascendsoftware/watermill-firestore
 
 #### Characteristics
 
 | Feature             | Implements | Note |
-| -------             | ---------- | ---- |
+| ------------------- | ---------- | ---- |
 | ConsumerGroups      | yes        |      |
 | ExactlyOnceDelivery | no         |      |
 | GuaranteedOrder     | no         |      |

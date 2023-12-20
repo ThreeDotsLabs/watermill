@@ -8,12 +8,12 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ascendsoftware/watermill/message"
 	driver "github.com/go-sql-driver/mysql"
 	"github.com/pkg/errors"
 
-	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill-sql/v2/pkg/sql"
+	"github.com/ascendsoftware/watermill"
+	"github.com/ascendsoftware/watermill-sql/v2/pkg/sql"
 )
 
 const topic = "counter"

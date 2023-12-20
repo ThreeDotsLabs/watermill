@@ -12,10 +12,10 @@ cloud.google.com/go/longrunning v0.3.0 h1:NjljC+FYPV3uh5/OwWT6pVU+doBqMg2x/rZlE+
 cloud.google.com/go/pubsub v1.28.0 h1:XzabfdPx/+eNrsVVGLFgeUnQQKPGkMb8klRCeYK52is=
 cloud.google.com/go/pubsub v1.28.0/go.mod h1:vuXFpwaVoIPQMGXqRyUQigu/AX1S3IWugR9xznmcXX8=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
-github.com/ThreeDotsLabs/watermill v1.2.0-rc.11 h1:tQJ3L/AnfliXaxaq+ElHOfzi0Vx+AN8cAnIOLcUTrxo=
-github.com/ThreeDotsLabs/watermill v1.2.0-rc.11/go.mod h1:QLZSaklpSZ/7yv288LL2DFOgCEi86VYEmQvzmaMlHoA=
-github.com/ThreeDotsLabs/watermill-googlecloud v1.0.13 h1:MueV70SYuc9lt0XeJaVlR4Y1MzlMcZsZa/pOqsMx09I=
-github.com/ThreeDotsLabs/watermill-googlecloud v1.0.13/go.mod h1:HfJGTfrFonSoztBGy4RGFlRXy6I8Fa0op50Yno6buJI=
+github.com/ascendsoftware/watermill v1.2.0-rc.11 h1:tQJ3L/AnfliXaxaq+ElHOfzi0Vx+AN8cAnIOLcUTrxo=
+github.com/ascendsoftware/watermill v1.2.0-rc.11/go.mod h1:QLZSaklpSZ/7yv288LL2DFOgCEi86VYEmQvzmaMlHoA=
+github.com/ascendsoftware/watermill-googlecloud v1.0.13 h1:MueV70SYuc9lt0XeJaVlR4Y1MzlMcZsZa/pOqsMx09I=
+github.com/ascendsoftware/watermill-googlecloud v1.0.13/go.mod h1:HfJGTfrFonSoztBGy4RGFlRXy6I8Fa0op50Yno6buJI=
 github.com/cenkalti/backoff/v3 v3.2.2 h1:cfUAAO3yvKMYKPrvhDuHSwQnhZNk/RMHKdZqKTxfm6M=
 github.com/cenkalti/backoff/v3 v3.2.2/go.mod h1:cIeZDE3IrqwwJl6VUwCN6trj1oXrTS4rc0ij+ULvLYs=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=

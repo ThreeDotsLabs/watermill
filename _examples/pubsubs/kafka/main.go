@@ -8,9 +8,9 @@ import (
 
 	"github.com/Shopify/sarama"
 
-	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill-kafka/v2/pkg/kafka"
-	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ascendsoftware/watermill"
+	"github.com/ascendsoftware/watermill-kafka/v2/pkg/kafka"
+	"github.com/ascendsoftware/watermill/message"
 )
 
 func main() {

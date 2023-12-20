@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ThreeDotsLabs/watermill"
+	"github.com/ascendsoftware/watermill"
 	"github.com/pkg/errors"
 
-	"github.com/ThreeDotsLabs/watermill/components/cqrs"
-	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ascendsoftware/watermill/components/cqrs"
+	"github.com/ascendsoftware/watermill/message"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

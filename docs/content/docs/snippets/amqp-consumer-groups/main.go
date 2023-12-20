@@ -4,9 +4,9 @@ import (
 	"context"
 	"log"
 
-	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill-amqp/v2/pkg/amqp"
-	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ascendsoftware/watermill"
+	"github.com/ascendsoftware/watermill-amqp/v2/pkg/amqp"
+	"github.com/ascendsoftware/watermill/message"
 )
 
 var amqpURI = "amqp://guest:guest@rabbitmq:5672/"

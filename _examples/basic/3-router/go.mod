@@ -1,6 +1,6 @@
 module main.go
 
-require github.com/ThreeDotsLabs/watermill v1.2.0-rc.11
+require github.com/ascendsoftware/watermill v1.2.0-rc.11
 
 require (
 	github.com/cenkalti/backoff/v3 v3.2.2 // indirect

@@ -1,10 +1,10 @@
 github.com/Shopify/sarama v1.38.1 h1:lqqPUPQZ7zPqYlWpTh+LQ9bhYNu2xJL6k1SJN4WVe2A=
 github.com/Shopify/sarama v1.38.1/go.mod h1:iwv9a67Ha8VNa+TifujYoWGxWnu2kNVAQdSdZ4X2o5g=
 github.com/Shopify/toxiproxy/v2 v2.5.0 h1:i4LPT+qrSlKNtQf5QliVjdP08GyAH8+BUIc9gT0eahc=
-github.com/ThreeDotsLabs/watermill v1.2.0-rc.11 h1:tQJ3L/AnfliXaxaq+ElHOfzi0Vx+AN8cAnIOLcUTrxo=
-github.com/ThreeDotsLabs/watermill v1.2.0-rc.11/go.mod h1:QLZSaklpSZ/7yv288LL2DFOgCEi86VYEmQvzmaMlHoA=
-github.com/ThreeDotsLabs/watermill-kafka/v2 v2.2.2 h1:COB5neqVL8jGwoz1Y9dawQ7Xhxid1XXX8+1CI/PebVU=
-github.com/ThreeDotsLabs/watermill-kafka/v2 v2.2.2/go.mod h1:U001oyrHo+df3Q7hIXgKqxY2OW6woz64+GNuIxZokbM=
+github.com/ascendsoftware/watermill v1.2.0-rc.11 h1:tQJ3L/AnfliXaxaq+ElHOfzi0Vx+AN8cAnIOLcUTrxo=
+github.com/ascendsoftware/watermill v1.2.0-rc.11/go.mod h1:QLZSaklpSZ/7yv288LL2DFOgCEi86VYEmQvzmaMlHoA=
+github.com/ascendsoftware/watermill-kafka/v2 v2.2.2 h1:COB5neqVL8jGwoz1Y9dawQ7Xhxid1XXX8+1CI/PebVU=
+github.com/ascendsoftware/watermill-kafka/v2 v2.2.2/go.mod h1:U001oyrHo+df3Q7hIXgKqxY2OW6woz64+GNuIxZokbM=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

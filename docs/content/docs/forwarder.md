@@ -16,7 +16,7 @@ order to commit both storing data and emitting an event in one transaction, you'
 messages to the same database you use for the data storage, 
 or implement [2PC](https://martinfowler.com/articles/patterns-of-distributed-systems/two-phase-commit.html) 
 on your own. If you don't want to change your message broker to a database, nor invent the wheel once again,
-you can make your life easier by using Watermill's [Forwarder component](https://github.com/ThreeDotsLabs/watermill/blob/master/components/forwarder/forwarder.go)! 
+you can make your life easier by using Watermill's [Forwarder component](https://github.com/ascendsoftware/watermill/blob/master/components/forwarder/forwarder.go)! 
 
 ## Forwarder component 
 You can think of the Forwarder as a background running daemon which awaits messages that are published to a database, and makes sure they eventually reach a message broker.  
@@ -24,7 +24,7 @@ You can think of the Forwarder as a background running daemon which awaits messa
 <img src="/img/publishing-with-forwarder.svg" alt="Watermill Forwarder component" style="width:100%;" />
 
 In order to make the Forwarder universal and usable transparently, it listens to a single topic on an intermediate 
-database based Pub/Sub, where enveloped messages are sent with help of a decorated [Forwarder Publisher](https://github.com/ThreeDotsLabs/watermill/blob/9e04bfefbd6fef9f9ffa59956654277005fa2e8a/components/forwarder/publisher.go#L30). 
+database based Pub/Sub, where enveloped messages are sent with help of a decorated [Forwarder Publisher](https://github.com/ascendsoftware/watermill/blob/9e04bfefbd6fef9f9ffa59956654277005fa2e8a/components/forwarder/publisher.go#L30). 
 The Forwarder unwraps them, and sends to a specified destined topic on the message broker.  
 
 <img src="/img/forwarder-envelope.svg" alt="Forwarder envelope" style="width:100%;" />
@@ -108,8 +108,8 @@ you with picking all the messages you publish to the database and forwarding the
 
 Everything you have to do is to make sure that:
 
-1. Your command uses a publisher working in a context of a database transaction (i.e. [SQL](https://github.com/ThreeDotsLabs/watermill-sql/blob/4f39bf82b6180ca2191c791e7cb220fff22b9255/pkg/sql/publisher.go#L53), 
-[Firestore](https://github.com/ThreeDotsLabs/watermill-firestore/blob/b7bd31b3458884dc76076196cdc8942d18b5ab61/pkg/firestore/transactional.go#L14), [Bolt](https://github.com/ThreeDotsLabs/watermill-bolt/blob/0652f3602f6adbe4e3e39b97308fbed16dcbe29e/pkg/bolt/tx_publisher.go#L24)).
+1. Your command uses a publisher working in a context of a database transaction (i.e. [SQL](https://github.com/ascendsoftware/watermill-sql/blob/4f39bf82b6180ca2191c791e7cb220fff22b9255/pkg/sql/publisher.go#L53), 
+[Firestore](https://github.com/ascendsoftware/watermill-firestore/blob/b7bd31b3458884dc76076196cdc8942d18b5ab61/pkg/firestore/transactional.go#L14), [Bolt](https://github.com/ascendsoftware/watermill-bolt/blob/0652f3602f6adbe4e3e39b97308fbed16dcbe29e/pkg/bolt/tx_publisher.go#L24)).
 2. **Forwarder** component is running, using a database subscriber, and a message broker publisher.  
 
 The command could look like following in this case:
@@ -125,4 +125,4 @@ you'd have to set it up as follows:
 {{% load-snippet-partial file="src-link/_examples/real-world-examples/transactional-events-forwarder/main.go" first_line_contains="// Setup the Forwarder " last_line_contains="err := fwd.Run" padding_after="3" %}}
 {{% /render-md %}}
 
-If you wish to explore the example more, you can find it implemented [here](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/real-world-examples/transactional-events-forwarder/main.go).
+If you wish to explore the example more, you can find it implemented [here](https://github.com/ascendsoftware/watermill/tree/master/_examples/real-world-examples/transactional-events-forwarder/main.go).

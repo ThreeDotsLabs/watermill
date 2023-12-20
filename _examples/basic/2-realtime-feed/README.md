@@ -31,4 +31,4 @@ docker-compose exec kafka kafka-console-consumer --bootstrap-server localhost:90
 ```
 
 2. Add a persistent storage for incoming posts in the consumer service, instead of displaying them.
-   Consider using the [SQL Publisher](https://github.com/ThreeDotsLabs/watermill-sql).
+   Consider using the [SQL Publisher](https://github.com/ascendsoftware/watermill-sql).

@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/ThreeDotsLabs/watermill/pubsub/gochannel"
+	"github.com/ascendsoftware/watermill"
+	"github.com/ascendsoftware/watermill/message"
+	"github.com/ascendsoftware/watermill/pubsub/gochannel"
 )
 
 func main() {

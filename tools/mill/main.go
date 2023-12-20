@@ -1,6 +1,6 @@
 package main
 
-import "github.com/ThreeDotsLabs/watermill/tools/mill/cmd"
+import "github.com/ascendsoftware/watermill/tools/mill/cmd"
 
 func main() {
 	cmd.Execute()

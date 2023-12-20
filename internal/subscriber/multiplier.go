@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ascendsoftware/watermill/message"
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 )
