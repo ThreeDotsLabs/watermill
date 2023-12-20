@@ -15,12 +15,12 @@ import (
 	"testing"
 	"time"
 
-	internalSubscriber "github.com/ThreeDotsLabs/watermill/internal/subscriber"
+	internalSubscriber "github.com/ascendsoftware/watermill/internal/subscriber"
 
-	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill/internal"
-	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/ThreeDotsLabs/watermill/message/subscriber"
+	"github.com/ascendsoftware/watermill"
+	"github.com/ascendsoftware/watermill/internal"
+	"github.com/ascendsoftware/watermill/message"
+	"github.com/ascendsoftware/watermill/message/subscriber"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

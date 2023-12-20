@@ -11,22 +11,22 @@ toc = false
 ### HTTP
 
 The HTTP subscriber listens to HTTP requests (for example - webhooks) and outputs them as messages.
-You can then post them to any Publisher. Here is an example with [sending HTTP messages to Kafka](https://github.com/ThreeDotsLabs/watermill/blob/master/_examples/real-world-examples/receiving-webhooks/main.go).
+You can then post them to any Publisher. Here is an example with [sending HTTP messages to Kafka](https://github.com/ascendsoftware/watermill/blob/master/_examples/real-world-examples/receiving-webhooks/main.go).
 
-The HTTP publisher sends HTTP requests as specified in its configuration. Here is an example with [transforming Kafka messages into HTTP webhook requests](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/real-world-examples/sending-webhooks).
+The HTTP publisher sends HTTP requests as specified in its configuration. Here is an example with [transforming Kafka messages into HTTP webhook requests](https://github.com/ascendsoftware/watermill/tree/master/_examples/real-world-examples/sending-webhooks).
 
 ### Installation
 
-    go get github.com/ThreeDotsLabs/watermill-http
+    go get github.com/ascendsoftware/watermill-http
 
 #### Characteristics
 
-| Feature | Implements | Note |
-| ------- | ---------- | ---- |
-| ConsumerGroups | no | |
-| ExactlyOnceDelivery | yes |  |
-| GuaranteedOrder | yes |  |
-| Persistent | no| |
+| Feature             | Implements | Note |
+| ------------------- | ---------- | ---- |
+| ConsumerGroups      | no         |      |
+| ExactlyOnceDelivery | yes        |      |
+| GuaranteedOrder     | yes        |      |
+| Persistent          | no         |      |
 
 #### Subscriber configuration
 

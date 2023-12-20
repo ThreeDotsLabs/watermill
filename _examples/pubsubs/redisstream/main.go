@@ -6,9 +6,9 @@ import (
 	"log"
 	"time"
 
-	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill-redisstream/pkg/redisstream"
-	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ascendsoftware/watermill"
+	"github.com/ascendsoftware/watermill-redisstream/pkg/redisstream"
+	"github.com/ascendsoftware/watermill/message"
 	"github.com/redis/go-redis/v9"
 )
 

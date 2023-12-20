@@ -11,11 +11,11 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/pkg/errors"
 
-	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill-amqp/v2/pkg/amqp"
-	"github.com/ThreeDotsLabs/watermill/components/cqrs"
-	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
+	"github.com/ascendsoftware/watermill"
+	"github.com/ascendsoftware/watermill-amqp/v2/pkg/amqp"
+	"github.com/ascendsoftware/watermill/components/cqrs"
+	"github.com/ascendsoftware/watermill/message"
+	"github.com/ascendsoftware/watermill/message/router/middleware"
 )
 
 // BookRoomHandler is a command handler, which handles BookRoom command and emits RoomBooked.

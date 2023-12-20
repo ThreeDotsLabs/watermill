@@ -5,7 +5,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/ThreeDotsLabs/watermill-kafka/v2/pkg/kafka"
+	"github.com/ascendsoftware/watermill-kafka/v2/pkg/kafka"
 )
 
 var kafkaCmd = &cobra.Command{

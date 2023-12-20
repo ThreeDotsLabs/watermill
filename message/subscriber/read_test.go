@@ -4,11 +4,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ThreeDotsLabs/watermill/pubsub/tests"
+	"github.com/ascendsoftware/watermill/pubsub/tests"
 
-	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/ThreeDotsLabs/watermill/message/subscriber"
+	"github.com/ascendsoftware/watermill"
+	"github.com/ascendsoftware/watermill/message"
+	"github.com/ascendsoftware/watermill/message/subscriber"
 	"github.com/stretchr/testify/assert"
 )
 

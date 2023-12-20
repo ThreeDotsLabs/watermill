@@ -1,6 +1,6 @@
 module main.go
 
-require github.com/ThreeDotsLabs/watermill v1.2.0-rc.11
+require github.com/ascendsoftware/watermill v1.2.0-rc.11
 
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
@@ -24,6 +24,6 @@ require (
 )
 
 // uncomment to use local sources
-// replace github.com/ThreeDotsLabs/watermill => ../../../../watermill
+// replace github.com/ascendsoftware/watermill => ../../../../watermill
 
 go 1.21

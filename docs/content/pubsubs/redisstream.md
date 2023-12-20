@@ -14,17 +14,17 @@ Redis is the open source, in-memory data store used by millions of developers. R
 
 ### Installation
 
-    go get github.com/ThreeDotsLabs/watermill-redisstream
+    go get github.com/ascendsoftware/watermill-redisstream
 
 #### Characteristics
 
-| Feature | Implements | Note |
-| ------- | ---------- | ---- |
-| ConsumerGroups | yes | |
-| ExactlyOnceDelivery | no | |
-| GuaranteedOrder | no | |
-| Persistent | yes | |
-| FanOut | yes | use XREAD to fan out messages when there is no consumer group |
+| Feature             | Implements | Note                                                          |
+| ------------------- | ---------- | ------------------------------------------------------------- |
+| ConsumerGroups      | yes        |                                                               |
+| ExactlyOnceDelivery | no         |                                                               |
+| GuaranteedOrder     | no         |                                                               |
+| Persistent          | yes        |                                                               |
+| FanOut              | yes        | use XREAD to fan out messages when there is no consumer group |
 
 #### Configuration
 {{% render-md %}}

@@ -6,7 +6,7 @@ package gochannel_test
 import (
 	"testing"
 
-	"github.com/ThreeDotsLabs/watermill/pubsub/tests"
+	"github.com/ascendsoftware/watermill/pubsub/tests"
 )
 
 func TestPublishSubscribe_stress(t *testing.T) {

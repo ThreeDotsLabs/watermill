@@ -4,7 +4,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ascendsoftware/watermill/message"
 )
 
 func main() {

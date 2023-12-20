@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ascendsoftware/watermill/message"
 )
 
 // CorrelationIDMetadataKey is used to store the correlation ID in metadata.

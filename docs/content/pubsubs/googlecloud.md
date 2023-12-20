@@ -25,16 +25,16 @@ Documentation: [https://cloud.google.com/pubsub/docs/](https://cloud.google.com/
 
 ### Installation
 
-    go get github.com/ThreeDotsLabs/watermill-googlecloud
+    go get github.com/ascendsoftware/watermill-googlecloud
 
 #### Characteristics
 
-| Feature | Implements | Note |
-| ------- | ---------- | ---- |
-| ConsumerGroups | yes | multiple subscribers within the same Subscription name  |
-| ExactlyOnceDelivery | no |  |
-| GuaranteedOrder | no | |
-| Persistent | yes* | maximum retention time is 7 days |
+| Feature             | Implements | Note                                                   |
+| ------------------- | ---------- | ------------------------------------------------------ |
+| ConsumerGroups      | yes        | multiple subscribers within the same Subscription name |
+| ExactlyOnceDelivery | no         |                                                        |
+| GuaranteedOrder     | no         |                                                        |
+| Persistent          | yes*       | maximum retention time is 7 days                       |
 
 #### Configuration
 

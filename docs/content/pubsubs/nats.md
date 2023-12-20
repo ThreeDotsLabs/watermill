@@ -14,12 +14,12 @@ NATS Jetstream is a data streaming system powered by NATS, and written in the Go
 
 ### Installation
 
-    go get github.com/ThreeDotsLabs/watermill-nats/v2
+    go get github.com/ascendsoftware/watermill-nats/v2
 
 #### Characteristics
 
 | Feature             | Implements | Note                                                                                                                  |
-|---------------------|------------|-----------------------------------------------------------------------------------------------------------------------|
+| ------------------- | ---------- | --------------------------------------------------------------------------------------------------------------------- |
 | ConsumerGroups      | yes        | you need to set `QueueGroupPrefix` name or provide an optional calculator                                             |
 | ExactlyOnceDelivery | yes        | you need to ensure 'AckAsync' has default false value and set 'TrackMsgId' to true on the Jetstream configuration     |
 | GuaranteedOrder     | no         | [with the redelivery feature, order can't be guaranteed](https://github.com/nats-io/nats-streaming-server/issues/187) |
@@ -87,7 +87,7 @@ Other builtin marshalers are based on Golang's [`gob`](https://golang.org/pkg/en
 {{% load-snippet-partial file="src-link/watermill-nats/pkg/nats/marshaler.go" first_line_contains="type Marshaler " last_line_contains="func defaultNatsMsg" padding_after="0" %}}
 {{% /render-md %}}
 
-When you have your own format of the messages, you can implement your own Marshaler, which will serialize messages in your format.  An example protobuf implementation with tests and benchmarks can be found [here](https://github.com/ThreeDotsLabs/watermill-nats/tree/master/_examples/marshalers/protobuf/)
+When you have your own format of the messages, you can implement your own Marshaler, which will serialize messages in your format.  An example protobuf implementation with tests and benchmarks can be found [here](https://github.com/ascendsoftware/watermill-nats/tree/master/_examples/marshalers/protobuf/)
 
 When needed, you can bypass both [UUID]({{< ref "message#message" >}}) and [Metadata]({{< ref "message#message" >}}) and send just a `message.Payload`,
 but some standard [middlewares]({{< ref "messages-router#middleware" >}}) may be not working.

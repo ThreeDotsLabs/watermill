@@ -24,16 +24,16 @@ log of events that were published on a queue with short message expiration time.
 
 SQL Pub/Sub is also a good choice for implementing Outbox pattern with [Forwarder](/docs/forwarder/) component.
 
-See also the [SQL example](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/pubsubs/sql).
+See also the [SQL example](https://github.com/ascendsoftware/watermill/tree/master/_examples/pubsubs/sql).
 
 ### Installation
 
-    go get github.com/ThreeDotsLabs/watermill-sql/v2
+    go get github.com/ascendsoftware/watermill-sql/v2
 
 #### Characteristics
 
 | Feature             | Implements | Note                                      |
-|---------------------|------------|-------------------------------------------|
+| ------------------- | ---------- | ----------------------------------------- |
 | ConsumerGroups      | yes        | See `ConsumerGroup` in `SubscriberConfig` |
 | ExactlyOnceDelivery | yes*       | Just for MySQL implementation             |
 | GuaranteedOrder     | yes        |                                           |

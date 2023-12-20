@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ascendsoftware/watermill/message"
 )
 
 // Timeout makes the handler cancel the incoming message's context after a specified time.

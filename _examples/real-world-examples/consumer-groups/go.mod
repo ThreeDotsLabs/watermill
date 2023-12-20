@@ -1,10 +1,10 @@
-module github.com/ThreeDotsLabs/watermill-routing-example/server
+module github.com/ascendsoftware/watermill-routing-example/server
 
 go 1.21
 
 require (
-	github.com/ThreeDotsLabs/watermill v1.2.0
-	github.com/ThreeDotsLabs/watermill-http v1.1.4
+	github.com/ascendsoftware/watermill v1.2.0
+	github.com/ascendsoftware/watermill-http v1.1.4
 	github.com/cenkalti/backoff/v3 v3.2.2 // indirect
 	github.com/go-chi/chi/v5 v5.0.8
 	github.com/go-chi/render v1.0.2 // indirect
@@ -14,7 +14,7 @@ require (
 )
 
 require (
-	github.com/ThreeDotsLabs/watermill-redisstream v0.3.1
+	github.com/ascendsoftware/watermill-redisstream v0.3.1
 	github.com/redis/go-redis/v9 v9.0.2
 )
 

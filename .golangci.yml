@@ -2,7 +2,7 @@ service:
   prepare:
     - go run dev/consolidate-gomods/main.go >> go.mod
     - GO111MODULE=on go mod vendor
-    - rm vendor/github.com/ThreeDotsLabs/watermill/ -rf
+    - rm vendor/github.com/ascendsoftware/watermill/ -rf
 
 run:
   concurrency: 8

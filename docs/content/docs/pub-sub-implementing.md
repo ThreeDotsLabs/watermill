@@ -32,6 +32,6 @@ Here are a few things you shouldn't forget about:
 7. Performance optimizations.
 8. GoDocs, [Markdown docs]({{< ref "/pubsubs" >}}) and [Getting Started examples](/docs/getting-started).
 
-We will also be thankful for submitting a [pull requests](https://github.com/ThreeDotsLabs/watermill/pulls) with the new Pub/Sub implementation.
+We will also be thankful for submitting a [pull requests](https://github.com/ascendsoftware/watermill/pulls) with the new Pub/Sub implementation.
 
 If anything is not clear, feel free to use any of our [support channels]({{< ref "/support" >}}) to reach us, we will be glad to help.

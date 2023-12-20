@@ -4,7 +4,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/ThreeDotsLabs/watermill-amqp/v2/pkg/amqp"
+	"github.com/ascendsoftware/watermill-amqp/v2/pkg/amqp"
 )
 
 var amqpCmd = &cobra.Command{

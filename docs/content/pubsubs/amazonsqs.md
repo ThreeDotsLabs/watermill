@@ -10,4 +10,4 @@ toc = false
 
 ### Amazon Simple Queue Service
 
-There's an initial implementation looking for contributors and testers: https://github.com/ThreeDotsLabs/watermill-amazonsqs
+There's an initial implementation looking for contributors and testers: https://github.com/ascendsoftware/watermill-amazonsqs

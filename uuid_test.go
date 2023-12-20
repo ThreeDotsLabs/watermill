@@ -4,7 +4,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/ThreeDotsLabs/watermill"
+	"github.com/ascendsoftware/watermill"
 )
 
 func testuUniqness(t *testing.T, genFunc func() string) {

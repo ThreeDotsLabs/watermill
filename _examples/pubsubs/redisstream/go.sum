@@ -1,9 +1,9 @@
 github.com/Rican7/retry v0.3.1 h1:scY4IbO8swckzoA/11HgBwaZRJEyY9vaNJshcdhp1Mc=
 github.com/Rican7/retry v0.3.1/go.mod h1:CxSDrhAyXmTMeEuRAnArMu1FHu48vtfjLREWqVl7Vw0=
-github.com/ThreeDotsLabs/watermill v1.2.0-rc.11 h1:tQJ3L/AnfliXaxaq+ElHOfzi0Vx+AN8cAnIOLcUTrxo=
-github.com/ThreeDotsLabs/watermill v1.2.0-rc.11/go.mod h1:QLZSaklpSZ/7yv288LL2DFOgCEi86VYEmQvzmaMlHoA=
-github.com/ThreeDotsLabs/watermill-redisstream v0.3.1 h1:cGj0b/n6Gi/fPBjDktXPqL0SLqJ/QeoqFoSnycY32aQ=
-github.com/ThreeDotsLabs/watermill-redisstream v0.3.1/go.mod h1:N++PWE2hUT95quUDP+0wvWVCbWo0hyiR0jy7kLoda6M=
+github.com/ascendsoftware/watermill v1.2.0-rc.11 h1:tQJ3L/AnfliXaxaq+ElHOfzi0Vx+AN8cAnIOLcUTrxo=
+github.com/ascendsoftware/watermill v1.2.0-rc.11/go.mod h1:QLZSaklpSZ/7yv288LL2DFOgCEi86VYEmQvzmaMlHoA=
+github.com/ascendsoftware/watermill-redisstream v0.3.1 h1:cGj0b/n6Gi/fPBjDktXPqL0SLqJ/QeoqFoSnycY32aQ=
+github.com/ascendsoftware/watermill-redisstream v0.3.1/go.mod h1:N++PWE2hUT95quUDP+0wvWVCbWo0hyiR0jy7kLoda6M=
 github.com/bsm/ginkgo/v2 v2.5.0 h1:aOAnND1T40wEdAtkGSkvSICWeQ8L3UASX7YVCqQx+eQ=
 github.com/bsm/gomega v1.20.0 h1:JhAwLmtRzXFTx2AkALSLa8ijZafntmhSoU63Ok18Uq8=
 github.com/cespare/xxhash/v2 v2.2.0 h1:DC2CZ1Ep5Y4k3ZQ899DldepgrayRUGE6BBZ/cd9Cj44=

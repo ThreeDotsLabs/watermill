@@ -13,9 +13,9 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
 
-	"github.com/ThreeDotsLabs/watermill"
-	watermillHTTP "github.com/ThreeDotsLabs/watermill-http/pkg/http"
-	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ascendsoftware/watermill"
+	watermillHTTP "github.com/ascendsoftware/watermill-http/pkg/http"
+	"github.com/ascendsoftware/watermill/message"
 )
 
 var generatedTags = []string{"watermill", "golang", "pubsub", "unicorn", "HelloWorld", "example", "ThreeDotsLabs"}

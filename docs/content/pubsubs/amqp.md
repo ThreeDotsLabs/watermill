@@ -20,16 +20,16 @@ We are providing Pub/Sub implementation based on [github.com/rabbitmq/amqp091-go
 
 ### Installation
 
-    go get github.com/ThreeDotsLabs/watermill-amqp/v2
+    go get github.com/ascendsoftware/watermill-amqp/v2
 
 #### Characteristics
 
-| Feature | Implements | Note |
-| ------- | ---------- | ---- |
-| ConsumerGroups | yes* | there are no literal consumer groups in AMQP, but we can achieve similar behaviour with `GenerateQueueNameTopicNameWithSuffix`. For more details please check [AMQP "Consumer Groups" section](#amqp-consumer-groups) |
-| ExactlyOnceDelivery | no |  |
-| GuaranteedOrder | yes |  yes, please check https://www.rabbitmq.com/semantics.html#ordering |
-| Persistent | yes* | when using `NewDurablePubSubConfig` or `NewDurableQueueConfig`  |
+| Feature             | Implements | Note                                                                                                                                                                                                                  |
+| ------------------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ConsumerGroups      | yes*       | there are no literal consumer groups in AMQP, but we can achieve similar behaviour with `GenerateQueueNameTopicNameWithSuffix`. For more details please check [AMQP "Consumer Groups" section](#amqp-consumer-groups) |
+| ExactlyOnceDelivery | no         |                                                                                                                                                                                                                       |
+| GuaranteedOrder     | yes        | yes, please check https://www.rabbitmq.com/semantics.html#ordering                                                                                                                                                    |
+| Persistent          | yes*       | when using `NewDurablePubSubConfig` or `NewDurableQueueConfig`                                                                                                                                                        |
 
 #### Configuration
 
@@ -39,7 +39,7 @@ Our AMQP is shipped with some pre-created configurations:
 {{% load-snippet-partial file="src-link/watermill-amqp/pkg/amqp/config.go" first_line_contains="// NewDurablePubSubConfig" last_line_contains="type Config struct {" %}}
 {{% /render-md %}}
 
-For detailed configuration description, please check [watermill-amqp/pkg/amqp/config.go](https://github.com/ThreeDotsLabs/watermill-amqp/tree/master/pkg/amqp/config.go)
+For detailed configuration description, please check [watermill-amqp/pkg/amqp/config.go](https://github.com/ascendsoftware/watermill-amqp/tree/master/pkg/amqp/config.go)
 
 ##### TLS Config
 

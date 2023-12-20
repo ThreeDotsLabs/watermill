@@ -1,7 +1,7 @@
 package cqrs
 
 import (
-	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ascendsoftware/watermill/message"
 )
 
 // CommandEventMarshaler marshals Commands and Events to Watermill's messages and vice versa.

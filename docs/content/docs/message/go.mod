@@ -1,6 +1,6 @@
 module receiving-ack.go
 
-require github.com/ThreeDotsLabs/watermill v1.2.0-rc.11
+require github.com/ascendsoftware/watermill v1.2.0-rc.11
 
 require (
 	github.com/google/uuid v1.3.0 // indirect

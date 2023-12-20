@@ -3,7 +3,7 @@ package middleware
 import (
 	"testing"
 
-	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ascendsoftware/watermill/message"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )

@@ -10,9 +10,9 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill/internal"
-	sync_internal "github.com/ThreeDotsLabs/watermill/pubsub/sync"
+	"github.com/ascendsoftware/watermill"
+	"github.com/ascendsoftware/watermill/internal"
+	sync_internal "github.com/ascendsoftware/watermill/pubsub/sync"
 )
 
 // RouterPlugin is function which is executed on Router start.

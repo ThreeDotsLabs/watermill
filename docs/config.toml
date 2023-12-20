@@ -33,7 +33,7 @@ googleAnalytics = "UA-128588911-2"
 [[menu.main]]
     name = "Examples"
     weight = 100
-    url = "https://github.com/ThreeDotsLabs/watermill/tree/master/_examples"
+    url = "https://github.com/ascendsoftware/watermill/tree/master/_examples"
 [[menu.main]]
     name = "Support"
     weight = 0

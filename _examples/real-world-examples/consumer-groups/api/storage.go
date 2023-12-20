@@ -3,7 +3,7 @@ package main
 import (
 	"sync"
 
-	"github.com/ThreeDotsLabs/watermill-routing-example/server/common"
+	"github.com/ascendsoftware/watermill-routing-example/server/common"
 )
 
 type storage struct {

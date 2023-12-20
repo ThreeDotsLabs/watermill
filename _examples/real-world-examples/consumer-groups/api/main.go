@@ -5,11 +5,11 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill-redisstream/pkg/redisstream"
-	"github.com/ThreeDotsLabs/watermill-routing-example/server/common"
-	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
+	"github.com/ascendsoftware/watermill"
+	"github.com/ascendsoftware/watermill-redisstream/pkg/redisstream"
+	"github.com/ascendsoftware/watermill-routing-example/server/common"
+	"github.com/ascendsoftware/watermill/message"
+	"github.com/ascendsoftware/watermill/message/router/middleware"
 	"github.com/redis/go-redis/v9"
 )
 

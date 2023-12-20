@@ -3,7 +3,7 @@ package message_test
 import (
 	"testing"
 
-	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ascendsoftware/watermill/message"
 	"github.com/stretchr/testify/assert"
 )
 

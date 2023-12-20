@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ascendsoftware/watermill"
+	"github.com/ascendsoftware/watermill/message"
 )
 
 // FanOut is a component that receives messages from the subscriber and passes them

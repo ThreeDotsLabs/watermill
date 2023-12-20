@@ -3,8 +3,8 @@ module main.go
 go 1.21
 
 require (
-	github.com/ThreeDotsLabs/watermill v1.2.0-rc.11
-	github.com/ThreeDotsLabs/watermill-redisstream v0.3.1
+	github.com/ascendsoftware/watermill v1.2.0-rc.11
+	github.com/ascendsoftware/watermill-redisstream v0.3.1
 	github.com/redis/go-redis/v9 v9.0.2
 )
 

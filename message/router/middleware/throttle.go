@@ -3,7 +3,7 @@ package middleware
 import (
 	"time"
 
-	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ascendsoftware/watermill/message"
 )
 
 // Throttle provides a middleware that limits the amount of messages processed per unit of time.

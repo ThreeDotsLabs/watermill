@@ -6,9 +6,9 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill-sql/v2/pkg/sql"
-	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ascendsoftware/watermill"
+	"github.com/ascendsoftware/watermill-sql/v2/pkg/sql"
+	"github.com/ascendsoftware/watermill/message"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	driver "github.com/go-sql-driver/mysql"

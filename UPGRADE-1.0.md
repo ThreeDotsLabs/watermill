@@ -17,8 +17,8 @@ You can replace all import paths, with provided `sed`:
 - `message.Router.Run` now requires `context.Context` in parameter
 - `PrometheusMetricsBuilder.DecoratePubSub` was removed (because of `message.PubSub` interface removal)
 - `cars.ObjectName` was renamed to `cqrs.FullyQualifiedStructName`
-- `github.com/ThreeDotsLabs/watermill/message/infrastructure/gochannel` was moved to `github.com/ThreeDotsLabs/watermill/pubsub/gochannel`
+- `github.com/ascendsoftware/watermill/message/infrastructure/gochannel` was moved to `github.com/ascendsoftware/watermill/pubsub/gochannel`
 - `middleware.Retry` configuration parameters have been renamed
-- Universal Pub/Sub tests have been moved from `github.com/ThreeDotsLabs/watermill/message/infrastructure` to `github.com/ThreeDotsLabs/watermill/pubsub/tests`
+- Universal Pub/Sub tests have been moved from `github.com/ascendsoftware/watermill/message/infrastructure` to `github.com/ascendsoftware/watermill/pubsub/tests`
 - All universal tests require now `TestContext`.
 - Removed `context` from `googlecloud.NewPublisher`

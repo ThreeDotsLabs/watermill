@@ -8,9 +8,9 @@ import (
 
 	stan "github.com/nats-io/stan.go"
 
-	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill-nats/pkg/nats"
-	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ascendsoftware/watermill"
+	"github.com/ascendsoftware/watermill-nats/pkg/nats"
+	"github.com/ascendsoftware/watermill/message"
 )
 
 func main() {

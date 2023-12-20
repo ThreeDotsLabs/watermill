@@ -3,7 +3,7 @@ package cqrs
 import (
 	"context"
 
-	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ascendsoftware/watermill/message"
 )
 
 type ctxKey string

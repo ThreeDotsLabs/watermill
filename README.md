@@ -1,9 +1,9 @@
 # Watermill
 <img align="right" width="200" src="https://threedots.tech/watermill-io/watermill-logo.png">
 
-[![CI Status](https://github.com/ThreeDotsLabs/watermill/actions/workflows/master.yml/badge.svg)](https://github.com/ThreeDotsLabs/watermill/actions/workflows/master.yml)
-[![Go Reference](https://pkg.go.dev/badge/github.com/ThreeDotsLabs/watermill.svg)](https://pkg.go.dev/github.com/ThreeDotsLabs/watermill)
-[![Go Report Card](https://goreportcard.com/badge/github.com/ThreeDotsLabs/watermill)](https://goreportcard.com/report/github.com/ThreeDotsLabs/watermill)
+[![CI Status](https://github.com/ascendsoftware/watermill/actions/workflows/master.yml/badge.svg)](https://github.com/ascendsoftware/watermill/actions/workflows/master.yml)
+[![Go Reference](https://pkg.go.dev/badge/github.com/ascendsoftware/watermill.svg)](https://pkg.go.dev/github.com/ascendsoftware/watermill)
+[![Go Report Card](https://goreportcard.com/badge/github.com/ascendsoftware/watermill)](https://goreportcard.com/report/github.com/ascendsoftware/watermill)
 [![codecov](https://codecov.io/gh/ThreeDotsLabs/watermill/branch/master/graph/badge.svg)](https://codecov.io/gh/ThreeDotsLabs/watermill)
 
 Watermill is a Go library for working efficiently with message streams. It is intended
@@ -92,16 +92,16 @@ type Subscriber interface {
 
 Supported Pub/Subs:
 
-- AMQP Pub/Sub [(`github.com/ThreeDotsLabs/watermill-amqp/v2`)](https://github.com/ThreeDotsLabs/watermill-amqp/)
-- Bolt Pub/Sub [(`github.com/ThreeDotsLabs/watermill-bolt`)](https://github.com/ThreeDotsLabs/watermill-bolt/)
-- Firestore Pub/Sub [(`github.com/ThreeDotsLabs/watermill-firestore`)](https://github.com/ThreeDotsLabs/watermill-firestore/)
-- Google Cloud Pub/Sub [(`github.com/ThreeDotsLabs/watermill-googlecloud`)](https://github.com/ThreeDotsLabs/watermill-googlecloud/)
-- HTTP Pub/Sub [(`github.com/ThreeDotsLabs/watermill-http`)](https://github.com/ThreeDotsLabs/watermill-http/)
-- io.Reader/io.Writer Pub/Sub [(`github.com/ThreeDotsLabs/watermill-io`)](https://github.com/ThreeDotsLabs/watermill-io/)
-- Kafka Pub/Sub [(`github.com/ThreeDotsLabs/watermill-kafka/v2`)](https://github.com/ThreeDotsLabs/watermill-kafka/)
-- NATS Pub/Sub [(`github.com/ThreeDotsLabs/watermill-nats`)](https://github.com/ThreeDotsLabs/watermill-nats/)
-- Redis Stream Pub/Sub [(`github.com/ThreeDotsLabs/watermill-redisstream`)](https://github.com/ThreeDotsLabs/watermill-redisstream/)
-- SQL Pub/Sub [(`github.com/ThreeDotsLabs/watermill-sql/v2`)](https://github.com/ThreeDotsLabs/watermill-sql/)
+- AMQP Pub/Sub [(`github.com/ascendsoftware/watermill-amqp/v2`)](https://github.com/ascendsoftware/watermill-amqp/)
+- Bolt Pub/Sub [(`github.com/ascendsoftware/watermill-bolt`)](https://github.com/ascendsoftware/watermill-bolt/)
+- Firestore Pub/Sub [(`github.com/ascendsoftware/watermill-firestore`)](https://github.com/ascendsoftware/watermill-firestore/)
+- Google Cloud Pub/Sub [(`github.com/ascendsoftware/watermill-googlecloud`)](https://github.com/ascendsoftware/watermill-googlecloud/)
+- HTTP Pub/Sub [(`github.com/ascendsoftware/watermill-http`)](https://github.com/ascendsoftware/watermill-http/)
+- io.Reader/io.Writer Pub/Sub [(`github.com/ascendsoftware/watermill-io`)](https://github.com/ascendsoftware/watermill-io/)
+- Kafka Pub/Sub [(`github.com/ascendsoftware/watermill-kafka/v2`)](https://github.com/ascendsoftware/watermill-kafka/)
+- NATS Pub/Sub [(`github.com/ascendsoftware/watermill-nats`)](https://github.com/ascendsoftware/watermill-nats/)
+- Redis Stream Pub/Sub [(`github.com/ascendsoftware/watermill-redisstream`)](https://github.com/ascendsoftware/watermill-redisstream/)
+- SQL Pub/Sub [(`github.com/ascendsoftware/watermill-sql/v2`)](https://github.com/ascendsoftware/watermill-sql/)
 
 
 All Pub/Subs implementation documentation can be found in the [documentation](https://watermill.io/pubsubs/).
@@ -110,7 +110,7 @@ All Pub/Subs implementation documentation can be found in the [documentation](ht
 
 Can't find your favorite Pub/Sub or library integration? Check [Awesome Watermill](https://watermill.io/docs/awesome/).
 
-If you know another library or are an author of one, please [add it to the list](https://github.com/ThreeDotsLabs/watermill/edit/master/docs/content/docs/awesome.md).
+If you know another library or are an author of one, please [add it to the list](https://github.com/ascendsoftware/watermill/edit/master/docs/content/docs/awesome.md).
 
 ## Contributing
 
@@ -120,8 +120,8 @@ Please check our [contributing guide](CONTRIBUTING.md).
 
 Watermill v1.0.0 has been released and is production-ready. The public API is stable and will not change without changing the major version.
 
-To ensure that all Pub/Subs are stable and safe to use in production, we created a [set of tests](https://github.com/ThreeDotsLabs/watermill/blob/master/pubsub/tests/test_pubsub.go#L34) that need to pass for each of the implementations before merging to master.
-All tests are also executed in [*stress*](https://github.com/ThreeDotsLabs/watermill/blob/master/pubsub/tests/test_pubsub.go#L171) mode - that means that we are running all the tests **20x** in parallel.
+To ensure that all Pub/Subs are stable and safe to use in production, we created a [set of tests](https://github.com/ascendsoftware/watermill/blob/master/pubsub/tests/test_pubsub.go#L34) that need to pass for each of the implementations before merging to master.
+All tests are also executed in [*stress*](https://github.com/ascendsoftware/watermill/blob/master/pubsub/tests/test_pubsub.go#L171) mode - that means that we are running all the tests **20x** in parallel.
 
 All tests are run with the race condition detector enabled (`-race` flag in tests).
 
@@ -129,7 +129,7 @@ For more information about debugging tests, you should check [tests troubleshoot
 
 ## Benchmarks
 
-Initial tools for benchmarking Pub/Subs can be found in [watermill-benchmark](https://github.com/ThreeDotsLabs/watermill-benchmark).
+Initial tools for benchmarking Pub/Subs can be found in [watermill-benchmark](https://github.com/ascendsoftware/watermill-benchmark).
 
 All benchmarks are being done on a single 16 CPU VM instance, running one binary and dependencies in Docker Compose.
 
@@ -139,7 +139,7 @@ Keep in mind that the results can be vastly different, depending on the setup an
 Here's the short version for message size of 16 bytes.
 
 | Pub/Sub                         | Publish (messages / s) | Subscribe (messages / s) |
-|---------------------------------|------------------------|--------------------------|
+| ------------------------------- | ---------------------- | ------------------------ |
 | GoChannel                       | 331,882                | 118,943                  |
 | Redis Streams                   | 61,642                 | 11,213                   |
 | NATS Jetstream (16 Subscribers) | 49,255                 | 33,009                   |

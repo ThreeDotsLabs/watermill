@@ -1,6 +1,6 @@
 # Synchronizing Databases (MySQL to PostgreSQL)
 
-This example shows how to use [SQL Pub/Sub](https://github.com/ThreeDotsLabs/watermill-sql) across two different databases.
+This example shows how to use [SQL Pub/Sub](https://github.com/ascendsoftware/watermill-sql) across two different databases.
 
 See also [SQL Pub/Sub documentation](https://watermill.io/pubsubs/sql).
 

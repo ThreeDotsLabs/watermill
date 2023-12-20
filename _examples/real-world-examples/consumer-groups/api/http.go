@@ -7,10 +7,10 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/ThreeDotsLabs/watermill"
-	watermillHTTP "github.com/ThreeDotsLabs/watermill-http/pkg/http"
-	"github.com/ThreeDotsLabs/watermill-routing-example/server/common"
-	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ascendsoftware/watermill"
+	watermillHTTP "github.com/ascendsoftware/watermill-http/pkg/http"
+	"github.com/ascendsoftware/watermill-routing-example/server/common"
+	"github.com/ascendsoftware/watermill/message"
 	"github.com/go-chi/chi/v5"
 )
 

@@ -3,7 +3,7 @@ package middleware
 import (
 	"math/rand"
 
-	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ascendsoftware/watermill/message"
 	"github.com/pkg/errors"
 )
 

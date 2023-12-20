@@ -3,11 +3,11 @@ package main
 import (
 	"context"
 
-	"github.com/ThreeDotsLabs/watermill"
-	watermill_http "github.com/ThreeDotsLabs/watermill-http/pkg/http"
-	"github.com/ThreeDotsLabs/watermill-kafka/v2/pkg/kafka"
-	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/ThreeDotsLabs/watermill/message/router/plugin"
+	"github.com/ascendsoftware/watermill"
+	watermill_http "github.com/ascendsoftware/watermill-http/pkg/http"
+	"github.com/ascendsoftware/watermill-kafka/v2/pkg/kafka"
+	"github.com/ascendsoftware/watermill/message"
+	"github.com/ascendsoftware/watermill/message/router/plugin"
 )
 
 var (

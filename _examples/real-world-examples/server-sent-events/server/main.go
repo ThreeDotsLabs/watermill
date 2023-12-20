@@ -3,7 +3,7 @@ package main
 import (
 	"net/http"
 
-	"github.com/ThreeDotsLabs/watermill"
+	"github.com/ascendsoftware/watermill"
 )
 
 func main() {

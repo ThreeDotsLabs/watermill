@@ -153,7 +153,7 @@ As mentioned before, we want to order a beer every time when a room is booked (*
 {{% /render-md %}}
 
 `OrderBeerHandler` is very similar to `BookRoomHandler`. The only difference is, that it sometimes returns an error when there are not enough beers, which causes redelivery of the command.
-You can find the entire implementation in the [example source code](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/basic/5-cqrs-protobuf/?utm_source=cqrs_doc).
+You can find the entire implementation in the [example source code](https://github.com/ascendsoftware/watermill/tree/master/_examples/basic/5-cqrs-protobuf/?utm_source=cqrs_doc).
 
 ### Event Handler groups
 
