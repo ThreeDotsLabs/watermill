@@ -16,7 +16,7 @@ You can pick one of the existing issues. Most of the issues should have an estim
 ### New Pub/Sub implementations
 
 If you have an idea to create a Pub/Sub based on some technology and it is not listed yet in our issues (because we don't know it, or it is just some crazy idea, like physical mail based Pub/Sub), feel free to add your own implementation.
-You can do it in your private repository or if you want, we can move it to `ThreeDotsLabs/watermill-[name]`.
+You can do it in your private repository or if you want, we can move it to `ascendsoftware/watermill-[name]`.
 
 *Please keep in mind that you will not be able to push changes directly to the master branch in a project in our organization*.
 

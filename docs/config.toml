@@ -14,8 +14,8 @@ googleAnalytics = "UA-128588911-2"
 [Params]
   RSSLink = "/index.xml"
   author = "Three Dots Labs"
-  github = "https://github.com/ThreeDotsLabs/"
-  email = "contact@threedotslabs.com"
+  github = "https://github.com/ascendsoftware/"
+  email = "contact@ascendsoftware.com"
   images = ["https://threedots.tech/watermill-io/watermill-logo.png"]
 
 [[menu.main]]

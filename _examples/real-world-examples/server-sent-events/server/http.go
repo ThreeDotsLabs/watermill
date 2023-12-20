@@ -18,7 +18,7 @@ import (
 	"github.com/ascendsoftware/watermill/message"
 )
 
-var generatedTags = []string{"watermill", "golang", "pubsub", "unicorn", "HelloWorld", "example", "ThreeDotsLabs"}
+var generatedTags = []string{"watermill", "golang", "pubsub", "unicorn", "HelloWorld", "example", "ascendsoftware"}
 
 type Router struct {
 	Subscriber   message.Subscriber

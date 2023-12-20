@@ -11,4 +11,4 @@ Please join us on the `#watermill` channel on the [Three Dots Labs discord](http
 
 For enterprise support please contact us by e-mail: {{% contact-email %}}
 
-You can also use the [contact form](https://threedotslabs.com/#contact-form) on our website.
+You can also use the [contact form](https://ascendsoftware.com/#contact-form) on our website.
