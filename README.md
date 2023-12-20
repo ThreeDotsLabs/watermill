@@ -4,7 +4,7 @@
 [![CI Status](https://github.com/ascendsoftware/watermill/actions/workflows/master.yml/badge.svg)](https://github.com/ascendsoftware/watermill/actions/workflows/master.yml)
 [![Go Reference](https://pkg.go.dev/badge/github.com/ascendsoftware/watermill.svg)](https://pkg.go.dev/github.com/ascendsoftware/watermill)
 [![Go Report Card](https://goreportcard.com/badge/github.com/ascendsoftware/watermill)](https://goreportcard.com/report/github.com/ascendsoftware/watermill)
-[![codecov](https://codecov.io/gh/ThreeDotsLabs/watermill/branch/master/graph/badge.svg)](https://codecov.io/gh/ThreeDotsLabs/watermill)
+[![codecov](https://codecov.io/gh/ascendsoftware/watermill/branch/master/graph/badge.svg)](https://codecov.io/gh/ascendsoftware/watermill)
 
 Watermill is a Go library for working efficiently with message streams. It is intended
 for building event driven applications, enabling event sourcing, RPC over messages,
@@ -50,8 +50,8 @@ Pick what you like the best or see in order:
     * [Transactional Events](_examples/real-world-examples/transactional-events)
     * [Real-time HTTP updates with Server-Sent Events](_examples/real-world-examples/server-sent-events)
 * Complete projects
-    * [NATS example with live code reloading](https://github.com/ThreeDotsLabs/nats-example)
-    * [RabbitMQ, webhooks and Kafka integration](https://github.com/ThreeDotsLabs/event-driven-example)
+    * [NATS example with live code reloading](https://github.com/ascendsoftware/nats-example)
+    * [RabbitMQ, webhooks and Kafka integration](https://github.com/ascendsoftware/event-driven-example)
 
 ## Background
 
