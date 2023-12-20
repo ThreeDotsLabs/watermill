@@ -14,6 +14,11 @@ import (
 	"github.com/ascendsoftware/watermill/internal"
 	sync_internal "github.com/ascendsoftware/watermill/pubsub/sync"
 )
+type HandlerMiddlewareRM func(h HandlerFuncRM) HandlerFuncRM
+
+// HandlerFunc's are executed parallel when multiple messages was received
+// (because msg.Ack() was sent in HandlerFunc or Subscriber supports multiple consumers).
+type HandlerFuncRM func(msg *Message) ([]*Message, error)
 
 // RouterPlugin is function which is executed on Router start.
 type DynRouterPlugin func(*DynRouter) error
@@ -46,7 +51,11 @@ func NewDynRouter(config RouterConfig, routeMsgFunc RouteMessageFunc, logger wat
 		running: make(chan struct{}),
 	}, nil
 }
-
+type middlewareRM struct {
+	Handler       HandlerMiddlewareRM
+	HandlerName   string
+	IsRouterLevel bool
+}
 // DynRouter is responsible for handling messages from subscribers using provided handler functions.
 //
 // If the handler function returns a message, the message is published with the publisher.
@@ -56,7 +65,7 @@ type DynRouter struct {
 
 	routeMsgFunc RouteMessageFunc
 
-	middlewares []middleware
+	middlewares []middlewareRM
 
 	plugins []DynRouterPlugin
 
@@ -95,15 +104,15 @@ type RouteMsgHandler struct {
 // AddMiddleware adds a new middleware to the router.
 //
 // The order of middleware matters. Middleware added at the beginning is executed first.
-func (r *DynRouter) AddMiddleware(m ...HandlerMiddleware) {
+func (r *DynRouter) AddMiddleware(m ...HandlerMiddlewareRM) {
 	r.logger.Debug("Adding middleware", watermill.LogFields{"count": fmt.Sprintf("%d", len(m))})
 
-	r.addRouterLevelMiddleware(m...)
+	r.addRouterLevelMiddlewareRM(m...)
 }
 
-func (r *DynRouter) addRouterLevelMiddleware(m ...HandlerMiddleware) {
+func (r *DynRouter) addRouterLevelMiddlewareRM(m ...HandlerMiddlewareRM) {
 	for _, handlerMiddleware := range m {
-		middleware := middleware{
+		middleware := middlewareRM{
 			Handler:       handlerMiddleware,
 			HandlerName:   "",
 			IsRouterLevel: true,
@@ -112,9 +121,9 @@ func (r *DynRouter) addRouterLevelMiddleware(m ...HandlerMiddleware) {
 	}
 }
 
-func (r *DynRouter) addHandlerLevelMiddleware(handlerName string, m ...HandlerMiddleware) {
+func (r *DynRouter) addHandlerLevelMiddlewareRM(handlerName string, m ...HandlerMiddlewareRM) {
 	for _, handlerMiddleware := range m {
-		middleware := middleware{
+		middleware := middlewareRM{
 			Handler:       handlerMiddleware,
 			HandlerName:   handlerName,
 			IsRouterLevel: false,
@@ -150,8 +159,8 @@ func (r *DynRouter) AddSubscriberDecorators(dec ...SubscriberDecorator) {
 }
 
 // Handlers returns all registered handlers.
-func (r *DynRouter) Handlers() map[string]HandlerFunc {
-	handlers := map[string]HandlerFunc{}
+func (r *DynRouter) HandlersRM() map[string]HandlerFuncRM {
+	handlers := map[string]HandlerFuncRM{}
 
 	for handlerName, handler := range r.handlers {
 		handlers[handlerName] = handler.handlerFunc
@@ -178,7 +187,7 @@ func (r *DynRouter) AddHandler(
 	subscriber Subscriber,
 	publishTopic string,
 	publisher Publisher,
-	handlerFunc HandlerFunc,
+	handlerFunc HandlerFuncRM,
 ) *RouteMsgHandler {
 	r.logger.Info("Adding handler", watermill.LogFields{
 		"handler_name": handlerName,
@@ -464,7 +473,7 @@ type routeMsgHandler struct {
 	publishTopic  string
 	publisherName string
 
-	handlerFunc HandlerFunc
+	handlerFunc HandlerFuncRM
 
 	runningHandlersWg     *sync.WaitGroup
 	runningHandlersWgLock *sync.Mutex
@@ -479,7 +488,7 @@ type routeMsgHandler struct {
 	routersCloseCh chan struct{}
 }
 
-func (h *routeMsgHandler) runRM(ctx context.Context, middlewares []middleware, routeMsgFunc RouteMessageFunc) {
+func (h *routeMsgHandler) runRM(ctx context.Context, middlewares []middlewareRM, routeMsgFunc RouteMessageFunc) {
 	h.logger.Info("Starting handler", watermill.LogFields{
 		"subscriber_name": h.name,
 		"topic":           h.subscribeTopic,
@@ -495,11 +504,11 @@ func (h *routeMsgHandler) runRM(ctx context.Context, middlewares []middleware, r
 		}
 	}
 
-	go h.handleRMClose(ctx)
+	go h.handleCloseRM(ctx)
 
 	for msg := range h.messagesCh {
 		h.runningHandlersWg.Add(1)
-		h.handleRMMessage(msg, routeMsgFunc, middlewareHandler)
+		h.handleMessageRM(msg, routeMsgFunc, middlewareHandler)
 		// go h.handleMessage(msg, handleMessageFunc, middlewareHandler)
 	}
 
@@ -555,7 +564,7 @@ func (h *routeMsgHandler) handleMessage(msg *Message, routeMsgFunc RouteMessageF
 	fmt.Printf("after topic: %v\n", h.publishTopic)
 	fmt.Printf("after producedMessages: %v\n", producedMessages)
 
-	h.addRMHandlerContext(producedMessages...)
+	h.addHandlerContextRM(producedMessages...)
 	var targetTopic string
 	if returnedTopic != "" {
 		targetTopic = returnedTopic
@@ -597,7 +606,7 @@ func (h *routeMsgHandler) addHandlerContextRm(messages ...*Message) {
 	}
 }
 
-func (h *routeMsgHandler) handleRMClose(ctx context.Context) {
+func (h *routeMsgHandler) handleCloseRM(ctx context.Context) {
 	select {
 	case <-h.routersCloseCh:
 		// for backward compatibility we are closing subscriber
@@ -638,7 +647,7 @@ func (r *DynRouter) decorateHandlerSubscriber(h *routeMsgHandler) error {
 	// it goes before other decorators, so that they may take advantage of these values
 	messageTransform := func(msg *Message) {
 		if msg != nil {
-			h.addRMHandlerContext(msg)
+			h.addHandlerContextRM(msg)
 		}
 	}
 	sub, err = MessageTransformSubscriberDecorator(messageTransform)(sub)
@@ -656,8 +665,8 @@ func (r *DynRouter) decorateHandlerSubscriber(h *routeMsgHandler) error {
 	return nil
 }
 
-// addRMHandlerContext enriches the contex with values that are relevant within this handler's context.
-func (h *routeMsgHandler) addRMHandlerContext(messages ...*Message) {
+// addHandlerContextRM enriches the contex with values that are relevant within this handler's context.
+func (h *routeMsgHandler) addHandlerContextRM(messages ...*Message) {
 	for i, msg := range messages {
 		ctx := msg.Context()
 
@@ -680,7 +689,7 @@ func (h *routeMsgHandler) addRMHandlerContext(messages ...*Message) {
 	}
 }
 
-func (h *routeMsgHandler) handleRMMessage(msg *Message, routeMsgFunc RouteMessageFunc, handler HandlerFunc) {
+func (h *routeMsgHandler) handleMessageRM(msg *Message, routeMsgFunc RouteMessageFunc, handler HandlerFuncRM) {
 	defer h.runningHandlersWg.Done()
 	msgFields := watermill.LogFields{"message_uuid": msg.UUID}
 
@@ -720,7 +729,7 @@ func (h *routeMsgHandler) handleRMMessage(msg *Message, routeMsgFunc RouteMessag
 	fmt.Printf("after topic: %v\n", h.publishTopic)
 	fmt.Printf("after producedMessages: %v\n", producedMessages)
 
-	h.addRMHandlerContext(producedMessages...)
+	h.addHandlerContextRM(producedMessages...)
 	var targetTopic string
 	if returnedTopic != "" {
 		targetTopic = returnedTopic
