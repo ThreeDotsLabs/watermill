@@ -148,15 +148,15 @@ func (g *GoChannel) sendMessage(topic string, message *message.Message) (<-chan 
 
 	logFields := watermill.LogFields{"message_uuid": message.UUID, "topic": topic}
 
-	switch {
-	case len(subscribers) == 0 && g.config.EnableFallback:
-		g.logger.Debug("No subscribers to send the message to, trying the fallback subscribers", logFields)
-		subscribers = g.topicSubscribers(NoSubscribersFallbackTopic)
-		if len(subscribers) == 0 {
+	if len(subscribers) == 0 {
+		if !g.config.EnableFallback {
 			return g.handleNoSubscribers(ackedBySubscribers, logFields)
 		}
-	case len(subscribers) == 0:
-		return g.handleNoSubscribers(ackedBySubscribers, logFields)
+
+		g.logger.Debug("No subscribers to send the message to, trying the fallback subscribers", logFields)
+		if subscribers = g.topicSubscribers(NoSubscribersFallbackTopic); len(subscribers) == 0 {
+			return g.handleNoSubscribers(ackedBySubscribers, logFields)
+		}
 	}
 
 	go func(subscribers []*subscriber) {
