@@ -1,6 +1,6 @@
 module github.com/ThreeDotsLabs/watermill/tools/mill
 
-go 1.19
+go 1.21
 
 require (
 	cloud.google.com/go/pubsub v1.28.0

@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -148,6 +149,55 @@ func TestCommandBus_Send_OnSend(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, "value", publisher.messages["whatever"][0].Metadata.Get("key"))
+}
+
+func TestCommandBus_SendWithModifiedMessage(t *testing.T) {
+	publisher := newPublisherStub()
+
+	cb, err := cqrs.NewCommandBusWithConfig(
+		publisher,
+		cqrs.CommandBusConfig{
+			GeneratePublishTopic: func(params cqrs.CommandBusGeneratePublishTopicParams) (string, error) {
+				return "whatever", nil
+			},
+			Marshaler: cqrs.JSONMarshaler{},
+		},
+	)
+	require.NoError(t, err)
+
+	err = cb.SendWithModifiedMessage(context.Background(), TestCommand{}, func(message *message.Message) error {
+		message.Metadata.Set("key", "value")
+		return nil
+	})
+	require.NoError(t, err)
+
+	assert.Equal(t, "value", publisher.messages["whatever"][0].Metadata.Get("key"))
+}
+
+func TestCommandBus_SendWithModifiedMessage_modify_error(t *testing.T) {
+	publisher := newPublisherStub()
+
+	cb, err := cqrs.NewCommandBusWithConfig(
+		publisher,
+		cqrs.CommandBusConfig{
+			GeneratePublishTopic: func(params cqrs.CommandBusGeneratePublishTopicParams) (string, error) {
+				return "whatever", nil
+			},
+			Marshaler: cqrs.JSONMarshaler{},
+		},
+	)
+	require.NoError(t, err)
+
+	expectedErr := errors.New("some error")
+
+	err = cb.SendWithModifiedMessage(
+		context.Background(),
+		TestCommand{},
+		func(message *message.Message) error {
+			return expectedErr
+		},
+	)
+	assert.ErrorContains(t, err, expectedErr.Error())
 }
 
 func TestCommandBus_Send_OnSend_error(t *testing.T) {
