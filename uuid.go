@@ -1,11 +1,9 @@
 package watermill
 
 import (
-	"crypto/rand"
-
 	"github.com/google/uuid"
 	"github.com/lithammer/shortuuid/v3"
-	"github.com/oklog/ulid"
+	"github.com/oklog/ulid/v2"
 )
 
 // NewUUID returns a new UUID Version 4.
@@ -20,5 +18,5 @@ func NewShortUUID() string {
 
 // NewULID returns a new ULID.
 func NewULID() string {
-	return ulid.MustNew(ulid.Now(), rand.Reader).String()
+	return ulid.Make().String()
 }
