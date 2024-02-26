@@ -106,3 +106,45 @@ func TestDeduplicatorPublisherDecorator(t *testing.T) {
 	}
 	assert.Equal(t, 2, count)
 }
+
+func TestMessageHasherAdler32(t *testing.T) {
+	t.Parallel()
+
+	short := middleware.NewMessageHasherAdler32(0)
+	full := middleware.NewMessageHasherAdler32(middleware.MessageHasherReadLimitMinimum)
+
+	msg := message.NewMessage("adlerTest", []byte("some random data"))
+	h1, err := short(msg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	h2, err := full(msg)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if h1 != h2 {
+		t.Fatal("MessageHasherReadLimitMinimum did not apply to Adler32 message hasher")
+	}
+}
+
+func TestMessageHasherSHA256(t *testing.T) {
+	t.Parallel()
+
+	short := middleware.NewMessageHasherSHA256(0)
+	full := middleware.NewMessageHasherSHA256(middleware.MessageHasherReadLimitMinimum)
+
+	msg := message.NewMessage("adlerTest", []byte("some random data"))
+	h1, err := short(msg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	h2, err := full(msg)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if h1 != h2 {
+		t.Fatal("MessageHasherReadLimitMinimum did not apply to SHA256 message hasher")
+	}
+}
