@@ -148,3 +148,36 @@ func TestMessageHasherSHA256(t *testing.T) {
 		t.Fatal("MessageHasherReadLimitMinimum did not apply to SHA256 message hasher")
 	}
 }
+
+func TestDeduplicatorCleanup(t *testing.T) {
+	t.Parallel()
+
+	count := 0
+	wait := time.Millisecond * 5
+	d := middleware.NewDeduplicator(
+		middleware.NewMessageHasherAdler32(1024),
+		time.Second,
+	)
+	h := d.Middleware(func(msg *message.Message) (messages []*message.Message, e error) {
+		count++
+		return nil, nil
+	})
+
+	for i := 0; i < 6; i++ { // only one should go through
+		msg := message.NewMessage(
+			fmt.Sprintf("expiring%d", i),
+			[]byte(fmt.Sprintf("expiring%d", i)),
+		)
+		_, err := h(msg)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	time.Sleep(wait * 2)
+	if count != 6 {
+		t.Errorf("sent six messages, but only received %d", count)
+	}
+	if l := d.Len(); l != 0 {
+		t.Errorf("tags should have been cleaned out, but %d remain", l)
+	}
+}

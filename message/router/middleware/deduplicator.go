@@ -116,6 +116,15 @@ func (d *Deduplicator) cleanOut(tagsBefore time.Time) {
 	}
 }
 
+// Len returns the number of known tags that have not been
+// cleaned out yet.
+func (d *Deduplicator) Len() (count int) {
+	d.mu.Lock()
+	count = len(d.tags)
+	d.mu.Unlock()
+	return
+}
+
 // IsDuplicate returns true if the message hash tag calculated
 // using a [MessageHasher] was seen in deduplication time window.
 func (d *Deduplicator) IsDuplicate(m *message.Message) (bool, error) {
