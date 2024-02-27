@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
 	"hash/adler32"
 	"io"
@@ -45,7 +44,7 @@ func NewMessageHasherAdler32(readLimit int64) MessageHasher {
 		if err != nil && err != io.EOF {
 			return "", err
 		}
-		return hex.EncodeToString(h.Sum(nil)), nil
+		return string(h.Sum(nil)), nil
 	}
 }
 
@@ -68,7 +67,7 @@ func NewMessageHasherSHA256(readLimit int64) MessageHasher {
 		if err != nil && err != io.EOF {
 			return "", err
 		}
-		return hex.EncodeToString(h.Sum(nil)), nil
+		return string(h.Sum(nil)), nil
 	}
 }
 
