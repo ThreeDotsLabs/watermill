@@ -132,7 +132,6 @@ func (d *Deduplicator) IsDuplicate(m *message.Message) (bool, error) {
 		return false, err
 	}
 
-	t := time.Now()
 	d.mu.Lock()
 	_, alreadySeen := d.tags[tag]
 	if alreadySeen {
@@ -143,7 +142,7 @@ func (d *Deduplicator) IsDuplicate(m *message.Message) (bool, error) {
 		d.mu.Unlock()
 		return true, nil
 	}
-	d.tags[tag] = t.Add(d.window)
+	d.tags[tag] = time.Now().Add(d.window)
 	d.mu.Unlock()
 	return false, nil // first time, not a duplicate
 }
