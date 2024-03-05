@@ -11,6 +11,10 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
+// NoSubscribersFallbackTopic is the fallback topic messages without any subscribers will be sent to.
+// This is used if the `EnableFallback` configuration option is enabled.
+const NoSubscribersFallbackTopic = "*"
+
 // Config holds the GoChannel Pub/Sub's configuration options.
 type Config struct {
 	// Output channel buffer size.
@@ -26,6 +30,10 @@ type Config struct {
 	// When true, Publish will block until subscriber Ack's the message.
 	// If there are no subscribers, Publish will not block (also when Persistent is true).
 	BlockPublishUntilSubscriberAck bool
+
+	// When true, messages sent to a topic without any subscribers will be sent to the
+	// subscribers of the `*` topic.
+	EnableFallback bool
 }
 
 // GoChannel is the simplest Pub/Sub implementation.
@@ -77,7 +85,7 @@ func NewGoChannel(config Config, logger watermill.LoggerAdapter) *GoChannel {
 }
 
 // Publish in GoChannel is NOT blocking until all consumers consume.
-// Messages will be send in background.
+// Messages will be sent in the background.
 //
 // Messages may be persisted or not, depending of persistent attribute.
 func (g *GoChannel) Publish(topic string, messages ...*message.Message) error {
@@ -141,9 +149,14 @@ func (g *GoChannel) sendMessage(topic string, message *message.Message) (<-chan 
 	logFields := watermill.LogFields{"message_uuid": message.UUID, "topic": topic}
 
 	if len(subscribers) == 0 {
-		close(ackedBySubscribers)
-		g.logger.Info("No subscribers to send message", logFields)
-		return ackedBySubscribers, nil
+		if !g.config.EnableFallback {
+			return g.handleNoSubscribers(ackedBySubscribers, logFields)
+		}
+
+		g.logger.Debug("No subscribers to send the message to, trying the fallback subscribers", logFields)
+		if subscribers = g.topicSubscribers(NoSubscribersFallbackTopic); len(subscribers) == 0 {
+			return g.handleNoSubscribers(ackedBySubscribers, logFields)
+		}
 	}
 
 	go func(subscribers []*subscriber) {
@@ -163,6 +176,12 @@ func (g *GoChannel) sendMessage(topic string, message *message.Message) (<-chan 
 		close(ackedBySubscribers)
 	}(subscribers)
 
+	return ackedBySubscribers, nil
+}
+
+func (g *GoChannel) handleNoSubscribers(ackedBySubscribers chan struct{}, logFields watermill.LogFields) (<-chan struct{}, error) {
+	close(ackedBySubscribers)
+	g.logger.Info("No subscribers to send the message to", logFields)
 	return ackedBySubscribers, nil
 }
 
