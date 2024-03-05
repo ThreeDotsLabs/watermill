@@ -1214,7 +1214,7 @@ func assertConsumerGroupReceivedMessages(
 }
 
 func testTopicName(testID TestID) string {
-	return "topic_" + string(testID)
+	return "topic-" + string(testID)
 }
 
 func closePubSub(t *testing.T, pub message.Publisher, sub message.Subscriber) {
