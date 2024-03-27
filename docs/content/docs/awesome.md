@@ -30,6 +30,7 @@ If you know another library or are an author of one, please [add it to the list]
 * MongoDB https://github.com/cunyat/watermill-mongodb
 * MQTT https://github.com/perfect13/watermill-mqtt
 * NSQ https://github.com/chennqqi/watermill-nsq
+* Redis Zset https://github.com/stong1994/watermill-rediszset
 
 ### Logging
 
