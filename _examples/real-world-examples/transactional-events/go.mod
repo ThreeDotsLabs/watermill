@@ -5,7 +5,7 @@ go 1.21
 require (
 	github.com/ThreeDotsLabs/watermill v1.3.1
 	github.com/ThreeDotsLabs/watermill-kafka/v2 v2.2.2
-	github.com/ThreeDotsLabs/watermill-sql/v2 v2.0.0
+	github.com/ThreeDotsLabs/watermill-sql/v3 v3.0.0
 	github.com/go-sql-driver/mysql v1.7.0
 )
 

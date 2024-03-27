@@ -11,7 +11,7 @@ import (
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill-googlecloud/pkg/googlecloud"
-	"github.com/ThreeDotsLabs/watermill-sql/v2/pkg/sql"
+	"github.com/ThreeDotsLabs/watermill-sql/v3/pkg/sql"
 	"github.com/ThreeDotsLabs/watermill/components/forwarder"
 	"github.com/ThreeDotsLabs/watermill/message"
 	driver "github.com/go-sql-driver/mysql"
@@ -302,7 +302,7 @@ func createDB() *stdSQL.DB {
 	_, err = db.Exec(`
 CREATE TABLE IF NOT EXISTS lotteries (
     lottery_id INT NOT NULL PRIMARY KEY,
-	winner VARCHAR(255) NOT NULL 
+	winner VARCHAR(255) NOT NULL
 ) ENGINE=INNODB;
 `)
 	expectNoErr(err)
