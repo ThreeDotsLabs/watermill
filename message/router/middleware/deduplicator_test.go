@@ -16,11 +16,12 @@ func TestDeduplicatorMiddleware(t *testing.T) {
 	t.Parallel()
 
 	count := 0
-	h := middleware.NewDeduplicator(
-		middleware.NewMessageHasherAdler32(1024),
-		// middleware.NewMessageHasherSHA256(1024),
-		time.Second,
-	).Middleware(func(msg *message.Message) (messages []*message.Message, e error) {
+	d := &middleware.Deduplicator{
+		KeyFactory: middleware.NewMessageHasherAdler32(1024),
+		// KeyFactory: middleware.NewMessageHasherSHA256(1024),
+		Timeout: time.Second,
+	}
+	h := d.Middleware(func(msg *message.Message) (messages []*message.Message, e error) {
 		count++
 		return nil, nil
 	})
@@ -59,11 +60,12 @@ func TestDeduplicatorPublisherDecorator(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*50)
 	defer cancel()
 
-	decorated, err := middleware.NewDeduplicator(
-		// middleware.NewMessageHasherAdler32(1024),
-		middleware.NewMessageHasherSHA256(1024),
-		time.Second,
-	).PublisherDecorator()(pubSub)
+	d := &middleware.Deduplicator{
+		KeyFactory: middleware.NewMessageHasherAdler32(1024),
+		// KeyFactory: middleware.NewMessageHasherSHA256(1024),
+		Timeout: time.Second,
+	}
+	decorated, err := d.PublisherDecorator()(pubSub)
 	assert.NoError(t, err)
 
 	for i := 0; i < 6; i++ { // only one should go through
@@ -147,15 +149,20 @@ func TestMessageHasherFromMetadataField(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestDeduplicatorCleanup(t *testing.T) {
+func TestMapExpiringKeyRepositoryCleanup(t *testing.T) {
 	t.Parallel()
+	wait := time.Millisecond * 5
+	kr, err := middleware.NewMapExpiringKeyRepository(wait)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	count := 0
-	wait := time.Millisecond * 5
-	d := middleware.NewDeduplicator(
-		middleware.NewMessageHasherAdler32(1024),
-		wait,
-	)
+	d := &middleware.Deduplicator{
+		Repository: kr,
+		KeyFactory: middleware.NewMessageHasherAdler32(1024),
+		Timeout:    time.Second,
+	}
 	h := d.Middleware(func(msg *message.Message) (messages []*message.Message, e error) {
 		count++
 		return nil, nil
@@ -169,7 +176,16 @@ func TestDeduplicatorCleanup(t *testing.T) {
 		_, err := h(msg)
 		assert.NoError(t, err)
 	}
-	if l := d.Len(); l != 6 {
+
+	type supportsLen interface {
+		Len() int
+	}
+	measurable, ok := kr.(supportsLen)
+	if !ok {
+		t.Fatal("repository does not allow measuring its length")
+	}
+
+	if l := measurable.Len(); l != 6 {
 		t.Errorf("expected 6 tags, but %d remain", l)
 	}
 
@@ -177,7 +193,7 @@ func TestDeduplicatorCleanup(t *testing.T) {
 	if count != 6 {
 		t.Errorf("sent six messages, but only received %d", count)
 	}
-	if l := d.Len(); l != 0 {
+	if l := measurable.Len(); l != 0 {
 		t.Errorf("tags should have been cleaned out, but %d remain", l)
 	}
 }
