@@ -32,6 +32,9 @@ If you know another library or are an author of one, please [add it to the list]
 * NSQ https://github.com/chennqqi/watermill-nsq
 * Redis Zset https://github.com/stong1994/watermill-rediszset
 
+If you want to find out how to implement your own Pub/Sub adapter, 
+check out [Implementing custom Pub/Sub](/docs/pub-sub-implementing).
+
 ### Logging
 
 * logrus
