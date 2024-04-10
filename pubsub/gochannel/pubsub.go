@@ -11,9 +11,10 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
-// NoSubscribersFallbackTopic is the fallback topic messages without any subscribers will be sent to.
-// This is used if the `EnableFallback` configuration option is enabled.
-const NoSubscribersFallbackTopic = "*"
+// NoSubscribersFallbackDefaultTopic is the default fallback topic messages without any subscribers
+// will be sent to – it is used if the `EnableNoSubscribersFallback` option is enabled and no
+// fallback topic is configured via the `NoSubscribersFallbackTopic` option.
+const NoSubscribersFallbackDefaultTopic = "*"
 
 // Config holds the GoChannel Pub/Sub's configuration options.
 type Config struct {
@@ -32,8 +33,13 @@ type Config struct {
 	BlockPublishUntilSubscriberAck bool
 
 	// When true, messages sent to a topic without any subscribers will be sent to the
-	// subscribers of the `*` topic.
-	EnableFallback bool
+	// subscribers of the fallback topic (configured via `NoSubscribersFallbackTopic` option).
+	EnableNoSubscribersFallback bool
+
+	// NoSubscribersFallbackTopic is the fallback topic messages without any subscribers will be sent to.
+	// This is used if the `EnableNoSubscribersFallback` configuration option is enabled.
+	// If it's not set then `*` is used by default.
+	NoSubscribersFallbackTopic string
 }
 
 // GoChannel is the simplest Pub/Sub implementation.
@@ -67,6 +73,10 @@ type GoChannel struct {
 func NewGoChannel(config Config, logger watermill.LoggerAdapter) *GoChannel {
 	if logger == nil {
 		logger = watermill.NopLogger{}
+	}
+
+	if config.EnableNoSubscribersFallback && config.NoSubscribersFallbackTopic == "" {
+		config.NoSubscribersFallbackTopic = NoSubscribersFallbackDefaultTopic
 	}
 
 	return &GoChannel{
@@ -149,12 +159,12 @@ func (g *GoChannel) sendMessage(topic string, message *message.Message) (<-chan 
 	logFields := watermill.LogFields{"message_uuid": message.UUID, "topic": topic}
 
 	if len(subscribers) == 0 {
-		if !g.config.EnableFallback {
+		if !g.config.EnableNoSubscribersFallback {
 			return g.handleNoSubscribers(ackedBySubscribers, logFields)
 		}
 
 		g.logger.Debug("No subscribers to send the message to, trying the fallback subscribers", logFields)
-		if subscribers = g.topicSubscribers(NoSubscribersFallbackTopic); len(subscribers) == 0 {
+		if subscribers = g.topicSubscribers(g.config.NoSubscribersFallbackTopic); len(subscribers) == 0 {
 			return g.handleNoSubscribers(ackedBySubscribers, logFields)
 		}
 	}

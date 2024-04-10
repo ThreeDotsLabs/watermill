@@ -63,18 +63,41 @@ func TestPublishSubscribe_not_persistent(t *testing.T) {
 	assert.NoError(t, pubSub.Close())
 }
 
-func TestPublishSubscribe_enable_fallback(t *testing.T) {
+func TestPublishSubscribe_enable_no_subscribers_fallback(t *testing.T) {
 	messagesCount := 100
 	pubSub := gochannel.NewGoChannel(
 		gochannel.Config{
-			OutputChannelBuffer: int64(messagesCount),
-			EnableFallback:      true,
+			OutputChannelBuffer:         int64(messagesCount),
+			EnableNoSubscribersFallback: true,
 		},
 		watermill.NewStdLogger(true, true),
 	)
 	topicName := "test_topic_" + watermill.NewUUID()
 
-	msgs, err := pubSub.Subscribe(context.Background(), gochannel.NoSubscribersFallbackTopic)
+	msgs, err := pubSub.Subscribe(context.Background(), gochannel.NoSubscribersFallbackDefaultTopic)
+	require.NoError(t, err)
+
+	sendMessages := tests.PublishSimpleMessages(t, messagesCount, pubSub, topicName)
+	receivedMsgs, _ := subscriber.BulkRead(msgs, messagesCount, time.Second)
+
+	tests.AssertAllMessagesReceived(t, sendMessages, receivedMsgs)
+
+	assert.NoError(t, pubSub.Close())
+}
+
+func TestPublishSubscribe_enable_no_subscribers_fallback_with_custom_topic(t *testing.T) {
+	messagesCount := 100
+	pubSub := gochannel.NewGoChannel(
+		gochannel.Config{
+			OutputChannelBuffer:         int64(messagesCount),
+			EnableNoSubscribersFallback: true,
+			NoSubscribersFallbackTopic:  "custom_fallback_topic",
+		},
+		watermill.NewStdLogger(true, true),
+	)
+	topicName := "test_topic_" + watermill.NewUUID()
+
+	msgs, err := pubSub.Subscribe(context.Background(), "custom_fallback_topic")
 	require.NoError(t, err)
 
 	sendMessages := tests.PublishSimpleMessages(t, messagesCount, pubSub, topicName)
