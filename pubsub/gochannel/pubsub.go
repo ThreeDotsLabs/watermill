@@ -25,7 +25,7 @@ type Config struct {
 	// it will receive all previously produced messages.
 	//
 	// All messages are persisted to the memory (simple slice),
-	// so be aware that with large amount of messages you can go out of the memory.
+	// so be aware that with a large amount of messages you can run out of memory.
 	Persistent bool
 
 	// When true, Publish will block until subscriber Ack's the message.
@@ -66,10 +66,10 @@ type GoChannel struct {
 	persistedMessagesLock sync.RWMutex
 }
 
-// NewGoChannel creates new GoChannel Pub/Sub.
+// NewGoChannel creates a new GoChannel Pub/Sub.
 //
-// This GoChannel is not persistent.
-// That means if you send a message to a topic to which no subscriber is subscribed, that message will be discarded.
+// By default, GoChannel isn't persistent; that means messages sent to a topic
+// without any subscribers will be discarded if the fallback option isn't enabled.
 func NewGoChannel(config Config, logger watermill.LoggerAdapter) *GoChannel {
 	if logger == nil {
 		logger = watermill.NopLogger{}
@@ -97,7 +97,7 @@ func NewGoChannel(config Config, logger watermill.LoggerAdapter) *GoChannel {
 // Publish in GoChannel is NOT blocking until all consumers consume.
 // Messages will be sent in the background.
 //
-// Messages may be persisted or not, depending of persistent attribute.
+// Messages may be persisted or not, depending on whether the persistent option is enabled.
 func (g *GoChannel) Publish(topic string, messages ...*message.Message) error {
 	if g.isClosed() {
 		return errors.New("Pub/Sub closed")
