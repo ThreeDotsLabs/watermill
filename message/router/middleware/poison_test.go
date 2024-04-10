@@ -21,7 +21,7 @@ import (
 
 const topic = "testing_poison_queue_topic"
 
-// TestPoisonQueue_publisher_working_handler_ok simulates the situation when the message is processed correctly
+// TestPoisonQueue_handler_ok simulates the situation when the message is processed correctly
 // We expect that all messages pass through the middleware unaffected and the poison queue catches no messages.
 func TestPoisonQueue_handler_ok(t *testing.T) {
 	poisonPublisher := mockPublisher{behaviour: BehaviourAlwaysOK}
