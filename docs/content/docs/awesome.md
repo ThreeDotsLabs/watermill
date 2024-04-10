@@ -31,6 +31,7 @@ If you know another library or are an author of one, please [add it to the list]
 * MQTT https://github.com/perfect13/watermill-mqtt
 * NSQ https://github.com/chennqqi/watermill-nsq
 * Redis Zset https://github.com/stong1994/watermill-rediszset
+* SQLite https://github.com/davidroman0O/watermill-comfymill
 
 If you want to find out how to implement your own Pub/Sub adapter, 
 check out [Implementing custom Pub/Sub](/docs/pub-sub-implementing).
