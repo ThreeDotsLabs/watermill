@@ -9,22 +9,64 @@
 <body>
 <div class="container mt-5">
     <div class="row">
+        <div class="col-12" hx-ext="sse" sse-connect="/api/teams" sse-swap="data">
+            Loading...
+        </div>
+    </div>
+
+    <div class="row mt-5">
         <div class="col-12">
-            <button type="button" class="btn btn-primary position-relative">
-                Messages
-                <span
-                        class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
-                        hx-ext="sse" sse-connect="/api/notifications" sse-swap="data"
-                >
-                    </span>
+            <form hx-post="/api/join" hx-swap="none">
+                <div class="input-group">
+                    <span class="input-group-text">Team</span>
+                    <input type="radio" class="btn-check" name="team" id="team-a" autocomplete="off" value="a">
+                    <label class="btn btn-outline-danger" for="team-a">Red</label>
+
+                    <input type="radio" class="btn-check" name="team" id="team-b" autocomplete="off" value="b">
+                    <label class="btn btn-outline-warning" for="team-b">Yellow</label>
+
+                    <input type="radio" class="btn-check" name="team" id="team-c" autocomplete="off" value="c">
+                    <label class="btn btn-outline-primary" for="team-c">Blue</label>
+
+                    <input type="radio" class="btn-check" name="team" id="team-d" autocomplete="off" value="d">
+                    <label class="btn btn-outline-success" for="team-d">Green</label>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-lg position-relative">
+                    Join
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div class="row mt-5">
+        <div class="col d-grid gap-2">
+            <button class="btn btn-info btn-lg" hx-put="/api/messages/a" hx-swap="none" hx-trigger="click">
+                🤩
+            </button>
+        </div>
+        <div class="col d-grid gap-2">
+            <button class="btn btn-info btn-lg" hx-put="/api/messages/b" hx-swap="none" hx-trigger="click">
+                ⛄️
+            </button>
+        </div>
+    </div>
+    <div class="row mt-3">
+        <div class="col d-grid gap-2">
+            <button class="btn btn-info btn-lg" hx-put="/api/messages/c" hx-swap="none" hx-trigger="click">
+                🌝
+            </button>
+        </div>
+        <div class="col d-grid gap-2">
+            <button class="btn btn-info btn-lg" hx-put="/api/messages/d" hx-swap="none" hx-trigger="click">
+                🙈
             </button>
         </div>
     </div>
 
-    <div class="row">
+    <div class="row mt-5" hx-ext="sse" sse-connect="/api/messages">
         <div class="col-12">
-            <div hx-ext="sse" sse-connect="/api/messages" sse-swap="data">
-            </div>
+            <div sse-swap="data" hx-swap="beforeend"></div>
         </div>
     </div>
 </div>
