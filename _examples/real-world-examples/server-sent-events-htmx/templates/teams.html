@@ -1,7 +1,0 @@
-<div class="progress-stacked fw-bold" style="height: 30px">
-{{range $key, $team := .}}
-    <div class="progress" role="progressbar" aria-label="Team {{$team.ID}}" aria-valuenow="{{$team.Percent}}" aria-valuemin="0" aria-valuemax="100" style="height: 30px; width: {{$team.Percent}}%">
-        <div class="progress-bar bg-{{$team.Color}} fs-3">{{$team.Count}} - {{$team.Percent}}</div>
-    </div>
-{{end}}
-</div>

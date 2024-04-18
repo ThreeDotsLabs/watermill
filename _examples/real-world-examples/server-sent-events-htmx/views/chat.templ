@@ -1,0 +1,18 @@
+package views
+
+templ PublicChat(reactions map[string]string) {
+    <div class="button-grid">
+        for id, reaction := range reactions {
+            <button class="btn btn-info btn-lg" hx-put={ "/api/reactions/" + id } hx-swap="none" hx-trigger="click">
+                { reaction }
+            </button>
+        }
+    </div>
+
+    <div class="row mt-5" hx-ext="sse" sse-connect="/api/public-chat">
+        <div class="col-12">
+            <div class="circle-container" sse-swap="data" hx-swap="beforeend">
+            </div>
+        </div>
+    </div>
+}

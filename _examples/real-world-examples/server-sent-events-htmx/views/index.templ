@@ -1,0 +1,9 @@
+package views
+
+templ Index(teams []Team, reactions map[string]string) {
+    @base() {
+        @Teams(teams)
+        @PublicChat(reactions)
+    }
+}
+

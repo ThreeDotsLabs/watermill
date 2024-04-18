@@ -3,63 +3,125 @@ package main
 import (
 	"bytes"
 	"context"
-	"embed"
+	"database/sql"
+	"encoding/json"
 	"fmt"
-	"html/template"
+	"main/views"
 	stdHttp "net/http"
+	"strconv"
 
 	"github.com/ThreeDotsLabs/watermill"
+	"github.com/ThreeDotsLabs/watermill-googlecloud/pkg/googlecloud"
 	"github.com/ThreeDotsLabs/watermill-http/v2/pkg/http"
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/ThreeDotsLabs/watermill/pubsub/gochannel"
+	watermillmiddleware "github.com/ThreeDotsLabs/watermill/message/router/middleware"
+	"github.com/kelseyhightower/envconfig"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	_ "github.com/lib/pq"
 )
 
-var messages = map[string]string{
-	"a": "🤩",
-	"b": "⛄️",
-	"c": "🌝",
-	"d": "🙈",
-}
-
-var teams = map[string]Team{
-	"a": {
-		ID:    "a",
-		Color: "danger",
-	},
-	"b": {
-		ID:    "b",
-		Color: "warning",
-	},
-	"c": {
-		ID:    "c",
-		Color: "primary",
-	},
-	"d": {
-		ID:    "d",
-		Color: "success",
-	},
+var reactions = map[string]string{
+	"star-struck": "🤩",
+	"snowman":     "⛄️",
+	"moon":        "🌝",
+	"see-no-evil": "🙈",
+	"thinking":    "🤔",
+	"coffee":      "☕️",
+	"t-rex":       "🦖",
+	"heart":       "🩵",
 }
 
 type Team struct {
-	ID      string
+	ID      int
+	Name    string
 	Color   string
-	Count   int
+	Members int
 	Percent int
 }
 
-//go:embed public/*.html
-var staticFS embed.FS
+type PlayerJoined struct {
+	TeamID int `json:"team_id"`
+}
 
-//go:embed templates/*.html
-var templatesFS embed.FS
+type ReactionSent struct {
+	ReactionID string `json:"reaction_id"`
+	TeamID     int    `json:"team_id"`
+}
+
+type config struct {
+	Port            int    `envconfig:"PORT" required:"true"`
+	DatabaseURL     string `envconfig:"DATABASE_URL" required:"true"`
+	PubSubProjectID string `envconfig:"PUBSUB_PROJECT_ID" required:"true"`
+}
+
+var migration = `
+CREATE TABLE IF NOT EXISTS teams (
+	id serial PRIMARY KEY,
+	name VARCHAR NOT NULL,
+	color VARCHAR NOT NULL,
+	members INT NOT NULL,
+	percent INT NOT NULL
+);
+
+INSERT INTO teams (id, name, color, members, percent) VALUES
+	(1, 'Red', 'danger', 1, 25),
+	(2, 'Yellow', 'warning', 1, 25),
+	(3, 'Blue', 'primary', 1, 25),
+	(4, 'Green', 'success', 1, 25)
+ON CONFLICT (id) DO NOTHING
+`
+
+type User struct {
+	TeamID int
+}
+
+type IndexData struct {
+	User      *User
+	Teams     []Team
+	Reactions map[string]string
+}
 
 func main() {
+	var cfg config
+	err := envconfig.Process("", &cfg)
+	if err != nil {
+		panic(err)
+	}
+
+	db, err := sql.Open("postgres", cfg.DatabaseURL)
+	if err != nil {
+		panic(err)
+	}
+
+	_, err = db.Exec(migration)
+	if err != nil {
+		panic(err)
+	}
+
+	storage := NewStorage(db)
+
 	logger := watermill.NewStdLogger(false, false)
-	pubSub := gochannel.NewGoChannel(gochannel.Config{}, logger)
+
+	subscriber, err := googlecloud.NewSubscriber(googlecloud.SubscriberConfig{
+		GenerateSubscriptionName: func(topic string) string {
+			return topic
+		},
+		ProjectID: cfg.PubSubProjectID,
+	}, logger)
+	if err != nil {
+		panic(err)
+	}
+
+	publisher, err := googlecloud.NewPublisher(googlecloud.PublisherConfig{
+		ProjectID: cfg.PubSubProjectID,
+	}, logger)
+	if err != nil {
+		panic(err)
+	}
+
 	sseRouter, err := http.NewSSERouter(http.SSERouterConfig{
-		UpstreamSubscriber: pubSub,
+		UpstreamSubscriber: subscriber,
 		Marshaler:          http.BytesSSEMarshaler{},
 	}, logger)
 
@@ -71,55 +133,112 @@ func main() {
 	e.Use(middleware.Recover())
 	e.Use(middleware.Logger())
 
-	e.StaticFS("/", echo.MustSubFS(staticFS, "public"))
+	e.GET("/", func(c echo.Context) error {
+		teams, err := storage.AllTeams(context.Background())
+		if err != nil {
+			return err
+		}
 
-	teamsHandler := sseRouter.AddHandler("teams-updated", teamsStreamAdapter{})
-	messagesHandler := sseRouter.AddHandler("messages", messagesStreamAdapter{})
+		data := IndexData{
+			Teams:     teams,
+			Reactions: reactions,
+		}
+
+		team, err := c.Cookie("team")
+		if err == nil {
+			teamID, err := strconv.Atoi(team.Value)
+			if err != nil {
+				return err
+			}
+			data.User = &User{
+				TeamID: teamID,
+			}
+		}
+
+		viewTeams := newViewTeams(teams)
+		return views.Index(viewTeams, reactions).Render(c.Request().Context(), c.Response())
+	})
+
+	teamsHandler := sseRouter.AddHandler("teams-updated", teamsStreamAdapter{
+		storage: storage,
+	})
+	publicChatHandler := sseRouter.AddHandler("reaction-sent", publicChatStreamAdapter{
+		storage: storage,
+	})
 
 	e.GET("/api/teams", echo.WrapHandler(teamsHandler))
-	e.GET("/api/messages", echo.WrapHandler(messagesHandler))
+	e.GET("/api/public-chat", echo.WrapHandler(publicChatHandler))
 
 	e.POST("/api/join", func(c echo.Context) error {
-		teamID := c.FormValue("team")
+		teamIDStr := c.FormValue("team")
+		teamID, err := strconv.Atoi(teamIDStr)
+		if err != nil {
+			return err
+		}
 
-		team, ok := teams[teamID]
+		_, err = storage.TeamByID(c.Request().Context(), teamID)
+		if err != nil {
+			return err
+		}
+
+		event := PlayerJoined{
+			TeamID: teamID,
+		}
+
+		payload, err := json.Marshal(event)
+		if err != nil {
+			return err
+		}
+
+		msg := message.NewMessage(watermill.NewUUID(), payload)
+		err = publisher.Publish("player-joined", msg)
+		if err != nil {
+			return c.String(stdHttp.StatusInternalServerError, err.Error())
+		}
+
+		c.SetCookie(&stdHttp.Cookie{
+			Name:     "team",
+			Value:    teamIDStr,
+			HttpOnly: true,
+		})
+
+		return c.NoContent(stdHttp.StatusAccepted)
+	})
+
+	e.PUT("/api/reactions/:reactionID", func(c echo.Context) error {
+		reactionID := c.Param("reactionID")
+
+		_, ok := reactions[reactionID]
 		if !ok {
-			return c.String(stdHttp.StatusNotFound, "team not found")
+			return c.String(stdHttp.StatusNotFound, "reaction not found")
 		}
 
-		team.Count++
-		teams[teamID] = team
-
-		var allCount int
-		var keys []string
-		for _, id := range []string{"a", "b", "c", "d"} {
-			t := teams[id]
-			if t.Count > 0 {
-				allCount += t.Count
-				keys = append(keys, t.ID)
-			}
+		teamIDStr, err := c.Cookie("team")
+		if err != nil {
+			return err
+		}
+		teamID, err := strconv.Atoi(teamIDStr.Value)
+		if err != nil {
+			return err
 		}
 
-		if len(keys) == 1 {
-			t := teams[keys[0]]
-			t.Percent = 100
-			teams[keys[0]] = t
-		} else if len(keys) > 1 {
-			remainingPercent := 100
-			for _, id := range keys[:len(keys)-1] {
-				t := teams[id]
-				t.Percent = int(float64(t.Count) / float64(allCount) * 100)
-				remainingPercent -= t.Percent
-				teams[id] = t
-			}
-
-			t := teams[keys[len(keys)-1]]
-			t.Percent = remainingPercent
-			teams[keys[len(keys)-1]] = t
+		_, err = storage.TeamByID(c.Request().Context(), teamID)
+		if err != nil {
+			return err
 		}
 
-		msg := message.NewMessage(watermill.NewUUID(), []byte(nil))
-		err := pubSub.Publish("teams-updated", msg)
+		event := ReactionSent{
+			ReactionID: reactionID,
+			TeamID:     teamID,
+		}
+
+		payload, err := json.Marshal(event)
+		if err != nil {
+			return c.String(stdHttp.StatusInternalServerError, err.Error())
+		}
+
+		msg := message.NewMessage(watermill.NewUUID(), payload)
+		err = publisher.Publish("reaction-sent", msg)
 		if err != nil {
 			return c.String(stdHttp.StatusInternalServerError, err.Error())
 		}
@@ -127,22 +246,61 @@ func main() {
 		return c.NoContent(stdHttp.StatusAccepted)
 	})
 
-	e.PUT("/api/messages/:message", func(c echo.Context) error {
-		messageID := c.Param("message")
+	router, err := message.NewRouter(message.RouterConfig{}, logger)
+	if err != nil {
+		panic(err)
+	}
 
-		_, ok := messages[messageID]
-		if !ok {
-			return c.String(stdHttp.StatusNotFound, "message not found")
-		}
+	router.AddMiddleware(watermillmiddleware.Recoverer)
 
-		msg := message.NewMessage(watermill.NewUUID(), []byte(messageID))
-		err := pubSub.Publish("messages", msg)
+	router.AddHandler(
+		"player-joined",
+		"player-joined",
+		subscriber,
+		"teams-updated",
+		publisher,
+		func(msg *message.Message) ([]*message.Message, error) {
+			var event PlayerJoined
+			err := json.Unmarshal(msg.Payload, &event)
+			if err != nil {
+				return nil, err
+			}
+
+			err = storage.UpdateTeams(msg.Context(), func(teams []*Team) {
+				var allCount int
+
+				for _, t := range teams {
+					if t.ID == event.TeamID {
+						t.Members++
+					}
+
+					allCount += t.Members
+				}
+
+				remainingPercent := 100
+				for _, t := range teams[:len(teams)-1] {
+					t.Percent = int(float64(t.Members) / float64(allCount) * 100)
+					remainingPercent -= t.Percent
+				}
+
+				lastTeam := teams[len(teams)-1]
+				lastTeam.Percent = remainingPercent
+			})
+			if err != nil {
+				return nil, err
+			}
+
+			newMsg := message.NewMessage(watermill.NewUUID(), []byte(nil))
+			return []*message.Message{newMsg}, nil
+		},
+	)
+
+	go func() {
+		err := router.Run(context.Background())
 		if err != nil {
-			return c.String(stdHttp.StatusInternalServerError, err.Error())
+			panic(err)
 		}
-
-		return c.NoContent(stdHttp.StatusAccepted)
-	})
+	}()
 
 	go func() {
 		err := sseRouter.Run(context.Background())
@@ -157,7 +315,9 @@ func main() {
 	}
 }
 
-type teamsStreamAdapter struct{}
+type teamsStreamAdapter struct {
+	storage *Storage
+}
 
 func (t teamsStreamAdapter) InitialStreamResponse(w stdHttp.ResponseWriter, r *stdHttp.Request) (response interface{}, ok bool) {
 	return t.getResponse()
@@ -168,28 +328,166 @@ func (t teamsStreamAdapter) NextStreamResponse(r *stdHttp.Request, msg *message.
 }
 
 func (t teamsStreamAdapter) getResponse() (string, bool) {
-	tmpl := template.Must(template.ParseFS(templatesFS, "templates/teams.html"))
-
-	var buffer bytes.Buffer
-	err := tmpl.Execute(&buffer, teams)
+	teams, err := t.storage.AllTeams(context.Background())
 	if err != nil {
 		fmt.Println(err)
 		return "", false
 	}
 
-	return buffer.String(), true
+	viewTeams := newViewTeams(teams)
+
+	var buf bytes.Buffer
+	err = views.TeamsBar(viewTeams).Render(context.Background(), &buf)
+	if err != nil {
+		fmt.Println(err)
+		return "", false
+	}
+	return buf.String(), true
 }
 
-type messagesStreamAdapter struct{}
+type publicChatStreamAdapter struct {
+	storage *Storage
+}
 
-func (m messagesStreamAdapter) InitialStreamResponse(w stdHttp.ResponseWriter, r *stdHttp.Request) (response interface{}, ok bool) {
+func (m publicChatStreamAdapter) InitialStreamResponse(w stdHttp.ResponseWriter, r *stdHttp.Request) (response interface{}, ok bool) {
 	return "", true
 }
 
-func (m messagesStreamAdapter) NextStreamResponse(r *stdHttp.Request, msg *message.Message) (response interface{}, ok bool) {
-	text, ok := messages[string(msg.Payload)]
-	if !ok {
+func (m publicChatStreamAdapter) NextStreamResponse(r *stdHttp.Request, msg *message.Message) (response interface{}, ok bool) {
+	var event ReactionSent
+	err := json.Unmarshal(msg.Payload, &event)
+	if err != nil {
+		fmt.Println("cannot unmarshal: " + err.Error())
 		return "", false
 	}
-	return fmt.Sprintf("<p>%v</p>", text), true
+
+	text, ok := reactions[event.ReactionID]
+	if !ok {
+		fmt.Println("unknown reaction:" + event.ReactionID)
+		return "", false
+	}
+
+	team, err := m.storage.TeamByID(context.Background(), event.TeamID)
+	if err != nil {
+		fmt.Println("could not get team: " + err.Error())
+		return "", false
+	}
+
+	return fmt.Sprintf(`<span class="circle bg-%v">%v</span>`, team.Color, text), true
+}
+
+type Storage struct {
+	db *sql.DB
+}
+
+func NewStorage(db *sql.DB) *Storage {
+	return &Storage{
+		db: db,
+	}
+}
+
+func (s *Storage) TeamByID(ctx context.Context, id int) (Team, error) {
+	row := s.db.QueryRowContext(ctx, `SELECT id, name, color, members, percent FROM teams WHERE id = $1`, id)
+	team, err := scanTeam(row)
+	if err != nil {
+		return Team{}, err
+	}
+
+	return team, nil
+}
+
+func (s *Storage) AllTeams(ctx context.Context) ([]Team, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT id, name, color, members, percent FROM teams ORDER BY id ASC`)
+	if err != nil {
+		return nil, err
+	}
+
+	var teams []Team
+	for rows.Next() {
+		team, err := scanTeam(rows)
+		if err != nil {
+			return nil, err
+		}
+		teams = append(teams, team)
+	}
+
+	return teams, nil
+}
+
+func (s *Storage) UpdateTeams(ctx context.Context, updateFn func(teams []*Team)) (err error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+
+	defer func() {
+		if err == nil {
+			err = tx.Commit()
+		} else {
+			txErr := tx.Rollback()
+			if txErr != nil {
+				err = txErr
+			}
+		}
+	}()
+
+	rows, err := tx.QueryContext(ctx, `SELECT id, name, color, members, percent FROM teams FOR UPDATE`)
+	if err != nil {
+		return err
+	}
+
+	var teams []*Team
+	for rows.Next() {
+		team, err := scanTeam(rows)
+		if err != nil {
+			return err
+		}
+		teams = append(teams, &team)
+	}
+
+	updateFn(teams)
+
+	for _, t := range teams {
+		_, err := tx.ExecContext(ctx, `UPDATE teams SET members = $1, percent = $2 WHERE id = $3`, t.Members, t.Percent, t.ID)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+type scanner interface {
+	Scan(dest ...any) error
+}
+
+func scanTeam(s scanner) (Team, error) {
+	var name, color string
+	var id, members, percent int
+	err := s.Scan(&id, &name, &color, &members, &percent)
+	if err != nil {
+		return Team{}, err
+	}
+
+	return Team{
+		ID:      id,
+		Name:    name,
+		Color:   color,
+		Members: members,
+		Percent: percent,
+	}, nil
+}
+
+func newViewTeams(teams []Team) []views.Team {
+	var viewTeams []views.Team
+	for _, t := range teams {
+		viewTeams = append(viewTeams, views.Team{
+			ID:      strconv.Itoa(t.ID),
+			Name:    t.Name,
+			Color:   t.Color,
+			Members: strconv.Itoa(t.Members),
+			Percent: strconv.Itoa(t.Percent),
+		})
+	}
+	return viewTeams
 }
