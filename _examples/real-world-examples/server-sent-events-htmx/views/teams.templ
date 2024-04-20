@@ -8,30 +8,40 @@ type Team struct {
     Percent string
 }
 
-templ Teams(teams []Team) {
-    <div class="row">
-        <div class="col-12" hx-ext="sse" sse-connect="/api/teams" sse-swap="data">
-            Loading...
-        </div>
-    </div>
+type User struct {
+    Team Team
+}
 
-    <div class="row mt-5">
-        <div class="col-12">
-            <form hx-post="/api/join" hx-swap="none">
-                <div class="input-group">
-                    <span class="input-group-text">Team</span>
-                    for _, team := range teams {
-                        <input type="radio" class="btn-check" name="team" id={"team-" + team.ID } autocomplete="off" value={ team.ID } />
-                        <label class={"btn btn-outline-" + team.Color } for={"team-" + team.ID}>{ team.Name }</label>
-                    }
-                </div>
-
-                <button type="submit" class="btn btn-primary btn-lg position-relative">
-                    Join
-                </button>
-            </form>
-        </div>
+templ Teams() {
+    <div hx-ext="sse" sse-connect="/api/teams" sse-swap="data">
+        Loading...
     </div>
+}
+
+templ Member(user *User, teams []Team) {
+    if user == nil {
+        @join(teams)
+    } else {
+        <h3>You joined team <span class={"badge", "bg-" + user.Team.Color}>{ user.Team.Name }</span></h3>
+    }
+}
+
+templ join(teams []Team) {
+    <form hx-post="/api/join">
+        <div class="input-group">
+            <span class="input-group-text">Team</span>
+            for _, team := range teams {
+                <input type="radio" class="btn-check" name="team" id={"team-" + team.ID } autocomplete="off" value={ team.ID } />
+                <label class={"btn btn-outline-" + team.Color } for={"team-" + team.ID}>{ team.Name }</label>
+            }
+        </div>
+
+        <p class="mt-2">
+            <button type="submit" class="btn btn-primary btn-lg position-relative">
+                Join
+            </button>
+        </p>
+    </form>
 }
 
 css loading(pct string) {

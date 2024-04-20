@@ -1,0 +1,40 @@
+package views
+
+templ IndexPage(user *User, teams []Team, reactions []Reaction) {
+    @base() {
+        @row() {
+            @Teams()
+        }
+        @row() {
+            @Member(user, teams)
+        }
+        @row() {
+            @Chat(user, reactions)
+        }
+    }
+}
+
+templ TeamsPage(user *User, teams []Team) {
+    @base() {
+        @row() {
+            @Teams()
+        }
+        @row() {
+            @Member(user, teams)
+        }
+    }
+}
+
+templ ChatPage(user *User, reactions []Reaction) {
+    @base() {
+        @row() {
+            @Chat(user, reactions)
+        }
+    }
+}
+
+templ row() {
+    <div class="row mt-5">
+        { children... }
+    </div>
+}

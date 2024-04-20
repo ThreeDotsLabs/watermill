@@ -5,7 +5,8 @@ go 1.22.0
 require (
 	github.com/ThreeDotsLabs/watermill v1.3.5
 	github.com/ThreeDotsLabs/watermill-googlecloud v1.2.0
-	github.com/ThreeDotsLabs/watermill-http/v2 v2.1.1-0.20240416092913-8b82b2e7b148
+	github.com/ThreeDotsLabs/watermill-http/v2 v2.1.1-0.20240420100340-dbcfd0330cce
+	github.com/a-h/templ v0.2.663
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/labstack/echo/v4 v4.11.4
 	github.com/lib/pq v1.10.9
@@ -17,7 +18,6 @@ require (
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
 	cloud.google.com/go/iam v1.1.7 // indirect
 	cloud.google.com/go/pubsub v1.36.1 // indirect
-	github.com/a-h/templ v0.2.663 // indirect
 	github.com/cenkalti/backoff/v3 v3.2.2 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/go-chi/chi v4.0.2+incompatible // indirect

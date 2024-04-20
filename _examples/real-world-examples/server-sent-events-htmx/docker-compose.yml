@@ -5,6 +5,8 @@ services:
       context: docker
     volumes:
       - ./:/src
+      - go_pkg:/go/pkg
+      - go_cache:/go-cache
     working_dir: /src
     ports:
       - '8080:8080'
@@ -37,3 +39,7 @@ services:
 
 networks:
   sse:
+
+volumes:
+  go_pkg:
+  go_cache:

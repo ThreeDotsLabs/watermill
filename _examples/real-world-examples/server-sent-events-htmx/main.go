@@ -21,6 +21,12 @@ import (
 	_ "github.com/lib/pq"
 )
 
+const (
+	playerJoinedTopic = "player-joined"
+	teamsUpdatedTopic = "teams-updated"
+	reactionSentTopic = "reaction-sent"
+)
+
 var reactions = map[string]string{
 	"star-struck": "🤩",
 	"snowman":     "⛄️",
@@ -30,6 +36,16 @@ var reactions = map[string]string{
 	"coffee":      "☕️",
 	"t-rex":       "🦖",
 	"heart":       "🩵",
+	"fire":        "🔥",
+	"clap":        "👏",
+	"thumbs-up":   "👍",
+	"thumbs-down": "👎",
+	"heart-eyes":  "😍",
+	"laugh":       "😂",
+	"cry":         "😢",
+	"angry":       "😡",
+	"sleep":       "😴",
+	"poop":        "💩",
 }
 
 type Team struct {
@@ -47,12 +63,14 @@ type PlayerJoined struct {
 type ReactionSent struct {
 	ReactionID string `json:"reaction_id"`
 	TeamID     int    `json:"team_id"`
+	Public     bool   `json:"public"`
 }
 
 type config struct {
 	Port            int    `envconfig:"PORT" required:"true"`
 	DatabaseURL     string `envconfig:"DATABASE_URL" required:"true"`
 	PubSubProjectID string `envconfig:"PUBSUB_PROJECT_ID" required:"true"`
+	Domain          string `envconfig:"DOMAIN"`
 }
 
 var migration = `
@@ -71,16 +89,6 @@ INSERT INTO teams (id, name, color, members, percent) VALUES
 	(4, 'Green', 'success', 1, 25)
 ON CONFLICT (id) DO NOTHING
 `
-
-type User struct {
-	TeamID int
-}
-
-type IndexData struct {
-	User      *User
-	Teams     []Team
-	Reactions map[string]string
-}
 
 func main() {
 	var cfg config
@@ -129,6 +137,14 @@ func main() {
 		panic(err)
 	}
 
+	var viewReactions []views.Reaction
+	for id, label := range reactions {
+		viewReactions = append(viewReactions, views.Reaction{
+			ID:    id,
+			Label: label,
+		})
+	}
+
 	e := echo.New()
 	e.Use(middleware.Recover())
 	e.Use(middleware.Logger())
@@ -139,35 +155,55 @@ func main() {
 			return err
 		}
 
-		data := IndexData{
-			Teams:     teams,
-			Reactions: reactions,
-		}
-
-		team, err := c.Cookie("team")
-		if err == nil {
-			teamID, err := strconv.Atoi(team.Value)
-			if err != nil {
-				return err
-			}
-			data.User = &User{
-				TeamID: teamID,
-			}
+		user, err := userFromCookie(c.Request(), storage)
+		if err != nil {
+			return err
 		}
 
 		viewTeams := newViewTeams(teams)
-		return views.Index(viewTeams, reactions).Render(c.Request().Context(), c.Response())
+		return views.IndexPage(user, viewTeams, viewReactions).Render(c.Request().Context(), c.Response())
 	})
 
-	teamsHandler := sseRouter.AddHandler("teams-updated", teamsStreamAdapter{
+	e.GET("/teams", func(c echo.Context) error {
+		teams, err := storage.AllTeams(context.Background())
+		if err != nil {
+			return err
+		}
+
+		user, err := userFromCookie(c.Request(), storage)
+		if err != nil {
+			return err
+		}
+
+		viewTeams := newViewTeams(teams)
+		return views.TeamsPage(user, viewTeams).Render(c.Request().Context(), c.Response())
+	})
+
+	e.GET("/chat", func(c echo.Context) error {
+		user, err := userFromCookie(c.Request(), storage)
+		if err != nil {
+			return err
+		}
+		return views.ChatPage(user, viewReactions).Render(c.Request().Context(), c.Response())
+	})
+
+	e.GET("/views/chat", func(c echo.Context) error {
+		user, err := userFromCookie(c.Request(), storage)
+		if err != nil {
+			return err
+		}
+		return views.Chat(user, viewReactions).Render(c.Request().Context(), c.Response())
+	})
+
+	teamsHandler := sseRouter.AddHandler(teamsUpdatedTopic, teamsStreamAdapter{
 		storage: storage,
 	})
-	publicChatHandler := sseRouter.AddHandler("reaction-sent", publicChatStreamAdapter{
+	chatHandler := sseRouter.AddHandler(reactionSentTopic, reactionsStreamAdapter{
 		storage: storage,
 	})
 
 	e.GET("/api/teams", echo.WrapHandler(teamsHandler))
-	e.GET("/api/public-chat", echo.WrapHandler(publicChatHandler))
+	e.GET("/api/chat", echo.WrapHandler(chatHandler))
 
 	e.POST("/api/join", func(c echo.Context) error {
 		teamIDStr := c.FormValue("team")
@@ -191,22 +227,35 @@ func main() {
 		}
 
 		msg := message.NewMessage(watermill.NewUUID(), payload)
-		err = publisher.Publish("player-joined", msg)
+		err = publisher.Publish(playerJoinedTopic, msg)
 		if err != nil {
 			return c.String(stdHttp.StatusInternalServerError, err.Error())
 		}
 
 		c.SetCookie(&stdHttp.Cookie{
 			Name:     "team",
+			Path:     "/",
+			Domain:   cfg.Domain,
 			Value:    teamIDStr,
 			HttpOnly: true,
 		})
 
-		return c.NoContent(stdHttp.StatusAccepted)
+		user, err := userFromTeamID(teamID, storage)
+		if err != nil {
+			return err
+		}
+
+		teams, err := storage.AllTeams(c.Request().Context())
+		if err != nil {
+			return err
+		}
+
+		return views.Member(user, newViewTeams(teams)).Render(c.Request().Context(), c.Response())
 	})
 
-	e.PUT("/api/reactions/:reactionID", func(c echo.Context) error {
-		reactionID := c.Param("reactionID")
+	e.POST("/api/reactions", func(c echo.Context) error {
+		team := c.FormValue("chat")
+		reactionID := c.FormValue("reaction")
 
 		_, ok := reactions[reactionID]
 		if !ok {
@@ -230,6 +279,7 @@ func main() {
 		event := ReactionSent{
 			ReactionID: reactionID,
 			TeamID:     teamID,
+			Public:     team == "public",
 		}
 
 		payload, err := json.Marshal(event)
@@ -238,7 +288,7 @@ func main() {
 		}
 
 		msg := message.NewMessage(watermill.NewUUID(), payload)
-		err = publisher.Publish("reaction-sent", msg)
+		err = publisher.Publish(reactionSentTopic, msg)
 		if err != nil {
 			return c.String(stdHttp.StatusInternalServerError, err.Error())
 		}
@@ -255,9 +305,9 @@ func main() {
 
 	router.AddHandler(
 		"player-joined",
-		"player-joined",
+		playerJoinedTopic,
 		subscriber,
-		"teams-updated",
+		teamsUpdatedTopic,
 		publisher,
 		func(msg *message.Message) ([]*message.Message, error) {
 			var event PlayerJoined
@@ -345,15 +395,15 @@ func (t teamsStreamAdapter) getResponse() (string, bool) {
 	return buf.String(), true
 }
 
-type publicChatStreamAdapter struct {
+type reactionsStreamAdapter struct {
 	storage *Storage
 }
 
-func (m publicChatStreamAdapter) InitialStreamResponse(w stdHttp.ResponseWriter, r *stdHttp.Request) (response interface{}, ok bool) {
+func (m reactionsStreamAdapter) InitialStreamResponse(w stdHttp.ResponseWriter, r *stdHttp.Request) (response interface{}, ok bool) {
 	return "", true
 }
 
-func (m publicChatStreamAdapter) NextStreamResponse(r *stdHttp.Request, msg *message.Message) (response interface{}, ok bool) {
+func (m reactionsStreamAdapter) NextStreamResponse(r *stdHttp.Request, msg *message.Message) (response interface{}, ok bool) {
 	var event ReactionSent
 	err := json.Unmarshal(msg.Payload, &event)
 	if err != nil {
@@ -373,7 +423,26 @@ func (m publicChatStreamAdapter) NextStreamResponse(r *stdHttp.Request, msg *mes
 		return "", false
 	}
 
-	return fmt.Sprintf(`<span class="circle bg-%v">%v</span>`, team.Color, text), true
+	if !event.Public {
+		cookieTeamID := teamIDFromCookie(r)
+		if team.ID != cookieTeamID {
+			return "", false
+		}
+	}
+
+	var eventType string
+	if event.Public {
+		eventType = "public"
+	} else {
+		eventType = "team"
+	}
+
+	sse := http.ServerSentEvent{
+		Event: eventType,
+		Data:  []byte(fmt.Sprintf(`<span class="circle bg-%v">%v</span>`, team.Color, text)),
+	}
+
+	return sse, true
 }
 
 type Storage struct {
@@ -481,13 +550,49 @@ func scanTeam(s scanner) (Team, error) {
 func newViewTeams(teams []Team) []views.Team {
 	var viewTeams []views.Team
 	for _, t := range teams {
-		viewTeams = append(viewTeams, views.Team{
-			ID:      strconv.Itoa(t.ID),
-			Name:    t.Name,
-			Color:   t.Color,
-			Members: strconv.Itoa(t.Members),
-			Percent: strconv.Itoa(t.Percent),
-		})
+		viewTeams = append(viewTeams, newTeamView(t))
 	}
 	return viewTeams
+}
+
+func newTeamView(t Team) views.Team {
+	return views.Team{
+		ID:      strconv.Itoa(t.ID),
+		Name:    t.Name,
+		Color:   t.Color,
+		Members: strconv.Itoa(t.Members),
+		Percent: strconv.Itoa(t.Percent),
+	}
+}
+
+func teamIDFromCookie(r *stdHttp.Request) int {
+	team, err := r.Cookie("team")
+	if err == nil {
+		teamID, _ := strconv.Atoi(team.Value)
+		return teamID
+	}
+
+	return 0
+}
+
+func userFromTeamID(id int, storage *Storage) (*views.User, error) {
+	team, err := storage.TeamByID(context.Background(), id)
+	if err != nil {
+		return nil, err
+	}
+
+	teamView := newTeamView(team)
+
+	return &views.User{
+		Team: teamView,
+	}, nil
+}
+
+func userFromCookie(r *stdHttp.Request, storage *Storage) (*views.User, error) {
+	teamID := teamIDFromCookie(r)
+	if teamID == 0 {
+		return nil, nil
+	}
+
+	return userFromTeamID(teamID, storage)
 }

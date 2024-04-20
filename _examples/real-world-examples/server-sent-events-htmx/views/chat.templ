@@ -1,18 +1,43 @@
 package views
 
-templ PublicChat(reactions map[string]string) {
-    <div class="button-grid">
-        for id, reaction := range reactions {
-            <button class="btn btn-info btn-lg" hx-put={ "/api/reactions/" + id } hx-swap="none" hx-trigger="click">
-                { reaction }
-            </button>
-        }
-    </div>
+type Reaction struct {
+    ID    string
+    Label string
+}
 
-    <div class="row mt-5" hx-ext="sse" sse-connect="/api/public-chat">
-        <div class="col-12">
-            <div class="circle-container" sse-swap="data" hx-swap="beforeend">
+templ Chat(user *User, reactions []Reaction) {
+    if user == nil {
+        <div hx-get={ "/views/chat" } hx-swap="outerHTML">
+            <button class="btn btn-primary btn-lg" >Join a team and enter</button>
+        </div>
+    } else {
+        <form hx-post={ "/api/reactions" } hx-swap="none">
+            <div class="input-group">
+                <span class="input-group-text">Chat</span>
+
+                <input type="radio" class="btn-check" name="chat" id="chat-public" autocomplete="off" value="public" checked />
+                <label class="btn btn-outline-primary" for="chat-public">Public</label>
+
+                <input type="radio" class="btn-check" name="chat" id="chat-team" autocomplete="off" value="team" />
+                <label class="btn btn-outline-primary" for="chat-team">Team</label>
+            </div>
+
+            <div class="button-grid mt-2">
+                for _, r := range reactions {
+                    <button type="submit" name="reaction" value={ r.ID } class="btn btn-info btn-lg">{ r.Label }</button>
+                }
+            </div>
+        </form>
+
+        <div class="row mt-2" hx-ext="sse" sse-connect={ "/api/chat" }>
+            <div class="col-6">
+                <h3>Public</h3>
+                <div class="circle-container" sse-swap="public" hx-swap="beforeend"></div>
+            </div>
+            <div class="col-6">
+                <h3>Team</h3>
+                <div class="circle-container" sse-swap="team" hx-swap="beforeend"></div>
             </div>
         </div>
-    </div>
+    }
 }
