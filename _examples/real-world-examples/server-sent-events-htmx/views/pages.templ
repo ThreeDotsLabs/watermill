@@ -1,40 +1,71 @@
 package views
 
-templ IndexPage(user *User, teams []Team, reactions []Reaction) {
+type Post struct {
+    ID      string
+    Content string
+    Author  string
+    Date    string
+}
+
+type Reaction struct {
+    ID    string
+    Label string
+    Count string
+}
+
+type PostStats struct {
+    PostID    string
+    Views     string
+    Reactions []Reaction
+}
+
+templ Index(posts []Post) {
     @base() {
-        @row() {
-            @Teams()
-        }
-        @row() {
-            @Member(user, teams)
-        }
-        @row() {
-            @Chat(user, reactions)
-        }
+        <div class="row mt-5">
+            for _, p := range posts {
+                @postView(p)
+            }
+        </div>
     }
 }
 
-templ TeamsPage(user *User, teams []Team) {
-    @base() {
-        @row() {
-            @Teams()
-        }
-        @row() {
-            @Member(user, teams)
-        }
-    }
-}
-
-templ ChatPage(user *User, reactions []Reaction) {
-    @base() {
-        @row() {
-            @Chat(user, reactions)
-        }
-    }
-}
-
-templ row() {
-    <div class="row mt-5">
-        { children... }
+templ postView(post Post) {
+    <div class="card mb-3">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div>
+            <h5 class="card-title mb-0">{ post.Author }</h5>
+            <div class="d-flex align-items-center">
+              <small class="text-muted me-2">{ post.Date }</small>
+            </div>
+          </div>
+        </div>
+        <p class="card-text">{ post.Content }</p>
+        <div hx-ext="sse" sse-connect={ "/posts/" + post.ID + "/stats" } sse-swap="data"></div>
+      </div>
     </div>
+}
+
+templ PostStatsView(stats PostStats) {
+    <div class="d-flex align-items-center">
+        <span class="me-1">👁️</span>
+        <small class="text-muted">{ stats.Views + " views" }</small>
+    </div>
+
+    <div class="mt-2 d-flex justify-content-start align-items-center">
+        <form hx-post={ "/posts/" + stats.PostID + "/reactions"} hx-swap="none">
+            <div class="reaction-buttons">
+                for _, r := range stats.Reactions {
+                    @reactionButton(r)
+                }
+            </div>
+        </form>
+    </div>
+}
+
+templ reactionButton(reaction Reaction) {
+    <button type="submit" name="reaction_id" value={ reaction.ID } class="btn btn-outline-secondary m-1">
+      <span class="emoji">{ reaction.Label }</span>
+      <span class="counter">{ reaction.Count }</span>
+    </button>
 }

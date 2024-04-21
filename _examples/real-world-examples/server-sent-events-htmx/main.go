@@ -9,7 +9,9 @@ import (
 	"main/views"
 	stdHttp "net/http"
 	"strconv"
+	"time"
 
+	"cloud.google.com/go/pubsub"
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill-googlecloud/pkg/googlecloud"
 	"github.com/ThreeDotsLabs/watermill-http/v2/pkg/http"
@@ -22,72 +24,82 @@ import (
 )
 
 const (
-	playerJoinedTopic = "player-joined"
-	teamsUpdatedTopic = "teams-updated"
-	reactionSentTopic = "reaction-sent"
+	postViewedTopic        = "post-viewed"
+	postReactionAddedTopic = "post-reaction-added"
+	postStatsUpdatedTopic  = "post-stats-updated"
 )
 
-var reactions = map[string]string{
-	"star-struck": "🤩",
-	"snowman":     "⛄️",
-	"moon":        "🌝",
-	"see-no-evil": "🙈",
-	"thinking":    "🤔",
-	"coffee":      "☕️",
-	"t-rex":       "🦖",
-	"heart":       "🩵",
-	"fire":        "🔥",
-	"clap":        "👏",
-	"thumbs-up":   "👍",
-	"thumbs-down": "👎",
-	"heart-eyes":  "😍",
-	"laugh":       "😂",
-	"cry":         "😢",
-	"angry":       "😡",
-	"sleep":       "😴",
-	"poop":        "💩",
+var allReactions = []Reaction{
+	{
+		ID:    "fire",
+		Label: "🔥",
+	},
+	{
+		ID:    "thinking",
+		Label: "🤔",
+	},
+	{
+		ID:    "heart",
+		Label: "🩵",
+	},
+	{
+		ID:    "laugh",
+		Label: "😂",
+	},
+	{
+		ID:    "sad",
+		Label: "😢",
+	},
 }
 
-type Team struct {
-	ID      int
-	Name    string
-	Color   string
-	Members int
-	Percent int
+type Reaction struct {
+	ID    string
+	Label string
 }
 
-type PlayerJoined struct {
-	TeamID int `json:"team_id"`
+type Post struct {
+	ID        int
+	Author    string
+	Content   string
+	CreatedAt time.Time
+	Views     int
+	Reactions map[string]int
 }
 
-type ReactionSent struct {
+type PostViewed struct {
+	PostID int `json:"post_id"`
+}
+
+type PostReactionAdded struct {
+	PostID     int    `json:"post_id"`
 	ReactionID string `json:"reaction_id"`
-	TeamID     int    `json:"team_id"`
-	Public     bool   `json:"public"`
+}
+
+type PostStatsUpdated struct {
+	PostID int `json:"post_id"`
 }
 
 type config struct {
 	Port            int    `envconfig:"PORT" required:"true"`
 	DatabaseURL     string `envconfig:"DATABASE_URL" required:"true"`
 	PubSubProjectID string `envconfig:"PUBSUB_PROJECT_ID" required:"true"`
-	Domain          string `envconfig:"DOMAIN"`
 }
 
 var migration = `
-CREATE TABLE IF NOT EXISTS teams (
+CREATE TABLE IF NOT EXISTS posts (
 	id serial PRIMARY KEY,
-	name VARCHAR NOT NULL,
-	color VARCHAR NOT NULL,
-	members INT NOT NULL,
-	percent INT NOT NULL
+	author VARCHAR NOT NULL,
+	content TEXT NOT NULL,
+	views INT NOT NULL DEFAULT 0,
+    reactions JSONB NOT NULL DEFAULT '{}',
+	created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-INSERT INTO teams (id, name, color, members, percent) VALUES
-	(1, 'Red', 'danger', 1, 25),
-	(2, 'Yellow', 'warning', 1, 25),
-	(3, 'Blue', 'primary', 1, 25),
-	(4, 'Green', 'success', 1, 25)
-ON CONFLICT (id) DO NOTHING
+INSERT INTO posts (id, author, content) VALUES
+	(1, 'Miłosz', 'Oh, I remember the days when we used to write code in PHP!'),
+	(2, 'Robert', 'Back in my days, we used to write code in assembly!'),
+	(3, 'Miłosz', 'Go is my favorite language!')
+ON CONFLICT (id) DO NOTHING;
 `
 
 func main() {
@@ -107,15 +119,16 @@ func main() {
 		panic(err)
 	}
 
-	storage := NewStorage(db)
-
 	logger := watermill.NewStdLogger(false, false)
 
 	subscriber, err := googlecloud.NewSubscriber(googlecloud.SubscriberConfig{
-		GenerateSubscriptionName: func(topic string) string {
-			return topic
-		},
 		ProjectID: cfg.PubSubProjectID,
+		GenerateSubscriptionName: func(topic string) string {
+			return fmt.Sprintf("%v_%v", topic, watermill.NewShortUUID())
+		},
+		SubscriptionConfig: pubsub.SubscriptionConfig{
+			ExpirationPolicy: time.Hour * 24,
+		},
 	}, logger)
 	if err != nil {
 		panic(err)
@@ -132,168 +145,94 @@ func main() {
 		UpstreamSubscriber: subscriber,
 		Marshaler:          http.BytesSSEMarshaler{},
 	}, logger)
-
 	if err != nil {
 		panic(err)
 	}
 
-	var viewReactions []views.Reaction
-	for id, label := range reactions {
-		viewReactions = append(viewReactions, views.Reaction{
-			ID:    id,
-			Label: label,
-		})
-	}
+	storage := NewStorage(db)
+
+	statsHandler := sseRouter.AddHandler(postStatsUpdatedTopic, statsStream{storage: storage})
 
 	e := echo.New()
 	e.Use(middleware.Recover())
 	e.Use(middleware.Logger())
 
 	e.GET("/", func(c echo.Context) error {
-		teams, err := storage.AllTeams(context.Background())
+		posts, err := storage.AllPosts(c.Request().Context())
 		if err != nil {
 			return err
 		}
 
-		user, err := userFromCookie(c.Request(), storage)
-		if err != nil {
-			return err
+		for _, post := range posts {
+			event := PostViewed{
+				PostID: post.ID,
+			}
+
+			payload, err := json.Marshal(event)
+			if err != nil {
+				return err
+			}
+
+			msg := message.NewMessage(watermill.NewUUID(), payload)
+			err = publisher.Publish(postViewedTopic, msg)
+			if err != nil {
+				return err
+			}
 		}
 
-		viewTeams := newViewTeams(teams)
-		return views.IndexPage(user, viewTeams, viewReactions).Render(c.Request().Context(), c.Response())
+		var postViews []views.Post
+		for _, post := range posts {
+			postViews = append(postViews, newPostView(post))
+		}
+
+		return views.Index(postViews).Render(c.Request().Context(), c.Response())
 	})
 
-	e.GET("/teams", func(c echo.Context) error {
-		teams, err := storage.AllTeams(context.Background())
+	e.POST("/posts/:id/reactions", func(c echo.Context) error {
+		postID, err := strconv.Atoi(c.Param("id"))
 		if err != nil {
 			return err
 		}
 
-		user, err := userFromCookie(c.Request(), storage)
-		if err != nil {
-			return err
+		reactionID := c.FormValue("reaction_id")
+
+		var found bool
+		for _, r := range allReactions {
+			if r.ID == reactionID {
+				found = true
+				break
+			}
 		}
 
-		viewTeams := newViewTeams(teams)
-		return views.TeamsPage(user, viewTeams).Render(c.Request().Context(), c.Response())
-	})
-
-	e.GET("/chat", func(c echo.Context) error {
-		user, err := userFromCookie(c.Request(), storage)
-		if err != nil {
-			return err
-		}
-		return views.ChatPage(user, viewReactions).Render(c.Request().Context(), c.Response())
-	})
-
-	e.GET("/views/chat", func(c echo.Context) error {
-		user, err := userFromCookie(c.Request(), storage)
-		if err != nil {
-			return err
-		}
-		return views.Chat(user, viewReactions).Render(c.Request().Context(), c.Response())
-	})
-
-	teamsHandler := sseRouter.AddHandler(teamsUpdatedTopic, teamsStreamAdapter{
-		storage: storage,
-	})
-	chatHandler := sseRouter.AddHandler(reactionSentTopic, reactionsStreamAdapter{
-		storage: storage,
-	})
-
-	e.GET("/api/teams", echo.WrapHandler(teamsHandler))
-	e.GET("/api/chat", echo.WrapHandler(chatHandler))
-
-	e.POST("/api/join", func(c echo.Context) error {
-		teamIDStr := c.FormValue("team")
-		teamID, err := strconv.Atoi(teamIDStr)
-		if err != nil {
-			return err
+		if !found {
+			return c.String(stdHttp.StatusBadRequest, "invalid reaction ID")
 		}
 
-		_, err = storage.TeamByID(c.Request().Context(), teamID)
-		if err != nil {
-			return err
-		}
-
-		event := PlayerJoined{
-			TeamID: teamID,
-		}
-
-		payload, err := json.Marshal(event)
-		if err != nil {
-			return err
-		}
-
-		msg := message.NewMessage(watermill.NewUUID(), payload)
-		err = publisher.Publish(playerJoinedTopic, msg)
-		if err != nil {
-			return c.String(stdHttp.StatusInternalServerError, err.Error())
-		}
-
-		c.SetCookie(&stdHttp.Cookie{
-			Name:     "team",
-			Path:     "/",
-			Domain:   cfg.Domain,
-			Value:    teamIDStr,
-			HttpOnly: true,
-		})
-
-		user, err := userFromTeamID(teamID, storage)
-		if err != nil {
-			return err
-		}
-
-		teams, err := storage.AllTeams(c.Request().Context())
-		if err != nil {
-			return err
-		}
-
-		return views.Member(user, newViewTeams(teams)).Render(c.Request().Context(), c.Response())
-	})
-
-	e.POST("/api/reactions", func(c echo.Context) error {
-		team := c.FormValue("chat")
-		reactionID := c.FormValue("reaction")
-
-		_, ok := reactions[reactionID]
-		if !ok {
-			return c.String(stdHttp.StatusNotFound, "reaction not found")
-		}
-
-		teamIDStr, err := c.Cookie("team")
-		if err != nil {
-			return err
-		}
-		teamID, err := strconv.Atoi(teamIDStr.Value)
-		if err != nil {
-			return err
-		}
-
-		_, err = storage.TeamByID(c.Request().Context(), teamID)
-		if err != nil {
-			return err
-		}
-
-		event := ReactionSent{
+		event := PostReactionAdded{
+			PostID:     postID,
 			ReactionID: reactionID,
-			TeamID:     teamID,
-			Public:     team == "public",
 		}
 
 		payload, err := json.Marshal(event)
 		if err != nil {
-			return c.String(stdHttp.StatusInternalServerError, err.Error())
+			return err
 		}
 
 		msg := message.NewMessage(watermill.NewUUID(), payload)
-		err = publisher.Publish(reactionSentTopic, msg)
+		err = publisher.Publish(postReactionAddedTopic, msg)
 		if err != nil {
-			return c.String(stdHttp.StatusInternalServerError, err.Error())
+			return err
 		}
 
 		return c.NoContent(stdHttp.StatusAccepted)
+	})
+
+	e.GET("/posts/:id/stats", func(c echo.Context) error {
+		postID := c.Param("id")
+		c.Request().SetPathValue("id", postID)
+
+		statsHandler(c.Response(), c.Request())
+		return nil
 	})
 
 	router, err := message.NewRouter(message.RouterConfig{}, logger)
@@ -304,44 +243,72 @@ func main() {
 	router.AddMiddleware(watermillmiddleware.Recoverer)
 
 	router.AddHandler(
-		"player-joined",
-		playerJoinedTopic,
+		"on-post-viewed",
+		postViewedTopic,
 		subscriber,
-		teamsUpdatedTopic,
+		postStatsUpdatedTopic,
 		publisher,
 		func(msg *message.Message) ([]*message.Message, error) {
-			var event PlayerJoined
+			var event PostViewed
 			err := json.Unmarshal(msg.Payload, &event)
 			if err != nil {
 				return nil, err
 			}
 
-			err = storage.UpdateTeams(msg.Context(), func(teams []*Team) {
-				var allCount int
-
-				for _, t := range teams {
-					if t.ID == event.TeamID {
-						t.Members++
-					}
-
-					allCount += t.Members
-				}
-
-				remainingPercent := 100
-				for _, t := range teams[:len(teams)-1] {
-					t.Percent = int(float64(t.Members) / float64(allCount) * 100)
-					remainingPercent -= t.Percent
-				}
-
-				lastTeam := teams[len(teams)-1]
-				lastTeam.Percent = remainingPercent
+			err = storage.UpdatePost(context.Background(), event.PostID, func(post *Post) {
+				post.Views++
 			})
 			if err != nil {
 				return nil, err
 			}
 
-			newMsg := message.NewMessage(watermill.NewUUID(), []byte(nil))
-			return []*message.Message{newMsg}, nil
+			newEvent := PostStatsUpdated{
+				PostID: event.PostID,
+			}
+
+			payload, err := json.Marshal(newEvent)
+			if err != nil {
+				return nil, err
+			}
+
+			return []*message.Message{
+				message.NewMessage(watermill.NewUUID(), payload),
+			}, nil
+		},
+	)
+
+	router.AddHandler(
+		"on-post-reaction-added",
+		postReactionAddedTopic,
+		subscriber,
+		postStatsUpdatedTopic,
+		publisher,
+		func(msg *message.Message) ([]*message.Message, error) {
+			var event PostReactionAdded
+			err := json.Unmarshal(msg.Payload, &event)
+			if err != nil {
+				return nil, err
+			}
+
+			err = storage.UpdatePost(context.Background(), event.PostID, func(post *Post) {
+				post.Reactions[event.ReactionID]++
+			})
+			if err != nil {
+				return nil, err
+			}
+
+			newEvent := PostStatsUpdated{
+				PostID: event.PostID,
+			}
+
+			payload, err := json.Marshal(newEvent)
+			if err != nil {
+				return nil, err
+			}
+
+			return []*message.Message{
+				message.NewMessage(watermill.NewUUID(), payload),
+			}, nil
 		},
 	)
 
@@ -365,84 +332,86 @@ func main() {
 	}
 }
 
-type teamsStreamAdapter struct {
+type statsStream struct {
 	storage *Storage
 }
 
-func (t teamsStreamAdapter) InitialStreamResponse(w stdHttp.ResponseWriter, r *stdHttp.Request) (response interface{}, ok bool) {
-	return t.getResponse()
-}
-
-func (t teamsStreamAdapter) NextStreamResponse(r *stdHttp.Request, msg *message.Message) (response interface{}, ok bool) {
-	return t.getResponse()
-}
-
-func (t teamsStreamAdapter) getResponse() (string, bool) {
-	teams, err := t.storage.AllTeams(context.Background())
+func (m statsStream) InitialStreamResponse(w stdHttp.ResponseWriter, r *stdHttp.Request) (response interface{}, ok bool) {
+	postIDStr := r.PathValue("id")
+	postID, err := strconv.Atoi(postIDStr)
 	if err != nil {
-		fmt.Println(err)
-		return "", false
+		w.WriteHeader(stdHttp.StatusBadRequest)
+		_, _ = w.Write([]byte("invalid post ID"))
+		return nil, false
 	}
 
-	viewTeams := newViewTeams(teams)
-
-	var buf bytes.Buffer
-	err = views.TeamsBar(viewTeams).Render(context.Background(), &buf)
+	resp, err := m.getResponse(postID)
 	if err != nil {
-		fmt.Println(err)
-		return "", false
+		w.WriteHeader(stdHttp.StatusInternalServerError)
+		_, _ = w.Write([]byte(err.Error()))
+		return nil, false
 	}
-	return buf.String(), true
+
+	return resp, true
 }
 
-type reactionsStreamAdapter struct {
-	storage *Storage
-}
+func (m statsStream) NextStreamResponse(r *stdHttp.Request, msg *message.Message) (response interface{}, ok bool) {
+	postIDStr := r.PathValue("id")
+	postID, err := strconv.Atoi(postIDStr)
+	if err != nil {
+		fmt.Println("invalid post ID")
+		return nil, false
+	}
 
-func (m reactionsStreamAdapter) InitialStreamResponse(w stdHttp.ResponseWriter, r *stdHttp.Request) (response interface{}, ok bool) {
-	return "", true
-}
-
-func (m reactionsStreamAdapter) NextStreamResponse(r *stdHttp.Request, msg *message.Message) (response interface{}, ok bool) {
-	var event ReactionSent
-	err := json.Unmarshal(msg.Payload, &event)
+	var event PostStatsUpdated
+	err = json.Unmarshal(msg.Payload, &event)
 	if err != nil {
 		fmt.Println("cannot unmarshal: " + err.Error())
 		return "", false
 	}
 
-	text, ok := reactions[event.ReactionID]
-	if !ok {
-		fmt.Println("unknown reaction:" + event.ReactionID)
+	if event.PostID != postID {
 		return "", false
 	}
 
-	team, err := m.storage.TeamByID(context.Background(), event.TeamID)
+	resp, err := m.getResponse(postID)
 	if err != nil {
-		fmt.Println("could not get team: " + err.Error())
-		return "", false
+		fmt.Println("could not get response: " + err.Error())
+		return nil, false
 	}
 
-	if !event.Public {
-		cookieTeamID := teamIDFromCookie(r)
-		if team.ID != cookieTeamID {
-			return "", false
-		}
+	return resp, true
+}
+
+func (m statsStream) getResponse(postID int) (interface{}, error) {
+	post, err := m.storage.PostByID(context.Background(), postID)
+	if err != nil {
+		return nil, err
 	}
 
-	var eventType string
-	if event.Public {
-		eventType = "public"
-	} else {
-		eventType = "team"
+	var reactions []views.Reaction
+
+	for _, r := range allReactions {
+		reactions = append(reactions, views.Reaction{
+			ID:    r.ID,
+			Label: r.Label,
+			Count: fmt.Sprint(post.Reactions[r.ID]),
+		})
 	}
 
-	sse := http.ServerSentEvent{
-		Event: eventType,
-		Data:  []byte(fmt.Sprintf(`<span class="circle bg-%v">%v</span>`, team.Color, text)),
+	stats := views.PostStats{
+		PostID:    fmt.Sprint(post.ID),
+		Views:     fmt.Sprint(post.Views),
+		Reactions: reactions,
 	}
 
-	return sse, true
+	var buffer bytes.Buffer
+	err = views.PostStatsView(stats).Render(context.Background(), &buffer)
+	if err != nil {
+		return nil, err
+	}
+
+	return buffer.String(), nil
 }
 
 type Storage struct {
@@ -455,35 +424,35 @@ func NewStorage(db *sql.DB) *Storage {
 	}
 }
 
-func (s *Storage) TeamByID(ctx context.Context, id int) (Team, error) {
-	row := s.db.QueryRowContext(ctx, `SELECT id, name, color, members, percent FROM teams WHERE id = $1`, id)
-	team, err := scanTeam(row)
+func (s *Storage) PostByID(ctx context.Context, id int) (Post, error) {
+	row := s.db.QueryRowContext(ctx, `SELECT id, author, content, views, reactions, created_at FROM posts WHERE id = $1`, id)
+	post, err := scanPost(row)
 	if err != nil {
-		return Team{}, err
+		return Post{}, err
 	}
 
-	return team, nil
+	return post, nil
 }
 
-func (s *Storage) AllTeams(ctx context.Context) ([]Team, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT id, name, color, members, percent FROM teams ORDER BY id ASC`)
+func (s *Storage) AllPosts(ctx context.Context) ([]Post, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT id, author, content, views, reactions, created_at FROM posts ORDER BY id ASC`)
 	if err != nil {
 		return nil, err
 	}
 
-	var teams []Team
+	var posts []Post
 	for rows.Next() {
-		team, err := scanTeam(rows)
+		post, err := scanPost(rows)
 		if err != nil {
 			return nil, err
 		}
-		teams = append(teams, team)
+		posts = append(posts, post)
 	}
 
-	return teams, nil
+	return posts, nil
 }
 
-func (s *Storage) UpdateTeams(ctx context.Context, updateFn func(teams []*Team)) (err error) {
+func (s *Storage) UpdatePost(ctx context.Context, id int, updateFn func(post *Post)) (err error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -500,27 +469,22 @@ func (s *Storage) UpdateTeams(ctx context.Context, updateFn func(teams []*Team))
 		}
 	}()
 
-	rows, err := tx.QueryContext(ctx, `SELECT id, name, color, members, percent FROM teams FOR UPDATE`)
+	row := s.db.QueryRowContext(ctx, `SELECT id, author, content, views, reactions, created_at FROM posts WHERE id = $1 FOR UPDATE`, id)
+	post, err := scanPost(row)
 	if err != nil {
 		return err
 	}
 
-	var teams []*Team
-	for rows.Next() {
-		team, err := scanTeam(rows)
-		if err != nil {
-			return err
-		}
-		teams = append(teams, &team)
+	updateFn(&post)
+
+	reactionsJSON, err := json.Marshal(post.Reactions)
+	if err != nil {
+		return err
 	}
 
-	updateFn(teams)
-
-	for _, t := range teams {
-		_, err := tx.ExecContext(ctx, `UPDATE teams SET members = $1, percent = $2 WHERE id = $3`, t.Members, t.Percent, t.ID)
-		if err != nil {
-			return err
-		}
+	_, err = tx.ExecContext(ctx, `UPDATE posts SET views = $1, reactions = $2 WHERE id = $3`, post.Views, reactionsJSON, post.ID)
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -530,69 +494,38 @@ type scanner interface {
 	Scan(dest ...any) error
 }
 
-func scanTeam(s scanner) (Team, error) {
-	var name, color string
-	var id, members, percent int
-	err := s.Scan(&id, &name, &color, &members, &percent)
+func scanPost(s scanner) (Post, error) {
+	var id, postViews int
+	var author, content string
+	var reactions []byte
+	var createdAt time.Time
+
+	err := s.Scan(&id, &author, &content, &postViews, &reactions, &createdAt)
 	if err != nil {
-		return Team{}, err
+		return Post{}, err
 	}
 
-	return Team{
-		ID:      id,
-		Name:    name,
-		Color:   color,
-		Members: members,
-		Percent: percent,
+	var reactionsMap map[string]int
+	err = json.Unmarshal(reactions, &reactionsMap)
+	if err != nil {
+		return Post{}, err
+	}
+
+	return Post{
+		ID:        id,
+		Author:    author,
+		Content:   content,
+		CreatedAt: createdAt,
+		Views:     postViews,
+		Reactions: reactionsMap,
 	}, nil
 }
 
-func newViewTeams(teams []Team) []views.Team {
-	var viewTeams []views.Team
-	for _, t := range teams {
-		viewTeams = append(viewTeams, newTeamView(t))
+func newPostView(p Post) views.Post {
+	return views.Post{
+		ID:      fmt.Sprint(p.ID),
+		Content: p.Content,
+		Author:  p.Author,
+		Date:    p.CreatedAt.Format("02 Jan 2006 15:04"),
 	}
-	return viewTeams
-}
-
-func newTeamView(t Team) views.Team {
-	return views.Team{
-		ID:      strconv.Itoa(t.ID),
-		Name:    t.Name,
-		Color:   t.Color,
-		Members: strconv.Itoa(t.Members),
-		Percent: strconv.Itoa(t.Percent),
-	}
-}
-
-func teamIDFromCookie(r *stdHttp.Request) int {
-	team, err := r.Cookie("team")
-	if err == nil {
-		teamID, _ := strconv.Atoi(team.Value)
-		return teamID
-	}
-
-	return 0
-}
-
-func userFromTeamID(id int, storage *Storage) (*views.User, error) {
-	team, err := storage.TeamByID(context.Background(), id)
-	if err != nil {
-		return nil, err
-	}
-
-	teamView := newTeamView(team)
-
-	return &views.User{
-		Team: teamView,
-	}, nil
-}
-
-func userFromCookie(r *stdHttp.Request, storage *Storage) (*views.User, error) {
-	teamID := teamIDFromCookie(r)
-	if teamID == 0 {
-		return nil, nil
-	}
-
-	return userFromTeamID(teamID, storage)
 }
