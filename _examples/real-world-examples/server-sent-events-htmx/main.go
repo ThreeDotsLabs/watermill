@@ -326,7 +326,7 @@ func main() {
 		}
 	}()
 
-	err = e.Start(":8080")
+	err = e.Start(fmt.Sprintf(":%d", cfg.Port))
 	if err != nil {
 		panic(err)
 	}
@@ -336,7 +336,7 @@ type statsStream struct {
 	storage *Storage
 }
 
-func (m statsStream) InitialStreamResponse(w stdHttp.ResponseWriter, r *stdHttp.Request) (response interface{}, ok bool) {
+func (s statsStream) InitialStreamResponse(w stdHttp.ResponseWriter, r *stdHttp.Request) (response interface{}, ok bool) {
 	postIDStr := r.PathValue("id")
 	postID, err := strconv.Atoi(postIDStr)
 	if err != nil {
@@ -345,7 +345,7 @@ func (m statsStream) InitialStreamResponse(w stdHttp.ResponseWriter, r *stdHttp.
 		return nil, false
 	}
 
-	resp, err := m.getResponse(postID)
+	resp, err := s.getResponse(postID)
 	if err != nil {
 		w.WriteHeader(stdHttp.StatusInternalServerError)
 		_, _ = w.Write([]byte(err.Error()))
@@ -355,7 +355,7 @@ func (m statsStream) InitialStreamResponse(w stdHttp.ResponseWriter, r *stdHttp.
 	return resp, true
 }
 
-func (m statsStream) NextStreamResponse(r *stdHttp.Request, msg *message.Message) (response interface{}, ok bool) {
+func (s statsStream) NextStreamResponse(r *stdHttp.Request, msg *message.Message) (response interface{}, ok bool) {
 	postIDStr := r.PathValue("id")
 	postID, err := strconv.Atoi(postIDStr)
 	if err != nil {
@@ -374,7 +374,7 @@ func (m statsStream) NextStreamResponse(r *stdHttp.Request, msg *message.Message
 		return "", false
 	}
 
-	resp, err := m.getResponse(postID)
+	resp, err := s.getResponse(postID)
 	if err != nil {
 		fmt.Println("could not get response: " + err.Error())
 		return nil, false
@@ -383,8 +383,8 @@ func (m statsStream) NextStreamResponse(r *stdHttp.Request, msg *message.Message
 	return resp, true
 }
 
-func (m statsStream) getResponse(postID int) (interface{}, error) {
-	post, err := m.storage.PostByID(context.Background(), postID)
+func (s statsStream) getResponse(postID int) (interface{}, error) {
+	post, err := s.storage.PostByID(context.Background(), postID)
 	if err != nil {
 		return nil, err
 	}
