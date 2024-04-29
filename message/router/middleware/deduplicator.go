@@ -21,7 +21,7 @@ import (
 const MessageHasherReadLimitMinimum = 64
 
 // ExpiringKeyRepository is a state container for checking the
-// existance of a key in a certain time window.
+// existence of a key in a certain time window.
 // All operations must be safe for concurrent use.
 type ExpiringKeyRepository interface {
 	// IsDuplicate returns `true` if the key
