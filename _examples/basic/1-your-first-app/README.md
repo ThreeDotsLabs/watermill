@@ -35,7 +35,7 @@ server_1     | 2019/08/29 19:41:28 received event {ID:8}
 server_1     | 2019/08/29 19:41:29 received event {ID:9}
 ```
 
-Open another termial and take a look at Kafka topics to see that all messages are there. The initial events should be present on the `events` topic:
+Open another terminal and take a look at Kafka topics to see that all messages are there. The initial events should be present on the `events` topic:
 
 ```bash
 > docker-compose exec kafka kafka-console-consumer --bootstrap-server localhost:9092 --topic events

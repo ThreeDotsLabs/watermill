@@ -42,7 +42,7 @@ func (s *SlogLoggerAdapter) Debug(msg string, fields LogFields) {
 func (s *SlogLoggerAdapter) Trace(msg string, fields LogFields) {
 	s.slog.Log(
 		// Void context, following the slog example
-		// as it treats context slighly differently from
+		// as it treats context slightly differently from
 		// normal usage, minding contextual
 		// values, but ignoring contextual deadline.
 		// See the [slog] package documentation
