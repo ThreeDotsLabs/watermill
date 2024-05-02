@@ -46,10 +46,6 @@ var allReactions = []Reaction{
 		ID:    "laugh",
 		Label: "😂",
 	},
-	{
-		ID:    "sad",
-		Label: "😢",
-	},
 }
 
 type Reaction struct {
@@ -76,7 +72,9 @@ type PostReactionAdded struct {
 }
 
 type PostStatsUpdated struct {
-	PostID int `json:"post_id"`
+	PostID          int     `json:"post_id"`
+	ViewsUpdated    bool    `json:"views_updated"`
+	ReactionUpdated *string `json:"reaction_updated"`
 }
 
 type config struct {
@@ -151,7 +149,7 @@ func main() {
 
 	storage := NewStorage(db)
 
-	statsHandler := sseRouter.AddHandler(postStatsUpdatedTopic, statsStream{storage: storage})
+	statsHandler := sseRouter.AddHandler(postStatsUpdatedTopic, &statsStream{storage: storage})
 
 	e := echo.New()
 	e.Use(middleware.Recover())
@@ -263,7 +261,8 @@ func main() {
 			}
 
 			newEvent := PostStatsUpdated{
-				PostID: event.PostID,
+				PostID:       event.PostID,
+				ViewsUpdated: true,
 			}
 
 			payload, err := json.Marshal(newEvent)
@@ -298,7 +297,8 @@ func main() {
 			}
 
 			newEvent := PostStatsUpdated{
-				PostID: event.PostID,
+				PostID:          event.PostID,
+				ReactionUpdated: &event.ReactionID,
 			}
 
 			payload, err := json.Marshal(newEvent)
@@ -336,7 +336,7 @@ type statsStream struct {
 	storage *Storage
 }
 
-func (s statsStream) InitialStreamResponse(w stdHttp.ResponseWriter, r *stdHttp.Request) (response interface{}, ok bool) {
+func (s *statsStream) InitialStreamResponse(w stdHttp.ResponseWriter, r *stdHttp.Request) (response interface{}, ok bool) {
 	postIDStr := r.PathValue("id")
 	postID, err := strconv.Atoi(postIDStr)
 	if err != nil {
@@ -345,7 +345,7 @@ func (s statsStream) InitialStreamResponse(w stdHttp.ResponseWriter, r *stdHttp.
 		return nil, false
 	}
 
-	resp, err := s.getResponse(postID)
+	resp, err := s.getResponse(postID, nil)
 	if err != nil {
 		w.WriteHeader(stdHttp.StatusInternalServerError)
 		_, _ = w.Write([]byte(err.Error()))
@@ -355,7 +355,7 @@ func (s statsStream) InitialStreamResponse(w stdHttp.ResponseWriter, r *stdHttp.
 	return resp, true
 }
 
-func (s statsStream) NextStreamResponse(r *stdHttp.Request, msg *message.Message) (response interface{}, ok bool) {
+func (s *statsStream) NextStreamResponse(r *stdHttp.Request, msg *message.Message) (response interface{}, ok bool) {
 	postIDStr := r.PathValue("id")
 	postID, err := strconv.Atoi(postIDStr)
 	if err != nil {
@@ -374,7 +374,7 @@ func (s statsStream) NextStreamResponse(r *stdHttp.Request, msg *message.Message
 		return "", false
 	}
 
-	resp, err := s.getResponse(postID)
+	resp, err := s.getResponse(postID, &event)
 	if err != nil {
 		fmt.Println("could not get response: " + err.Error())
 		return nil, false
@@ -383,7 +383,7 @@ func (s statsStream) NextStreamResponse(r *stdHttp.Request, msg *message.Message
 	return resp, true
 }
 
-func (s statsStream) getResponse(postID int) (interface{}, error) {
+func (s *statsStream) getResponse(postID int, event *PostStatsUpdated) (interface{}, error) {
 	post, err := s.storage.PostByID(context.Background(), postID)
 	if err != nil {
 		return nil, err
@@ -393,15 +393,19 @@ func (s statsStream) getResponse(postID int) (interface{}, error) {
 
 	for _, r := range allReactions {
 		reactions = append(reactions, views.Reaction{
-			ID:    r.ID,
-			Label: r.Label,
-			Count: fmt.Sprint(post.Reactions[r.ID]),
+			ID:          r.ID,
+			Label:       r.Label,
+			Count:       fmt.Sprint(post.Reactions[r.ID]),
+			JustChanged: event != nil && event.ReactionUpdated != nil && *event.ReactionUpdated == r.ID,
 		})
 	}
 
 	stats := views.PostStats{
-		PostID:    fmt.Sprint(post.ID),
-		Views:     fmt.Sprint(post.Views),
+		PostID: fmt.Sprint(post.ID),
+		Views: views.PostViews{
+			Count:       fmt.Sprint(post.Views),
+			JustChanged: event != nil && event.ViewsUpdated,
+		},
 		Reactions: reactions,
 	}
 

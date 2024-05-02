@@ -8,15 +8,21 @@ type Post struct {
 }
 
 type Reaction struct {
-    ID    string
-    Label string
-    Count string
+    ID          string
+    Label       string
+    Count       string
+    JustChanged bool
 }
 
 type PostStats struct {
     PostID    string
-    Views     string
+    Views     PostViews
     Reactions []Reaction
+}
+
+type PostViews struct {
+    Count       string
+    JustChanged bool
 }
 
 templ Index(posts []Post) {
@@ -47,9 +53,9 @@ templ postView(post Post) {
 }
 
 templ PostStatsView(stats PostStats) {
-    <div class="d-flex align-items-center">
+    <div class={ "d-flex", "align-items-center", templ.KV("animated", stats.Views.JustChanged)}>
         <span class="me-1">👁️</span>
-        <small class="text-muted">{ stats.Views + " views" }</small>
+        <small class="text-muted">{ stats.Views.Count + " views" }</small>
     </div>
 
     <div class="mt-2 d-flex justify-content-start align-items-center">
@@ -64,7 +70,7 @@ templ PostStatsView(stats PostStats) {
 }
 
 templ reactionButton(reaction Reaction) {
-    <button type="submit" name="reaction_id" value={ reaction.ID } class="btn btn-outline-secondary m-1">
+    <button type="submit" name="reaction_id" value={ reaction.ID } class={"btn", "btn-outline-secondary", "m-1", templ.KV("animated", reaction.JustChanged)}>
       <span class="emoji">{ reaction.Label }</span>
       <span class="counter">{ reaction.Count }</span>
     </button>
