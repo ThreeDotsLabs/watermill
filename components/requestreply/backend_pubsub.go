@@ -252,7 +252,8 @@ func (p PubSubBackend[Result]) OnCommandProcessed(ctx context.Context, params Ba
 		return errors.Wrap(err, "cannot generate request/reply notify topic")
 	}
 
-	if err := p.config.Publisher.Publish(replyTopic, notificationMsg); err != nil {
+	err = p.config.Publisher.Publish(replyTopic, notificationMsg)
+	if err != nil {
 		if p.config.ReplyPublishErrorHandler != nil {
 			err = p.config.ReplyPublishErrorHandler(replyTopic, notificationMsg, err)
 		}
