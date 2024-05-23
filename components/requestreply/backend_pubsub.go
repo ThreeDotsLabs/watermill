@@ -69,6 +69,8 @@ type PubSubBackendModifyNotificationMessageFn func(msg *message.Message, params 
 
 type PubSubBackendOnListenForReplyFinishedFn func(ctx context.Context, params PubSubBackendSubscribeParams)
 
+type ReplyPublishErrorHandler func(replyTopic string, notificationMsg *message.Message, err error) error
+
 type PubSubBackendConfig struct {
 	Publisher             message.Publisher
 	SubscriberConstructor PubSubBackendSubscriberConstructorFn
@@ -85,10 +87,14 @@ type PubSubBackendConfig struct {
 	OnListenForReplyFinished PubSubBackendOnListenForReplyFinishedFn
 
 	// AckCommandErrors determines if the command should be acked or nacked when handler returns an error.
-	// Command will be always nacked, when sending reply fails.
+	// Command will be nacked by default when sending reply failsm you can control this behaviour
 	// You should use this option instead of cqrs.CommandProcessorConfig.AckCommandHandlingErrors, as it's aware
 	// if error was returned by handler or sending reply failed.
 	AckCommandErrors bool
+
+	// ReplyPublishErrorHandler if not nil will be invoked when sending the reply fails. If it returns an error
+	// the command will ba nacked.
+	ReplyPublishErrorHandler ReplyPublishErrorHandler
 }
 
 func (p *PubSubBackendConfig) setDefaults() {
@@ -246,6 +252,11 @@ func (p PubSubBackend[Result]) OnCommandProcessed(ctx context.Context, params Ba
 	}
 
 	if err := p.config.Publisher.Publish(replyTopic, notificationMsg); err != nil {
+		if p.config.ReplyPublishErrorHandler != nil {
+			err = p.config.ReplyPublishErrorHandler(replyTopic, notificationMsg, err)
+		}
+	}
+	if err != nil {
 		return errors.Wrap(err, "cannot publish command executed message")
 	}
 
