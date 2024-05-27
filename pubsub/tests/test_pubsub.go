@@ -121,6 +121,9 @@ type Features struct {
 	// NewSubscriberReceivesOldMessages should be set to true if messages are persisted even
 	// if they are already consumed (for example, like in Kafka).
 	NewSubscriberReceivesOldMessages bool
+
+	// UseULID should be set to true if ULID should be used instead of UUID
+	UseULID bool
 }
 
 // RunOnlyFastTests returns true if -short flag was provided -race was not provided.
@@ -151,7 +154,10 @@ func getTestName(testFunc interface{}) string {
 type TestID string
 
 // NewTestID returns a new unique TestID.
-func NewTestID() TestID {
+func NewTestID(useULID bool) TestID {
+	if useULID {
+		return TestID(watermill.NewULID())
+	}
 	return TestID(watermill.NewUUID())
 }
 
@@ -175,7 +181,7 @@ func runTest(
 		if parallel {
 			t.Parallel()
 		}
-		testID := NewTestID()
+		testID := NewTestID(features.UseULID)
 
 		t.Run(string(testID), func(t *testing.T) {
 			tCtx := TestContext{
@@ -804,8 +810,8 @@ func TestConsumerGroups(
 	}
 	totalMessagesCount := 50
 
-	group1 := generateConsumerGroup(t, pubSubConstructor, topicName)
-	group2 := generateConsumerGroup(t, pubSubConstructor, topicName)
+	group1 := generateConsumerGroup(t, pubSubConstructor, topicName, tCtx.Features.UseULID)
+	group2 := generateConsumerGroup(t, pubSubConstructor, topicName, tCtx.Features.UseULID)
 
 	messagesToPublish := PublishSimpleMessages(t, totalMessagesCount, publisherPub, topicName)
 
@@ -1225,8 +1231,13 @@ func closePubSub(t *testing.T, pub message.Publisher, sub message.Subscriber) {
 	require.NoError(t, err)
 }
 
-func generateConsumerGroup(t *testing.T, pubSubConstructor ConsumerGroupPubSubConstructor, topicName string) string {
-	groupName := "cg_" + watermill.NewUUID()
+func generateConsumerGroup(t *testing.T, pubSubConstructor ConsumerGroupPubSubConstructor, topicName string, useULID bool) string {
+	groupName := "cg_"
+	if useULID {
+		groupName += watermill.NewULID()
+	} else {
+		groupName += watermill.NewUUID()
+	}
 
 	// create a pubsub to ensure that the consumer group exists
 	// for those providers that require subscription before publishing messages (e.g. Google Cloud PubSub)
