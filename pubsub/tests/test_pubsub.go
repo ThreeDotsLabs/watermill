@@ -122,7 +122,7 @@ type Features struct {
 	// if they are already consumed (for example, like in Kafka).
 	NewSubscriberReceivesOldMessages bool
 
-	// UseULID should be set to true if ULID should be used instead of UUID
+	// UseULID should be set to true if ULID should be used instead of UUID for generating test IDs.
 	UseULID bool
 }
 
@@ -154,11 +154,11 @@ func getTestName(testFunc interface{}) string {
 type TestID string
 
 // NewTestID returns a new unique TestID.
-func NewTestID(useULID bool) TestID {
-	if useULID {
-		return TestID(watermill.NewULID())
-	}
+func NewTestID() TestID {
 	return TestID(watermill.NewUUID())
+}
+func NewTestID_ULID() TestID {
+	return TestID(watermill.NewULID())
 }
 
 // TestContext is a collection of values that belong to a single test.
@@ -181,7 +181,7 @@ func runTest(
 		if parallel {
 			t.Parallel()
 		}
-		testID := NewTestID(features.UseULID)
+		testID := NewTestID()
 
 		t.Run(string(testID), func(t *testing.T) {
 			tCtx := TestContext{
