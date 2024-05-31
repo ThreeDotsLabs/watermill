@@ -6,7 +6,7 @@ require (
 	cloud.google.com/go/pubsub v1.36.1
 	github.com/ThreeDotsLabs/watermill v1.3.5
 	github.com/ThreeDotsLabs/watermill-googlecloud v1.2.0
-	github.com/ThreeDotsLabs/watermill-http/v2 v2.1.1-0.20240420100340-dbcfd0330cce
+	github.com/ThreeDotsLabs/watermill-http/v2 v2.2.0
 	github.com/a-h/templ v0.2.663
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/labstack/echo/v4 v4.11.4

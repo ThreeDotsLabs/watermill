@@ -35,7 +35,7 @@ func NewHandler(repo *Repository, eventBus *cqrs.EventBus, sseRouter watermillht
 	e.Use(middleware.Recover())
 	e.Use(middleware.Logger())
 
-	e.GET("/", h.Index)
+	e.GET("/", h.AllPosts)
 	e.POST("/posts/:id/reactions", h.AddReaction)
 	e.GET("/posts/:id/stats", func(c echo.Context) error {
 		postID := c.Param("id")
@@ -48,7 +48,7 @@ func NewHandler(repo *Repository, eventBus *cqrs.EventBus, sseRouter watermillht
 	return e
 }
 
-func (h Handler) Index(c echo.Context) error {
+func (h Handler) AllPosts(c echo.Context) error {
 	posts, err := h.repo.AllPosts(c.Request().Context())
 	if err != nil {
 		return err

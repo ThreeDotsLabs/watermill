@@ -38,20 +38,26 @@ type Routers struct {
 func NewRouters(cfg config, repo *Repository) (Routers, error) {
 	logger := watermill.NewStdLogger(false, false)
 
-	publisher, err := googlecloud.NewPublisher(googlecloud.PublisherConfig{
-		ProjectID: cfg.PubSubProjectID,
-	}, logger)
+	publisher, err := googlecloud.NewPublisher(
+		googlecloud.PublisherConfig{
+			ProjectID: cfg.PubSubProjectID,
+		},
+		logger,
+	)
 	if err != nil {
 		return Routers{}, err
 	}
 
-	eventBus, err := cqrs.NewEventBusWithConfig(publisher, cqrs.EventBusConfig{
-		GeneratePublishTopic: func(params cqrs.GenerateEventPublishTopicParams) (string, error) {
-			return params.EventName, nil
+	eventBus, err := cqrs.NewEventBusWithConfig(
+		publisher,
+		cqrs.EventBusConfig{
+			GeneratePublishTopic: func(params cqrs.GenerateEventPublishTopicParams) (string, error) {
+				return params.EventName, nil
+			},
+			Marshaler: cqrs.JSONMarshaler{},
+			Logger:    logger,
 		},
-		Marshaler: cqrs.JSONMarshaler{},
-		Logger:    logger,
-	})
+	)
 	if err != nil {
 		return Routers{}, err
 	}
@@ -63,21 +69,27 @@ func NewRouters(cfg config, repo *Repository) (Routers, error) {
 
 	eventsRouter.AddMiddleware(middleware.Recoverer)
 
-	eventProcessor, err := cqrs.NewEventProcessorWithConfig(eventsRouter, cqrs.EventProcessorConfig{
-		GenerateSubscribeTopic: func(params cqrs.EventProcessorGenerateSubscribeTopicParams) (string, error) {
-			return params.EventName, nil
+	eventProcessor, err := cqrs.NewEventProcessorWithConfig(
+		eventsRouter,
+		cqrs.EventProcessorConfig{
+			GenerateSubscribeTopic: func(params cqrs.EventProcessorGenerateSubscribeTopicParams) (string, error) {
+				return params.EventName, nil
+			},
+			SubscriberConstructor: func(params cqrs.EventProcessorSubscriberConstructorParams) (message.Subscriber, error) {
+				return googlecloud.NewSubscriber(
+					googlecloud.SubscriberConfig{
+						ProjectID: cfg.PubSubProjectID,
+						GenerateSubscriptionName: func(topic string) string {
+							return fmt.Sprintf("%v_%v", topic, params.HandlerName)
+						},
+					},
+					logger,
+				)
+			},
+			Marshaler: cqrs.JSONMarshaler{},
+			Logger:    logger,
 		},
-		SubscriberConstructor: func(params cqrs.EventProcessorSubscriberConstructorParams) (message.Subscriber, error) {
-			return googlecloud.NewSubscriber(googlecloud.SubscriberConfig{
-				ProjectID: cfg.PubSubProjectID,
-				GenerateSubscriptionName: func(topic string) string {
-					return fmt.Sprintf("%v_%v", topic, params.HandlerName)
-				},
-			}, logger)
-		},
-		Marshaler: cqrs.JSONMarshaler{},
-		Logger:    logger,
-	})
+	)
 	if err != nil {
 		return Routers{}, err
 	}
@@ -124,23 +136,29 @@ func NewRouters(cfg config, repo *Repository) (Routers, error) {
 		return Routers{}, err
 	}
 
-	sseSubscriber, err := googlecloud.NewSubscriber(googlecloud.SubscriberConfig{
-		ProjectID: cfg.PubSubProjectID,
-		GenerateSubscriptionName: func(topic string) string {
-			return fmt.Sprintf("%v_%v", topic, watermill.NewShortUUID())
+	sseSubscriber, err := googlecloud.NewSubscriber(
+		googlecloud.SubscriberConfig{
+			ProjectID: cfg.PubSubProjectID,
+			GenerateSubscriptionName: func(topic string) string {
+				return fmt.Sprintf("%v_%v", topic, watermill.NewShortUUID())
+			},
+			SubscriptionConfig: pubsub.SubscriptionConfig{
+				ExpirationPolicy: time.Hour * 24,
+			},
 		},
-		SubscriptionConfig: pubsub.SubscriptionConfig{
-			ExpirationPolicy: time.Hour * 24,
-		},
-	}, logger)
+		logger,
+	)
 	if err != nil {
 		return Routers{}, err
 	}
 
-	sseRouter, err := http.NewSSERouter(http.SSERouterConfig{
-		UpstreamSubscriber: sseSubscriber,
-		Marshaler:          http.BytesSSEMarshaler{},
-	}, logger)
+	sseRouter, err := http.NewSSERouter(
+		http.SSERouterConfig{
+			UpstreamSubscriber: sseSubscriber,
+			Marshaler:          http.StringSSEMarshaler{},
+		},
+		logger,
+	)
 	if err != nil {
 		return Routers{}, err
 	}

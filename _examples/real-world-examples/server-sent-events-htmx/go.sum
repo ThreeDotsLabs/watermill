@@ -16,8 +16,8 @@ github.com/ThreeDotsLabs/watermill v1.3.5 h1:50JEPEhMGZQMh08ct0tfO1PsgMOAOhV3zxK
 github.com/ThreeDotsLabs/watermill v1.3.5/go.mod h1:O/u/Ptyrk5MPTxSeWM5vzTtZcZfxXfO9PK9eXTYiFZY=
 github.com/ThreeDotsLabs/watermill-googlecloud v1.2.0 h1:HEpoDiIU4K/wGVADVkuIcAUZSjvtAWS3lqiyk+LVt3E=
 github.com/ThreeDotsLabs/watermill-googlecloud v1.2.0/go.mod h1:cLifbk8zyGZ4MEqCmjE5vyTQOnTmy0kZUlrMzoixBBk=
-github.com/ThreeDotsLabs/watermill-http/v2 v2.1.1-0.20240420100340-dbcfd0330cce h1:Ffot3YR4kPrl3CdwDk9Q4YKV6b/8+LBWxHjmZmTv5Wc=
-github.com/ThreeDotsLabs/watermill-http/v2 v2.1.1-0.20240420100340-dbcfd0330cce/go.mod h1:Ily2cdTrvlj9dLB8BqAy5OIzWwS8B5WrFh+Ey7wOgQQ=
+github.com/ThreeDotsLabs/watermill-http/v2 v2.2.0 h1:SyKKGRCDMvbExmm4AQ9tPDbMm+uyExBSiKl5DH24V1U=
+github.com/ThreeDotsLabs/watermill-http/v2 v2.2.0/go.mod h1:Ily2cdTrvlj9dLB8BqAy5OIzWwS8B5WrFh+Ey7wOgQQ=
 github.com/a-h/templ v0.2.663 h1:aa0WMm27InkYHGjimcM7us6hJ6BLhg98ZbfaiDPyjHE=
 github.com/a-h/templ v0.2.663/go.mod h1:SA7mtYwVEajbIXFRh3vKdYm/4FYyLQAtPH1+KxzGPA8=
 github.com/cenkalti/backoff/v3 v3.2.2 h1:cfUAAO3yvKMYKPrvhDuHSwQnhZNk/RMHKdZqKTxfm6M=
