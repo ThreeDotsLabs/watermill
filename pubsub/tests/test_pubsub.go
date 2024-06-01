@@ -157,7 +157,7 @@ type TestID string
 func NewTestID() TestID {
 	return TestID(watermill.NewUUID())
 }
-func NewTestID_ULID() TestID {
+func NewTestULID() TestID {
 	return TestID(watermill.NewULID())
 }
 
