@@ -27,7 +27,7 @@ type PostViews struct {
 
 templ Index(posts []Post) {
     @base() {
-        <div class="row mt-5">
+        <div class="row">
             for _, p := range posts {
                 @postView(p)
             }

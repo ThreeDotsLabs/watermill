@@ -29,7 +29,7 @@ func NewHandler(repo *Repository, eventBus *cqrs.EventBus, sseRouter watermillht
 
 	marshaler := cqrs.JSONMarshaler{}
 	topic := marshaler.Name(PostStatsUpdated{})
-	statsHandler := sseRouter.AddHandler(topic, &statsStream{storage: repo})
+	statsHandler := sseRouter.AddHandler(topic, &statsStream{repo: repo})
 
 	e := echo.New()
 	e.Use(middleware.Recover())
@@ -107,7 +107,7 @@ func (h Handler) AddReaction(c echo.Context) error {
 }
 
 type statsStream struct {
-	storage *Repository
+	repo *Repository
 }
 
 func (s *statsStream) InitialStreamResponse(w http.ResponseWriter, r *http.Request) (response interface{}, ok bool) {
@@ -115,14 +115,14 @@ func (s *statsStream) InitialStreamResponse(w http.ResponseWriter, r *http.Reque
 	postID, err := strconv.Atoi(postIDStr)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		_, _ = w.Write([]byte("invalid post ID"))
+		w.Write([]byte("invalid post ID"))
 		return nil, false
 	}
 
 	resp, err := s.getResponse(r.Context(), postID, nil)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		_, _ = w.Write([]byte(err.Error()))
+		w.Write([]byte(err.Error()))
 		return nil, false
 	}
 
@@ -158,7 +158,7 @@ func (s *statsStream) NextStreamResponse(r *http.Request, msg *message.Message) 
 }
 
 func (s *statsStream) getResponse(ctx context.Context, postID int, event *PostStatsUpdated) (interface{}, error) {
-	post, err := s.storage.PostByID(ctx, postID)
+	post, err := s.repo.PostByID(ctx, postID)
 	if err != nil {
 		return nil, err
 	}
