@@ -124,6 +124,9 @@ type Features struct {
 
 	// UseULID should be set to true if ULID should be used instead of UUID for generating test IDs.
 	UseULID bool
+
+	// TestIDGenerator determines which function should be used for generating test IDs, NewTestID is used by default.
+	TestIDGenerator func() TestID `default:"NewTestID()"`
 }
 
 // RunOnlyFastTests returns true if -short flag was provided -race was not provided.
@@ -157,6 +160,7 @@ type TestID string
 func NewTestID() TestID {
 	return TestID(watermill.NewUUID())
 }
+// NewTestULID returns a new unique TestID using ULID.
 func NewTestULID() TestID {
 	return TestID(watermill.NewULID())
 }
