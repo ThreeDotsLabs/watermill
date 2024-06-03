@@ -146,7 +146,7 @@ func TestCommandProcessor_non_pointer_command(t *testing.T) {
 	assert.IsType(t, cqrs.NonPointerError{}, errors.Cause(err))
 }
 
-// TestCommandProcessor_multiple_same_command_handlers checks, that we don't register multiple handlers for the same commend.
+// TestCommandProcessor_multiple_same_command_handlers checks, that we don't register multiple handlers for the same command.
 func TestCommandProcessor_multiple_same_command_handlers(t *testing.T) {
 	ts := NewTestServices()
 
