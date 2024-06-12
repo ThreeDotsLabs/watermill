@@ -1,0 +1,85 @@
+package views
+
+type Post struct {
+    ID      string
+    Content string
+    Author  string
+    Date    string
+}
+
+type Reaction struct {
+    ID          string
+    Label       string
+    Count       string
+    JustChanged bool
+}
+
+type PostStats struct {
+    PostID    string
+    Views     PostViews
+    Reactions []Reaction
+}
+
+type PostViews struct {
+    Count       string
+    JustChanged bool
+}
+
+templ Index(posts []Post) {
+    @base() {
+        <div class="row">
+            for _, p := range posts {
+                @postView(p)
+            }
+        </div>
+    }
+}
+
+templ postView(post Post) {
+    <div class="card mb-3">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div>
+            <h5 class="card-title mb-0">{ post.Author }</h5>
+            <div class="d-flex align-items-center">
+              <small class="text-muted me-2">{ post.Date }</small>
+            </div>
+          </div>
+        </div>
+        <p class="card-text">{ post.Content }</p>
+        <div hx-ext="sse" sse-connect={ "/posts/" + post.ID + "/stats" } sse-swap="data"></div>
+      </div>
+    </div>
+}
+
+templ PostStatsView(stats PostStats) {
+    <div class={ "d-flex", "align-items-center", templ.KV("animated", stats.Views.JustChanged)}>
+        <span class="me-1">👁️</span>
+        <small class="text-muted">{ stats.Views.Count + " views" }</small>
+    </div>
+
+    <div class="mt-2 d-flex justify-content-start align-items-center">
+        <div class="reaction-buttons">
+            for _, r := range stats.Reactions {
+                @reactionButton(stats.PostID, r)
+            }
+        </div>
+    </div>
+}
+
+templ reactionButton(postID string, reaction Reaction) {
+    <form hx-post={ "/posts/" + postID + "/reactions"} hx-swap="outerHTML">
+        <input type="hidden" name="reaction_id" value={ reaction.ID } />
+        <button type="submit" class={"btn", "btn-outline-secondary", "m-1", templ.KV("animated", reaction.JustChanged)}>
+          <span class="emoji">{ reaction.Label }</span>
+          <span class="counter">{ reaction.Count }</span>
+        </button>
+    </form>
+}
+
+templ UpdatedButton(label string) {
+    <button class={"btn", "btn-outline-secondary", "m-1" } disabled>
+      <span class="emoji">{ label }</span>
+      <span class="counter">✅</span>
+    </button>
+}
