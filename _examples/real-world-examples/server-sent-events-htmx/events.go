@@ -96,7 +96,7 @@ func NewRouters(cfg config, repo *Repository) (Routers, error) {
 
 	err = eventProcessor.AddHandlers(
 		cqrs.NewEventHandler(
-			"on-post-viewed",
+			"UpdateViews",
 			func(ctx context.Context, event *PostViewed) error {
 				err = repo.UpdatePost(ctx, event.PostID, func(post *Post) {
 					post.Views++
@@ -114,7 +114,7 @@ func NewRouters(cfg config, repo *Repository) (Routers, error) {
 			},
 		),
 		cqrs.NewEventHandler(
-			"on-post-reaction-added",
+			"UpdateReactions",
 			func(ctx context.Context, event *PostReactionAdded) error {
 				err := repo.UpdatePost(ctx, event.PostID, func(post *Post) {
 					post.Reactions[event.ReactionID]++

@@ -25,6 +25,16 @@ var allReactions = []Reaction{
 	},
 }
 
+func mustReactionByID(id string) Reaction {
+	for _, r := range allReactions {
+		if r.ID == id {
+			return r
+		}
+	}
+
+	panic("reaction not found")
+}
+
 type Reaction struct {
 	ID    string
 	Label string

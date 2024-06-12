@@ -103,7 +103,9 @@ func (h Handler) AddReaction(c echo.Context) error {
 		return err
 	}
 
-	return c.NoContent(http.StatusAccepted)
+	reaction := mustReactionByID(reactionID)
+
+	return views.UpdatedButton(reaction.Label).Render(c.Request().Context(), c.Response())
 }
 
 type statsStream struct {
