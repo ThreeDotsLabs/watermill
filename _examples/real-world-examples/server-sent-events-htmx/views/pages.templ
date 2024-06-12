@@ -78,7 +78,7 @@ templ reactionButton(postID string, reaction Reaction) {
 }
 
 templ UpdatedButton(label string) {
-    <button class={"btn", "btn-outline-secondary", "m-1"}>
+    <button class={"btn", "btn-outline-secondary", "m-1"} disabled>
       <span class="emoji">{ label }</span>
       <span class="counter">✅</span>
     </button>

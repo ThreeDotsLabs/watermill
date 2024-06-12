@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"math/rand"
+	"time"
 
 	"github.com/kelseyhightower/envconfig"
 	_ "github.com/lib/pq"
@@ -50,6 +52,25 @@ func main() {
 		err := routers.SSERouter.Run(context.Background())
 		if err != nil {
 			panic(err)
+		}
+	}()
+
+	go func() {
+		// This goroutine simulates some events being published in the background
+		ctx := context.Background()
+		for {
+			postID := 1 + rand.Intn(2)
+			if rand.Intn(2) == 0 {
+				_ = routers.EventBus.Publish(ctx, PostViewed{
+					PostID: postID,
+				})
+			} else {
+				_ = routers.EventBus.Publish(ctx, PostReactionAdded{
+					PostID:     postID,
+					ReactionID: allReactions[rand.Intn(len(allReactions))].ID,
+				})
+			}
+			time.Sleep(3 * time.Second)
 		}
 	}()
 
