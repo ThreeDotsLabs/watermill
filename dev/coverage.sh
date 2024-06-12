@@ -1,7 +1,7 @@
 #!/bin/sh
 ########
 # Source: https://gist.github.com/lwolf/3764a3b6cd08387e80aa6ca3b9534b8a
-# originaly from https://github.com/mlafeldt/chef-runner/blob/v0.7.0/script/coverage
+# originally from https://github.com/mlafeldt/chef-runner/blob/v0.7.0/script/coverage
 #######
 # Generate test coverage statistics for Go packages.
 #
