@@ -70,7 +70,8 @@ func main() {
 					ReactionID: allReactions[rand.Intn(len(allReactions))].ID,
 				})
 			}
-			time.Sleep(3 * time.Second)
+
+			time.Sleep(time.Millisecond * time.Duration(3000+rand.Intn(5000)))
 		}
 	}()
 
