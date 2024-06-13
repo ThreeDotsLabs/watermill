@@ -16,7 +16,7 @@ See Watermill's [Supported Pub/Subs](https://watermill.io/pubsubs) for more deta
 To install this tool, just execute:
 
 ```bash
-go install -u github.com/ThreeDotsLabs/watermill/tools/mill@latest
+go install github.com/ThreeDotsLabs/watermill/tools/mill@latest
 ```
 
 This will install a `mill` binary in your system.
