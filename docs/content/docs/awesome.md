@@ -22,6 +22,7 @@ If you know another library or are an author of one, please [add it to the list]
 
 ### Pub/Subs
 
+* AMQP 1.0 https://github.com/kahowell/watermill-amqp10
 * Apache Pulsar https://github.com/AlexCuse/watermill-pulsar
 * Apache RocketMQ https://github.com/yflau/watermill-rocketmq
 * CockroachDB https://github.com/cockroachdb/watermill-crdb
