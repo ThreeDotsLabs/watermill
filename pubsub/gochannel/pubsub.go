@@ -154,7 +154,7 @@ func (g *GoChannel) sendMessage(topic string, message *message.Message) (<-chan 
 
 			wg.Add(1)
 			go func() {
-				subscriber.sendMessageToSubscriber(message, logFields)
+				subscriber.sendMessageToSubscriber(message, logFields, g.config.BlockPublishUntilSubscriberAck)
 				wg.Done()
 			}()
 		}
@@ -237,7 +237,7 @@ func (g *GoChannel) Subscribe(ctx context.Context, topic string) (<-chan *messag
 				msg := g.persistedMessages[topic][i]
 				logFields := watermill.LogFields{"message_uuid": msg.UUID, "topic": topic}
 
-				go s.sendMessageToSubscriber(msg, logFields)
+				go s.sendMessageToSubscriber(msg, logFields, g.config.BlockPublishUntilSubscriberAck)
 			}
 		}
 
@@ -340,7 +340,7 @@ func (s *subscriber) Close() {
 	close(s.outputChannel)
 }
 
-func (s *subscriber) sendMessageToSubscriber(msg *message.Message, logFields watermill.LogFields) {
+func (s *subscriber) sendMessageToSubscriber(msg *message.Message, logFields watermill.LogFields, blockPublishUntilSubscriberAck bool) {
 	s.sending.Lock()
 	defer s.sending.Unlock()
 
@@ -366,6 +366,11 @@ SendToSubscriber:
 			s.logger.Trace("Sent message to subscriber", logFields)
 		case <-s.closing:
 			s.logger.Trace("Closing, message discarded", logFields)
+			return
+		}
+
+		if !blockPublishUntilSubscriberAck {
+			s.logger.Trace("Sent message to subscriber without ack", logFields)
 			return
 		}
 
