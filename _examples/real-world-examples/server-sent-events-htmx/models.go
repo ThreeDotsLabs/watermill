@@ -48,3 +48,11 @@ type Post struct {
 	Views     int
 	Reactions map[string]int
 }
+
+type PostStats struct {
+	ID              int
+	Views           int
+	ViewsUpdated    bool
+	Reactions       map[string]int
+	ReactionUpdated *string
+}

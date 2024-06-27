@@ -24,9 +24,11 @@ type PostReactionAdded struct {
 }
 
 type PostStatsUpdated struct {
-	PostID          int     `json:"post_id"`
-	ViewsUpdated    bool    `json:"views_updated"`
-	ReactionUpdated *string `json:"reaction_updated"`
+	PostID          int            `json:"post_id"`
+	Views           int            `json:"views"`
+	ViewsUpdated    bool           `json:"views_updated"`
+	Reactions       map[string]int `json:"reactions"`
+	ReactionUpdated *string        `json:"reaction_updated"`
 }
 
 type Routers struct {
@@ -98,8 +100,12 @@ func NewRouters(cfg config, repo *Repository) (Routers, error) {
 		cqrs.NewEventHandler(
 			"UpdateViews",
 			func(ctx context.Context, event *PostViewed) error {
+				var views int
+				var reactions map[string]int
 				err = repo.UpdatePost(ctx, event.PostID, func(post *Post) {
 					post.Views++
+					views = post.Views
+					reactions = post.Reactions
 				})
 				if err != nil {
 					return err
@@ -108,6 +114,8 @@ func NewRouters(cfg config, repo *Repository) (Routers, error) {
 				statsUpdated := PostStatsUpdated{
 					PostID:       event.PostID,
 					ViewsUpdated: true,
+					Views:        views,
+					Reactions:    reactions,
 				}
 
 				return eventBus.Publish(ctx, statsUpdated)
@@ -116,8 +124,12 @@ func NewRouters(cfg config, repo *Repository) (Routers, error) {
 		cqrs.NewEventHandler(
 			"UpdateReactions",
 			func(ctx context.Context, event *PostReactionAdded) error {
+				var views int
+				var reactions map[string]int
 				err := repo.UpdatePost(ctx, event.PostID, func(post *Post) {
 					post.Reactions[event.ReactionID]++
+					views = post.Views
+					reactions = post.Reactions
 				})
 				if err != nil {
 					return err
@@ -125,7 +137,9 @@ func NewRouters(cfg config, repo *Repository) (Routers, error) {
 
 				statsUpdated := PostStatsUpdated{
 					PostID:          event.PostID,
+					Views:           views,
 					ReactionUpdated: &event.ReactionID,
+					Reactions:       reactions,
 				}
 
 				return eventBus.Publish(ctx, statsUpdated)
