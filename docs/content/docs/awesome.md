@@ -22,6 +22,7 @@ If you know another library or are an author of one, please [add it to the list]
 
 ### Pub/Subs
 
+* AMQP 1.0 https://github.com/kahowell/watermill-amqp10
 * Apache Pulsar https://github.com/AlexCuse/watermill-pulsar
 * Apache RocketMQ https://github.com/yflau/watermill-rocketmq
 * CockroachDB https://github.com/cockroachdb/watermill-crdb
@@ -30,6 +31,11 @@ If you know another library or are an author of one, please [add it to the list]
 * MongoDB https://github.com/cunyat/watermill-mongodb
 * MQTT https://github.com/perfect13/watermill-mqtt
 * NSQ https://github.com/chennqqi/watermill-nsq
+* Redis Zset https://github.com/stong1994/watermill-rediszset
+* SQLite https://github.com/davidroman0O/watermill-comfymill
+
+If you want to find out how to implement your own Pub/Sub adapter, 
+check out [Implementing custom Pub/Sub](/docs/pub-sub-implementing).
 
 ### Logging
 

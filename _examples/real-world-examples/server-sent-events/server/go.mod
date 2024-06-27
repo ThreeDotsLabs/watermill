@@ -3,8 +3,7 @@ module main.go
 go 1.21
 
 require (
-	github.com/ThreeDotsLabs/watermill v1.2.0-rc.11
-	github.com/ThreeDotsLabs/watermill-http v1.1.4
+	github.com/ThreeDotsLabs/watermill v1.2.0
 	github.com/ThreeDotsLabs/watermill-nats v1.0.7
 	github.com/cenkalti/backoff/v3 v3.2.2 // indirect
 	github.com/go-chi/chi/v5 v5.0.8
@@ -22,13 +21,15 @@ require (
 	golang.org/x/text v0.6.0 // indirect
 )
 
-require github.com/brianvoe/gofakeit/v6 v6.20.1
+require (
+	github.com/ThreeDotsLabs/watermill-http/v2 v2.1.0
+	github.com/brianvoe/gofakeit/v6 v6.20.1
+)
 
 require (
 	github.com/ajg/form v1.5.1 // indirect
 	github.com/go-chi/chi v4.1.2+incompatible // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/google/go-cmp v0.5.5 // indirect
 	github.com/hashicorp/go-hclog v1.4.0 // indirect
 	github.com/hashicorp/go-msgpack v0.5.5 // indirect
 	github.com/hashicorp/raft v1.3.11 // indirect
@@ -41,7 +42,6 @@ require (
 	github.com/nats-io/nuid v1.0.1 // indirect
 	github.com/oklog/ulid v1.3.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/stretchr/testify v1.8.1 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
 	github.com/xdg-go/scram v1.1.2 // indirect
 	github.com/xdg-go/stringprep v1.0.4 // indirect
