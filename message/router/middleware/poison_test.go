@@ -2,19 +2,16 @@ package middleware_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
 	"github.com/ThreeDotsLabs/watermill"
+	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
 	"github.com/ThreeDotsLabs/watermill/message/subscriber"
 	"github.com/ThreeDotsLabs/watermill/pubsub/gochannel"
 
-	"github.com/hashicorp/go-multierror"
-
-	"github.com/ThreeDotsLabs/watermill/message"
-
-	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -191,11 +188,13 @@ func TestPoisonQueue_handler_failing_publisher_failing(t *testing.T) {
 				msg,
 			)
 
-			require.IsType(t, &multierror.Error{}, err)
-			multierr := err.(*multierror.Error)
+			joinErr, ok := err.(interface {
+				Unwrap() []error
+			})
+			require.True(t, ok)
 
 			// publisher failed, can't hide the error anymore
-			assert.Equal(t, errFailed, errors.Cause(multierr.WrappedErrors()[1]))
+			assert.Equal(t, errFailed, errors.Unwrap(joinErr.Unwrap()[1]))
 
 			// can't really expect any produced messages
 			assert.Empty(t, produced)

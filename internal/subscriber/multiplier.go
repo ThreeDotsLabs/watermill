@@ -2,11 +2,11 @@ package subscriber
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/hashicorp/go-multierror"
-	"github.com/pkg/errors"
 )
 
 // Constructor is a function that creates a subscriber.
@@ -31,7 +31,7 @@ func (s *multiplier) Subscribe(ctx context.Context, topic string) (msgs <-chan *
 	defer func() {
 		if err != nil {
 			if closeErr := s.Close(); closeErr != nil {
-				err = multierror.Append(err, closeErr)
+				err = errors.Join(err, closeErr)
 			}
 		}
 	}()
@@ -44,14 +44,14 @@ func (s *multiplier) Subscribe(ctx context.Context, topic string) (msgs <-chan *
 	for i := 0; i < s.subscribersCount; i++ {
 		sub, err := s.subscriberConstructor()
 		if err != nil {
-			return nil, errors.Wrap(err, "cannot create subscriber")
+			return nil, fmt.Errorf("cannot create subscriber: %w", err)
 		}
 
 		s.subscribers = append(s.subscribers, sub)
 
 		msgs, err := sub.Subscribe(ctx, topic)
 		if err != nil {
-			return nil, errors.Wrap(err, "cannot subscribe")
+			return nil, fmt.Errorf("cannot subscribe: %w", err)
 		}
 
 		go func() {
@@ -75,7 +75,7 @@ func (s *multiplier) Close() error {
 
 	for _, sub := range s.subscribers {
 		if closeErr := sub.Close(); closeErr != nil {
-			err = multierror.Append(err, closeErr)
+			err = errors.Join(err, closeErr)
 		}
 	}
 

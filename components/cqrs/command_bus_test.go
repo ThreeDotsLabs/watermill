@@ -2,14 +2,14 @@ package cqrs_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 
-	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ThreeDotsLabs/watermill/components/cqrs"
+	"github.com/ThreeDotsLabs/watermill/message"
 )
 
 func TestCommandBusConfig_Validate(t *testing.T) {
@@ -28,14 +28,14 @@ func TestCommandBusConfig_Validate(t *testing.T) {
 			ModifyValidConfig: func(c *cqrs.CommandBusConfig) {
 				c.Marshaler = nil
 			},
-			ExpectedErr: errors.Errorf("missing Marshaler"),
+			ExpectedErr: errors.New("missing Marshaler"),
 		},
 		{
 			Name: "missing_GeneratePublishTopic",
 			ModifyValidConfig: func(c *cqrs.CommandBusConfig) {
 				c.GeneratePublishTopic = nil
 			},
-			ExpectedErr: errors.Errorf("missing GeneratePublishTopic"),
+			ExpectedErr: errors.New("missing GeneratePublishTopic"),
 		},
 	}
 	for i := range testCases {

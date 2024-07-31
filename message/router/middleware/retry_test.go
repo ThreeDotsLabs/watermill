@@ -2,16 +2,14 @@ package middleware_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
-	"github.com/ThreeDotsLabs/watermill"
-
 	"github.com/stretchr/testify/assert"
 
+	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/pkg/errors"
-
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
 )
 

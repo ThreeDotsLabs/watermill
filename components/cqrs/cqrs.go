@@ -1,10 +1,11 @@
 package cqrs
 
 import (
+	"errors"
+	"fmt"
+
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/hashicorp/go-multierror"
-	"github.com/pkg/errors"
 )
 
 // Deprecated: use CommandProcessor and EventProcessor instead.
@@ -57,35 +58,35 @@ func (c FacadeConfig) Validate() error {
 
 	if c.CommandsEnabled() {
 		if c.GenerateCommandsTopic == nil {
-			err = multierror.Append(err, errors.New("GenerateCommandsTopic is nil"))
+			err = errors.Join(err, errors.New("GenerateCommandsTopic is nil"))
 		}
 		if c.CommandsSubscriberConstructor == nil {
-			err = multierror.Append(err, errors.New("CommandsSubscriberConstructor is nil"))
+			err = errors.Join(err, errors.New("CommandsSubscriberConstructor is nil"))
 		}
 		if c.CommandsPublisher == nil {
-			err = multierror.Append(err, errors.New("CommandsPublisher is nil"))
+			err = errors.Join(err, errors.New("CommandsPublisher is nil"))
 		}
 	}
 	if c.EventsEnabled() {
 		if c.GenerateEventsTopic == nil {
-			err = multierror.Append(err, errors.New("GenerateEventsTopic is nil"))
+			err = errors.Join(err, errors.New("GenerateEventsTopic is nil"))
 		}
 		if c.EventsSubscriberConstructor == nil {
-			err = multierror.Append(err, errors.New("EventsSubscriberConstructor is nil"))
+			err = errors.Join(err, errors.New("EventsSubscriberConstructor is nil"))
 		}
 		if c.EventsPublisher == nil {
-			err = multierror.Append(err, errors.New("EventsPublisher is nil"))
+			err = errors.Join(err, errors.New("EventsPublisher is nil"))
 		}
 	}
 
 	if c.Router == nil {
-		err = multierror.Append(err, errors.New("Router is nil"))
+		err = errors.Join(err, errors.New("Router is nil"))
 	}
 	if c.Logger == nil {
-		err = multierror.Append(err, errors.New("Logger is nil"))
+		err = errors.Join(err, errors.New("Logger is nil"))
 	}
 	if c.CommandEventMarshaler == nil {
-		err = multierror.Append(err, errors.New("CommandEventMarshaler is nil"))
+		err = errors.Join(err, errors.New("CommandEventMarshaler is nil"))
 	}
 
 	return err
@@ -129,7 +130,7 @@ func (f Facade) CommandEventMarshaler() CommandEventMarshaler {
 // Deprecated: use CommandHandler and EventHandler instead.
 func NewFacade(config FacadeConfig) (*Facade, error) {
 	if err := config.Validate(); err != nil {
-		return nil, errors.Wrap(err, "invalid config")
+		return nil, fmt.Errorf("invalid config: %w", err)
 	}
 
 	c := &Facade{
@@ -146,7 +147,7 @@ func NewFacade(config FacadeConfig) (*Facade, error) {
 			config.CommandEventMarshaler,
 		)
 		if err != nil {
-			return nil, errors.Wrap(err, "cannot create command bus")
+			return nil, fmt.Errorf("cannot create command bus: %w", err)
 		}
 	} else {
 		config.Logger.Info("Empty GenerateCommandsTopic, command bus will be not created", nil)
@@ -155,7 +156,7 @@ func NewFacade(config FacadeConfig) (*Facade, error) {
 		var err error
 		c.eventBus, err = NewEventBus(config.EventsPublisher, config.GenerateEventsTopic, config.CommandEventMarshaler)
 		if err != nil {
-			return nil, errors.Wrap(err, "cannot create event bus")
+			return nil, fmt.Errorf("cannot create event bus: %w", err)
 		}
 	} else {
 		config.Logger.Info("Empty GenerateEventsTopic, event bus will be not created", nil)
@@ -170,7 +171,7 @@ func NewFacade(config FacadeConfig) (*Facade, error) {
 			config.Logger,
 		)
 		if err != nil {
-			return nil, errors.Wrap(err, "cannot create command processor")
+			return nil, fmt.Errorf("cannot create command processor: %w", err)
 		}
 
 		if err := commandProcessor.AddHandlersToRouter(config.Router); err != nil {
@@ -186,7 +187,7 @@ func NewFacade(config FacadeConfig) (*Facade, error) {
 			config.Logger,
 		)
 		if err != nil {
-			return nil, errors.Wrap(err, "cannot create event processor")
+			return nil, fmt.Errorf("cannot create event processor: %w", err)
 		}
 
 		if err := eventProcessor.AddHandlersToRouter(config.Router); err != nil {

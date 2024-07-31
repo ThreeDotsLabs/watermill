@@ -1,12 +1,14 @@
 package middleware_test
 
 import (
+	"errors"
+	"fmt"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
-	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestIgnoreErrors_Middleware(t *testing.T) {
@@ -31,7 +33,7 @@ func TestIgnoreErrors_Middleware(t *testing.T) {
 		{
 			Name:            "wrapped_error_should_ignore",
 			IgnoredErrors:   []error{errors.New("test")},
-			TestError:       errors.Wrap(errors.New("test"), "wrapped"),
+			TestError:       fmt.Errorf("wrapped: %w", errors.New("test")),
 			ShouldBeIgnored: true,
 		},
 	}

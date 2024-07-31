@@ -1,10 +1,8 @@
 package cqrs
 
 import (
-	stdErrors "errors"
+	"errors"
 	"fmt"
-
-	"github.com/pkg/errors"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
@@ -70,14 +68,14 @@ func (c CommandProcessorConfig) Validate() error {
 	var err error
 
 	if c.Marshaler == nil {
-		err = stdErrors.Join(err, errors.New("missing Marshaler"))
+		err = errors.Join(err, errors.New("missing Marshaler"))
 	}
 
 	if c.GenerateSubscribeTopic == nil {
-		err = stdErrors.Join(err, errors.New("missing GenerateSubscribeTopic"))
+		err = errors.Join(err, errors.New("missing GenerateSubscribeTopic"))
 	}
 	if c.SubscriberConstructor == nil {
-		err = stdErrors.Join(err, errors.New("missing SubscriberConstructor"))
+		err = errors.Join(err, errors.New("missing SubscriberConstructor"))
 	}
 
 	return err
@@ -256,7 +254,7 @@ func (p CommandProcessor) addHandlerToRouter(r *message.Router, handler CommandH
 		CommandHandler: handler,
 	})
 	if err != nil {
-		return errors.Wrapf(err, "cannot generate topic for command handler %s", handlerName)
+		return fmt.Errorf("cannot generate topic for command handler %s: %w", handlerName, err)
 	}
 
 	logger := p.config.Logger.With(watermill.LogFields{
@@ -276,7 +274,7 @@ func (p CommandProcessor) addHandlerToRouter(r *message.Router, handler CommandH
 		Handler:     handler,
 	})
 	if err != nil {
-		return errors.Wrap(err, "cannot create subscriber for command processor")
+		return fmt.Errorf("cannot create subscriber for command processor: %w", err)
 	}
 
 	r.AddNoPublisherHandler(
@@ -357,7 +355,7 @@ func (p CommandProcessor) routerHandlerFunc(handler CommandHandler, logger water
 func (p CommandProcessor) validateCommand(cmd interface{}) error {
 	// CommandHandler's NewCommand must return a pointer, because it is used to unmarshal
 	if err := isPointer(cmd); err != nil {
-		return errors.Wrap(err, "command must be a non-nil pointer")
+		return fmt.Errorf("command must be a non-nil pointer: %w", err)
 	}
 
 	return nil

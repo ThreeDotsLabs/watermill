@@ -1,12 +1,12 @@
 package publisher
 
 import (
+	"errors"
+	"fmt"
 	"time"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
-
-	"github.com/pkg/errors"
 )
 
 var (
@@ -56,7 +56,7 @@ func NewRetryPublisher(pub message.Publisher, config RetryPublisherConfig) (*Ret
 	config.setDefaults()
 
 	if err := config.validate(); err != nil {
-		return nil, errors.Wrap(err, "invalid RetryPublisher config")
+		return nil, fmt.Errorf("invalid RetryPublisher config: %w", err)
 	}
 
 	return &RetryPublisher{
