@@ -6,7 +6,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"io"
 	stdHttp "net/http"
 	_ "net/http/pprof"
 
@@ -46,7 +46,7 @@ func main() {
 		*httpAddr,
 		http.SubscriberConfig{
 			UnmarshalMessageFunc: func(topic string, request *stdHttp.Request) (*message.Message, error) {
-				b, err := ioutil.ReadAll(request.Body)
+				b, err := io.ReadAll(request.Body)
 				if err != nil {
 					return nil, fmt.Errorf("cannot read body: %w", err)
 				}
