@@ -2,6 +2,7 @@ package middleware_test
 
 import (
 	"errors"
+
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
 )
