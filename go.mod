@@ -6,7 +6,6 @@ require (
 	github.com/cenkalti/backoff/v3 v3.2.2
 	github.com/go-chi/chi/v5 v5.0.8
 	github.com/gogo/protobuf v1.3.2
-	github.com/golang/protobuf v1.5.2
 	github.com/google/uuid v1.3.1
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/lithammer/shortuuid/v3 v3.0.7
@@ -15,13 +14,14 @@ require (
 	github.com/prometheus/client_golang v1.14.0
 	github.com/sony/gobreaker v0.5.0
 	github.com/stretchr/testify v1.8.4
-	google.golang.org/protobuf v1.28.1
+	google.golang.org/protobuf v1.34.2
 )
 
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
