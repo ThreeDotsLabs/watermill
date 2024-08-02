@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
-	"github.com/pkg/errors"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill-amqp/v2/pkg/amqp"
@@ -110,7 +109,7 @@ func (o OrderBeerHandler) Handle(ctx context.Context, c interface{}) error {
 
 	if rand.Int63n(10) == 0 {
 		// sometimes there is no beer left, command will be retried
-		return errors.Errorf("no beer left for room %s, please try later", cmd.RoomId)
+		return fmt.Errorf("no beer left for room %s, please try later", cmd.RoomId)
 	}
 
 	if err := o.eventBus.Publish(ctx, &BeerOrdered{

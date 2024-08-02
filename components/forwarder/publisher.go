@@ -1,8 +1,10 @@
 package forwarder
 
 import (
+	"errors"
+	"fmt"
+
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/pkg/errors"
 )
 
 type PublisherConfig struct {
@@ -46,14 +48,14 @@ func (p *Publisher) Publish(topic string, messages ...*message.Message) error {
 	for _, msg := range messages {
 		envelopedMsg, err := wrapMessageInEnvelope(topic, msg)
 		if err != nil {
-			return errors.Wrapf(err, "cannot wrap message, target topic: '%s', uuid: '%s'", topic, msg.UUID)
+			return fmt.Errorf("cannot wrap message, target topic: '%s', uuid: '%s': %w", topic, msg.UUID, err)
 		}
 
 		envelopedMessages = append(envelopedMessages, envelopedMsg)
 	}
 
 	if err := p.wrappedPublisher.Publish(p.config.ForwarderTopic, envelopedMessages...); err != nil {
-		return errors.Wrapf(err, "cannot publish messages to forwarder topic: '%s'", p.config.ForwarderTopic)
+		return fmt.Errorf("cannot publish messages to forwarder topic: '%s': %w", p.config.ForwarderTopic, err)
 	}
 
 	return nil

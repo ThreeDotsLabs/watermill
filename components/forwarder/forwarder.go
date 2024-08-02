@@ -2,11 +2,12 @@ package forwarder
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"time"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/pkg/errors"
 )
 
 const defaultForwarderTopic = "forwarder_topic"
@@ -69,7 +70,7 @@ func NewForwarder(subscriberIn message.Subscriber, publisherOut message.Publishe
 
 	routerConfig := message.RouterConfig{CloseTimeout: config.CloseTimeout}
 	if err := routerConfig.Validate(); err != nil {
-		return nil, errors.Wrap(err, "invalid router config")
+		return nil, fmt.Errorf("invalid router config: %w", err)
 	}
 
 	var router *message.Router
@@ -79,7 +80,7 @@ func NewForwarder(subscriberIn message.Subscriber, publisherOut message.Publishe
 		var err error
 		router, err = message.NewRouter(routerConfig, logger)
 		if err != nil {
-			return nil, errors.Wrap(err, "cannot create a router")
+			return nil, fmt.Errorf("cannot create a router: %w", err)
 		}
 	}
 
@@ -129,11 +130,11 @@ func (f *Forwarder) forwardMessage(msg *message.Message) error {
 		if f.config.AckWhenCannotUnwrap {
 			return nil
 		}
-		return errors.Wrap(err, "cannot unwrap message from an envelope")
+		return fmt.Errorf("cannot unwrap message from an envelope: %w", err)
 	}
 
 	if err := f.publisher.Publish(destTopic, unwrappedMsg); err != nil {
-		return errors.Wrap(err, "cannot publish a message")
+		return fmt.Errorf("cannot publish a message: %w", err)
 	}
 
 	return nil

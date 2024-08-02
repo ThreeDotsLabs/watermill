@@ -483,9 +483,7 @@ NackLoop:
 	for i := 0; i < nacksCount; i++ {
 		select {
 		case msg, closed := <-messages:
-			if !closed {
-				t.Fatal("messages channel closed before all received")
-			}
+			require.True(t, closed, "messages channel closed before all received")
 
 			log.Println("sending err for ", msg.UUID)
 			msg.Nack()
@@ -1002,7 +1000,6 @@ ClosedLoop:
 			msg.Nack()
 		case <-timeout:
 			t.Fatal("messages channel is not closed after ", defaultTimeout)
-			t.FailNow()
 		}
 		time.Sleep(time.Millisecond * 100)
 	}

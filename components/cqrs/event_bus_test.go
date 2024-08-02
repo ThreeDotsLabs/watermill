@@ -2,13 +2,14 @@ package cqrs_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 
-	"github.com/ThreeDotsLabs/watermill/components/cqrs"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/ThreeDotsLabs/watermill/components/cqrs"
 )
 
 func TestEventBusConfig_Validate(t *testing.T) {

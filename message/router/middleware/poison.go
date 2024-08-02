@@ -1,9 +1,10 @@
 package middleware
 
 import (
+	"errors"
+	"fmt"
+
 	"github.com/ThreeDotsLabs/watermill/message"
-	multierror "github.com/hashicorp/go-multierror"
-	"github.com/pkg/errors"
 )
 
 // ErrInvalidPoisonQueueTopic occurs when the topic supplied to the PoisonQueue constructor is invalid.
@@ -85,8 +86,8 @@ func (pq poisonQueue) Middleware(h message.HandlerFunc) message.HandlerFunc {
 				// handler didn't cope with the message; publish it on the poison topic and carry on as usual
 				publishErr := pq.publishPoisonMessage(msg, err)
 				if publishErr != nil {
-					publishErr = errors.Wrap(publishErr, "cannot publish message to poison queue")
-					err = multierror.Append(err, publishErr)
+					publishErr = fmt.Errorf("cannot publish message to poison queue: %w", publishErr)
+					err = errors.Join(err, publishErr)
 					return
 				}
 

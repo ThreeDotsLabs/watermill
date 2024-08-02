@@ -1,17 +1,16 @@
 package publisher_test
 
 import (
+	"errors"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/internal/publisher"
-	"github.com/stretchr/testify/require"
-
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/pkg/errors"
 )
 
 var errCouldNotPublish = errors.New("could not publish, try again")
@@ -105,7 +104,7 @@ func TestRetryPublisher_Publish_too_many_retries(t *testing.T) {
 	require.True(t, ok, "expected the ErrCouldNotPublish composite error type")
 
 	assert.Equal(t, 1, cnpErr.Len(), "attempted to publish one message, expecting one error")
-	assert.Equal(t, errCouldNotPublish, errors.Cause(cnpErr.Reasons()[msg.UUID]))
+	assert.ErrorIs(t, cnpErr.Reasons()[msg.UUID], errCouldNotPublish)
 
 	assert.NotContains(t, pub.howManyPublished, msg.UUID, "expected msg to not be published")
 }
@@ -193,5 +192,5 @@ func TestRetryPublisher_Close_failed(t *testing.T) {
 
 	// then
 	require.Error(t, err)
-	assert.Equal(t, ErrCouldNotClose, errors.Cause(err))
+	assert.ErrorIs(t, err, ErrCouldNotClose)
 }

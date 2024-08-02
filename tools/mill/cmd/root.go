@@ -1,11 +1,11 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
 	homedir "github.com/mitchellh/go-homedir"
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -43,16 +43,16 @@ Use console-based producer or consumer for various pub/sub providers.`,
 			delete(settings, "writeconfig")
 			b, err := yaml.Marshal(settings)
 			if err != nil {
-				return errors.Wrap(err, "could not marshal config to yaml")
+				return fmt.Errorf("could not marshal config to yaml: %w", err)
 			}
 
 			f, err := os.Create(writeConfig)
 			if err != nil {
-				return errors.Wrap(err, "could not create file for write")
+				return fmt.Errorf("could not create file for write: %w", err)
 			}
 			_, err = fmt.Fprintf(f, "%s", b)
 			if err != nil {
-				return errors.Wrap(err, "could not write to file")
+				return fmt.Errorf("could not write to file: %w", err)
 			}
 		}
 

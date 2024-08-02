@@ -1,9 +1,9 @@
 package metrics
 
 import (
+	"fmt"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/ThreeDotsLabs/watermill/message"
@@ -75,7 +75,7 @@ func (b PrometheusMetricsBuilder) NewRouterMiddleware() HandlerPrometheusMetrics
 		handlerLabelKeys,
 	))
 	if err != nil {
-		panic(errors.Wrap(err, "could not register handler execution time metric"))
+		panic(fmt.Errorf("could not register handler execution time metric: %w", err))
 	}
 
 	return m

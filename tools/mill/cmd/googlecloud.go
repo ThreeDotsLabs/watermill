@@ -8,14 +8,14 @@ import (
 	"time"
 
 	"cloud.google.com/go/pubsub"
-	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill-googlecloud/pkg/googlecloud"
-	"github.com/ThreeDotsLabs/watermill/tools/mill/cmd/internal"
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"google.golang.org/api/iterator"
 	"gopkg.in/yaml.v2"
+
+	"github.com/ThreeDotsLabs/watermill"
+	"github.com/ThreeDotsLabs/watermill-googlecloud/pkg/googlecloud"
+	"github.com/ThreeDotsLabs/watermill/tools/mill/cmd/internal"
 )
 
 var googleCloudTempSubscriptionID string
@@ -216,18 +216,18 @@ func addSubscription(
 
 	client, err := pubsub.NewClient(ctx, projectID())
 	if err != nil {
-		return errors.Wrap(err, "could not create pubsub client")
+		return fmt.Errorf("could not create pubsub client: %w", err)
 	}
 
 	t := client.Topic(topic)
 	exists, err := t.Exists(ctx)
 	if err != nil {
-		return errors.Wrap(err, "could not check if topic exists")
+		return fmt.Errorf("could not check if topic exists: %w", err)
 	}
 	if !exists {
 		t, err = client.CreateTopic(ctx, t.ID())
 		if err != nil {
-			return errors.Wrap(err, "could not create topic")
+			return fmt.Errorf("could not create topic: %w", err)
 		}
 	}
 
@@ -239,7 +239,7 @@ func addSubscription(
 		Labels:              labels,
 	})
 	if err != nil {
-		return errors.Wrap(err, "could not create subscription")
+		return fmt.Errorf("could not create subscription: %w", err)
 	}
 
 	return nil
@@ -262,13 +262,13 @@ func removeSubscription(id string) error {
 
 	client, err := pubsub.NewClient(ctx, projectID())
 	if err != nil {
-		return errors.Wrap(err, "could not create pubsub client")
+		return fmt.Errorf("could not create pubsub client: %w", err)
 	}
 
 	sub := client.Subscription(id)
 	exists, err := sub.Exists(ctx)
 	if err != nil {
-		return errors.Wrap(err, "could not check if sub exists")
+		return fmt.Errorf("could not check if sub exists: %w", err)
 	}
 
 	if !exists {
@@ -284,7 +284,7 @@ func listSubscriptions(topic string, adapter watermill.LoggerAdapter, verbose bo
 
 	client, err := pubsub.NewClient(ctx, projectID())
 	if err != nil {
-		return errors.Wrap(err, "could not create pubsub client")
+		return fmt.Errorf("could not create pubsub client: %w", err)
 	}
 
 	if topic != "" {
@@ -303,13 +303,13 @@ func listSubscriptions(topic string, adapter watermill.LoggerAdapter, verbose bo
 			return nil
 		}
 		if err != nil {
-			return errors.Wrap(err, "could not retrieve next subscription")
+			return fmt.Errorf("could not retrieve next subscription: %w", err)
 		}
 
 		noTopics = false
 		err = listSubscriptionsForTopic(ctx, client, topic, logger, verbose)
 		if err != nil {
-			return errors.Wrap(err, "error listing subscriptions for topic")
+			return fmt.Errorf("error listing subscriptions for topic: %w", err)
 		}
 	}
 
@@ -320,7 +320,7 @@ func listSubscriptionsForTopic(ctx context.Context, client *pubsub.Client, topic
 	noSubs := true
 	exists, err := topic.Exists(ctx)
 	if err != nil {
-		return errors.Wrap(err, "could not check if topic exists")
+		return fmt.Errorf("could not check if topic exists: %w", err)
 	}
 	if !exists {
 		logger.Info("Topic does not exist", watermill.LogFields{"topic": topic.String()})
@@ -337,7 +337,7 @@ func listSubscriptionsForTopic(ctx context.Context, client *pubsub.Client, topic
 			return nil
 		}
 		if err != nil {
-			return errors.Wrap(err, "could not retrieve next subscription")
+			return fmt.Errorf("could not retrieve next subscription: %w", err)
 		}
 
 		if noSubs {
@@ -347,12 +347,12 @@ func listSubscriptionsForTopic(ctx context.Context, client *pubsub.Client, topic
 		name := sub.String()
 		config, err := sub.Config(ctx)
 		if err != nil {
-			return errors.Wrapf(err, "could not retrieve subscription config for subscription '%s'", name)
+			return fmt.Errorf("could not retrieve subscription config for subscription '%s': %w", name, err)
 		}
 
 		err = printSubscriptionInfo(name, config)
 		if err != nil {
-			return errors.Wrapf(err, "error printing subscription '%s'", name)
+			return fmt.Errorf("error printing subscription '%s': %w", name, err)
 		}
 	}
 }

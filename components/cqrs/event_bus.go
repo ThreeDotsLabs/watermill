@@ -2,11 +2,11 @@ package cqrs
 
 import (
 	"context"
-	stdErrors "errors"
+	"errors"
+	"fmt"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/pkg/errors"
 )
 
 type EventBusConfig struct {
@@ -38,11 +38,11 @@ func (c EventBusConfig) Validate() error {
 	var err error
 
 	if c.Marshaler == nil {
-		err = stdErrors.Join(err, errors.New("missing Marshaler"))
+		err = errors.Join(err, errors.New("missing Marshaler"))
 	}
 
 	if c.GeneratePublishTopic == nil {
-		err = stdErrors.Join(err, errors.New("missing GenerateHandlerTopic"))
+		err = errors.Join(err, errors.New("missing GenerateHandlerTopic"))
 	}
 
 	return err
@@ -107,7 +107,7 @@ func NewEventBusWithConfig(publisher message.Publisher, config EventBusConfig) (
 
 	config.setDefaults()
 	if err := config.Validate(); err != nil {
-		return nil, errors.Wrap(err, "invalid config")
+		return nil, fmt.Errorf("invalid config: %w", err)
 	}
 
 	return &EventBus{publisher, config}, nil
@@ -126,7 +126,7 @@ func (c EventBus) Publish(ctx context.Context, event any) error {
 		Event:     event,
 	})
 	if err != nil {
-		return errors.Wrap(err, "cannot generate topic")
+		return fmt.Errorf("cannot generate topic: %w", err)
 	}
 
 	msg.SetContext(ctx)
@@ -138,7 +138,7 @@ func (c EventBus) Publish(ctx context.Context, event any) error {
 			Message:   msg,
 		})
 		if err != nil {
-			return errors.Wrap(err, "cannot execute OnPublish")
+			return fmt.Errorf("cannot execute OnPublish: %w", err)
 		}
 	}
 

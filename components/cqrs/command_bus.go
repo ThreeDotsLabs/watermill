@@ -2,10 +2,10 @@ package cqrs
 
 import (
 	"context"
-	stdErrors "errors"
+	"errors"
+	"fmt"
 
 	"github.com/ThreeDotsLabs/watermill"
-	"github.com/pkg/errors"
 
 	"github.com/ThreeDotsLabs/watermill/message"
 )
@@ -39,11 +39,11 @@ func (c CommandBusConfig) Validate() error {
 	var err error
 
 	if c.Marshaler == nil {
-		err = stdErrors.Join(err, errors.New("missing Marshaler"))
+		err = errors.Join(err, errors.New("missing Marshaler"))
 	}
 
 	if c.GeneratePublishTopic == nil {
-		err = stdErrors.Join(err, errors.New("missing GeneratePublishTopic"))
+		err = errors.Join(err, errors.New("missing GeneratePublishTopic"))
 	}
 
 	return err
@@ -81,7 +81,7 @@ func NewCommandBusWithConfig(publisher message.Publisher, config CommandBusConfi
 
 	config.setDefaults()
 	if err := config.Validate(); err != nil {
-		return nil, errors.Wrap(err, "invalid config")
+		return nil, fmt.Errorf("invalid config: %w", err)
 	}
 
 	return &CommandBus{publisher, config}, nil
@@ -125,7 +125,7 @@ func (c CommandBus) SendWithModifiedMessage(ctx context.Context, cmd any, modify
 
 	if modify != nil {
 		if err := modify(msg); err != nil {
-			return errors.Wrap(err, "cannot modify message")
+			return fmt.Errorf("cannot modify message: %w", err)
 		}
 	}
 
@@ -148,7 +148,7 @@ func (c CommandBus) newMessage(ctx context.Context, command any) (*message.Messa
 		Command:     command,
 	})
 	if err != nil {
-		return nil, "", errors.Wrap(err, "cannot generate topic name")
+		return nil, "", fmt.Errorf("cannot generate topic name: %w", err)
 	}
 
 	msg.SetContext(ctx)
@@ -160,7 +160,7 @@ func (c CommandBus) newMessage(ctx context.Context, command any) (*message.Messa
 			Message:     msg,
 		})
 		if err != nil {
-			return nil, "", errors.Wrap(err, "cannot execute OnSend")
+			return nil, "", fmt.Errorf("cannot execute OnSend: %w", err)
 		}
 	}
 

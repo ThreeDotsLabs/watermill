@@ -6,10 +6,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
 	"github.com/ThreeDotsLabs/watermill/pubsub/gochannel"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestDeduplicatorMiddleware(t *testing.T) {
@@ -153,9 +155,7 @@ func TestMapExpiringKeyRepositoryCleanup(t *testing.T) {
 	t.Parallel()
 	wait := time.Millisecond * 5
 	kr, err := middleware.NewMapExpiringKeyRepository(wait)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	count := 0
 	d := &middleware.Deduplicator{

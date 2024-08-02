@@ -1,12 +1,11 @@
 package cqrs
 
 import (
-	stdErrors "errors"
+	"errors"
 	"fmt"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/pkg/errors"
 )
 
 type EventGroupProcessorConfig struct {
@@ -61,14 +60,14 @@ func (c EventGroupProcessorConfig) Validate() error {
 	var err error
 
 	if c.Marshaler == nil {
-		err = stdErrors.Join(err, errors.New("missing Marshaler"))
+		err = errors.Join(err, errors.New("missing Marshaler"))
 	}
 
 	if c.GenerateSubscribeTopic == nil {
-		err = stdErrors.Join(err, errors.New("missing GenerateHandlerGroupTopic"))
+		err = errors.Join(err, errors.New("missing GenerateHandlerGroupTopic"))
 	}
 	if c.SubscriberConstructor == nil {
-		err = stdErrors.Join(err, errors.New("missing SubscriberConstructor"))
+		err = errors.Join(err, errors.New("missing SubscriberConstructor"))
 	}
 
 	return err
@@ -116,7 +115,7 @@ func NewEventGroupProcessorWithConfig(router *message.Router, config EventGroupP
 	config.setDefaults()
 
 	if err := config.Validate(); err != nil {
-		return nil, errors.Wrap(err, "invalid config EventProcessor")
+		return nil, fmt.Errorf("invalid config EventProcessor: %w", err)
 	}
 	if router == nil {
 		return nil, errors.New("missing router")
@@ -156,12 +155,12 @@ func (p *EventGroupProcessor) AddHandlersGroup(groupName string, handlers ...Gro
 func (p EventGroupProcessor) addHandlerToRouter(r *message.Router, groupName string, handlersGroup []GroupEventHandler) error {
 	for i, handler := range handlersGroup {
 		if err := validateEvent(handler.NewEvent()); err != nil {
-			return errors.Wrapf(
-				err,
-				"invalid event for handler %T (num %d) in group %s",
+			return fmt.Errorf(
+				"invalid event for handler %T (num %d) in group %s: %w",
 				handler,
 				i,
 				groupName,
+				err,
 			)
 		}
 	}
@@ -171,7 +170,7 @@ func (p EventGroupProcessor) addHandlerToRouter(r *message.Router, groupName str
 		EventGroupHandlers: handlersGroup,
 	})
 	if err != nil {
-		return errors.Wrapf(err, "cannot generate topic name for handler group %s", groupName)
+		return fmt.Errorf("cannot generate topic name for handler group %s: %w", groupName, err)
 	}
 
 	logger := p.config.Logger.With(watermill.LogFields{
@@ -189,7 +188,7 @@ func (p EventGroupProcessor) addHandlerToRouter(r *message.Router, groupName str
 		EventGroupHandlers: handlersGroup,
 	})
 	if err != nil {
-		return errors.Wrap(err, "cannot create subscriber for event processor")
+		return fmt.Errorf("cannot create subscriber for event processor: %w", err)
 	}
 
 	if err := addHandlerToRouter(p.config.Logger, r, groupName, topicName, handlerFunc, subscriber); err != nil {

@@ -1,10 +1,8 @@
 package cqrs
 
 import (
-	stdErrors "errors"
+	"errors"
 	"fmt"
-
-	"github.com/pkg/errors"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
@@ -68,14 +66,14 @@ func (c EventProcessorConfig) Validate() error {
 	var err error
 
 	if c.Marshaler == nil {
-		err = stdErrors.Join(err, errors.New("missing Marshaler"))
+		err = errors.Join(err, errors.New("missing Marshaler"))
 	}
 
 	if c.GenerateSubscribeTopic == nil {
-		err = stdErrors.Join(err, errors.New("missing GenerateHandlerTopic"))
+		err = errors.Join(err, errors.New("missing GenerateHandlerTopic"))
 	}
 	if c.SubscriberConstructor == nil {
-		err = stdErrors.Join(err, errors.New("missing SubscriberConstructor"))
+		err = errors.Join(err, errors.New("missing SubscriberConstructor"))
 	}
 
 	return err
@@ -119,7 +117,7 @@ func NewEventProcessorWithConfig(router *message.Router, config EventProcessorCo
 	config.setDefaults()
 
 	if err := config.Validate(); err != nil {
-		return nil, errors.Wrap(err, "invalid config EventProcessor")
+		return nil, fmt.Errorf("invalid config EventProcessor: %w", err)
 	}
 	if router == nil && !config.disableRouterAutoAddHandlers {
 		return nil, errors.New("missing router")
@@ -232,7 +230,7 @@ func (p EventProcessor) AddHandlersToRouter(r *message.Router) error {
 
 func (p EventProcessor) addHandlerToRouter(r *message.Router, handler EventHandler) error {
 	if err := validateEvent(handler.NewEvent()); err != nil {
-		return errors.Wrapf(err, "invalid event for handler %s", handler.HandlerName())
+		return fmt.Errorf("invalid event for handler %s: %w", handler.HandlerName(), err)
 	}
 
 	handlerName := handler.HandlerName()
@@ -243,7 +241,7 @@ func (p EventProcessor) addHandlerToRouter(r *message.Router, handler EventHandl
 		EventHandler: handler,
 	})
 	if err != nil {
-		return errors.Wrapf(err, "cannot generate topic name for handler %s", handlerName)
+		return fmt.Errorf("cannot generate topic name for handler %s: %w", handlerName, err)
 	}
 
 	logger := p.config.Logger.With(watermill.LogFields{
@@ -265,7 +263,7 @@ func (p EventProcessor) addHandlerToRouter(r *message.Router, handler EventHandl
 		EventHandler: handler,
 	})
 	if err != nil {
-		return errors.Wrap(err, "cannot create subscriber for event processor")
+		return fmt.Errorf("cannot create subscriber for event processor: %w", err)
 	}
 
 	if err := addHandlerToRouter(p.config.Logger, r, handlerName, topicName, handlerFunc, subscriber); err != nil {
@@ -359,7 +357,7 @@ func (p EventProcessor) routerHandlerFunc(handler EventHandler, logger watermill
 func validateEvent(event interface{}) error {
 	// EventHandler's NewEvent must return a pointer, because it is used to unmarshal
 	if err := isPointer(event); err != nil {
-		return errors.Wrap(err, "command must be a non-nil pointer")
+		return fmt.Errorf("command must be a non-nil pointer: %w", err)
 	}
 
 	return nil

@@ -2,12 +2,12 @@ package cqrs_test
 
 import (
 	"context"
+	"errors"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/ThreeDotsLabs/watermill"
-	"github.com/pkg/errors"
 
 	"github.com/ThreeDotsLabs/watermill/components/cqrs"
 	"github.com/ThreeDotsLabs/watermill/message"
@@ -32,21 +32,21 @@ func TestCommandProcessorConfig_Validate(t *testing.T) {
 			ModifyValidConfig: func(c *cqrs.CommandProcessorConfig) {
 				c.Marshaler = nil
 			},
-			ExpectedErr: errors.Errorf("missing Marshaler"),
+			ExpectedErr: errors.New("missing Marshaler"),
 		},
 		{
 			Name: "missing_SubscriberConstructor",
 			ModifyValidConfig: func(c *cqrs.CommandProcessorConfig) {
 				c.SubscriberConstructor = nil
 			},
-			ExpectedErr: errors.Errorf("missing SubscriberConstructor"),
+			ExpectedErr: errors.New("missing SubscriberConstructor"),
 		},
 		{
 			Name: "missing_GenerateHandlerSubscribeTopic",
 			ModifyValidConfig: func(c *cqrs.CommandProcessorConfig) {
 				c.GenerateSubscribeTopic = nil
 			},
-			ExpectedErr: errors.Errorf("missing GenerateSubscribeTopic"),
+			ExpectedErr: errors.New("missing GenerateSubscribeTopic"),
 		},
 	}
 	for i := range testCases {
@@ -143,7 +143,7 @@ func TestCommandProcessor_non_pointer_command(t *testing.T) {
 	require.NoError(t, err)
 
 	err = commandProcessor.AddHandlers(handler)
-	assert.IsType(t, cqrs.NonPointerError{}, errors.Cause(err))
+	assert.ErrorAs(t, err, &cqrs.NonPointerError{})
 }
 
 // TestCommandProcessor_multiple_same_command_handlers checks, that we don't register multiple handlers for the same command.

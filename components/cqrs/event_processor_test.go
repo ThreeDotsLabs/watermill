@@ -2,12 +2,11 @@ package cqrs_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync/atomic"
 	"testing"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"github.com/ThreeDotsLabs/watermill/components/cqrs"
 	"github.com/ThreeDotsLabs/watermill/message"
@@ -143,7 +142,7 @@ func TestEventProcessor_non_pointer_event(t *testing.T) {
 	require.NoError(t, err)
 
 	err = eventProcessor.AddHandlers(handler)
-	assert.IsType(t, cqrs.NonPointerError{}, errors.Cause(err))
+	assert.ErrorAs(t, err, &cqrs.NonPointerError{})
 }
 
 type duplicateTestEventHandler1 struct{}

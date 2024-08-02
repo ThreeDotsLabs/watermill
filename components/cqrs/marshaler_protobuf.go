@@ -7,7 +7,6 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 
 	"github.com/gogo/protobuf/proto"
-	"github.com/pkg/errors"
 )
 
 // ProtobufMarshaler is the default Protocol Buffers marshaler.
@@ -34,7 +33,7 @@ func (e NoProtoMessageError) Error() string {
 func (m ProtobufMarshaler) Marshal(v interface{}) (*message.Message, error) {
 	protoMsg, ok := v.(proto.Message)
 	if !ok {
-		return nil, errors.WithStack(NoProtoMessageError{v})
+		return nil, NoProtoMessageError{v}
 	}
 
 	b, err := proto.Marshal(protoMsg)

@@ -2,10 +2,10 @@ package requestreply
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/pkg/errors"
 )
 
 type CommandBus interface {
@@ -48,13 +48,13 @@ func SendWithReply[Result any](
 ) (Reply[Result], error) {
 	replyCh, cancel, err := SendWithReplies[Result](ctx, c, backend, cmd)
 	if err != nil {
-		return Reply[Result]{}, errors.Wrap(err, "SendWithReplies failed")
+		return Reply[Result]{}, fmt.Errorf("SendWithReplies failed: %w", err)
 	}
 	defer cancel()
 
 	select {
 	case <-ctx.Done():
-		return Reply[Result]{}, errors.Wrap(ctx.Err(), "context closed")
+		return Reply[Result]{}, fmt.Errorf("context closed: %w", ctx.Err())
 	case reply := <-replyCh:
 		return reply, nil
 	}
@@ -114,14 +114,14 @@ func SendWithReplies[Result any](
 		OperationID: OperationID(operationID),
 	})
 	if err != nil {
-		return nil, cancel, errors.Wrap(err, "cannot listen for reply")
+		return nil, cancel, fmt.Errorf("cannot listen for reply: %w", err)
 	}
 
 	if err := c.SendWithModifiedMessage(ctx, cmd, func(m *message.Message) error {
 		m.Metadata.Set(OperationIDMetadataKey, operationID)
 		return nil
 	}); err != nil {
-		return nil, cancel, errors.Wrap(err, "cannot send command")
+		return nil, cancel, fmt.Errorf("cannot send command: %w", err)
 	}
 
 	return replyChan, cancel, nil

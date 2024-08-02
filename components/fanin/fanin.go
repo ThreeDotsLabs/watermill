@@ -2,10 +2,9 @@ package fanin
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
@@ -84,12 +83,12 @@ func NewFanIn(
 
 	routerConfig := message.RouterConfig{CloseTimeout: config.CloseTimeout}
 	if err := routerConfig.Validate(); err != nil {
-		return nil, errors.Wrap(err, "invalid router config")
+		return nil, fmt.Errorf("invalid router config: %w", err)
 	}
 
 	router, err := message.NewRouter(routerConfig, logger)
 	if err != nil {
-		return nil, errors.Wrap(err, "cannot create a router")
+		return nil, fmt.Errorf("cannot create a router: %w", err)
 	}
 
 	for _, topic := range config.SourceTopics {

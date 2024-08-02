@@ -2,12 +2,11 @@ package message
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"runtime/debug"
 	"sync"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/internal"
@@ -88,7 +87,7 @@ func (c RouterConfig) Validate() error {
 func NewRouter(config RouterConfig, logger watermill.LoggerAdapter) (*Router, error) {
 	config.setDefaults()
 	if err := config.Validate(); err != nil {
-		return nil, errors.Wrap(err, "invalid config")
+		return nil, fmt.Errorf("invalid config: %w", err)
 	}
 
 	if logger == nil {
@@ -359,7 +358,7 @@ func (r *Router) Run(ctx context.Context) (err error) {
 	r.logger.Debug("Loading plugins", nil)
 	for _, plugin := range r.plugins {
 		if err := plugin(r); err != nil {
-			return errors.Wrapf(err, "cannot initialize plugin %v", plugin)
+			return fmt.Errorf("cannot initialize plugin %v: %w", plugin, err)
 		}
 	}
 
@@ -406,10 +405,10 @@ func (r *Router) RunHandlers(ctx context.Context) error {
 		}
 
 		if err := r.decorateHandlerPublisher(h); err != nil {
-			return errors.Wrapf(err, "could not decorate publisher of handler %s", name)
+			return fmt.Errorf("could not decorate publisher of handler %s: %w", name, err)
 		}
 		if err := r.decorateHandlerSubscriber(h); err != nil {
-			return errors.Wrapf(err, "could not decorate subscriber of handler %s", name)
+			return fmt.Errorf("could not decorate subscriber of handler %s: %w", name, err)
 		}
 
 		r.logger.Debug("Subscribing to topic", watermill.LogFields{
@@ -422,7 +421,7 @@ func (r *Router) RunHandlers(ctx context.Context) error {
 		messages, err := h.subscriber.Subscribe(ctx, h.subscribeTopic)
 		if err != nil {
 			cancel()
-			return errors.Wrapf(err, "cannot subscribe topic %s", h.subscribeTopic)
+			return fmt.Errorf("cannot subscribe topic %s: %w", h.subscribeTopic, err)
 		}
 
 		h.messagesCh = messages
@@ -681,7 +680,7 @@ func (r *Router) decorateHandlerPublisher(h *handler) error {
 		decorator := r.publisherDecorators[i]
 		pub, err = decorator(pub)
 		if err != nil {
-			return errors.Wrap(err, "could not apply publisher decorator")
+			return fmt.Errorf("could not apply publisher decorator: %w", err)
 		}
 	}
 	r.handlers[h.name].publisher = pub
@@ -703,13 +702,13 @@ func (r *Router) decorateHandlerSubscriber(h *handler) error {
 	}
 	sub, err = MessageTransformSubscriberDecorator(messageTransform)(sub)
 	if err != nil {
-		return errors.Wrapf(err, "cannot wrap subscriber with context decorator")
+		return fmt.Errorf("cannot wrap subscriber with context decorator: %w", err)
 	}
 
 	for _, decorator := range r.subscriberDecorators {
 		sub, err = decorator(sub)
 		if err != nil {
-			return errors.Wrap(err, "could not apply subscriber decorator")
+			return fmt.Errorf("could not apply subscriber decorator: %w", err)
 		}
 	}
 	r.handlers[h.name].subscriber = sub
@@ -763,7 +762,7 @@ func (h *handler) handleMessage(msg *Message, handler HandlerFunc) {
 		if recovered := recover(); recovered != nil {
 			h.logger.Error(
 				"Panic recovered in handler. Stack: "+string(debug.Stack()),
-				errors.Errorf("%s", recovered),
+				fmt.Errorf("%s", recovered),
 				msgFields,
 			)
 			msg.Nack()

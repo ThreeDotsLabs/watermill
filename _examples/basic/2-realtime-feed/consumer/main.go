@@ -7,8 +7,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/pkg/errors"
-
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill-kafka/v2/pkg/kafka"
 	"github.com/ThreeDotsLabs/watermill/message"
@@ -150,7 +148,7 @@ func (p PostsCounter) Count(msg *message.Message) ([]*message.Message, error) {
 
 	newCount, err := p.countStorage.CountAdd()
 	if err != nil {
-		return nil, errors.Wrap(err, "cannot add count")
+		return nil, fmt.Errorf("cannot add count: %w", err)
 	}
 
 	producedMsg := postsCountUpdated{NewCount: newCount}
@@ -194,7 +192,7 @@ func (f FeedGenerator) UpdateFeed(message *message.Message) error {
 
 	err := f.feedStorage.AddToFeed(event.Title, event.Author, event.OccurredOn)
 	if err != nil {
-		return errors.Wrap(err, "cannot update feed")
+		return fmt.Errorf("cannot update feed: %w", err)
 	}
 
 	return nil
