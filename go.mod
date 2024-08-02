@@ -5,7 +5,6 @@ go 1.21
 require (
 	github.com/cenkalti/backoff/v3 v3.2.2
 	github.com/go-chi/chi/v5 v5.0.8
-	github.com/gogo/protobuf v1.3.2
 	github.com/google/uuid v1.3.1
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/lithammer/shortuuid/v3 v3.0.7
