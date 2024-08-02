@@ -3,11 +3,11 @@ package cqrs
 import (
 	"reflect"
 
+	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
+
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
-
-	"github.com/gogo/protobuf/proto"
-	"github.com/pkg/errors"
 )
 
 // ProtobufMarshaler is the default Protocol Buffers marshaler.

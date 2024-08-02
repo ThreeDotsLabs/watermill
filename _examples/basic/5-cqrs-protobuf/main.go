@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill-amqp/v2/pkg/amqp"
@@ -362,15 +362,8 @@ func publishCommands(commandBus *cqrs.CommandBus) func() {
 	for {
 		i++
 
-		startDate, err := ptypes.TimestampProto(time.Now())
-		if err != nil {
-			panic(err)
-		}
-
-		endDate, err := ptypes.TimestampProto(time.Now().Add(time.Hour * 24 * 3))
-		if err != nil {
-			panic(err)
-		}
+		startDate := timestamppb.New(time.Now())
+		endDate := timestamppb.New(time.Now().Add(time.Hour * 24 * 3))
 
 		bookRoomCmd := &BookRoom{
 			RoomId:    fmt.Sprintf("%d", i),
