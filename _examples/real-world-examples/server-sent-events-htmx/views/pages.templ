@@ -27,12 +27,39 @@ type PostViews struct {
 
 templ Index(posts []Post) {
     @base() {
-        <div class="row">
-            for _, p := range posts {
-                @postView(p)
-            }
-        </div>
+        @Posts(posts)
     }
+}
+
+templ Posts(posts []Post) {
+    <div class="row" id="main">
+        for _, p := range posts {
+            @postView(p)
+        }
+
+        <div hx-get="/idle" hx-trigger="load delay:600s" hx-target="#main" hx-swap="outerHTML" ></div>
+    </div>
+}
+
+templ Idle() {
+    <div class="row" id="main">
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5 class="card-title mb-2">Paused to save resources. 🫢</h5>
+
+                <h5 class="card-title mb-1">Still around?</h5>
+
+                <button
+                    class="btn btn-outline-secondary m-1"
+                    hx-get="/posts"
+                    hx-target="#main"
+                    hx-swap="outerHTML"
+                >
+                    Reload
+                </button>
+            </div>
+        </div>
+    </div>
 }
 
 templ postView(post Post) {
