@@ -21,10 +21,10 @@ func TestRequeue(t *testing.T) {
 	pubSub := gochannel.NewGoChannel(gochannel.Config{}, logger)
 
 	requeue, err := NewRequeue(Config{
-		Subscriber: pubSub,
-		Topic:      "requeue",
-		Publisher:  pubSub,
-		Delay:      time.Millisecond * 200,
+		Subscriber:     pubSub,
+		SubscribeTopic: "requeue",
+		Publisher:      pubSub,
+		Delay:          time.Millisecond * 200,
 	}, logger)
 	require.NoError(t, err)
 
