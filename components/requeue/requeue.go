@@ -106,7 +106,11 @@ func NewRequeue(
 
 func (r *Requeue) handler(msg *message.Message) error {
 	if r.config.Delay > 0 {
-		time.Sleep(r.config.Delay)
+		select {
+		case <-msg.Context().Done():
+			return msg.Context().Err()
+		case <-time.After(r.config.Delay):
+		}
 	}
 
 	topic, err := r.config.GeneratePublishTopic(msg)
