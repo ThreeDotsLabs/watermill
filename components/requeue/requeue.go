@@ -2,18 +2,16 @@ package requeue
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"time"
-
-	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
-	"github.com/pkg/errors"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
-const RequeueRetriesKey = "requeue_retries"
+const RetriesKey = "requeue_retries"
 
 type Requeue struct {
 	config Config
@@ -30,11 +28,18 @@ type Config struct {
 	// Publisher is the publisher to publish requeued messages to. Required.
 	Publisher message.Publisher
 
-	// PublishTopic is the topic related to the Publisher to publish requeued messages to.
-	// Defaults to the original topic of the message that was requeued, taken from the poison queue middleware metadata.
-	PublishTopic string
+	// GeneratePublishTopic is the topic related to the Publisher to publish the requeued message to.
+	// For example, it could be a constant, or taken from the message's metadata.
+	// Required.
+	GeneratePublishTopic func(msg *message.Message) (string, error)
 
 	// Delay is the duration to wait before requeueing the message. Optional.
+	// The default is no delay.
+	//
+	// This can be useful to avoid requeueing messages too quickly, for example, to avoid
+	// requeueing a message that failed to process due to a temporary issue.
+	//
+	// Avoid setting this to a very high value, as it will block the message processing.
 	Delay time.Duration
 
 	// Router is the custom router to run the requeue handler on. Optional.
@@ -55,6 +60,10 @@ func (c *Config) validate() error {
 
 	if c.Publisher == nil {
 		return errors.New("publisher is required")
+	}
+
+	if c.GeneratePublishTopic == nil {
+		return errors.New("generate publish topic is required")
 	}
 
 	return nil
@@ -100,17 +109,12 @@ func (r *Requeue) handler(msg *message.Message) error {
 		time.Sleep(r.config.Delay)
 	}
 
-	var topic string
-	if r.config.PublishTopic == "" {
-		topic = msg.Metadata.Get(middleware.PoisonedTopicKey)
-		if topic == "" {
-			return errors.New("missing requeue topic")
-		}
-	} else {
-		topic = r.config.PublishTopic
+	topic, err := r.config.GeneratePublishTopic(msg)
+	if err != nil {
+		return err
 	}
 
-	retriesStr := msg.Metadata.Get(RequeueRetriesKey)
+	retriesStr := msg.Metadata.Get(RetriesKey)
 	retries, err := strconv.Atoi(retriesStr)
 	if err != nil {
 		retries = 0
@@ -118,7 +122,7 @@ func (r *Requeue) handler(msg *message.Message) error {
 
 	retries++
 
-	msg.Metadata.Set(RequeueRetriesKey, strconv.Itoa(retries))
+	msg.Metadata.Set(RetriesKey, strconv.Itoa(retries))
 
 	err = r.config.Publisher.Publish(topic, msg)
 	if err != nil {
