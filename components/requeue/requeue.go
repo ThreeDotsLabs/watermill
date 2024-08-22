@@ -79,14 +79,12 @@ func NewRequeue(
 		return nil, fmt.Errorf("invalid config: %w", err)
 	}
 
-	var router *message.Router
-	if config.Router == nil {
+  router := config.Router
+	if router == nil {
 		router, err = message.NewRouter(message.RouterConfig{}, logger)
 		if err != nil {
 			return nil, fmt.Errorf("could not create router: %w", err)
 		}
-	} else {
-		router = config.Router
 	}
 
 	r := &Requeue{
