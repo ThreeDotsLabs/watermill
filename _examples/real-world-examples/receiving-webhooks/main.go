@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
-    "errors"
+	"errors"
 	"flag"
 	"io/ioutil"
 	stdHttp "net/http"
@@ -47,7 +47,7 @@ func main() {
 			UnmarshalMessageFunc: func(topic string, request *stdHttp.Request) (*message.Message, error) {
 				b, err := ioutil.ReadAll(request.Body)
 				if err != nil {
-                    return nil, fmt.Errorf("cannot read body: %w", err)
+					return nil, fmt.Errorf("cannot read body: %w", err)
 				}
 
 				return message.NewMessage(watermill.NewUUID(), b), nil
@@ -83,7 +83,7 @@ func main() {
 			webhook := Webhook{}
 
 			if err := json.Unmarshal(msg.Payload, &webhook); err != nil {
-                return nil, fmt.Errorf("cannot unmarshal message: %w", err)
+				return nil, fmt.Errorf("cannot unmarshal message: %w", err)
 			}
 
 			// Add simple validation
