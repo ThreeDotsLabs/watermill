@@ -28,10 +28,6 @@ import (
 
 var defaultTimeout = time.Second * 15
 
-func init() {
-	rand.Seed(3)
-}
-
 // TestPubSub is a universal test suite. Every Pub/Sub implementation should pass it
 // before it's considered production ready.
 //
@@ -336,7 +332,7 @@ func TestConcurrentSubscribeMultipleTopics(
 	receivedMessagesCh := make(chan message.Messages, topicsCount)
 
 	for i := 0; i < topicsCount; i++ {
-		topicName := testTopicName(tCtx.TestID) + fmt.Sprintf("_%d", i)
+		topicName := testTopicName(tCtx.TestID) + fmt.Sprintf("-%d", i)
 
 		go func() {
 			defer subsWg.Done()
@@ -569,11 +565,13 @@ func TestNoAck(
 		t.Fatal("messages channel should be unblocked after Ack()")
 	}
 
-	select {
-	case <-messages:
-		t.Fatal("msg should be not sent again")
-	case <-time.After(time.Millisecond * 50):
-		// ok
+	if tCtx.Features.ExactlyOnceDelivery {
+		select {
+		case <-messages:
+			t.Fatal("msg should be not sent again")
+		case <-time.After(time.Millisecond * 50):
+			// ok
+		}
 	}
 }
 
@@ -852,8 +850,8 @@ func TestTopic(
 	pub, sub := pubSubConstructor(t)
 	defer closePubSub(t, pub, sub)
 
-	topic1 := testTopicName(tCtx.TestID) + "_1"
-	topic2 := testTopicName(tCtx.TestID) + "_2"
+	topic1 := testTopicName(tCtx.TestID) + "-1"
+	topic2 := testTopicName(tCtx.TestID) + "-2"
 
 	if subscribeInitializer, ok := sub.(message.SubscribeInitializer); ok {
 		require.NoError(t, subscribeInitializer.SubscribeInitialize(topic1))
@@ -1216,7 +1214,7 @@ func assertConsumerGroupReceivedMessages(
 }
 
 func testTopicName(testID TestID) string {
-	return "topic_" + string(testID)
+	return "topic-" + string(testID)
 }
 
 func closePubSub(t *testing.T, pub message.Publisher, sub message.Subscriber) {

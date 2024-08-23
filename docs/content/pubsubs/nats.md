@@ -12,6 +12,11 @@ toc = false
 
 NATS Jetstream is a data streaming system powered by NATS, and written in the Go programming language.
 
+As of v2.0.2 this middleware will contain a beta implementation in `pkg/jetstream` based on the 
+[nats.go Jetstream package](https://github.com/nats-io/nats.go/tree/main/jetstream). This implementation is 
+considered experimental tracking with the upstream client though we target a stable watermill API by v2.1.  
+For production use it is recommended to use the pubsub implementations in `pkg/nats` with Jetstream enabled.
+
 ### Installation
 
     go get github.com/ThreeDotsLabs/watermill-nats/v2
@@ -27,9 +32,19 @@ NATS Jetstream is a data streaming system powered by NATS, and written in the Go
 
 #### Configuration
 
+Configuration is done through PublisherConfig and SubscriberConfig types.  These share a common JetStreamConfig.  To use the experimental nats-core support, set Disabled=true.
+
+{{% render-md %}}
+{{% load-snippet-partial file="src-link/watermill-nats/pkg/nats/jetstream.go" first_line_contains="// JetStreamConfig contains" last_line_contains="type DurableCalculator =" %}}
+{{% /render-md %}}
+
+PublisherConfig:
+
 {{% render-md %}}
 {{% load-snippet-partial file="src-link/watermill-nats/pkg/nats/publisher.go" first_line_contains="type PublisherConfig struct" last_line_contains="type Publisher struct {" %}}
 {{% /render-md %}}
+
+Subscriber Config:
 
 {{% render-md %}}
 {{% load-snippet-partial file="src-link/watermill-nats/pkg/nats/subscriber.go" first_line_contains="type SubscriberConfig struct" last_line_contains="type Subscriber struct" %}}
@@ -53,7 +68,7 @@ Example:
 {{% load-snippet-partial file="src-link/_examples/pubsubs/nats-jetstream/main.go" first_line_contains="subscriber, err :=" last_line_contains="panic(err)" padding_after="1" %}}
 {{% /render-md %}}
 
-You can also use `NewSubscriberWithNATSConn` and `NewPublisherWithNatsConn` to use a custom `stan.Conn` created by `NewStanConnection`.
+You can also use `NewSubscriberWithNatsConn` and `NewPublisherWithNatsConn` to use a custom `*nats.Conn`.
 
 #### Publishing
 

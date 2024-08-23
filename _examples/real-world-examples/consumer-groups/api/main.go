@@ -2,10 +2,8 @@ package main
 
 import (
 	"context"
-	"math/rand"
 	"net/http"
 	"sync"
-	"time"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill-redisstream/pkg/redisstream"
@@ -16,7 +14,6 @@ import (
 )
 
 func main() {
-	rand.Seed(time.Now().UnixNano())
 	logger := watermill.NewStdLogger(false, false)
 
 	router, err := message.NewRouter(message.RouterConfig{}, logger)

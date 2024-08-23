@@ -1,6 +1,6 @@
 module github.com/ThreeDotsLabs/watermill/dev/validate-examples
 
-go 1.19
+go 1.21
 
 require (
 	github.com/fatih/color v1.13.0

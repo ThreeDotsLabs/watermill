@@ -1,19 +1,20 @@
 module github.com/ThreeDotsLabs/watermill
 
-go 1.17
+go 1.21
 
 require (
 	github.com/cenkalti/backoff/v3 v3.2.2
 	github.com/go-chi/chi/v5 v5.0.8
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang/protobuf v1.5.2
-	github.com/google/uuid v1.3.0
+	github.com/google/uuid v1.3.1
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/lithammer/shortuuid/v3 v3.0.7
 	github.com/oklog/ulid v1.3.1
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.14.0
-	github.com/stretchr/testify v1.8.1
+	github.com/sony/gobreaker v0.5.0
+	github.com/stretchr/testify v1.8.4
 	google.golang.org/protobuf v1.28.1
 )
 

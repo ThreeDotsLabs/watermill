@@ -1,7 +1,6 @@
-version: '3'
 services:
   server:
-    image: golang:1.19
+    image: golang:1.23
     restart: unless-stopped
     ports:
       - 8080:8080
@@ -12,7 +11,7 @@ services:
     command: 'go run .'
 
   worker:
-    image: golang:1.19
+    image: golang:1.23
     restart: unless-stopped
     volumes:
       - ./worker:/app

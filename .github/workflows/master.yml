@@ -11,6 +11,9 @@ jobs:
   codecov:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@v4
+    - uses: actions/setup-go@v4
+      with:
+        go-version: '^1.21.1'
     - run: make test_codecov
     - uses: codecov/codecov-action@v3

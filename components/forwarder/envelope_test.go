@@ -38,4 +38,8 @@ func TestEnvelope(t *testing.T) {
 	assert.Equal(t, expectedPayload, unwrappedMsg.Payload)
 	assert.Equal(t, expectedMetadata, unwrappedMsg.Metadata)
 	assert.Equal(t, expectedDestinationTopic, destinationTopic)
+
+	v, ok = unwrappedMsg.Context().Value(contextKey("key")).(string)
+	require.True(t, ok)
+	require.Equal(t, "value", v)
 }

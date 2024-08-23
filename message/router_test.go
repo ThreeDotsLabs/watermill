@@ -98,6 +98,8 @@ func TestRouter_functional(t *testing.T) {
 	defer func() {
 		assert.True(t, r.IsRunning())
 		assert.NoError(t, r.Close())
+
+		assert.True(t, r.IsClosed())
 	}()
 
 	<-allMessagesSent
@@ -1316,4 +1318,106 @@ func TestRouter_wait_for_handlers_before_shutdown_timeout(t *testing.T) {
 	<-handlerStarted
 
 	assert.EqualError(t, r.Close(), "router close timeout")
+}
+
+func TestRouter_context_cancel_does_not_log_error(t *testing.T) {
+	t.Parallel()
+
+	pub, sub := createPubSub()
+	defer func() {
+		assert.NoError(t, pub.Close())
+		assert.NoError(t, sub.Close())
+	}()
+
+	logger := watermill.NewCaptureLogger()
+
+	r, err := message.NewRouter(message.RouterConfig{}, logger)
+	require.NoError(t, err)
+
+	r.AddNoPublisherHandler(
+		"foo",
+		"subscribe_topic",
+		sub,
+		func(msg *message.Message) error {
+			return nil
+		},
+	)
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	go func() {
+		err := r.Run(ctx)
+		assert.NoError(t, err)
+	}()
+	<-r.Running()
+
+	// Cancel the context
+	cancel()
+
+	require.Eventually(t, func() bool {
+		return r.IsClosed()
+	}, 1*time.Second, 1*time.Millisecond, "Router should be closed after all handlers are stopped")
+
+	assert.Empty(t, logger.Captured()[watermill.ErrorLogLevel], "No error should be logged when context is canceled")
+}
+
+func TestRouter_stopping_all_handlers_logs_error(t *testing.T) {
+	t.Parallel()
+
+	pub, sub := createPubSub()
+	defer func() {
+		assert.NoError(t, pub.Close())
+		assert.NoError(t, sub.Close())
+	}()
+
+	logger := watermill.NewCaptureLogger()
+
+	r, err := message.NewRouter(message.RouterConfig{}, logger)
+	require.NoError(t, err)
+
+	r.AddNoPublisherHandler(
+		"foo",
+		"subscribe_topic",
+		sub,
+		func(msg *message.Message) error {
+			return nil
+		},
+	)
+
+	ctx := context.Background()
+
+	go func() {
+		err := r.Run(ctx)
+		assert.NoError(t, err)
+	}()
+	<-r.Running()
+
+	// Stop the subscriber - this should close the router with an error
+	err = sub.Close()
+	require.NoError(t, err)
+
+	require.Eventually(t, func() bool {
+		return r.IsClosed()
+	}, 1*time.Second, 1*time.Millisecond, "Router should be closed after all handlers are stopped")
+
+	expectedLogMessage := watermill.CapturedMessage{
+		Level: watermill.ErrorLogLevel,
+		Msg:   "All handlers stopped, closing router",
+		Err:   errors.New("all router handlers stopped"),
+	}
+
+	// Note: using logger.Has does not work here, since the error is not exposed (and thus not deep equal-able)
+	for _, capturedMessage := range logger.Captured()[watermill.ErrorLogLevel] {
+		if capturedMessage.Level == expectedLogMessage.Level &&
+			capturedMessage.Msg == expectedLogMessage.Msg &&
+			capturedMessage.Err.Error() == expectedLogMessage.Err.Error() {
+			return
+		}
+	}
+
+	assert.Fail(
+		t,
+		"expected log message not found, logs: %#v",
+		logger.Captured(),
+	)
 }

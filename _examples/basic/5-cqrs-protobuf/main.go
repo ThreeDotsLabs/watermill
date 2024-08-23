@@ -174,8 +174,8 @@ func main() {
 	logger := watermill.NewStdLogger(false, false)
 	cqrsMarshaler := cqrs.ProtobufMarshaler{}
 
-	// You can use any Pub/Sub implementation from here: https://watermill.io/docs/pub-sub-implementations/
-	// Detailed RabbitMQ implementation: https://watermill.io/docs/pub-sub-implementations/#rabbitmq-amqp
+	// You can use any Pub/Sub implementation from here: https://watermill.io/pubsubs/
+	// Detailed RabbitMQ implementation: https://watermill.io/pubsubs/amqp/
 	// Commands will be send to queue, because they need to be consumed once.
 	commandsAMQPConfig := amqp.NewDurableQueueConfig(amqpAddress)
 	commandsPublisher, err := amqp.NewPublisher(commandsAMQPConfig, logger)
@@ -207,56 +207,149 @@ func main() {
 	// List of available middlewares you can find in message/router/middleware.
 	router.AddMiddleware(middleware.Recoverer)
 
-	// cqrs.Facade is facade for Command and Event buses and processors.
-	// You can use facade, or create buses and processors manually (you can inspire with cqrs.NewFacade)
-	cqrsFacade, err := cqrs.NewFacade(cqrs.FacadeConfig{
-		GenerateCommandsTopic: func(commandName string) string {
+	commandBus, err := cqrs.NewCommandBusWithConfig(commandsPublisher, cqrs.CommandBusConfig{
+		GeneratePublishTopic: func(params cqrs.CommandBusGeneratePublishTopicParams) (string, error) {
 			// we are using queue RabbitMQ config, so we need to have topic per command type
-			return commandName
+			return params.CommandName, nil
 		},
-		CommandHandlers: func(cb *cqrs.CommandBus, eb *cqrs.EventBus) []cqrs.CommandHandler {
-			return []cqrs.CommandHandler{
-				BookRoomHandler{eb},
-				OrderBeerHandler{eb},
-			}
-		},
-		CommandsPublisher: commandsPublisher,
-		CommandsSubscriberConstructor: func(handlerName string) (message.Subscriber, error) {
-			// we can reuse subscriber, because all commands have separated topics
-			return commandsSubscriber, nil
-		},
-		GenerateEventsTopic: func(eventName string) string {
-			// because we are using PubSub RabbitMQ config, we can use one topic for all events
-			return "events"
+		OnSend: func(params cqrs.CommandBusOnSendParams) error {
+			logger.Info("Sending command", watermill.LogFields{
+				"command_name": params.CommandName,
+			})
 
-			// we can also use topic per event type
-			// return eventName
-		},
-		EventHandlers: func(cb *cqrs.CommandBus, eb *cqrs.EventBus) []cqrs.EventHandler {
-			return []cqrs.EventHandler{
-				OrderBeerOnRoomBooked{cb},
-				NewBookingsFinancialReport(),
-			}
-		},
-		EventsPublisher: eventsPublisher,
-		EventsSubscriberConstructor: func(handlerName string) (message.Subscriber, error) {
-			config := amqp.NewDurablePubSubConfig(
-				amqpAddress,
-				amqp.GenerateQueueNameTopicNameWithSuffix(handlerName),
-			)
+			params.Message.Metadata.Set("sent_at", time.Now().String())
 
-			return amqp.NewSubscriber(config, logger)
+			return nil
 		},
-		Router:                router,
-		CommandEventMarshaler: cqrsMarshaler,
-		Logger:                logger,
+		Marshaler: cqrsMarshaler,
+		Logger:    logger,
 	})
 	if err != nil {
 		panic(err)
 	}
 
+	commandProcessor, err := cqrs.NewCommandProcessorWithConfig(
+		router,
+		cqrs.CommandProcessorConfig{
+			GenerateSubscribeTopic: func(params cqrs.CommandProcessorGenerateSubscribeTopicParams) (string, error) {
+				// we are using queue RabbitMQ config, so we need to have topic per command type
+				return params.CommandName, nil
+			},
+			SubscriberConstructor: func(params cqrs.CommandProcessorSubscriberConstructorParams) (message.Subscriber, error) {
+				// we can reuse subscriber, because all commands have separated topics
+				return commandsSubscriber, nil
+			},
+			OnHandle: func(params cqrs.CommandProcessorOnHandleParams) error {
+				start := time.Now()
+
+				err := params.Handler.Handle(params.Message.Context(), params.Command)
+
+				logger.Info("Command handled", watermill.LogFields{
+					"command_name": params.CommandName,
+					"duration":     time.Since(start),
+					"err":          err,
+				})
+
+				return err
+			},
+			Marshaler: cqrsMarshaler,
+			Logger:    logger,
+		},
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	eventBus, err := cqrs.NewEventBusWithConfig(eventsPublisher, cqrs.EventBusConfig{
+		GeneratePublishTopic: func(params cqrs.GenerateEventPublishTopicParams) (string, error) {
+			// because we are using PubSub RabbitMQ config, we can use one topic for all events
+			return "events", nil
+
+			// we can also use topic per event type
+			// return params.EventName, nil
+		},
+
+		OnPublish: func(params cqrs.OnEventSendParams) error {
+			logger.Info("Publishing event", watermill.LogFields{
+				"event_name": params.EventName,
+			})
+
+			params.Message.Metadata.Set("published_at", time.Now().String())
+
+			return nil
+		},
+
+		Marshaler: cqrsMarshaler,
+		Logger:    logger,
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	eventProcessor, err := cqrs.NewEventGroupProcessorWithConfig(
+		router,
+		cqrs.EventGroupProcessorConfig{
+			GenerateSubscribeTopic: func(params cqrs.EventGroupProcessorGenerateSubscribeTopicParams) (string, error) {
+				return "events", nil
+			},
+			SubscriberConstructor: func(params cqrs.EventGroupProcessorSubscriberConstructorParams) (message.Subscriber, error) {
+				config := amqp.NewDurablePubSubConfig(
+					amqpAddress,
+					amqp.GenerateQueueNameTopicNameWithSuffix(params.EventGroupName),
+				)
+
+				return amqp.NewSubscriber(config, logger)
+			},
+
+			OnHandle: func(params cqrs.EventGroupProcessorOnHandleParams) error {
+				start := time.Now()
+
+				err := params.Handler.Handle(params.Message.Context(), params.Event)
+
+				logger.Info("Event handled", watermill.LogFields{
+					"event_name": params.EventName,
+					"duration":   time.Since(start),
+					"err":        err,
+				})
+
+				return err
+			},
+
+			Marshaler: cqrsMarshaler,
+			Logger:    logger,
+		},
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	err = commandProcessor.AddHandlers(
+		BookRoomHandler{eventBus},
+		OrderBeerHandler{eventBus},
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	err = eventProcessor.AddHandlersGroup(
+		"events",
+		OrderBeerOnRoomBooked{commandBus},
+
+		NewBookingsFinancialReport(),
+
+		cqrs.NewGroupEventHandler(func(ctx context.Context, event *BeerOrdered) error {
+			logger.Info("Beer ordered", watermill.LogFields{
+				"room_id": event.RoomId,
+			})
+			return nil
+		}),
+	)
+	if err != nil {
+		panic(err)
+	}
+
 	// publish BookRoom commands every second to simulate incoming traffic
-	go publishCommands(cqrsFacade.CommandBus())
+	go publishCommands(commandBus)
 
 	// processors are based on router, so they will work when router will start
 	if err := router.Run(context.Background()); err != nil {

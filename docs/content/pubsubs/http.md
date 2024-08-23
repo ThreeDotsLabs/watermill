@@ -73,3 +73,12 @@ httpSubscriber.StartHTTPServer()
 {{% load-snippet-partial file="src-link/watermill-http/pkg/http/subscriber.go" first_line_contains="// Subscribe adds" last_line_contains="func (s *Subscriber) Subscribe" %}}
 {{% /render-md %}}
 
+##### Custom HTTP status codes
+
+To specify a custom HTTP status code, which will returned as response, you can use following call during message handling:
+
+{{< highlight >}}
+// msg is a *message.Message
+http.SetResponseStatusCode(msg, http.StatusForbidden)
+msg.Nack()
+{{< /highlight >}}

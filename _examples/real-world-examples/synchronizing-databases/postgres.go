@@ -2,38 +2,41 @@ package main
 
 import (
 	"bytes"
-	stdSQL "database/sql"
 	"encoding/gob"
 	"errors"
 	"fmt"
 	"strings"
 	"time"
 
-	"github.com/ThreeDotsLabs/watermill-sql/pkg/sql"
+	"github.com/ThreeDotsLabs/watermill-sql/v3/pkg/sql"
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
 type postgresUser struct {
-	ID        int
+	ID        int64
 	Username  string
 	FullName  string
 	CreatedAt time.Time
 }
 
-type postgresSchemaAdapter struct{}
+type postgresSchemaAdapter struct {
+	sql.DefaultPostgreSQLSchema
+}
 
-func (p postgresSchemaAdapter) SchemaInitializingQueries(topic string) []string {
-	return []string{
-		`CREATE TABLE IF NOT EXISTS ` + topic + ` (
+func (p postgresSchemaAdapter) SchemaInitializingQueries(topic string) []sql.Query {
+	createQuery := `
+		CREATE TABLE IF NOT EXISTS ` + topic + ` (
 			id INT NOT NULL PRIMARY KEY,
 			username VARCHAR(36) NOT NULL,
 			full_name VARCHAR(36) NOT NULL,
 			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-		);`,
-	}
+		);
+	`
+
+	return []sql.Query{{Query: createQuery}}
 }
 
-func (p postgresSchemaAdapter) InsertQuery(topic string, msgs message.Messages) (string, []interface{}, error) {
+func (p postgresSchemaAdapter) InsertQuery(topic string, msgs message.Messages) (sql.Query, error) {
 	insertQuery := fmt.Sprintf(
 		`INSERT INTO %s (id, username, full_name, created_at) VALUES %s`,
 		topic,
@@ -47,20 +50,20 @@ func (p postgresSchemaAdapter) InsertQuery(topic string, msgs message.Messages) 
 		decoder := gob.NewDecoder(bytes.NewBuffer(msg.Payload))
 		err := decoder.Decode(&user)
 		if err != nil {
-			return "", nil, err
+			return sql.Query{}, err
 		}
 
 		args = append(args, user.ID, user.Username, user.FullName, user.CreatedAt)
 	}
 
-	return insertQuery, args, nil
+	return sql.Query{Query: insertQuery, Args: args}, nil
 }
 
-func (p postgresSchemaAdapter) SelectQuery(topic string, consumerGroup string, offsetsAdapter sql.OffsetsAdapter) (string, []interface{}) {
+func (p postgresSchemaAdapter) SelectQuery(topic string, consumerGroup string, offsetsAdapter sql.OffsetsAdapter) sql.Query {
 	// No need to implement this method, as PostgreSQL subscriber is not used in this example.
-	return "", nil
+	return sql.Query{}
 }
 
-func (p postgresSchemaAdapter) UnmarshalMessage(row *stdSQL.Row) (offset int, msg *message.Message, err error) {
-	return 0, nil, errors.New("not implemented")
+func (p postgresSchemaAdapter) UnmarshalMessage(row sql.Scanner) (sql.Row, error) {
+	return sql.Row{}, errors.New("not implemented")
 }

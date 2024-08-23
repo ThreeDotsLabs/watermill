@@ -1,16 +1,12 @@
 package main
 
 import (
-	"math/rand"
 	"net/http"
-	"time"
 
 	"github.com/ThreeDotsLabs/watermill"
 )
 
 func main() {
-	rand.Seed(time.Now().Unix())
-
 	logger := watermill.NewStdLogger(false, false)
 
 	postsStorage := NewPostsStorage()

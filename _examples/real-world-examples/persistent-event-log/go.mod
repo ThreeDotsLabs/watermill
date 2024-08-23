@@ -1,11 +1,11 @@
 module main.go
 
-go 1.19
+go 1.21
 
 require (
-	github.com/ThreeDotsLabs/watermill v1.2.0-rc.11
+	github.com/ThreeDotsLabs/watermill v1.3.1
 	github.com/ThreeDotsLabs/watermill-googlecloud v1.0.13
-	github.com/ThreeDotsLabs/watermill-sql v1.3.8
+	github.com/ThreeDotsLabs/watermill-sql/v3 v3.0.0
 	github.com/go-sql-driver/mysql v1.7.0
 )
 

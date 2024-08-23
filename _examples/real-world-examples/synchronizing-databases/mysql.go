@@ -2,40 +2,43 @@ package main
 
 import (
 	"bytes"
-	stdSQL "database/sql"
 	"encoding/gob"
 	"fmt"
 	"strings"
 	"time"
 
 	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill-sql/pkg/sql"
+	"github.com/ThreeDotsLabs/watermill-sql/v3/pkg/sql"
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
 type mysqlUser struct {
-	ID        int
+	ID        int64
 	User      string
 	FirstName string
 	LastName  string
 	CreatedAt time.Time
 }
 
-type mysqlSchemaAdapter struct{}
+type mysqlSchemaAdapter struct {
+	sql.DefaultMySQLSchema
+}
 
-func (m mysqlSchemaAdapter) SchemaInitializingQueries(topic string) []string {
-	return []string{
-		`CREATE TABLE IF NOT EXISTS ` + topic + ` (
+func (m mysqlSchemaAdapter) SchemaInitializingQueries(topic string) []sql.Query {
+	createQuery := `
+		CREATE TABLE IF NOT EXISTS ` + topic + ` (
 			id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
 			user VARCHAR(36) NOT NULL,
 			first_name VARCHAR(36) NOT NULL,
 			last_name VARCHAR(36) NOT NULL,
 			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-		);`,
-	}
+		);
+	`
+
+	return []sql.Query{{Query: createQuery}}
 }
 
-func (m mysqlSchemaAdapter) InsertQuery(topic string, msgs message.Messages) (string, []interface{}, error) {
+func (m mysqlSchemaAdapter) InsertQuery(topic string, msgs message.Messages) (sql.Query, error) {
 	insertQuery := fmt.Sprintf(
 		`INSERT INTO %s (user, first_name, last_name, created_at) VALUES %s`,
 		topic,
@@ -49,33 +52,33 @@ func (m mysqlSchemaAdapter) InsertQuery(topic string, msgs message.Messages) (st
 		decoder := gob.NewDecoder(bytes.NewBuffer(msg.Payload))
 		err := decoder.Decode(&user)
 		if err != nil {
-			return "", nil, err
+			return sql.Query{}, err
 		}
 
 		args = append(args, user.User, user.FirstName, user.LastName, user.CreatedAt)
 	}
 
-	return insertQuery, args, nil
+	return sql.Query{Query: insertQuery, Args: args}, nil
 }
 
-func (m mysqlSchemaAdapter) SelectQuery(topic string, consumerGroup string, offsetsAdapter sql.OffsetsAdapter) (string, []interface{}) {
-	nextOffsetQuery, nextOffsetArgs := offsetsAdapter.NextOffsetQuery(topic, consumerGroup)
+func (m mysqlSchemaAdapter) SelectQuery(topic string, consumerGroup string, offsetsAdapter sql.OffsetsAdapter) sql.Query {
+	nextOffsetQuery := offsetsAdapter.NextOffsetQuery(topic, consumerGroup)
 	selectQuery := `
 		SELECT id, user, first_name, last_name, created_at FROM ` + topic + `
-		WHERE 
-			id > (` + nextOffsetQuery + `)
-		ORDER BY 
+		WHERE
+			id > (` + nextOffsetQuery.Query + `)
+		ORDER BY
 			id ASC
 		LIMIT 1`
 
-	return selectQuery, nextOffsetArgs
+	return sql.Query{Query: selectQuery, Args: nextOffsetQuery.Args}
 }
 
-func (m mysqlSchemaAdapter) UnmarshalMessage(row *stdSQL.Row) (offset int, msg *message.Message, err error) {
+func (m mysqlSchemaAdapter) UnmarshalMessage(row sql.Scanner) (_ sql.Row, err error) {
 	user := mysqlUser{}
 	err = row.Scan(&user.ID, &user.User, &user.FirstName, &user.LastName, &user.CreatedAt)
 	if err != nil {
-		return 0, nil, err
+		return sql.Row{}, err
 	}
 
 	var payload bytes.Buffer
@@ -83,10 +86,13 @@ func (m mysqlSchemaAdapter) UnmarshalMessage(row *stdSQL.Row) (offset int, msg *
 
 	err = encoder.Encode(user)
 	if err != nil {
-		return 0, nil, err
+		return sql.Row{}, err
 	}
 
-	msg = message.NewMessage(watermill.NewULID(), payload.Bytes())
+	msg := message.NewMessage(watermill.NewULID(), payload.Bytes())
 
-	return user.ID, msg, nil
+	return sql.Row{
+		Offset: user.ID,
+		Msg:    msg,
+	}, nil
 }
