@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"log"
+	"fmt"
 	"time"
 
 	"github.com/ThreeDotsLabs/watermill"
@@ -67,7 +67,7 @@ func main() {
 				return nil, err
 			}
 
-			log.Printf("received event %+v", consumedPayload)
+			fmt.Printf("received event %+v\n", consumedPayload)
 
 			newPayload, err := json.Marshal(processedEvent{
 				ProcessedID: consumedPayload.ID,

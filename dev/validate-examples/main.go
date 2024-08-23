@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -24,7 +23,7 @@ type Config struct {
 }
 
 func (c *Config) LoadFrom(path string) error {
-	file, err := ioutil.ReadFile(path)
+	file, err := os.ReadFile(path)
 	if err != nil {
 		return err
 	}
@@ -109,35 +108,44 @@ func validate(path string) error {
 		}
 	}()
 
-	success := make(chan error)
+	success := make(chan bool)
+	lines := make(chan string)
+
+	go readLines(stdout, lines)
+	go readLines(stderr, lines)
 
 	go func() {
-		io.MultiReader()
+		for line := range lines {
+			fmt.Printf("[%s] > %s\n", color.CyanString(dirName), line)
 
-		output := bufio.NewReader(io.MultiReader(stdout, stderr))
-		for {
-			line, _, err := output.ReadLine()
-			if err != nil {
-				if err == io.EOF {
-					break
-				}
-			}
-
-			fmt.Printf("[%s] > %s\n", color.CyanString(dirName), string(line))
-
-			ok, _ := regexp.Match(config.ExpectedOutput, line)
+			ok, _ := regexp.MatchString(config.ExpectedOutput, line)
 			if ok {
-				success <- nil
+				success <- true
 				return
 			}
 		}
-		success <- fmt.Errorf("could not find expected output: %s", config.ExpectedOutput)
 	}()
 
 	select {
-	case err := <-success:
-		return err
+	case <-success:
+		return nil
 	case <-time.After(time.Duration(config.Timeout) * time.Second):
 		return fmt.Errorf("validation command timed out")
+	}
+}
+
+func readLines(reader io.Reader, output chan<- string) {
+	scanner := bufio.NewScanner(reader)
+	for scanner.Scan() {
+		if scanner.Err() != nil {
+			if scanner.Err() == io.EOF {
+				return
+			}
+
+			continue
+		}
+
+		line := scanner.Text()
+		output <- line
 	}
 }
