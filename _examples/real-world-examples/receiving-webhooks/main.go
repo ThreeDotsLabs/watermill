@@ -3,16 +3,15 @@ package main
 import (
 	"context"
 	"encoding/json"
+    "errors"
 	"flag"
 	"io/ioutil"
 	stdHttp "net/http"
 	_ "net/http/pprof"
 
-	"github.com/pkg/errors"
-
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill-http/pkg/http"
-	"github.com/ThreeDotsLabs/watermill-kafka/v2/pkg/kafka"
+	"github.com/ThreeDotsLabs/watermill-kafka/v3/pkg/kafka"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
 	"github.com/ThreeDotsLabs/watermill/message/router/plugin"
@@ -48,7 +47,7 @@ func main() {
 			UnmarshalMessageFunc: func(topic string, request *stdHttp.Request) (*message.Message, error) {
 				b, err := ioutil.ReadAll(request.Body)
 				if err != nil {
-					return nil, errors.Wrap(err, "cannot read body")
+                    return nil, fmt.Errorf("cannot read body: %w", err)
 				}
 
 				return message.NewMessage(watermill.NewUUID(), b), nil
@@ -84,7 +83,7 @@ func main() {
 			webhook := Webhook{}
 
 			if err := json.Unmarshal(msg.Payload, &webhook); err != nil {
-				return nil, errors.Wrap(err, "cannot unmarshal message")
+                return nil, fmt.Errorf("cannot unmarshal message: %w", err)
 			}
 
 			// Add simple validation
