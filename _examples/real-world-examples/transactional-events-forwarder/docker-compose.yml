@@ -6,6 +6,7 @@ services:
     depends_on:
       - mysql
       - googlecloud
+    restart: unless-stopped
     volumes:
       - .:/app
       - $GOPATH/pkg/mod:/go/pkg/mod
