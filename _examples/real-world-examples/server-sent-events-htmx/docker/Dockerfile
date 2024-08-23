@@ -1,4 +1,4 @@
-FROM golang:1.22
+FROM golang:1.23
 
 RUN go install github.com/cespare/reflex@latest
 RUN go install github.com/a-h/templ/cmd/templ@latest

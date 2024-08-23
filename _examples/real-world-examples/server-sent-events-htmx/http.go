@@ -39,7 +39,9 @@ func NewHandler(repo *Repository, eventBus *cqrs.EventBus, sseRouter watermillht
 
 	counter := sseHandlersCounter{}
 
-	e.GET("/", h.AllPosts)
+	e.GET("/", h.Index)
+	e.GET("/posts", h.Posts)
+	e.GET("/idle", h.Idle)
 	e.POST("/posts/:id/reactions", h.AddReaction)
 	e.GET("/posts/:id/stats", func(c echo.Context) error {
 		postID := c.Param("id")
@@ -59,10 +61,32 @@ func NewHandler(repo *Repository, eventBus *cqrs.EventBus, sseRouter watermillht
 	return e
 }
 
-func (h Handler) AllPosts(c echo.Context) error {
-	posts, err := h.repo.AllPosts(c.Request().Context())
+func (h Handler) Index(c echo.Context) error {
+	posts, err := h.allPosts(c)
 	if err != nil {
 		return err
+	}
+
+	return views.Index(posts).Render(c.Request().Context(), c.Response())
+}
+
+func (h Handler) Posts(c echo.Context) error {
+	posts, err := h.allPosts(c)
+	if err != nil {
+		return err
+	}
+
+	return views.Posts(posts).Render(c.Request().Context(), c.Response())
+}
+
+func (h Handler) Idle(c echo.Context) error {
+	return views.Idle().Render(c.Request().Context(), c.Response())
+}
+
+func (h Handler) allPosts(c echo.Context) ([]views.Post, error) {
+	posts, err := h.repo.AllPosts(c.Request().Context())
+	if err != nil {
+		return nil, err
 	}
 
 	for _, post := range posts {
@@ -72,7 +96,7 @@ func (h Handler) AllPosts(c echo.Context) error {
 
 		err = h.eventBus.Publish(c.Request().Context(), event)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 
@@ -81,7 +105,7 @@ func (h Handler) AllPosts(c echo.Context) error {
 		postViews = append(postViews, newPostView(post))
 	}
 
-	return views.Index(postViews).Render(c.Request().Context(), c.Response())
+	return postViews, nil
 }
 
 func (h Handler) AddReaction(c echo.Context) error {
