@@ -5,7 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
-	"io/ioutil"
+	"fmt"
+	"io"
 	stdHttp "net/http"
 	_ "net/http/pprof"
 
@@ -45,7 +46,7 @@ func main() {
 		*httpAddr,
 		http.SubscriberConfig{
 			UnmarshalMessageFunc: func(topic string, request *stdHttp.Request) (*message.Message, error) {
-				b, err := ioutil.ReadAll(request.Body)
+				b, err := io.ReadAll(request.Body)
 				if err != nil {
 					return nil, fmt.Errorf("cannot read body: %w", err)
 				}
@@ -97,7 +98,7 @@ func main() {
 	)
 
 	go func() {
-		// HTTP server needs to be started after router is ready.
+		// HTTP server needs to be started after the router is ready.
 		<-r.Running()
 		_ = httpSubscriber.StartHTTPServer()
 	}()
