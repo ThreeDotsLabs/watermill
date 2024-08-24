@@ -90,7 +90,9 @@ func createDB() *stdSQL.DB {
 
 func createSubscriber() message.Subscriber {
 	sub, err := googlecloud.NewSubscriber(
-		googlecloud.SubscriberConfig{},
+		googlecloud.SubscriberConfig{
+			ProjectID: "example",
+		},
 		logger,
 	)
 	if err != nil {
