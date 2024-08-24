@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
 	"math/rand"
@@ -110,7 +109,7 @@ func (o OrderBeerHandler) Handle(ctx context.Context, c interface{}) error {
 
 	if rand.Int63n(10) == 0 {
 		// sometimes there is no beer left, command will be retried
-		return errors.New("no beer left for room %s, please try later", cmd.RoomId)
+		return fmt.Errorf("no beer left for room %s, please try later", cmd.RoomId)
 	}
 
 	if err := o.eventBus.Publish(ctx, &BeerOrdered{
