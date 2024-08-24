@@ -119,7 +119,9 @@ func createPublisher(db *stdSQL.DB) message.Publisher {
 }
 
 func simulateEvents() {
-	pub, err := googlecloud.NewPublisher(googlecloud.PublisherConfig{}, logger)
+	pub, err := googlecloud.NewPublisher(googlecloud.PublisherConfig{
+		ProjectID: "example",
+	}, logger)
 	if err != nil {
 		panic(err)
 	}
