@@ -90,7 +90,9 @@ func createDB() *stdSQL.DB {
 
 func createSubscriber() message.Subscriber {
 	sub, err := googlecloud.NewSubscriber(
-		googlecloud.SubscriberConfig{},
+		googlecloud.SubscriberConfig{
+			ProjectID: "example",
+		},
 		logger,
 	)
 	if err != nil {
@@ -117,7 +119,9 @@ func createPublisher(db *stdSQL.DB) message.Publisher {
 }
 
 func simulateEvents() {
-	pub, err := googlecloud.NewPublisher(googlecloud.PublisherConfig{}, logger)
+	pub, err := googlecloud.NewPublisher(googlecloud.PublisherConfig{
+		ProjectID: "example",
+	}, logger)
 	if err != nil {
 		panic(err)
 	}
