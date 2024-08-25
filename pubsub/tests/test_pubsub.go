@@ -334,6 +334,12 @@ func TestConcurrentSubscribeMultipleTopics(
 	for i := 0; i < topicsCount; i++ {
 		topicName := testTopicName(tCtx.TestID) + fmt.Sprintf("-%d", i)
 
+		var messagesToPublishForTopic []*message.Message
+		for _, msg := range messagesToPublish {
+			newMsg := msg.Copy()
+			messagesToPublishForTopic = append(messagesToPublishForTopic, newMsg)
+		}
+
 		go func() {
 			defer subsWg.Done()
 
@@ -344,7 +350,7 @@ func TestConcurrentSubscribeMultipleTopics(
 				}
 			}
 
-			err := publishWithRetry(pub, topicName, messagesToPublish...)
+			err := publishWithRetry(pub, topicName, messagesToPublishForTopic...)
 			if err != nil {
 				t.Error(err)
 			}
@@ -353,7 +359,7 @@ func TestConcurrentSubscribeMultipleTopics(
 			if err != nil {
 				t.Error(err)
 			}
-			topicMessages, _ := bulkRead(tCtx, messages, len(messagesToPublish), defaultTimeout*5)
+			topicMessages, _ := bulkRead(tCtx, messages, len(messagesToPublishForTopic), defaultTimeout*5)
 
 			receivedMessagesCh <- topicMessages
 		}()
