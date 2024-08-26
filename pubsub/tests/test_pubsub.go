@@ -1276,7 +1276,7 @@ func AddSimpleMessagesParallel(t *testing.T, messagesCount int, publisher messag
 	for i := 0; i < publishers; i++ {
 		go func() {
 			for msg := range publishMsg {
-				err := publishWithRetry(publisher, topicName, msg)
+				err := publishWithRetry(publisher, topicName, msg.Copy())
 				require.NoError(t, err, "cannot publish messages")
 				wg.Done()
 			}
@@ -1289,7 +1289,7 @@ func AddSimpleMessagesParallel(t *testing.T, messagesCount int, publisher messag
 		msg := message.NewMessage(id, nil)
 		messagesToPublish = append(messagesToPublish, msg)
 
-		publishMsg <- msg.Copy()
+		publishMsg <- msg
 	}
 	close(publishMsg)
 
