@@ -17,6 +17,11 @@ type Payload []byte
 
 // Message is the basic transfer unit.
 // Messages are emitted by Publishers and received by Subscribers.
+//
+// A publisher can modify the message during publishing, e.g. can alter the metadata.
+// Avoid modifying the message in parallel with publishing, as it can lead to data races.
+// In general, a message should be passed to a single Publish and then considered immutable.
+// If needed, use Copy method to create a new message.
 type Message struct {
 	// UUID is a unique identifier of message.
 	//
