@@ -1289,7 +1289,7 @@ func AddSimpleMessagesParallel(t *testing.T, messagesCount int, publisher messag
 		msg := message.NewMessage(id, nil)
 		messagesToPublish = append(messagesToPublish, msg)
 
-		publishMsg <- msg
+		publishMsg <- msg.Copy()
 	}
 	close(publishMsg)
 
