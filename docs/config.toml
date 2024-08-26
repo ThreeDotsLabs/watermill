@@ -36,7 +36,7 @@ googleAnalytics = "UA-128588911-2"
     url = "https://github.com/ThreeDotsLabs/watermill/tree/master/_examples"
 [[menu.main]]
     name = "Releases"
-    weight = 50
+    weight = 200
     url = "https://releases.threedots.tech"
 [[menu.main]]
     name = "Support"
