@@ -12,7 +12,7 @@ import (
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill-http/pkg/http"
-	"github.com/ThreeDotsLabs/watermill-kafka/v2/pkg/kafka"
+	"github.com/ThreeDotsLabs/watermill-kafka/v3/pkg/kafka"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
 	"github.com/ThreeDotsLabs/watermill/message/router/plugin"
@@ -98,7 +98,7 @@ func main() {
 	)
 
 	go func() {
-		// HTTP server needs to be started after router is ready.
+		// HTTP server needs to be started after the router is ready.
 		<-r.Running()
 		_ = httpSubscriber.StartHTTPServer()
 	}()
