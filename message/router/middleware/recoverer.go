@@ -5,7 +5,6 @@ import (
 	"runtime/debug"
 
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/pkg/errors"
 )
 
 // RecoveredPanicError holds the recovered panic's error along with the stacktrace.
@@ -26,7 +25,7 @@ func Recoverer(h message.HandlerFunc) message.HandlerFunc {
 
 		defer func() {
 			if r := recover(); r != nil || panicked {
-				err = errors.WithStack(RecoveredPanicError{V: r, Stacktrace: string(debug.Stack())})
+				err = RecoveredPanicError{V: r, Stacktrace: string(debug.Stack())}
 			}
 		}()
 

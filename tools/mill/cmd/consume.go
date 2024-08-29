@@ -2,10 +2,10 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
@@ -33,7 +33,7 @@ For the configuration of particular pub/sub providers, see the help for the prov
 				logger,
 			)
 			if err != nil {
-				return errors.Wrap(err, "could not create router")
+				return fmt.Errorf("could not create router: %w", err)
 			}
 
 			router.AddPlugin(plugin.SignalsHandler)
@@ -46,7 +46,7 @@ For the configuration of particular pub/sub providers, see the help for the prov
 				logger,
 			)
 			if err != nil {
-				return errors.Wrap(err, "could not create console producer")
+				return fmt.Errorf("could not create console producer: %w", err)
 			}
 
 			router.AddHandler(

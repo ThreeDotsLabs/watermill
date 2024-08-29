@@ -2,10 +2,11 @@ package forwarder
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/pkg/errors"
 )
 
 // messageEnvelope wraps Watermill message and contains destination topic.
@@ -26,7 +27,7 @@ func newMessageEnvelope(destTopic string, msg *message.Message) (*messageEnvelop
 	}
 
 	if err := e.validate(); err != nil {
-		return nil, errors.Wrap(err, "cannot create a message envelope")
+		return nil, fmt.Errorf("cannot create a message envelope: %w", err)
 	}
 
 	return e, nil
@@ -43,12 +44,12 @@ func (e *messageEnvelope) validate() error {
 func wrapMessageInEnvelope(destinationTopic string, msg *message.Message) (*message.Message, error) {
 	envelope, err := newMessageEnvelope(destinationTopic, msg)
 	if err != nil {
-		return nil, errors.Wrap(err, "cannot envelope a message")
+		return nil, fmt.Errorf("cannot envelope a message: %w", err)
 	}
 
 	envelopedMessage, err := json.Marshal(envelope)
 	if err != nil {
-		return nil, errors.Wrap(err, "cannot marshal a message")
+		return nil, fmt.Errorf("cannot marshal a message: %w", err)
 	}
 
 	wrappedMsg := message.NewMessage(watermill.NewUUID(), envelopedMessage)
@@ -60,11 +61,11 @@ func wrapMessageInEnvelope(destinationTopic string, msg *message.Message) (*mess
 func unwrapMessageFromEnvelope(msg *message.Message) (destinationTopic string, unwrappedMsg *message.Message, err error) {
 	envelopedMsg := messageEnvelope{}
 	if err := json.Unmarshal(msg.Payload, &envelopedMsg); err != nil {
-		return "", nil, errors.Wrap(err, "cannot unmarshal message wrapped in an envelope")
+		return "", nil, fmt.Errorf("cannot unmarshal message wrapped in an envelope: %w", err)
 	}
 
 	if err := envelopedMsg.validate(); err != nil {
-		return "", nil, errors.Wrap(err, "an unmarshalled message envelope is invalid")
+		return "", nil, fmt.Errorf("an unmarshalled message envelope is invalid: %w", err)
 	}
 
 	watermillMessage := message.NewMessage(envelopedMsg.UUID, envelopedMsg.Payload)

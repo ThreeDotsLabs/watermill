@@ -2,10 +2,11 @@ package requestreply
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/pkg/errors"
 )
 
 type BackendPubsubMarshaler[Result any] interface {
@@ -34,7 +35,7 @@ func (m BackendPubsubJSONMarshaler[Result]) MarshalReply(
 
 	b, err := json.Marshal(params.HandlerResult)
 	if err != nil {
-		return nil, errors.Wrap(err, "cannot marshal reply")
+		return nil, fmt.Errorf("cannot marshal reply: %w", err)
 	}
 	msg.Payload = b
 
@@ -50,7 +51,7 @@ func (m BackendPubsubJSONMarshaler[Result]) UnmarshalReply(msg *message.Message)
 
 	var result Result
 	if err := json.Unmarshal(msg.Payload, &result); err != nil {
-		return Reply[Result]{}, errors.Wrap(err, "cannot unmarshal result")
+		return Reply[Result]{}, fmt.Errorf("cannot unmarshal result: %w", err)
 	}
 	reply.HandlerResult = result
 

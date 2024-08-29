@@ -2,10 +2,10 @@ package gochannel
 
 import (
 	"context"
+	"errors"
 	"sync"
 
 	"github.com/lithammer/shortuuid/v3"
-	"github.com/pkg/errors"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"

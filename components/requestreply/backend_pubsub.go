@@ -2,13 +2,12 @@ package requestreply
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/hashicorp/go-multierror"
-	"github.com/pkg/errors"
 )
 
 // PubSubBackend is a Backend that uses Pub/Sub to transport commands and replies.
@@ -27,7 +26,7 @@ func NewPubSubBackend[Result any](
 	config.setDefaults()
 
 	if err := config.Validate(); err != nil {
-		return nil, errors.Wrap(err, "invalid config")
+		return nil, fmt.Errorf("invalid config: %w", err)
 	}
 	if marshaler == nil {
 		return nil, errors.New("marshaler cannot be nil")
@@ -108,16 +107,16 @@ func (p *PubSubBackendConfig) Validate() error {
 	var err error
 
 	if p.Publisher == nil {
-		err = multierror.Append(err, errors.New("publisher cannot be nil"))
+		err = errors.Join(err, errors.New("publisher cannot be nil"))
 	}
 	if p.SubscriberConstructor == nil {
-		err = multierror.Append(err, errors.New("subscriber constructor cannot be nil"))
+		err = errors.Join(err, errors.New("subscriber constructor cannot be nil"))
 	}
 	if p.GeneratePublishTopic == nil {
-		err = multierror.Append(err, errors.New("GeneratePublishTopic cannot be nil"))
+		err = errors.Join(err, errors.New("GeneratePublishTopic cannot be nil"))
 	}
 	if p.GenerateSubscribeTopic == nil {
-		err = multierror.Append(err, errors.New("GenerateSubscribeTopic cannot be nil"))
+		err = errors.Join(err, errors.New("GenerateSubscribeTopic cannot be nil"))
 	}
 
 	return err
@@ -134,12 +133,12 @@ func (p PubSubBackend[Result]) ListenForNotifications(
 	// this needs to be done before publishing the message to avoid race condition
 	notificationsSubscriber, err := p.config.SubscriberConstructor(replyContext)
 	if err != nil {
-		return nil, errors.Wrap(err, "cannot create request/reply notifications subscriber")
+		return nil, fmt.Errorf("cannot create request/reply notifications subscriber: %w", err)
 	}
 
 	replyNotificationTopic, err := p.config.GenerateSubscribeTopic(replyContext)
 	if err != nil {
-		return nil, errors.Wrap(err, "cannot generate request/reply notifications topic")
+		return nil, fmt.Errorf("cannot generate request/reply notifications topic: %w", err)
 	}
 
 	var cancel context.CancelFunc
@@ -152,7 +151,7 @@ func (p PubSubBackend[Result]) ListenForNotifications(
 	notifyMsgs, err := notificationsSubscriber.Subscribe(ctx, replyNotificationTopic)
 	if err != nil {
 		cancel()
-		return nil, errors.Wrap(err, "cannot subscribe to request/reply notifications topic")
+		return nil, fmt.Errorf("cannot subscribe to request/reply notifications topic: %w", err)
 	}
 
 	p.config.Logger.Debug(
@@ -219,7 +218,7 @@ func (p PubSubBackend[Result]) OnCommandProcessed(ctx context.Context, params Ba
 
 	notificationMsg, err := p.marshaler.MarshalReply(params)
 	if err != nil {
-		return errors.Wrap(err, "cannot marshal request reply notification")
+		return fmt.Errorf("cannot marshal request reply notification: %w", err)
 	}
 	notificationMsg.SetContext(ctx)
 
@@ -239,7 +238,7 @@ func (p PubSubBackend[Result]) OnCommandProcessed(ctx context.Context, params Ba
 			},
 		}
 		if err := p.config.ModifyNotificationMessage(notificationMsg, processedContext); err != nil {
-			return errors.Wrap(err, "cannot modify notification message")
+			return fmt.Errorf("cannot modify notification message: %w", err)
 		}
 	}
 
@@ -249,7 +248,7 @@ func (p PubSubBackend[Result]) OnCommandProcessed(ctx context.Context, params Ba
 		OperationID:    operationID,
 	})
 	if err != nil {
-		return errors.Wrap(err, "cannot generate request/reply notify topic")
+		return fmt.Errorf("cannot generate request/reply notify topic: %w", err)
 	}
 
 	err = p.config.Publisher.Publish(replyTopic, notificationMsg)
@@ -259,7 +258,7 @@ func (p PubSubBackend[Result]) OnCommandProcessed(ctx context.Context, params Ba
 		}
 	}
 	if err != nil {
-		return errors.Wrap(err, "cannot publish command executed message")
+		return fmt.Errorf("cannot publish command executed message: %w", err)
 	}
 
 	if p.config.AckCommandErrors {
@@ -275,7 +274,7 @@ func (p PubSubBackend[Result]) OnCommandProcessed(ctx context.Context, params Ba
 func operationIDFromMetadata(msg *message.Message) (OperationID, error) {
 	operationID := msg.Metadata.Get(OperationIDMetadataKey)
 	if operationID == "" {
-		return "", errors.Errorf("cannot get notification ID from command message metadata, key: %s", OperationIDMetadataKey)
+		return "", fmt.Errorf("cannot get notification ID from command message metadata, key: %s", OperationIDMetadataKey)
 	}
 
 	return OperationID(operationID), nil

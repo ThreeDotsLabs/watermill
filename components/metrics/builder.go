@@ -1,10 +1,12 @@
 package metrics
 
 import (
+	"fmt"
+
+	"github.com/prometheus/client_golang/prometheus"
+
 	"github.com/ThreeDotsLabs/watermill/internal"
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/pkg/errors"
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 func NewPrometheusMetricsBuilder(prometheusRegistry prometheus.Registerer, namespace string, subsystem string) PrometheusMetricsBuilder {
@@ -50,7 +52,7 @@ func (b PrometheusMetricsBuilder) DecoratePublisher(pub message.Publisher) (mess
 		publisherLabelKeys,
 	))
 	if err != nil {
-		return nil, errors.Wrap(err, "could not register publish time metric")
+		return nil, fmt.Errorf("could not register publish time metric: %w", err)
 	}
 	return d, nil
 }
@@ -73,12 +75,12 @@ func (b PrometheusMetricsBuilder) DecorateSubscriber(sub message.Subscriber) (me
 		append(subscriberLabelKeys, labelAcked),
 	))
 	if err != nil {
-		return nil, errors.Wrap(err, "could not register time to ack metric")
+		return nil, fmt.Errorf("could not register time to ack metric: %w", err)
 	}
 
 	d.Subscriber, err = message.MessageTransformSubscriberDecorator(d.recordMetrics)(sub)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not decorate subscriber with metrics decorator")
+		return nil, fmt.Errorf("could not decorate subscriber with metrics decorator: %w", err)
 	}
 
 	return d, nil

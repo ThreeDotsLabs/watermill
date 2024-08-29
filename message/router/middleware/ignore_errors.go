@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/pkg/errors"
 )
 
 // IgnoreErrors provides a middleware that makes the handler ignore some explicitly whitelisted errors.
@@ -26,7 +25,7 @@ func (i IgnoreErrors) Middleware(h message.HandlerFunc) message.HandlerFunc {
 	return func(msg *message.Message) ([]*message.Message, error) {
 		events, err := h(msg)
 		if err != nil {
-			if _, ok := i.ignoredErrors[errors.Cause(err).Error()]; ok {
+			if _, ok := i.ignoredErrors[causeError(err)]; ok {
 				return events, nil
 			}
 
@@ -34,5 +33,19 @@ func (i IgnoreErrors) Middleware(h message.HandlerFunc) message.HandlerFunc {
 		}
 
 		return events, nil
+	}
+}
+
+func causeError(err error) string {
+	for {
+		switch x := err.(type) {
+		case interface{ Unwrap() error }:
+			if x.Unwrap() == nil {
+				return err.Error()
+			}
+			err = x.Unwrap()
+		default:
+			return err.Error()
+		}
 	}
 }

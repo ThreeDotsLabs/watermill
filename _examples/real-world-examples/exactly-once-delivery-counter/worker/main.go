@@ -4,13 +4,14 @@ import (
 	"context"
 	stdSQL "database/sql"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/ThreeDotsLabs/watermill/message"
 	driver "github.com/go-sql-driver/mysql"
-	"github.com/pkg/errors"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill-sql/v3/pkg/sql"
@@ -75,7 +76,7 @@ func processMessage(msg *message.Message) error {
 	payload := messagePayload{}
 	err := json.Unmarshal(msg.Payload, &payload)
 	if err != nil {
-		return errors.Wrap(err, "unable to unmarshal payload")
+		return fmt.Errorf("unable to unmarshal payload: %w", err)
 	}
 
 	// let's do it more fragile, let's get the value from DB instead of simple increment
@@ -102,7 +103,7 @@ func updateDbCounter(ctx context.Context, tx *stdSQL.Tx, counterUUD string, coun
 		counterValue,
 	)
 	if err != nil {
-		return errors.Wrap(err, "can't update counter value")
+		return fmt.Errorf("can't update counter value: %w", err)
 	}
 
 	return nil
@@ -117,7 +118,7 @@ func dbCounterValue(ctx context.Context, tx *stdSQL.Tx, counterUUID string) (int
 		case stdSQL.ErrNoRows:
 			return 0, nil
 		default:
-			return 0, errors.Wrap(err, "can't get counter value")
+			return 0, fmt.Errorf("can't get counter value: %w", err)
 		}
 	}
 
