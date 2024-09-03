@@ -26,6 +26,11 @@ type Config struct {
 	// When true, Publish will block until subscriber Ack's the message.
 	// If there are no subscribers, Publish will not block (also when Persistent is true).
 	BlockPublishUntilSubscriberAck bool
+
+	// PreserveContext is a flag that determines if the context should be preserved when sending messages to subscribers.
+	// This behavior is different from other implementations of Publishers where data travels over the network,
+	// hence context can't be preserved in those cases
+	PreserveContext bool
 }
 
 // GoChannel is the simplest Pub/Sub implementation.
@@ -87,7 +92,11 @@ func (g *GoChannel) Publish(topic string, messages ...*message.Message) error {
 
 	messagesToPublish := make(message.Messages, len(messages))
 	for i, msg := range messages {
-		messagesToPublish[i] = msg.Copy()
+		if g.config.PreserveContext {
+			messagesToPublish[i] = msg.CopyWithContext()
+		} else {
+			messagesToPublish[i] = msg.Copy()
+		}
 	}
 
 	g.subscribersLock.RLock()
@@ -154,7 +163,7 @@ func (g *GoChannel) sendMessage(topic string, message *message.Message) (<-chan 
 
 			wg.Add(1)
 			go func() {
-				subscriber.sendMessageToSubscriber(message, logFields)
+				subscriber.sendMessageToSubscriber(message, logFields, g.config.PreserveContext)
 				wg.Done()
 			}()
 		}
@@ -237,7 +246,7 @@ func (g *GoChannel) Subscribe(ctx context.Context, topic string) (<-chan *messag
 				msg := g.persistedMessages[topic][i]
 				logFields := watermill.LogFields{"message_uuid": msg.UUID, "topic": topic}
 
-				go s.sendMessageToSubscriber(msg, logFields)
+				go s.sendMessageToSubscriber(msg, logFields, g.config.PreserveContext)
 			}
 		}
 
@@ -340,11 +349,18 @@ func (s *subscriber) Close() {
 	close(s.outputChannel)
 }
 
-func (s *subscriber) sendMessageToSubscriber(msg *message.Message, logFields watermill.LogFields) {
+func (s *subscriber) sendMessageToSubscriber(msg *message.Message, logFields watermill.LogFields, preserveContext bool) {
 	s.sending.Lock()
 	defer s.sending.Unlock()
 
-	ctx, cancelCtx := context.WithCancel(s.ctx)
+	var ctx context.Context
+	var cancelCtx context.CancelFunc
+
+	if preserveContext {
+		ctx, cancelCtx = context.WithCancel(msg.Context())
+	} else {
+		ctx, cancelCtx = context.WithCancel(s.ctx)
+	}
 	defer cancelCtx()
 
 SendToSubscriber:
