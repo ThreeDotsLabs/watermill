@@ -121,6 +121,12 @@ type Features struct {
 	// NewSubscriberReceivesOldMessages should be set to true if messages are persisted even
 	// if they are already consumed (for example, like in Kafka).
 	NewSubscriberReceivesOldMessages bool
+
+	// UseULID should be set to true if ULID should be used instead of UUID for generating test IDs.
+	UseULID bool
+
+	// TestIDGenerator determines which function should be used for generating test IDs, NewTestID is used by default.
+	TestIDGenerator func() TestID `default:"NewTestID()"`
 }
 
 // RunOnlyFastTests returns true if -short flag was provided -race was not provided.
@@ -153,6 +159,10 @@ type TestID string
 // NewTestID returns a new unique TestID.
 func NewTestID() TestID {
 	return TestID(watermill.NewUUID())
+}
+// NewTestULID returns a new unique TestID using ULID.
+func NewTestULID() TestID {
+	return TestID(watermill.NewULID())
 }
 
 // TestContext is a collection of values that belong to a single test.
@@ -810,8 +820,8 @@ func TestConsumerGroups(
 	}
 	totalMessagesCount := 50
 
-	group1 := generateConsumerGroup(t, pubSubConstructor, topicName)
-	group2 := generateConsumerGroup(t, pubSubConstructor, topicName)
+	group1 := generateConsumerGroup(t, pubSubConstructor, topicName, tCtx.Features.UseULID)
+	group2 := generateConsumerGroup(t, pubSubConstructor, topicName, tCtx.Features.UseULID)
 
 	messagesToPublish := PublishSimpleMessages(t, totalMessagesCount, publisherPub, topicName)
 
@@ -1231,8 +1241,13 @@ func closePubSub(t *testing.T, pub message.Publisher, sub message.Subscriber) {
 	require.NoError(t, err)
 }
 
-func generateConsumerGroup(t *testing.T, pubSubConstructor ConsumerGroupPubSubConstructor, topicName string) string {
-	groupName := "cg_" + watermill.NewUUID()
+func generateConsumerGroup(t *testing.T, pubSubConstructor ConsumerGroupPubSubConstructor, topicName string, useULID bool) string {
+	groupName := "cg_"
+	if useULID {
+		groupName += watermill.NewULID()
+	} else {
+		groupName += watermill.NewUUID()
+	}
 
 	// create a pubsub to ensure that the consumer group exists
 	// for those providers that require subscription before publishing messages (e.g. Google Cloud PubSub)
