@@ -31,7 +31,7 @@ type Subscriber interface {
 	// If message processing fails and the message should be redelivered `Nack()` should be called instead.
 	//
 	// When the provided ctx is canceled, the subscriber closes the subscription and the output channel.
-	// The provided ctx is passed to all produced messages.
+	// The provided ctx is passed to all produced messages (this is configurable for the local Pub/Sub implementation).
 	// When Nack or Ack is called on the message, the context of the message is canceled.
 	Subscribe(ctx context.Context, topic string) (<-chan *Message, error)
 	// Close closes all subscriptions with their output channels and flushes offsets etc. when needed.
