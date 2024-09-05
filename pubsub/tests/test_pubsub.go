@@ -1291,14 +1291,14 @@ func PublishSimpleMessages(t *testing.T, messagesCount int, publisher message.Pu
 }
 
 // PublishSimpleMessagesWithContext publishes provided number of simple messages without a payload, but custom context
-func PublishSimpleMessagesWithContext(t *testing.T, messagesCount int, contextKey string, publisher message.Publisher, topicName string) message.Messages {
+func PublishSimpleMessagesWithContext(t *testing.T, messagesCount int, contextKeyString string, publisher message.Publisher, topicName string) message.Messages {
 	var messagesToPublish []*message.Message
 
 	for i := 0; i < messagesCount; i++ {
 		id := watermill.NewUUID()
 
 		msg := message.NewMessage(id, nil)
-		msg.SetContext(context.WithValue(context.Background(), contextKey, "bar"+strconv.Itoa(i)))
+		msg.SetContext(context.WithValue(context.Background(), contextKey(contextKeyString), "bar"+strconv.Itoa(i)))
 		messagesToPublish = append(messagesToPublish, msg)
 
 		err := publishWithRetry(publisher, topicName, msg)

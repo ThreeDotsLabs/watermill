@@ -102,8 +102,8 @@ func TestPublishSubscribe_not_persistent_with_context(t *testing.T) {
 	msgs, err := pubSub.Subscribe(context.Background(), topicName)
 	require.NoError(t, err)
 
-	const contextKey = "foo"
-	sendMessages := tests.PublishSimpleMessagesWithContext(t, messagesCount, contextKey, pubSub, topicName)
+	const contextKeyString = "foo"
+	sendMessages := tests.PublishSimpleMessagesWithContext(t, messagesCount, contextKeyString, pubSub, topicName)
 	receivedMsgs, _ := subscriber.BulkRead(msgs, messagesCount, time.Second)
 
 	expectedContexts := make(map[string]context.Context)
@@ -111,7 +111,7 @@ func TestPublishSubscribe_not_persistent_with_context(t *testing.T) {
 		expectedContexts[msg.UUID] = msg.Context()
 	}
 	tests.AssertAllMessagesReceived(t, sendMessages, receivedMsgs)
-	tests.AssertAllMessagesHaveSameContext(t, contextKey, expectedContexts, receivedMsgs)
+	tests.AssertAllMessagesHaveSameContext(t, contextKeyString, expectedContexts, receivedMsgs)
 
 	assert.NoError(t, pubSub.Close())
 }

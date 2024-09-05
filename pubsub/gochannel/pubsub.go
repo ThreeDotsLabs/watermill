@@ -163,7 +163,7 @@ func (g *GoChannel) sendMessage(topic string, message *message.Message) (<-chan 
 
 			wg.Add(1)
 			go func() {
-				subscriber.sendMessageToSubscriber(message, logFields, g.config.PreserveContext)
+				subscriber.sendMessageToSubscriber(message, logFields)
 				wg.Done()
 			}()
 		}
@@ -196,11 +196,12 @@ func (g *GoChannel) Subscribe(ctx context.Context, topic string) (<-chan *messag
 	subLock.(*sync.Mutex).Lock()
 
 	s := &subscriber{
-		ctx:           ctx,
-		uuid:          watermill.NewUUID(),
-		outputChannel: make(chan *message.Message, g.config.OutputChannelBuffer),
-		logger:        g.logger,
-		closing:       make(chan struct{}),
+		ctx:             ctx,
+		uuid:            watermill.NewUUID(),
+		outputChannel:   make(chan *message.Message, g.config.OutputChannelBuffer),
+		logger:          g.logger,
+		closing:         make(chan struct{}),
+		preserveContext: g.config.PreserveContext,
 	}
 
 	go func(s *subscriber, g *GoChannel) {
@@ -246,7 +247,7 @@ func (g *GoChannel) Subscribe(ctx context.Context, topic string) (<-chan *messag
 				msg := g.persistedMessages[topic][i]
 				logFields := watermill.LogFields{"message_uuid": msg.UUID, "topic": topic}
 
-				go s.sendMessageToSubscriber(msg, logFields, g.config.PreserveContext)
+				go s.sendMessageToSubscriber(msg, logFields)
 			}
 		}
 
@@ -329,6 +330,8 @@ type subscriber struct {
 	logger  watermill.LoggerAdapter
 	closed  bool
 	closing chan struct{}
+
+	preserveContext bool
 }
 
 func (s *subscriber) Close() {
@@ -349,19 +352,20 @@ func (s *subscriber) Close() {
 	close(s.outputChannel)
 }
 
-func (s *subscriber) sendMessageToSubscriber(msg *message.Message, logFields watermill.LogFields, preserveContext bool) {
+func (s *subscriber) sendMessageToSubscriber(msg *message.Message, logFields watermill.LogFields) {
 	s.sending.Lock()
 	defer s.sending.Unlock()
 
 	var ctx context.Context
-	var cancelCtx context.CancelFunc
 
-	if preserveContext {
-		ctx, cancelCtx = context.WithCancel(msg.Context())
+	//This is getting the context from the message, not the subscriber
+	if s.preserveContext {
+		ctx = msg.Context()
 	} else {
+		var cancelCtx context.CancelFunc
 		ctx, cancelCtx = context.WithCancel(s.ctx)
+		defer cancelCtx()
 	}
-	defer cancelCtx()
 
 SendToSubscriber:
 	for {
