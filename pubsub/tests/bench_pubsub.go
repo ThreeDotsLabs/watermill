@@ -15,7 +15,7 @@ type BenchmarkPubSubConstructor func(n int) (message.Publisher, message.Subscrib
 // BenchSubscriber runs benchmark on a message Subscriber.
 func BenchSubscriber(b *testing.B, pubSubConstructor BenchmarkPubSubConstructor) {
 	pub, sub := pubSubConstructor(b.N)
-	topicName := testTopicName(NewTestID())
+	topicName := testTopicName(TestContext{TestID: NewTestID()})
 
 	messages, err := sub.Subscribe(context.Background(), topicName)
 	if err != nil {
