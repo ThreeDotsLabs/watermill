@@ -45,7 +45,7 @@ func main() {
 	poisonSubscriber, err := sql.NewSubscriber(db, sql.SubscriberConfig{
 		SchemaAdapter: sql.ConditionalPostgreSQLSchema{
 			GenerateWhereClause: func(params sql.GenerateWhereClauseParams) (string, []any) {
-				return "(metadata->>'requeue_time')::timestamptz < NOW() AT TIME ZONE 'UTC'", nil
+				return "(metadata->>'delayed_until')::timestamptz < NOW() AT TIME ZONE 'UTC'", nil
 			},
 		},
 		OffsetsAdapter: sql.ConditionalPostgreSQLOffsetsAdapter{
@@ -104,6 +104,17 @@ func main() {
 			"OnOrderPlacedHandler",
 			func(ctx context.Context, event *OrderPlaced) error {
 				fmt.Println("Received order placed:", event.OrderID)
+
+				msg := cqrs.OriginalMessageFromCtx(ctx)
+				retries := msg.Metadata.Get(requeuer.RetriesKey)
+				delayedUntil := msg.Metadata.Get(middleware.DelayedUntilKey)
+				delayedFor := msg.Metadata.Get(middleware.DelayedForKey)
+
+				if retries != "" {
+					fmt.Println("\tRetries:", retries)
+					fmt.Println("\tDelayed until:", delayedUntil)
+					fmt.Println("\tDelayed for:", delayedFor)
+				}
 
 				if event.OrderID == "" {
 					return fmt.Errorf("empty order_id")

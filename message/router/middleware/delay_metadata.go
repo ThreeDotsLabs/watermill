@@ -7,8 +7,8 @@ import (
 )
 
 const (
-	RequeueTimeMetadataKey  = "requeue_time"
-	RequeueDelayMetadataKey = "requeue_delay"
+	DelayedUntilKey = "delayed_until"
+	DelayedForKey   = "delayed_for"
 )
 
 type DelayMetadata struct {
@@ -49,15 +49,15 @@ func (d *DelayMetadata) Middleware(h message.HandlerFunc) message.HandlerFunc {
 }
 
 func (d *DelayMetadata) applyDelay(msg *message.Message) {
-	currentDelayStr := msg.Metadata.Get(RequeueDelayMetadataKey)
-	currentDelay, err := time.ParseDuration(currentDelayStr)
+	delayedForStr := msg.Metadata.Get(DelayedForKey)
+	delayedFor, err := time.ParseDuration(delayedForStr)
 	if err != nil {
-		currentDelay = d.config.Delay
+		delayedFor = d.config.Delay
 	} else {
-		currentDelay = currentDelay * 2
+		delayedFor = delayedFor * 2
 	}
 
-	requeueTime := time.Now().UTC().Add(currentDelay)
-	msg.Metadata.Set(RequeueTimeMetadataKey, requeueTime.Format(time.RFC3339))
-	msg.Metadata.Set(RequeueDelayMetadataKey, currentDelay.String())
+	delayedUntil := time.Now().UTC().Add(delayedFor)
+	msg.Metadata.Set(DelayedUntilKey, delayedUntil.Format(time.RFC3339))
+	msg.Metadata.Set(DelayedForKey, delayedFor.String())
 }
