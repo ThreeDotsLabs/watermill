@@ -1,4 +1,4 @@
-package requeue
+package requeuer
 
 import (
 	"context"
@@ -11,11 +11,14 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
-const RetriesKey = "requeue_retries"
+const RetriesKey = "requeuer_retries"
 
-type Requeue struct {
+type Requeuer struct {
 	config Config
-	router *message.Router
+}
+
+type GeneratePublishTopicParams struct {
+	Message *message.Message
 }
 
 type Config struct {
@@ -31,7 +34,7 @@ type Config struct {
 	// GeneratePublishTopic is the topic related to the Publisher to publish the requeued message to.
 	// For example, it could be a constant, or taken from the message's metadata.
 	// Required.
-	GeneratePublishTopic func(msg *message.Message) (string, error)
+	GeneratePublishTopic func(params GeneratePublishTopicParams) (string, error)
 
 	// Delay is the duration to wait before requeueing the message. Optional.
 	// The default is no delay.
@@ -46,7 +49,17 @@ type Config struct {
 	Router *message.Router
 }
 
-func (c *Config) setDefaults() {
+func (c *Config) setDefaults(logger watermill.LoggerAdapter) error {
+	if c.Router == nil {
+		router, err := message.NewRouter(message.RouterConfig{}, logger)
+		if err != nil {
+			return fmt.Errorf("could not create router: %w", err)
+		}
+
+		c.Router = router
+	}
+
+	return nil
 }
 
 func (c *Config) validate() error {
@@ -69,31 +82,30 @@ func (c *Config) validate() error {
 	return nil
 }
 
-func NewRequeue(
+func NewRequeuer(
 	config Config,
 	logger watermill.LoggerAdapter,
-) (*Requeue, error) {
-	config.setDefaults()
-	err := config.validate()
+) (*Requeuer, error) {
+	if logger == nil {
+		logger = watermill.NewStdLogger(false, false)
+	}
+
+	err := config.setDefaults(logger)
+	if err != nil {
+		return nil, err
+	}
+
+	err = config.validate()
 	if err != nil {
 		return nil, fmt.Errorf("invalid config: %w", err)
 	}
 
-  router := config.Router
-	if router == nil {
-		router, err = message.NewRouter(message.RouterConfig{}, logger)
-		if err != nil {
-			return nil, fmt.Errorf("could not create router: %w", err)
-		}
-	}
-
-	r := &Requeue{
+	r := &Requeuer{
 		config: config,
-		router: router,
 	}
 
-	router.AddNoPublisherHandler(
-		"requeue",
+	config.Router.AddNoPublisherHandler(
+		"requeuer",
 		config.SubscribeTopic,
 		config.Subscriber,
 		r.handler,
@@ -102,7 +114,7 @@ func NewRequeue(
 	return r, nil
 }
 
-func (r *Requeue) handler(msg *message.Message) error {
+func (r *Requeuer) handler(msg *message.Message) error {
 	if r.config.Delay > 0 {
 		select {
 		case <-msg.Context().Done():
@@ -111,7 +123,7 @@ func (r *Requeue) handler(msg *message.Message) error {
 		}
 	}
 
-	topic, err := r.config.GeneratePublishTopic(msg)
+	topic, err := r.config.GeneratePublishTopic(GeneratePublishTopicParams{Message: msg})
 	if err != nil {
 		return err
 	}
@@ -134,6 +146,6 @@ func (r *Requeue) handler(msg *message.Message) error {
 	return nil
 }
 
-func (r *Requeue) Run(ctx context.Context) error {
-	return r.router.Run(ctx)
+func (r *Requeuer) Run(ctx context.Context) error {
+	return r.config.Router.Run(ctx)
 }

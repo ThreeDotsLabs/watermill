@@ -1,18 +1,20 @@
-package requeue
+package requeuer_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/ThreeDotsLabs/watermill"
+	"github.com/ThreeDotsLabs/watermill/components/requeuer"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
 	"github.com/ThreeDotsLabs/watermill/pubsub/gochannel"
-	"github.com/pkg/errors"
-	"github.com/stretchr/testify/require"
 )
 
 func TestRequeue(t *testing.T) {
@@ -20,11 +22,14 @@ func TestRequeue(t *testing.T) {
 
 	pubSub := gochannel.NewGoChannel(gochannel.Config{}, logger)
 
-	requeue, err := NewRequeue(Config{
+	requeue, err := requeuer.NewRequeuer(requeuer.Config{
 		Subscriber:     pubSub,
 		SubscribeTopic: "requeue",
 		Publisher:      pubSub,
-		Delay:          time.Millisecond * 200,
+		GeneratePublishTopic: func(params requeuer.GeneratePublishTopicParams) (string, error) {
+			return "test", nil
+		},
+		Delay: time.Millisecond * 200,
 	}, logger)
 	require.NoError(t, err)
 
