@@ -18,8 +18,6 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
 )
 
-const RequeueTimeMetadataKey = "requeue_time"
-
 func main() {
 	db, err := stdSQL.Open("postgres", "postgres://watermill:password@localhost:5432/watermill?sslmode=disable")
 	if err != nil {
@@ -59,17 +57,12 @@ func main() {
 		panic(err)
 	}
 
-	generateEventName := func(v any) string {
-		e := v.(Event)
-		return e.EventName()
-	}
-
 	eventBus, err := cqrs.NewEventBusWithConfig(publisher, cqrs.EventBusConfig{
 		GeneratePublishTopic: func(params cqrs.GenerateEventPublishTopicParams) (string, error) {
 			return params.EventName, nil
 		},
 		Marshaler: cqrs.JSONMarshaler{
-			GenerateName: generateEventName,
+			GenerateName: cqrs.EventName,
 		},
 		Logger: logger,
 	})
@@ -84,17 +77,7 @@ func main() {
 
 	router := message.NewDefaultRouter(logger)
 	router.AddMiddleware(poisonQueue)
-	router.AddMiddleware(func(h message.HandlerFunc) message.HandlerFunc {
-		return func(msg *message.Message) ([]*message.Message, error) {
-			msgs, err := h(msg)
-			if err != nil {
-				requeue := time.Now().UTC().Add(10 * time.Second)
-				msg.Metadata.Set(RequeueTimeMetadataKey, requeue.Format(time.RFC3339))
-			}
-
-			return msgs, err
-		}
-	})
+	router.AddMiddleware(middleware.NewDelayMetadata(middleware.DelayMetadataConfig{}).Middleware)
 
 	eventProcessor, err := cqrs.NewEventProcessorWithConfig(router, cqrs.EventProcessorConfig{
 		GenerateSubscribeTopic: func(params cqrs.EventProcessorGenerateSubscribeTopicParams) (string, error) {
@@ -108,7 +91,7 @@ func main() {
 			}, logger)
 		},
 		Marshaler: cqrs.JSONMarshaler{
-			GenerateName: generateEventName,
+			GenerateName: cqrs.EventName,
 		},
 		Logger: logger,
 	})
@@ -116,7 +99,20 @@ func main() {
 		panic(err)
 	}
 
-	err = eventProcessor.AddHandlers(OnOrderPlacedHandler)
+	err = eventProcessor.AddHandlers(
+		cqrs.NewEventHandler(
+			"OnOrderPlacedHandler",
+			func(ctx context.Context, event *OrderPlaced) error {
+				fmt.Println("Received order placed:", event.OrderID)
+
+				if event.OrderID == "" {
+					return fmt.Errorf("empty order_id")
+				}
+
+				return nil
+			},
+		),
+	)
 	if err != nil {
 		panic(err)
 	}
@@ -169,10 +165,6 @@ func main() {
 	}
 }
 
-type Event interface {
-	EventName() string
-}
-
 type OrderPlaced struct {
 	OrderID string `json:"order_id"`
 }
@@ -180,16 +172,3 @@ type OrderPlaced struct {
 func (OrderPlaced) EventName() string {
 	return "OrderPlaced"
 }
-
-var OnOrderPlacedHandler = cqrs.NewEventHandler(
-	"OnOrderPlacedHandler",
-	func(ctx context.Context, event *OrderPlaced) error {
-		fmt.Println("Received order placed:", event.OrderID)
-
-		if event.OrderID == "" {
-			return fmt.Errorf("empty order_id")
-		}
-
-		return nil
-	},
-)
