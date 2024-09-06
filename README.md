@@ -49,6 +49,7 @@ Pick what you like the best or see in order:
     * [Persistent Event Log](_examples/real-world-examples/persistent-event-log)
     * [Transactional Events](_examples/real-world-examples/transactional-events)
     * [Real-time HTTP updates with Server-Sent Events](_examples/real-world-examples/server-sent-events)
+    * [Real-time HTTP updates with Server-Sent Events and htmx](_examples/real-world-examples/server-sent-events-htmx)
 * Complete projects
     * [NATS example with live code reloading](https://github.com/ThreeDotsLabs/nats-example)
     * [RabbitMQ, webhooks and Kafka integration](https://github.com/ThreeDotsLabs/event-driven-example)
@@ -103,7 +104,6 @@ Supported Pub/Subs:
 - Redis Stream Pub/Sub [(`github.com/ThreeDotsLabs/watermill-redisstream`)](https://github.com/ThreeDotsLabs/watermill-redisstream/)
 - SQL Pub/Sub [(`github.com/ThreeDotsLabs/watermill-sql/v2`)](https://github.com/ThreeDotsLabs/watermill-sql/)
 
-
 All Pub/Subs implementation documentation can be found in the [documentation](https://watermill.io/pubsubs/).
 
 ## Unofficial libraries
@@ -154,8 +154,6 @@ Here's the short version for message size of 16 bytes.
 If you didn't find the answer to your question in [the documentation](https://watermill.io/), feel free to ask us directly!
 
 Please join us on the `#watermill` channel on the [Three Dots Labs Discord](https://discord.gg/QV6VFg4YQE).
-
-Every bit of feedback is very welcome and appreciated. Please submit it using [the survey](https://www.surveymonkey.com/r/WZXD392).
 
 ## Why the name?
 
