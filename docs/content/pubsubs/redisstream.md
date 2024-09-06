@@ -55,6 +55,8 @@ Example:
 Example:
 {{% load-snippet-partial file="src-link/_examples/pubsubs/redisstream/main.go" first_line_contains="subClient := redis.NewClient" last_line_contains="panic(err)" padding_after="1" %}}
 
+{{% /render-md %}}
+
 #### Publishing
 
 {{% render-md %}}

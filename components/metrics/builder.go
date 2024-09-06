@@ -22,10 +22,16 @@ type PrometheusMetricsBuilder struct {
 
 	Namespace string
 	Subsystem string
+	// PublishBuckets defines the histogram buckets for publish time histogram, defaulted if nil.
+	PublishBuckets []float64
+	// HandlerBuckets defines the histogram buckets for handle execution time histogram, defaulted to watermill's default.
+	HandlerBuckets []float64
 }
 
 // AddPrometheusRouterMetrics is a convenience function that acts on the message router to add the metrics middleware
 // to all its handlers. The handlers' publishers and subscribers are also decorated.
+// The default buckets are used for the handler execution time histogram (use your own provisioning
+// with NewRouterMiddlewareWithConfig if needed).
 func (b PrometheusMetricsBuilder) AddPrometheusRouterMetrics(r *message.Router) {
 	r.AddPublisherDecorators(b.DecoratePublisher)
 	r.AddSubscriberDecorators(b.DecorateSubscriber)
@@ -46,6 +52,7 @@ func (b PrometheusMetricsBuilder) DecoratePublisher(pub message.Publisher) (mess
 			Subsystem: b.Subsystem,
 			Name:      "publish_time_seconds",
 			Help:      "The time that a publishing attempt (success or not) took in seconds",
+			Buckets:   b.PublishBuckets,
 		},
 		publisherLabelKeys,
 	))

@@ -35,6 +35,10 @@ Example use of `AddPrometheusRouterMetrics`:
 
 In the snippet above, we have left the `namespace` and `subsystem` arguments empty. The Prometheus client library [uses these](https://godoc.org/github.com/prometheus/client_golang/prometheus#BuildFQName) to prefix the metric names. You may want to use namespace or subsystem, but be aware that this will impact the metric names and you will have to adjust the Grafana dashboard accordingly.
 
+The `PrometheusMetricsBuilder` allows for custom configuration of histogram buckets by setting the `PublishBuckets` or `HandlerBuckets` field.
+If `HandlerBuckets` is not provided, default watermill's values will be used, which are one order of magnitude smaller than default buckets (5ms~10s), because the handler execution times are typically shorter (µs~ms range).
+For `PublishBuckets`, the default values are the same as the default Prometheus buckets (5ms~10s).
+
 Standalone publishers and subscribers may also be decorated through the use of dedicated methods of `PrometheusMetricBuilder`:
 
 {{% render-md %}}

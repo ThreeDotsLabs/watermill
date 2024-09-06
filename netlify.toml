@@ -15,3 +15,9 @@
 [context.branch-deploy.environment]
   HUGO_VERSION = "0.110.0"
   HUGO_ENABLEGITINFO = "true"
+
+[[redirects]]
+  from = "/api/event"
+  to = "https://academy-api.threedots.tech/api/event"
+  force = true
+  status = 200
