@@ -356,12 +356,10 @@ func (s *subscriber) sendMessageToSubscriber(msg *message.Message, logFields wat
 	s.sending.Lock()
 	defer s.sending.Unlock()
 
-	var ctx context.Context
+	ctx := msg.Context()
 
 	//This is getting the context from the message, not the subscriber
-	if s.preserveContext {
-		ctx = msg.Context()
-	} else {
+	if !s.preserveContext {
 		var cancelCtx context.CancelFunc
 		ctx, cancelCtx = context.WithCancel(s.ctx)
 		defer cancelCtx()
