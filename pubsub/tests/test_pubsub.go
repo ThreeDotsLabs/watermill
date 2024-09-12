@@ -1044,7 +1044,9 @@ ClosedLoop:
 
 	receivedMessages, _ := bulkRead(tCtx, msgs, messagesCount, defaultTimeout)
 	AssertAllMessagesReceived(t, publishedMessages, receivedMessages)
-	AssertAllMessagesHaveSameContext(t, contextKeyString, expectedContexts, receivedMessages)
+	if tCtx.Features.ContextPreserved {
+		AssertAllMessagesHaveSameContext(t, contextKeyString, expectedContexts, receivedMessages)
+	}
 }
 
 // TestReconnect tests if reconnecting to a Pub/Sub works correctly.

@@ -99,7 +99,7 @@ func AssertAllMessagesHaveSameContext(t *testing.T, contextKeyString string, exp
 	assert.Len(t, received, len(expectedValues))
 	for _, msg := range received {
 		expectedValue := expectedValues[msg.UUID].Value(contextKey(contextKeyString)).(string)
-		actualValue := msg.Context().Value(contextKeyString)
+		actualValue := msg.Context().Value(contextKey(contextKeyString))
 		assert.Equal(t, expectedValue, actualValue)
 	}
 }
