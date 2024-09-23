@@ -91,6 +91,18 @@ func NewRouter(config RouterConfig, logger watermill.LoggerAdapter) (*Router, er
 		return nil, errors.Wrap(err, "invalid config")
 	}
 
+	return newRouter(config, logger), nil
+}
+
+// NewDefaultRouter creates a new Router with default configuration.
+func NewDefaultRouter(logger watermill.LoggerAdapter) *Router {
+	config := RouterConfig{}
+	config.setDefaults()
+
+	return newRouter(config, logger)
+}
+
+func newRouter(config RouterConfig, logger watermill.LoggerAdapter) *Router {
 	if logger == nil {
 		logger = watermill.NopLogger{}
 	}
@@ -116,7 +128,7 @@ func NewRouter(config RouterConfig, logger watermill.LoggerAdapter) (*Router, er
 		logger: logger,
 
 		running: make(chan struct{}),
-	}, nil
+	}
 }
 
 type middleware struct {
