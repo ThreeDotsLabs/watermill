@@ -2,7 +2,7 @@ package cqrs
 
 // Event is an interface that describes an event.
 type Event interface {
-    // EventName should return the name of the event. For example, it could be used for topic generation.
+	// EventName should return the name of the event. For example, it could be used for topic generation.
 	EventName() string
 }
 
