@@ -20,7 +20,9 @@
         </ul>
     </nav>
     <div>
-        <p><strong><a href="https://github.com/ThreeDotsLabs/watermill/edit/master/docs/content/{{ .Page.File.Path }}">Help us improve this page</a></strong></p>
+        {{ with .Page.File }}
+            <p><strong><a href="https://github.com/ThreeDotsLabs/watermill/edit/master/docs/content/{{ .Path }}">Help us improve this page</a></strong></p>
+        {{ end }}
         <p>&copy;Three Dots Labs MIT License</p>
     </div>
 </footer>
