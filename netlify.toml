@@ -4,16 +4,16 @@
   publish = "docs/public/"
 
 [context.production.environment]
-  HUGO_VERSION = "0.127.0"
+  HUGO_VERSION = "0.110.0"
   HUGO_ENV = "production"
   HUGO_ENABLEGITINFO = "true"
 
 [context.deploy-preview.environment]
-  HUGO_VERSION = "0.127.0"
+  HUGO_VERSION = "0.110.0"
   HUGO_ENABLEGITINFO = "true"
 
 [context.branch-deploy.environment]
-  HUGO_VERSION = "0.127.0"
+  HUGO_VERSION = "0.110.0"
   HUGO_ENABLEGITINFO = "true"
 
 [[redirects]]
