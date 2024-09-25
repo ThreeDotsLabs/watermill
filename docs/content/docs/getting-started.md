@@ -320,6 +320,12 @@ The second option is useful when your handler requires dependencies such as a da
 {{% load-snippet-partial file="src-link/_examples/basic/3-router/main.go" first_line_contains="func printMessages" last_line_contains="return message.Messages{msg}, nil" padding_after="3" %}}
 {{% /render-md %}}
 
+Finally, run the router.
+
+{{% render-md %}}
+{{% load-snippet-partial file="src-link/_examples/basic/3-router/main.go" first_line_contains="router.Run" last_line_contains="}" padding_after="0" %}}
+{{% /render-md %}}
+
 The complete example's source can be found at [/_examples/basic/3-router/main.go](https://github.com/ThreeDotsLabs/watermill/blob/master/_examples/basic/3-router/main.go).
 
 ### Logging
