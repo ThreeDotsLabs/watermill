@@ -16,6 +16,12 @@ To add support for a custom Pub/Sub, you have to implement both `message.Publish
 {{% load-snippet-partial file="src-link/message/pubsub.go" first_line_contains="type Publisher interface" last_line_contains="type SubscribeInitializer" padding_after="0" %}}
 {{% /render-md %}}
 
+### Testing
+
+Watermill provides [a set of test scenarios](https://github.com/ThreeDotsLabs/watermill/blob/master/pubsub/tests/test_pubsub.go)
+that any Pub/Sub implementation can use. Each test suite needs to declare what features it supports and how to construct a new Pub/Sub.
+These scenarios check both basic usage and more uncommon use cases. Stress tests are also included.
+
 ### TODO list
 
 Here are a few things you shouldn't forget about:
