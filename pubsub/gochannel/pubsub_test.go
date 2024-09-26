@@ -29,6 +29,18 @@ func createPersistentPubSub(t *testing.T) (message.Publisher, message.Subscriber
 	return pubSub, pubSub
 }
 
+func createPersistentPubSubWithContextPreserved(t *testing.T) (message.Publisher, message.Subscriber) {
+	pubSub := gochannel.NewGoChannel(
+		gochannel.Config{
+			OutputChannelBuffer: 10000,
+			Persistent:          true,
+			PreserveContext:     true,
+		},
+		watermill.NewStdLogger(true, true),
+	)
+	return pubSub, pubSub
+}
+
 func TestPublishSubscribe_persistent(t *testing.T) {
 	tests.TestPubSub(
 		t,
@@ -40,6 +52,22 @@ func TestPublishSubscribe_persistent(t *testing.T) {
 			RequireSingleInstance: true,
 		},
 		createPersistentPubSub,
+		nil,
+	)
+}
+
+func TestPublishSubscribe_context_preserved(t *testing.T) {
+	tests.TestPubSub(
+		t,
+		tests.Features{
+			ConsumerGroups:        false,
+			ExactlyOnceDelivery:   true,
+			GuaranteedOrder:       false,
+			Persistent:            false,
+			RequireSingleInstance: true,
+			ContextPreserved:      true,
+		},
+		createPersistentPubSubWithContextPreserved,
 		nil,
 	)
 }
@@ -59,6 +87,31 @@ func TestPublishSubscribe_not_persistent(t *testing.T) {
 	receivedMsgs, _ := subscriber.BulkRead(msgs, messagesCount, time.Second)
 
 	tests.AssertAllMessagesReceived(t, sendMessages, receivedMsgs)
+
+	assert.NoError(t, pubSub.Close())
+}
+
+func TestPublishSubscribe_not_persistent_with_context(t *testing.T) {
+	messagesCount := 100
+	pubSub := gochannel.NewGoChannel(
+		gochannel.Config{OutputChannelBuffer: int64(messagesCount), PreserveContext: true},
+		watermill.NewStdLogger(true, true),
+	)
+	topicName := "test_topic_" + watermill.NewUUID()
+
+	msgs, err := pubSub.Subscribe(context.Background(), topicName)
+	require.NoError(t, err)
+
+	const contextKeyString = "foo"
+	sendMessages := tests.PublishSimpleMessagesWithContext(t, messagesCount, contextKeyString, pubSub, topicName)
+	receivedMsgs, _ := subscriber.BulkRead(msgs, messagesCount, time.Second)
+
+	expectedContexts := make(map[string]context.Context)
+	for _, msg := range sendMessages {
+		expectedContexts[msg.UUID] = msg.Context()
+	}
+	tests.AssertAllMessagesReceived(t, sendMessages, receivedMsgs)
+	tests.AssertAllMessagesHaveSameContext(t, contextKeyString, expectedContexts, receivedMsgs)
 
 	assert.NoError(t, pubSub.Close())
 }
