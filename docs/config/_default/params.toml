@@ -76,7 +76,7 @@ mainSections = ["docs"]
   repoHost = "GitHub" # GitHub (default), Gitea, GitLab, Bitbucket, or BitbucketServer
   docsRepo = "https://github.com/ThreeDotsLabs/watermill"
   docsRepoBranch = "master" # main (default), master, or <branch name>
-  docsRepoSubPath = "./docs" # "" (none, default) or <sub path>
+  docsRepoSubPath = "/docs" # "" (none, default) or <sub path>
 
   # SCSS colors
   # backGround = "yellowgreen"

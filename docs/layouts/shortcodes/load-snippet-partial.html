@@ -67,9 +67,13 @@
     {{ end }}
 {{ end }}
 
-<small class="smaller">Full source: [github.com/ThreeDotsLabs/{{ $repo }}/{{ $linkFile }}](https://github.com/ThreeDotsLabs/{{ $repo }}/tree/master/{{ $linkFile }}{{ if ne $first_line_num 0 }}#L{{ $first_line_num }}{{ end }})</small>
+<div class="expressive-code">
+    <figure class="frame not-content">
+        {{ transform.Highlight (delimit $lines "\n" | safeHTML) (.Get "type" | default "go") }}
+    </figure>
+</div>
 
-{{ highlight (delimit $lines "\n") (.Get "type" | default "go") "" }}
+<small class="smaller">Full source: [github.com/ThreeDotsLabs/{{ $repo }}/{{ $linkFile }}](https://github.com/ThreeDotsLabs/{{ $repo }}/tree/master/{{ $linkFile }}{{ if ne $first_line_num 0 }}#L{{ $first_line_num }}{{ end }})</small>
 
 {{if not $first_line_found }}
     {{ errorf "`first_line_contains` %s not found in %s snippet" $first_line_contains $file }}

@@ -5,10 +5,7 @@ date = 2018-12-05T12:42:40+01:00
 weight = -1000
 draft = false
 bref = "Message is one of core parts of Watermill"
-toc = true
 +++
-
-### Message
 
 Message is one of core parts of Watermill. Messages are emitted by [*Publishers*]({{< ref "/docs/pub-sub#publisher" >}}) and received by [*Subscribers*]({{< ref "/docs/pub-sub#subscriber" >}}).
 When a message is processed, you should send an [`Ack()`]({{< ref "#ack" >}}) or a [`Nack()`]({{< ref "#ack" >}}) when the processing failed.

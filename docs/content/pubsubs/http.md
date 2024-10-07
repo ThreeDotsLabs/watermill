@@ -62,10 +62,10 @@ To run HTTP subscriber you need to run `StartHTTPServer()`. It needs to be run a
 
 When using with the router, you should wait for the router to start.
 
-{{< highlight >}}
+```go
 <-r.Running()
 httpSubscriber.StartHTTPServer()
-{{< /highlight >}}
+```
 
 #### Subscribing
 
@@ -77,8 +77,8 @@ httpSubscriber.StartHTTPServer()
 
 To specify a custom HTTP status code, which will returned as response, you can use following call during message handling:
 
-{{< highlight >}}
+```go
 // msg is a *message.Message
 http.SetResponseStatusCode(msg, http.StatusForbidden)
 msg.Nack()
-{{< /highlight >}}
+```

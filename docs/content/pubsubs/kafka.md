@@ -92,9 +92,8 @@ It can be done with special Marshaler implementation:
 When using, you need to pass your function to generate partition key.
 It's a good idea to pass this partition key with metadata to not unmarshal entire message.
 
-{{< highlight >}}
+```go
 marshaler := kafka.NewWithPartitioningMarshaler(func(topic string, msg *message.Message) (string, error) {
     return msg.Metadata.Get("partition"), nil
 })
-{{< /highlight >}}
-
+```
