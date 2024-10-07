@@ -1,0 +1,3 @@
+{{ with .Fragments }}
+{{ return (gt (len .Fragments.Headings) 0) }}
+{{ end }}
