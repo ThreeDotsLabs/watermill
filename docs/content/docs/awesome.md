@@ -3,7 +3,6 @@ title = "Awesome Watermill"
 description = "Selected unofficial libraries"
 weight = 0
 draft = false
-toc = true
 bref = "Selected unofficial libraries"
 type = "docs"
 +++

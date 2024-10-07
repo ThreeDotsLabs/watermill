@@ -5,7 +5,6 @@ date = 2019-02-12T21:00:00+01:00
 weight = -200
 draft = false
 bref = "Monitor Watermill in realtime using Prometheus"
-toc = true
 +++
 
 ### Metrics

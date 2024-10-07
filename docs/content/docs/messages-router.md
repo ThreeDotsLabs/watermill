@@ -5,7 +5,6 @@ date = 2018-12-05T12:48:04+01:00
 weight = -850
 draft = false
 bref = "The Magic Glue of Watermill"
-toc = true
 +++
 
 [*Publishers and Subscribers*]({{< ref "/docs/pub-sub" >}}) are rather low-level parts of Watermill.

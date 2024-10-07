@@ -5,7 +5,6 @@ date = 2018-12-05T12:47:30+01:00
 weight = -900
 draft = false
 bref = "Publishers and Subscribers"
-toc = true
 +++
 
 ### Publisher

@@ -3,7 +3,6 @@ title = "Getting started"
 description = "Watermill up and running"
 weight = -9999
 draft = false
-toc = true
 bref = "Watermill up and running"
 type = "docs"
 +++

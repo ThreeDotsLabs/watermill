@@ -5,7 +5,6 @@ date = 2021-01-13T12:47:30+01:00
 weight = -400
 draft = false
 bref = "Emitting events along with storing data in a database in one transaction"
-toc = true
 +++
 
 ## Publishing messages in transactions (and why we should care) 

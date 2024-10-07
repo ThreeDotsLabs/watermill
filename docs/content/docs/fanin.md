@@ -5,7 +5,6 @@ date = 2023-01-21T12:47:30+01:00
 weight = -100
 draft = false
 bref = "Merging two topics into one with the FanIn component"
-toc = true
 +++
 
 ## FanIn component

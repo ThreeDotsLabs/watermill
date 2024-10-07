@@ -5,7 +5,6 @@ date = 2019-06-01T19:00:00+01:00
 weight = -100
 draft = false 
 bref = "Add functionality to handlers"
-toc = true
 type = "docs"
 +++
 
