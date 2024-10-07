@@ -1,0 +1,127 @@
+{{- /* Last modified: 2023-06-30T12:24:14-07:00 */}}
+
+{{- /*
+Copyright 2023 Veriphor LLC
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not
+use this file except in compliance with the License. You may obtain a copy of
+the License at
+
+https://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+License for the specific language governing permissions and limitations under
+the License.
+*/}}
+
+{{- /*
+Renders an SVG image of a mathematical expression or equation from LaTeX using the Math API service.
+
+References:
+
+  - https://math.vercel.app/
+  - https://github.com/uetchy/math-api/
+  - https://docs.mathjax.org/
+
+@context {string} Inner The content between the opening and closing shortcode tags.
+@context {string} InnerDeindent The content between the opening and closing shortcode tags with indentation removed.
+@context {string} Name The file name of the shortcode template, excluding the extension.
+@context {int} Ordinal The zero-based ordinal of the shortcode on the page, or within its parent shortcode.
+@context {page} Page A reference to the page containing the shortcode.
+@context {map} Params The parameters specified in the opening shortcode tag.
+@context {hugolib.ShortcodeWithPage} Parent The context of the parent shortcode.
+@context {text.Position} Position The position of the shortcode within the page content.
+
+@method {any} Get Returns the parameter value for the given key (for named parameters) or position (for positional parameters).
+@mathod {bool} IsNamedParams Returns true if the shortcode is called with named instead of positional parameters.
+@method {maps.Scratch) Scratch Returns a writable Scratch to store and manipulate data.
+
+@param {string} [Params.class] A class name to add to the class attribute of the wrapping span element.
+@param {string} [Params.color=black] The foreground color specified as a named CSS color or hex value.
+@param {string} [Params.id] The id attribute of the wrapping span element.
+
+@returns {template.html}
+
+@example {{< math >}}${(x+y)}^2${{< /math >}}
+*/}}
+
+{{- /* Verify minimum required version. */}}
+{{- $minHugoVersion := "0.114.0" }}
+{{- if lt hugo.Version $minHugoVersion }}
+  {{- errorf "The %s shortcode requires Hugo v%s or later." .Name $minHugoVersion }}
+{{- end }}
+
+{{- /* Get context. */}}
+{{- $inner := trim .Inner "\n\r" }}
+{{- $name := .Name }}
+{{- $ordinal := .Ordinal }}
+{{- $position := .Position }}
+
+{{- /* Initialize. */}}
+{{- $apiEndpoint := "https://math.vercel.app/" }}
+{{- $color := .Get "color" | default "" }}
+
+{{- /* Determine display mode. */}}
+{{- $displayMode := true }}
+{{- if or (strings.HasPrefix $inner `$$`) (strings.HasPrefix $inner `\[`) }}
+  {{- $displayMode = true }}
+{{- else if or (strings.HasPrefix $inner `$`) (strings.HasPrefix $inner `\(`) }}
+  {{- $displayMode = false }}
+{{- end }}
+
+{{- /* Strip display mode indicators. */}}
+{{- $inner = trim $inner `$` }}
+{{- $inner = $inner | strings.TrimPrefix `\[` }}
+{{- $inner = $inner | strings.TrimPrefix `\(` }}
+{{- $inner = $inner | strings.TrimSuffix `\]` }}
+{{- $inner = $inner | strings.TrimSuffix `\)` }}
+
+{{- /* Determine class attribute. */}}
+{{- $class := "math math-inline" }}
+{{- if $displayMode }}
+  {{- $class = "math math-block" }}
+{{- end }}
+{{- with .Get "class" }}
+  {{- $class = printf "%s %s" $class . }}
+{{- end }}
+
+{{- /* Get id attribute. */}}
+{{- $id := or (.Get "id") (printf "h-sc-%s-%d" $name $ordinal) }}
+
+{{- /* Define attributes map. */}}
+{{- $attrs := dict "class" $class "id" $id }}
+
+{{- /* Create query string. */}}
+{{- $mode := "inline" }}
+{{- if $displayMode }}
+  {{- $mode = "from" }}
+{{- end }}
+{{- $qs := querify $mode $inner "color" $color }}
+
+{{- /* Get image. */}}
+{{- $url := printf "%s?%s" $apiEndpoint $qs }}
+{{- with resources.GetRemote $url }}
+  {{- with .Err }}
+    {{- errorf "The %q shortcode was unable to get the remote image. See %s. %s" $name $position . }}
+  {{- else }}
+    {{- $url = .RelPermalink }}
+  {{- end }}
+{{- else }}
+  {{- errorf "The %q shortcode was unable to get the remote image. See %s" $name $position }}
+{{- end }}
+
+{{- /* Render. */}}
+<span
+{{- range $k, $v := $attrs }}
+  {{- if not (eq $k "color") }}
+    {{- if $v }}
+      {{- printf " %s=%q" $k (string $v) | safeHTMLAttr }}
+    {{- end }}
+  {{- end }}
+{{- end -}}
+>
+  <img src="{{ $url }}" alt="mathematical expression or equation">
+</span>
+{{- /**/ -}}

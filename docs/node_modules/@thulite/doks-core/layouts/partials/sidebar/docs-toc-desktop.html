@@ -1,0 +1,10 @@
+<div class="page-links">
+  {{ if partial "private/has-headings.html" . -}}
+    <h3>{{ i18n "on_this_page" }}</h3>
+    {{ if eq site.Params.doks.scrollSpy true -}}
+      {{ .TableOfContents | replaceRE "<nav id=\"TableOfContents\">" "<nav id=\"toc\">" | safeHTML -}}
+    {{- else -}}
+      {{ .TableOfContents -}}
+    {{- end }}
+  {{- end }}
+</div>

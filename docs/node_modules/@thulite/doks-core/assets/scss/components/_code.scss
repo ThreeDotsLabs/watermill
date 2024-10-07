@@ -1,0 +1,259 @@
+pre,
+code,
+kbd,
+samp {
+    font-family: $font-family-monospace;
+    font-size: $font-size-sm;
+}
+
+code:not(:where(.not-content *)) {
+    background-color: var(--sl-color-gray-6);
+    margin-block: -0.125rem;
+    padding: 0.125rem 0.375rem;
+    color: inherit;
+}
+
+@include color-mode(dark) {
+    code:not(:where(.not-content *)) {
+        background-color: var(--sl-color-gray-5);
+    }
+}
+
+/*
+code {
+  background: $db-khaki-100;
+
+  // background: $db-gray-200;
+  color: $db-bluishCyan-100;
+  padding: 0.25rem 0.5rem;
+}
+
+pre {
+  margin: 2rem 0;
+}
+
+pre code {
+  display: block;
+  overflow-x: auto;
+  line-height: $line-height-base;
+  padding: 1.25rem 1.5rem;
+  tab-size: 4;
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.hljs {
+  padding: 1.5rem !important;
+}
+
+@include media-breakpoint-down(sm) {
+  pre,
+  code,
+  kbd,
+  samp {
+    border-radius: 0;
+  }
+
+  pre {
+    margin: 2rem -1.5rem;
+  }
+}
+
+pre code::-webkit-scrollbar {
+  height: 5px;
+}
+
+pre code::-webkit-scrollbar-thumb {
+  background: $gray-400;
+}
+
+pre code:hover {
+  scrollbar-width: thin;
+  scrollbar-color: $gray-500 transparent;
+}
+
+pre code::-webkit-scrollbar-thumb:hover {
+  background: $gray-500;
+}
+
+code.language-mermaid {
+  background: none;
+}
+
+.line .ln {
+  margin-right: 1rem;
+}
+
+.line.hl {
+  color: var(--sl-color-blue);
+}
+
+@include color-mode(dark) {
+  .line.hl {
+    color: $yellow-100;
+  }
+}
+*/
+
+// Math styling
+.math-block {
+    display: block;
+    margin: 2rem 0;
+    overflow-x: auto;
+}
+
+.math-inline {
+    display: inline;
+}
+
+@include color-mode(dark) {
+    .math-inline img,
+    .math-block img {
+        filter: invert(1);
+    }
+}
+
+// Diagram styling
+img.diagram {
+    height: auto;
+    width: 100%;
+    margin: 1rem 0 2rem;
+}
+
+img.diagram-kroki-mermaid {
+    background: $white;
+}
+
+// Source: https://www.veriphor.com/articles/code-block-line-numbers/
+
+/* Applies when there are no line numbers, or when line numbers are inline. */
+.highlight > pre {
+    padding: 0.875rem 1rem;
+}
+
+/* Applies when line numbers are in a table cell. */
+.highlight div {
+    padding: 0;
+}
+
+/* Applies to all. */
+// .highlight div,
+// .highlight > pre,
+.highlight > .chroma {
+    overflow-x: auto;
+    border: 1px solid color-mix(in srgb, var(--sl-color-gray-5), transparent 25%);
+
+    /* add border-radius and box-shadow here */
+}
+
+/* Applies when line numbers are inline */
+.chroma .ln {
+    padding: 0 0.5rem 0 0;
+}
+
+.chroma .hl {
+    border-inline-start: 0.15rem solid #0005;
+    margin-left: -1rem;
+    margin-right: -1rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+
+    .ln {
+        margin-left: -0.15rem;
+    }
+}
+
+/* Applies when using an external style sheet */
+.highlight .chroma .lntable .lnt,
+.highlight .chroma .lntable .hl {
+    display: flex;
+}
+
+/* Applies when highlihting using table */
+.chroma .lntd:first-child {
+    padding: 0;
+
+    .lnt {
+        padding-left: 1rem;
+    }
+}
+
+.chroma .lntd:nth-child(2) {
+    padding: 0;
+}
+
+/* Applies when using an external style sheet */
+.highlight .chroma .lntable .lntd + .lntd {
+    width: 100%;
+}
+
+@include color-mode(dark) {
+    .chroma .ln {
+        padding: 0 0.5em 0 0;
+    }
+}
+
+/* LineTableTD */
+.chroma .lntd pre {
+    padding: 1rem 0;
+    margin-bottom: 0;
+}
+
+.highlight > .chroma::-webkit-scrollbar,
+.highlight > .chroma::-webkit-scrollbar-track {
+    background-color: inherit;
+    border-radius: 1px;
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+}
+
+.highlight > .chroma::-webkit-scrollbar-thumb {
+    background-color: #dddee0;
+    border: 4px solid transparent;
+    background-clip: content-box;
+    border-radius: 10px;
+}
+
+.highlight > .chroma::-webkit-scrollbar-thumb:hover {
+    background-color: #9d9e9f;
+}
+
+@include color-mode(dark) {
+    .highlight > .chroma::-webkit-scrollbar-thumb {
+        background-color: #ffffff17;
+    }
+
+    .highlight > .chroma::-webkit-scrollbar-thumb:hover {
+        background-color: #ffffff49;
+    }
+}
+
+/*
+.chroma .hl {
+  background-color: #0000001a
+}
+*/
+
+@include color-mode(dark) {
+    .highlight > .chroma {
+        border: 1px solid color-mix(in srgb, var(--sl-color-gray-5), transparent 25%);
+    }
+
+    /*
+  .chroma .hl {
+    background-color: #ffffff17;
+  }
+  */
+
+    .chroma .hl {
+        border-inline-start: 0.15rem solid #ffffff40;
+        margin-left: -1rem;
+        margin-right: -1rem;
+        padding-left: 1rem;
+        padding-right: 1rem;
+
+        .ln {
+            margin-left: -0.15rem;
+        }
+    }
+}

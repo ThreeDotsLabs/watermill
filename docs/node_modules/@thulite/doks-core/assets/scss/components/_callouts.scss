@@ -1,0 +1,235 @@
+//
+// Callouts
+//
+
+.callout {
+    --#{$prefix}link-color-rgb: var(--callout-link);
+    --#{$prefix}code-color: var(--callout-code-color);
+
+    color: var(--callout-color, inherit);
+    background-color: var(--callout-bg, var(--bs-gray-100));
+    border-left: 0.25rem solid var(--callout-border, var(--bs-gray-300));
+    border-radius: 0;
+
+    a {
+        text-decoration: underline;
+    }
+
+    /*
+  code {
+    background: transparent;
+    color: inherit;
+  }
+  */
+
+    .highlight {
+        background-color: rgba($black, 0.05);
+    }
+
+    .callout-icon.svg-inline {
+        flex-shrink: 0;
+        height: calc(#{$line-height-base} * #{$font-size-md});
+    }
+
+    .callout-title {
+        font-weight: $headings-font-weight;
+    }
+}
+
+// Fix for overflowing code block
+.callout-content {
+    min-width: 0;
+}
+
+// Colors
+.callout.callout-note {
+    border-color: var(--sl-color-blue);
+    background-color: var(--sl-color-blue-high);
+
+    .callout-icon,
+    .callout-title,
+    .callout-body a {
+        color: var(--sl-color-blue-low);
+    }
+
+    .callout-body,
+    .callout-body a:hover,
+    .callout-body a:active {
+        color: var(--sl-color-white);
+    }
+
+    /*
+  code:not(:where(.not-content *)) {
+    background: tint-color($info, 80%);
+  }
+  */
+}
+
+.callout.callout-tip {
+    border-color: var(--sl-color-purple);
+    background-color: var(--sl-color-purple-high);
+
+    .callout-icon,
+    .callout-title,
+    .callout-body a {
+        color: var(--sl-color-purple-low);
+    }
+
+    .callout-body,
+    .callout-body a:hover,
+    .callout-body a:active {
+        color: var(--sl-color-white);
+    }
+
+    /*
+  code:not(:where(.not-content *)) {
+    background: tint-color($purple, 80%);
+  }
+  */
+}
+
+.callout.callout-caution {
+    border-color: var(--sl-color-orange);
+    background-color: var(--sl-color-orange-high);
+
+    .callout-icon,
+    .callout-title,
+    .callout-body a {
+        color: var(--sl-color-orange-low);
+    }
+
+    .callout-body,
+    .callout-body a:hover,
+    .callout-body a:active {
+        color: var(--sl-color-white);
+    }
+
+    /*
+  code:not(:where(.not-content *)) {
+    background: tint-color($yellow, 80%);
+  }
+  */
+}
+
+.callout.callout-danger {
+    border-color: var(--sl-color-red);
+    background-color: var(--sl-color-red-high);
+
+    .callout-icon,
+    .callout-title,
+    .callout-body a {
+        color: var(--sl-color-red-low);
+    }
+
+    .callout-body,
+    .callout-body a:hover,
+    .callout-body a:active {
+        color: var(--sl-color-white);
+    }
+
+    /*
+  code:not(:where(.not-content *)) {
+    background: tint-color($red, 80%);
+  }
+  */
+}
+
+/*
+.callout.callout-light code {
+  background: var(--sl-color-gray-1);
+}
+*/
+
+@include color-mode(dark) {
+    .callout {
+        color: var(--sl-color-gray-1);
+    }
+
+    .callout.callout-note {
+        border-color: var(--sl-color-blue);
+        background-color: var(--sl-color-blue-low);
+
+        .callout-icon,
+        .callout-title,
+        .callout-body a {
+            color: var(--sl-color-blue-high);
+        }
+
+        .callout-body,
+        .callout-body a:hover,
+        .callout-body a:active {
+            color: var(--sl-color-white);
+        }
+
+        code:not(:where(.not-content *)) {
+            // background: shade-color($info, 75%);
+            color: var(--ec-codeFg);
+        }
+    }
+
+    .callout.callout-tip {
+        border-color: var(--sl-color-purple);
+        background-color: var(--sl-color-purple-low);
+
+        .callout-icon,
+        .callout-title,
+        .callout-body a {
+            color: var(--sl-color-purple-high);
+        }
+
+        .callout-body,
+        .callout-body a:hover,
+        .callout-body a:active {
+            color: var(--sl-color-white);
+        }
+
+        code:not(:where(.not-content *)) {
+            // background: shade-color($purple, 75%);
+            color: var(--ec-codeFg);
+        }
+    }
+
+    .callout.callout-caution {
+        border-color: var(--sl-color-orange);
+        background-color: var(--sl-color-orange-low);
+
+        .callout-icon,
+        .callout-title,
+        .callout-body a {
+            color: var(--sl-color-orange-high);
+        }
+
+        .callout-body,
+        .callout-body a:hover,
+        .callout-body a:active {
+            color: var(--sl-color-white);
+        }
+
+        code:not(:where(.not-content *)) {
+            // background: shade-color($yellow, 75%);
+            color: var(--ec-codeFg);
+        }
+    }
+
+    .callout.callout-danger {
+        border-color: var(--sl-color-red);
+        background-color: var(--sl-color-red-low);
+
+        .callout-icon,
+        .callout-title,
+        .callout-body a {
+            color: var(--sl-color-red-high);
+        }
+
+        .callout-body,
+        .callout-body a:hover,
+        .callout-body a:active {
+            color: var(--sl-color-white);
+        }
+
+        code:not(:where(.not-content *)) {
+            // background: shade-color($red, 75%);
+            color: var(--ec-codeFg);
+        }
+    }
+}

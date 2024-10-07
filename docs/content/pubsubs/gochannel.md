@@ -4,8 +4,6 @@ description = "A Pub/Sub implemented on Golang goroutines and channels"
 date = 2019-07-06T22:30:00+02:00
 bref = "A Pub/Sub implemented on Golang goroutines and channels"
 weight = -100
-type = "docs"
-toc = false
 +++
 
 ### Golang Channel

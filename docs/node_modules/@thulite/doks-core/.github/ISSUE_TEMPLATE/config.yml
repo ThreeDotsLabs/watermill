@@ -1,0 +1,7 @@
+contact_links:
+    - name: 📘 Documentation
+      url: https://github.com/thuliteio/getdoks.org
+      about: File an issue or make an improvement to the Doks website.
+    - name: 💁 Support
+      url: https://github.com/thuliteio/doks/discussions
+      about: 'Get help on Doks Discussions'

@@ -1,0 +1,39 @@
+{
+  "name": "throttles",
+  "version": "1.0.1",
+  "repository": "lukeed/throttles",
+  "description": "A tiny (139B to 204B) utility to regulate the execution rate of your functions",
+  "unpkg": "dist/index.min.js",
+  "module": "dist/index.mjs",
+  "main": "dist/index.js",
+  "types": "index.d.ts",
+  "license": "MIT",
+  "files": [
+    "index.d.ts",
+    "priority",
+    "dist"
+  ],
+  "modes": {
+    "default": "src/single.js",
+    "priority": "src/priority.js"
+  },
+  "scripts": {
+    "build": "bundt",
+    "pretest": "npm run build",
+    "test": "uvu -r esm test -i utils",
+    "postbuild": "cp priority.d.ts priority/index.d.ts"
+  },
+  "author": {
+    "name": "Luke Edwards",
+    "email": "luke.edwards05@gmail.com",
+    "url": "https://lukeed.com"
+  },
+  "engines": {
+    "node": ">=6"
+  },
+  "devDependencies": {
+    "bundt": "1.0.1",
+    "esm": "3.2.25",
+    "uvu": "0.0.14"
+  }
+}

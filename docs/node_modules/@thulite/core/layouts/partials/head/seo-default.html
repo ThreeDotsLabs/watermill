@@ -1,0 +1,15 @@
+{{- $title := "" }}
+{{- if .Params.title }}
+	{{ $title = .Params.title }}
+{{- else }}
+  {{ $title = site.Params.title }}
+{{- end }}
+<title>{{ $title }}</title>
+
+{{- $description := "" }}
+{{- if .Params.description }}
+	{{ $description = .Params.description }}
+{{- else }}
+  {{ $description = site.Params.Description }}
+{{- end }}
+<meta name="description" content="{{ $description }}">

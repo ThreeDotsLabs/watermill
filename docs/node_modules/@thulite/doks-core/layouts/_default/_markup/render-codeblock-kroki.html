@@ -1,0 +1,109 @@
+{{- /* Last modified: 2023-06-30T12:24:14-07:00 */}}
+
+{{- /*
+Copyright 2023 Veriphor LLC
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not
+use this file except in compliance with the License. You may obtain a copy of
+the License at
+
+https://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+License for the specific language governing permissions and limitations under
+the License.
+*/}}
+
+{{- /*
+Renders an SVG image of a diagram from a textual description using the Kroki service.
+
+References:
+
+- https://kroki.io/
+- https://kroki.io/#examples
+
+@context {map} Attributes The markdown attributes from the info string.
+@context {string} Inner The content between the leading and trailing code fences, excluding the info string.
+@context {map} Options The highlighting options from the info string.
+@context {int} Ordinal The zero-based ordinal of the code block on the page.
+@context {page} Page A reference to the page containing the code block.
+@context {text.Position} Position The position of the code block within the page content.
+@context {string} Type The first word of the info string.
+
+@param {string} Attributes.type The type of diagram to render
+
+@returns {template.html}
+*/}}
+
+{{- /* Initialize. */}}
+{{- $renderHookName := "kroki" }}
+
+{{- /* Verify minimum required version. */}}
+{{- $minHugoVersion := "0.114.0" }}
+{{- if lt hugo.Version $minHugoVersion }}
+  {{- errorf "The %q code block render hook requires Hugo v%s or later." $renderHookName $minHugoVersion }}
+{{- end }}
+
+{{- /* Get context. */}}
+{{- $attrs := .Attributes }}
+{{- $inner := trim .Inner "\n\r" }}
+{{- $ordinal := .Ordinal }}
+{{- $position := .Position }}
+
+{{- /* Initialize. */}}
+{{- $apiEndpoint := or site.Params.doks.krokiURL "https://kroki.io/" }}
+{{- $diagramType := $attrs.type | lower }}
+
+{{- /* Validate diagram type. */}}
+{{- $supportedTypes := slice
+  "actdiag" "blockdiag" "bpmn" "bytefield" "ditaa" "d2" "dbml" "erd" "graphviz"
+  "mermaid" "nomnoml" "nwdiag" "packetdiag" "pikchr" "plantuml" "rackdiag"
+  "seqdiag" "structurizr" "svgbob" "umlet" "vega" "vegalite" "wavedrom"
+  "wireviz"
+}}
+{{- $typesDelimited := delimit $supportedTypes ", " ", and " }}
+{{- if not (in $supportedTypes $diagramType) }}
+  {{- errorf "The %q code block render hook does not support diagram type %q. Valid types are %s. See %s" $renderHookName $attrs.type $typesDelimited $position }}
+{{- end }}
+
+{{- /* Determine class attribute. */}}
+{{- $class := printf "diagram diagram-kroki diagram-kroki-%s" $diagramType }}
+{{- with $attrs.class }}
+  {{- $class = printf "%s %s" $class . }}
+{{- end }}
+
+{{- /* Determine id attribute. */}}
+{{- $id := printf "h-rh-cb-kroki-%d" $ordinal }}
+{{- with $attrs.id }}
+  {{- $id = . }}
+{{- end }}
+
+{{- /* Merge class and id attributes. */}}
+{{- $attrs = merge $attrs (dict "class" $class "id" $id "alt" "diagram") }}
+
+{{- /* Get diagram. */}}
+{{- $body := dict "diagram_source" $inner "diagram_type" $diagramType "output_format" "SVG" | jsonify }}
+{{- $opts := dict "method" "post" "body" $body }}
+{{- with resources.GetRemote $apiEndpoint $opts }}
+  {{- with .Err }}
+    {{- errorf "The %q code block render hook was unable to get the remote diagram. See %s. %s" $renderHookName $position . }}
+  {{- else }}
+    {{- $attrs = merge $attrs (dict "src" .RelPermalink) }}
+  {{- end }}
+{{- else }}
+  {{- errorf "The %q code block render hook was unable to get the remote diagram. See %s" $renderHookName $position }}
+{{- end }}
+
+{{- /* Render. */}}
+<img
+  {{- range $k, $v := $attrs }}
+    {{- if not (eq $k "type") }}
+      {{- if $v }}
+        {{- printf " %s=%q" $k (string $v) | safeHTMLAttr }}
+      {{- end }}
+    {{- end }}
+  {{- end -}}
+>
+{{- /**/ -}}

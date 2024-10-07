@@ -1,0 +1,7 @@
+<!-- Insert scripts NEEDED by stylesheets here -->
+{{- if eq site.Params.doks.colorMode "auto" }}
+  {{- partial "footer/esbuild" (dict "src" "js/color-mode.js" "transpile" false) }}
+{{- end }}
+{{- if and (site.Params.doks.alert) (site.Params.doks.alertDismissable) }}
+  {{- partial "footer/esbuild" (dict "src" "js/dismissable-alert.js" "transpile" false) }}
+{{- end }}

@@ -1,0 +1,30 @@
+{{- /*
+  Usage: `callout "type"`, where `type` is one of "note" (default), "info", "danger", or "warning"
+  Based on: https://github.com/twbs/bootstrap/blob/283cbd902669732943885e94115a0e29a952baf6/site/layouts/shortcodes/callout.html
+*/ -}}
+
+{{- $css_class := "" -}}
+{{- if .IsNamedParams -}}
+  {{- $css_class = .Get "context" | default "note" -}}
+{{- else -}}
+  {{- $css_class = .Get 0 | default "note" -}}
+{{- end -}}
+
+{{- $icon := .Get "icon" -}}
+{{- $title := .Get "title" -}}
+
+<div class="callout callout-{{ $css_class }} d-flex flex-row mt-4 mb-4 pt-4 pe-4 pb-2 ps-3">
+  {{ with $icon -}}
+    {{ partial "inline-svg" (dict "src" $icon "class" "callout-icon me-2 mb-3") }}
+  {{- end }}
+  <div class="callout-content">
+    {{ with $title -}}
+      <div class="callout-title">
+        {{ . | $.Page.RenderString (dict "display" "block") }}
+      </div>
+    {{- end }}
+    <div class="callout-body">
+      {{ .Inner | $.Page.RenderString (dict "display" "block") }}
+    </div>
+  </div>
+</div>

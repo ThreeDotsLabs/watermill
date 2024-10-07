@@ -16,7 +16,7 @@ toc = true
 >
 > Source: [www.cqrs.nu FAQ](http://www.cqrs.nu/Faq/command-query-responsibility-segregation)
 
-![CQRS Schema](https://threedots.tech/watermill-io/cqrs-big-picture.svg)
+[CQRS Schema](https://threedots.tech/watermill-io/cqrs-big-picture.svg)
 
 The `cqrs` component provides some useful abstractions built on top of Pub/Sub and Router that help to implement the CQRS pattern.
 

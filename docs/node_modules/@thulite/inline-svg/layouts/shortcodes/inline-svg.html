@@ -1,0 +1,15 @@
+{{- $src := cond .IsNamedParams (.Get "src") (.Get 0) -}}
+{{- $src = strings.TrimSuffix ".svg" $src -}}
+
+{{- with .Page.Resources.GetMatch (printf "%s.*" $src) -}}
+  {{- $src = . -}}
+{{- end -}}
+
+{{- if .IsNamedParams -}}
+  {{- $s := newScratch -}}
+  {{- range $k, $v := .Params -}}{{- $s.Set $k $v -}}{{- end -}}
+  {{- $s.Set "src" $src -}}
+  {{- partial "inline-svg" $s.Values -}}
+{{- else -}}
+  {{- partial "inline-svg" $src -}}
+{{- end -}}

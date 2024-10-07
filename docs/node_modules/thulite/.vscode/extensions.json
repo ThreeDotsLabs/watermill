@@ -1,0 +1,3 @@
+{
+  "recommendations": ["budparr.language-hugo-vscode", "yzhang.markdown-all-in-one", "tamasfe.even-better-toml", "dbaeumer.vscode-eslint", "DavidAnson.vscode-markdownlint", "stylelint.vscode-stylelint"]
+}

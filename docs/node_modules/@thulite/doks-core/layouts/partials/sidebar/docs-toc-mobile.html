@@ -1,0 +1,8 @@
+{{ if and (ne .Params.toc false) (partial "private/has-headings.html" .) -}}
+  <details>
+    <summary>{{ i18n "on_this_page" }}</summary>
+    <div class="page-links">
+      {{ .TableOfContents }}
+    </div>
+  </details>
+{{ end -}}

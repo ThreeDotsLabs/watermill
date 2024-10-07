@@ -1,0 +1,7 @@
+{{- $title := "" }}
+{{- if .Params.seo.title }}
+	{{- $title = .Params.seo.title }}
+{{- else }}
+  {{- $title = printf "%s%s%s%s%s" .Title " " (.Site.Params.seo.title.separator | default "|") " " (.Site.Params.seo.title.suffix | default .Site.Title)}}
+{{- end }}
+<title>{{ $title }}</title>

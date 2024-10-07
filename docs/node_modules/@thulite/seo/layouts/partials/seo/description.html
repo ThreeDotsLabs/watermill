@@ -1,0 +1,9 @@
+{{- $description := "" }}
+{{- if .Params.seo.description }}
+	{{- $description = .Params.seo.description }}
+{{- else if .Description }}
+	{{- $description = .Description }}
+{{- else }}
+  {{- $description = site.Params.Description }}
+{{- end }}
+<meta name="description" content="{{ $description }}">

@@ -1,0 +1,9 @@
+{{ if (strings.HasPrefix .Destination "mailto") -}}
+  {{ with .Text -}}
+    {{ partial "main/email" (dict "emailAddress" $.Destination "emailTitle" .) }}
+  {{ else -}}
+    {{ partial "main/email" (dict "emailAddress" $.Destination) }}
+  {{ end -}}
+{{ else -}}
+  <a href="{{ .Destination | safeURL }}"{{ with .Title}} title="{{ . }}"{{ end }}>{{ .Text | safeHTML }}</a>
+{{- end -}}

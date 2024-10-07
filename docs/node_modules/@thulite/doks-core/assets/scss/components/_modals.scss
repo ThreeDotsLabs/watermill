@@ -1,0 +1,111 @@
+.search-form .form-control:focus {
+    border: 2px solid $primary;
+}
+
+@include color-mode(dark) {
+    .search-form .form-control:focus {
+        border: 2px solid $link-color-dark;
+    }
+
+    .search-form .btn-link {
+        color: $link-color-dark;
+    }
+}
+
+.search-form .btn-link,
+.modal-body p.message,
+.modal-footer {
+    font-size: $font-size-sm;
+}
+
+// Source: https://css-tricks.com/almanac/properties/s/scrollbar/
+.modal-body::-webkit-scrollbar {
+    width: 0.25rem;
+}
+
+.modal-body::-webkit-scrollbar-track {
+    background-color: #f1f1f1;
+}
+
+.modal-body::-webkit-scrollbar-thumb {
+    background-color: #c1c1c1;
+}
+
+@include color-mode(dark) {
+    .modal-body::-webkit-scrollbar-track {
+        background-color: #424242;
+    }
+
+    .modal-body::-webkit-scrollbar-thumb {
+        background-color: #686868;
+    }
+}
+
+@include media-breakpoint-up(md) {
+    #searchModal .modal-dialog {
+        max-height: 40rem;
+    }
+}
+
+.search-result h2 {
+    margin-top: 0;
+}
+
+.search-result a:focus {
+    /*
+  border-color: transparent;
+  box-shadow: 0;
+  */
+    outline: 0 none;
+}
+
+.search-result .content {
+    margin-top: 0.5rem;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+}
+
+.search-result .card .content {
+    p {
+        margin-bottom: 0;
+    }
+
+    a {
+        position: relative;
+        z-index: $stretched-link-z-index;
+    }
+}
+
+.search-result:hover .card,
+.search-result.selected .card {
+    background-color: $primary;
+    color: $white;
+
+    .content a {
+        color: $white;
+        text-decoration: underline;
+    }
+}
+
+@include color-mode(dark) {
+    .search-result:hover .card,
+    .search-result.selected .card {
+        background-color: $link-color-dark;
+        color: $body-overlay-dark;
+
+        .content a {
+            color: $body-overlay-dark;
+            text-decoration: underline;
+        }
+    }
+
+    .search-result:hover .card h2,
+    .search-result.selected .card h2 {
+        color: $body-bg-dark;
+    }
+}
+
+.search-result .submitted {
+    font-size: $font-size-sm;
+    margin-top: 0.5rem;
+}

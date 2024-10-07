@@ -1,0 +1,8 @@
+{{- $sidebar := printf "sidebar_%s" .Section }}
+{{- with index site.Menus $sidebar }}
+    {{ partial "sidebar/render-section-menu.html" (dict "currentPage" $ "nodes" .) }}
+{{- else }}
+  {{ with (.Site.GetPage "section" .Section).Sections }}
+    {{ partial "sidebar/render-section-menu.html" (dict "currentPage" $ "nodes" .) }}
+  {{ end }}
+{{- end }}

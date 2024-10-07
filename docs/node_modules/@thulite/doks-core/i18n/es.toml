@@ -1,0 +1,54 @@
+[404_text]
+other = "La página que estás buscando no existe o fue movida."
+
+[404_title]
+other = "Página no encontrada. :("
+
+[browse]
+other = "Navegar"
+
+[chapter_next]
+other = "Siguiente"
+
+[chapter_previous]
+other = "Previo"
+
+[edit_page]
+other = "Edita esta página en"
+
+[get_started]
+other = "Empieza"
+
+[home]
+other = "Hogar"
+
+[last_updated]
+other = "Última actualización en"
+
+[minute]
+one = "minuto"
+other = "minutos"
+
+[on_this_page]
+other = "En esta página"
+
+[reading_time]
+other = "Tiempo de lectura estimado"
+
+[search_loading]
+other = "Cargando el indice de búsqueda…"
+
+[search_no_recent]
+other = "No hay busquedas recientes"
+
+[search_no_results]
+other = "No hay resultados"
+
+[search_placeholder]
+other = "Buscar"
+
+[search_title]
+other = "Buscar"
+
+[video_unsupported]
+other = "Tu navegador web no soporta videos insertados, ¡pero no te preocupes, puedes <a href=\"{{ .RelPermalink }}\">descargarlo</a> y lo podrás ver con tu reproductor de video favorito!"

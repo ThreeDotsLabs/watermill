@@ -1,8 +1,10 @@
 .idea
 vendor
 docs/themes/
+docs/node_modules/
 docs/public/
 docs/content/src-link
+docs/content/middleware
 *.out
 *.log
 .mod-cache

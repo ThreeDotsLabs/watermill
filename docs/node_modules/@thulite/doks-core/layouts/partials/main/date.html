@@ -1,0 +1,6 @@
+<!--
+  Returns formatted date.
+  Usage: partial "docs/date" (dict "Date" .Date "Format" .Site.Params.BookDateFormat)
+-->
+{{ $format := default ":date_long" .Format -}}
+{{ return (.Date | time.Format $format) -}}

@@ -1,0 +1,70 @@
+{{ define "main" }}
+<article>
+<div class="row justify-content-center">
+  <div class="col-md-12 col-lg-10">
+    <div class="blog-header">
+      <h1>{{ .Title }}</h1>
+      {{ partial "main/blog-meta.html" . }}
+    </div>
+  </div>
+  {{ if site.Params.doks.imageSingle -}}
+    {{- $images := .Resources.ByType "image" -}}
+    {{- $featured := $images.GetMatch "*feature*" -}}
+    {{- if not $featured }}{{ $featured = $images.GetMatch "{*cover*,*thumbnail*}" }}{{ end -}}
+    {{- if $featured -}}
+      <div class="col-md-13">
+        {{ partial "picture" (dict
+        "page" .
+        "src" $featured
+        "alt" .Title
+        "class" "img-post-single rounded-0"
+        )}}
+      </div>
+    {{ end -}}
+  {{ end -}}
+  <div class="col-md-12 col-lg-9">
+    {{ with .Params.summary -}}<p class="lead">{{ . }}</p>{{ end -}}
+    {{ .Content }}
+    {{ if .Params.tags -}}
+    <div class="tag-list-single">
+      {{ range $index, $tag := .Params.tags -}}
+        <a class="btn btn-light" href="{{ "/tags/" | relLangURL }}{{ . | urlize }}/" role="button">{{ . }}</a>
+      {{ end -}}
+    </div>
+    {{ end -}}
+  </div>
+</div>
+</article>
+{{ end }}
+
+{{ define "sidebar-footer" }}
+{{ if site.Params.doks.relatedPosts -}}
+  {{ $related := .Site.RegularPages.Related . | first 3 -}}
+  {{ with $related -}}
+  <div class="bg-light">
+    <section class="section section-related container">
+      <div class="row justify-content-center">
+        <div class="col-md-12 col-lg-9">
+          <h2 class="section-title text-center">Related posts</h2>
+        </div>
+      </div>
+      <div class="row justify-content-center">
+        <div class="col-lg-9">
+          {{ range . -}}
+            <div class="card">
+              <div class="card-body">
+                <article>
+                  <h2 class="h3"><a class="stretched-link text-body" href="{{ .RelPermalink }}">{{ .Params.title }}</a></h2>
+                  <p>{{ .Params.summary | safeHTML }}</p>
+                  {{ partial "main/blog-meta.html" . -}}
+                </article>
+              </div>
+            </div>
+          {{ end -}}
+        </div>
+      </div>
+    </section>
+  </div>
+  {{ end -}}
+{{ end -}}
+{{ end }}

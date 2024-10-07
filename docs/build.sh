@@ -3,15 +3,6 @@ set -e -x
 
 cd "$(dirname "$0")"
 
-if [[ ! -d themes/kube ]]; then
-    mkdir -p themes/kube && pushd themes/kube
-    git init
-    git remote add origin https://github.com/jeblister/kube
-    git fetch --depth 1 origin 1507abea527aecd896fdc306dfd28ee3e34f01ec
-    git checkout FETCH_HEAD
-    popd
-fi
-
 function cloneOrPull() {
     if [[ -d "$2" ]]
     then
@@ -83,6 +74,7 @@ cloneOrPull "https://github.com/ThreeDotsLabs/watermill-firestore.git" content/s
 cloneOrPull "https://github.com/ThreeDotsLabs/watermill-bolt.git" content/src-link/watermill-bolt
 cloneOrPull "https://github.com/ThreeDotsLabs/watermill-redisstream.git" content/src-link/watermill-redisstream
 
+find content/src-link -name '*.md' -delete
 
 python3 ./extract_middleware_godocs.py > content/src-link/middleware-defs.md
 

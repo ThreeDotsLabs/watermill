@@ -1,0 +1,38 @@
+.footer {
+    border-top: 1px solid $gray-200;
+    padding-top: 1.125rem;
+    padding-bottom: 1.125rem;
+
+    ul {
+        margin-bottom: 0;
+    }
+
+    li {
+        font-size: $font-size-sm;
+        margin-bottom: 0;
+    }
+
+    .list-inline-item:not(:last-child) {
+        margin-right: 1rem;
+    }
+}
+
+@include media-breakpoint-down(lg) {
+    .footer .col-lg-8 {
+        margin-top: 0.25rem;
+        margin-bottom: 0.25rem;
+    }
+}
+
+@include media-breakpoint-up(md) {
+    .footer li {
+        font-size: $font-size-base;
+    }
+}
+
+.fixed-bottom-right {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    z-index: $zindex-dropdown;
+}

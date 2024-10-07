@@ -1,0 +1,503 @@
+/* Show the sun icon if the bs theme is dark */
+html[data-bs-theme="dark"] {
+    .icon-tabler-sun {
+        display: block;
+    }
+
+    .icon-tabler-moon {
+        display: none;
+    }
+}
+
+/* Show the moon icon if the bs theme is light */
+html[data-bs-theme="light"] {
+    .icon-tabler-sun {
+        display: none;
+    }
+
+    .icon-tabler-moon {
+        display: block;
+    }
+}
+
+/*
+.section:not(body.section) {
+  padding-top: 5rem;
+  padding-bottom: 5rem;
+}
+
+.section-lg {
+  padding-top: 7rem;
+  padding-bottom: 7rem;
+}
+*/
+
+/*
+.highlight .chroma {
+  padding: 1rem;
+  border-radius: var(--bs-border-radius);
+}
+*/
+
+.privacy .content,
+.terms .content,
+.about .content,
+.contributors .content,
+.blog .content,
+.page .content,
+.error404 .content,
+.docs.list .content,
+.tutorial.list .content,
+.showcase.list .content,
+.categories.list .content,
+.tags.list .content,
+.list.section .content {
+    padding-top: 1rem;
+    padding-bottom: 3rem;
+}
+
+.content img {
+    max-width: 100%;
+}
+
+h6,
+.h6,
+h5,
+.h5,
+h4,
+.h4,
+h3,
+.h3,
+h2,
+.h2,
+h1,
+.h1 {
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+}
+
+/*
+body.docs,
+body.blog {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+*/
+
+@include media-breakpoint-up(md) {
+    body {
+        font-size: $font-size-md;
+
+        /*
+    padding-top: 4rem !important;
+    */
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6,
+    .h1,
+    .h2,
+    .h3,
+    .h4,
+    .h5,
+    .h6 {
+        margin-bottom: 1.125rem;
+    }
+}
+
+.home h1 {
+    /* font-size: calc(1.375rem + 1.5vw); */
+    font-size: calc(1.875rem + 1.5vw);
+    margin-top: -1rem;
+}
+
+a:hover,
+a:focus {
+    text-decoration: underline;
+}
+
+.docs-navigation .card {
+    transition: transform 0.3s;
+}
+
+.docs-navigation .card:hover {
+    transform: scale(1.025);
+}
+
+a.btn:hover,
+a.btn:focus {
+    text-decoration: none;
+}
+
+.section {
+    padding-top: 5rem;
+    padding-bottom: 5rem;
+}
+
+body.section {
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
+.section-md {
+    padding-top: 3rem;
+    padding-bottom: 3rem;
+}
+
+.section-sm {
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+}
+
+/*
+.section svg {
+  display: inline-block;
+  width: 2rem;
+  height: 2rem;
+  vertical-align: text-top;
+}
+*/
+
+/*
+body {
+  padding-top: 3.5625rem;
+}
+*/
+
+.docs-sidebar {
+    order: 2;
+}
+
+@include media-breakpoint-up(lg) {
+    .docs-sidebar {
+        order: 0;
+        border-right: 1px solid $gray-200;
+    }
+
+    @supports ((position: -webkit-sticky) or (position: sticky)) {
+        .docs-sidebar {
+            position: -webkit-sticky;
+            position: sticky;
+            top: 4.25rem;
+            z-index: 1000;
+            height: calc(100vh - 4.25rem);
+        }
+
+        .docs-sidebar-offset {
+            top: 4.5rem;
+            height: calc(100vh - 4.5rem);
+        }
+
+        .docs-sidebar-top {
+            position: static;
+        }
+    }
+}
+
+@include media-breakpoint-up(xl) {
+    .docs-sidebar {
+        flex: 0 1 320px;
+    }
+}
+
+.docs-links {
+    padding-bottom: 5rem;
+}
+
+@include media-breakpoint-up(lg) {
+    @supports ((position: -webkit-sticky) or (position: sticky)) {
+        .docs-links {
+            max-height: calc(100vh - 4rem);
+            overflow-y: scroll;
+        }
+    }
+}
+
+@include media-breakpoint-up(lg) {
+    .docs-links {
+        display: block;
+        width: auto;
+        margin-right: -1.5rem;
+        padding-bottom: 4rem;
+    }
+}
+
+.docs-toc {
+    order: 2;
+}
+
+@supports ((position: -webkit-sticky) or (position: sticky)) {
+    .docs-toc {
+        position: -webkit-sticky;
+        position: sticky;
+        top: 4.25rem;
+        height: calc(100vh - 4.25rem);
+        overflow-y: auto;
+    }
+
+    .docs-toc-offset {
+        top: 4.5rem;
+        height: calc(100vh - 4.5rem);
+    }
+
+    .docs-toc-top {
+        position: static;
+    }
+}
+
+.docs-content {
+    padding-bottom: 3rem;
+    order: 1;
+}
+
+.docs-navigation {
+    border-top: 1px solid $gray-200;
+    margin-top: 2rem;
+    margin-bottom: 0;
+    padding-top: 2rem;
+}
+
+.docs-navigation a {
+    font-size: $font-size-base * 0.9;
+}
+
+@include media-breakpoint-up(lg) {
+    .docs-navigation {
+        margin-bottom: -1rem;
+    }
+
+    .docs-navigation a {
+        font-size: $font-size-base;
+    }
+}
+
+.docs-navigation a:hover,
+.docs-navigation a:focus {
+    text-decoration: none;
+}
+
+.navbar a:hover,
+.navbar a:focus {
+    text-decoration: none;
+}
+
+#TableOfContents ul,
+#toc ul {
+    padding-left: 0;
+    list-style: none;
+}
+
+#toc a.active {
+    color: $primary;
+    font-weight: 500;
+}
+
+.section-features {
+    padding-top: 2rem;
+}
+
+.bg-dots {
+    background-image: radial-gradient($gray-300 15%, transparent 15%);
+    background-position: 0 0;
+    background-size: 1rem 1rem;
+    -webkit-mask: linear-gradient(to top, #fff, transparent);
+    mask: linear-gradient(to top, #fff, transparent);
+    width: 100%;
+    height: 11rem;
+    margin-top: -10rem;
+    z-index: -1;
+}
+
+.bg-dots-md {
+    margin-top: -11rem;
+}
+
+.bg-dots-lg {
+    margin-top: -12rem;
+}
+
+// https://fossheim.io/writing/posts/css-text-gradient/
+.gradient-text {
+    background-color: $primary;
+    background-image: linear-gradient(90deg, $primary, $link-color-dark 50%, var(--sl-color-blue));
+    background-size: 100%;
+    background-repeat: repeat;
+    -webkit-background-clip: text;
+    -moz-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    -moz-text-fill-color: transparent;
+}
+
+.katex {
+    font-size: $font-size-md;
+}
+
+.card-bar {
+    border-top: 4px solid;
+    border-image-source: linear-gradient(90deg, $primary, $link-color-dark 50%, var(--sl-color-blue));
+    border-image-slice: 1;
+}
+
+.modal-backdrop {
+    background-color: #fff;
+}
+
+.modal-backdrop.show {
+    opacity: 0.7;
+}
+
+@include media-breakpoint-up(md) {
+    .modal-backdrop.show {
+        opacity: 0;
+    }
+}
+
+sup[id] {
+    scroll-margin-top: 4.5rem;
+}
+
+div.footnotes {
+    font-size: $font-size-sm;
+}
+
+a.footnote-backref {
+    text-decoration: none;
+}
+
+li input[type="checkbox"] {
+    @extend .form-check-input;
+
+    margin: 0.25rem;
+    border: 1px solid $gray-400;
+}
+
+li input[type="checkbox"]:disabled {
+    pointer-events: none;
+    filter: none;
+    opacity: 1;
+}
+
+li input[type="checkbox"]:checked {
+    background-color: $db-purple-300;
+    border-color: $db-purple-300;
+}
+
+@include color-mode(dark) {
+    li input[type="checkbox"] {
+        border: 1px solid $gray-600;
+    }
+
+    li input[type="checkbox"]:checked {
+        background-color: $link-color-dark;
+        border-color: $link-color-dark;
+
+        --bs-form-check-bg-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%231d2d35' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='m6 10 3 3 6-6'/%3e%3c/svg%3e");
+    }
+}
+
+.content .svg-inline {
+    margin-bottom: 1.5rem;
+}
+
+.content .svg-inline:not(.svg-inline-custom) {
+    height: 1.875rem;
+    width: 1.875rem;
+    stroke-width: 1.5;
+}
+
+/*
+.content .alert .icon {
+  stroke-width: 1;
+  margin-bottom: 0;
+  margin-right: 0.5rem;
+}
+*/
+
+.logo-netlify-large-fullcolor-darkmode {
+    display: none;
+}
+
+@include color-mode(dark) {
+    .logo-netlify-large-fullcolor-lightmode {
+        display: none;
+    }
+
+    .logo-netlify-large-fullcolor-darkmode {
+        display: block;
+    }
+}
+
+.svg-lightmode {
+    display: block;
+}
+
+.svg-darkmode {
+    display: none;
+}
+
+.svg-monochrome path {
+    fill: $db-bluishCyan-100;
+}
+
+@include color-mode(dark) {
+    .svg-lightmode {
+        display: none;
+    }
+
+    .svg-darkmode {
+        display: block;
+    }
+
+    .netlify-logo path,
+    .netlify-monogram path {
+        fill: $white;
+    }
+
+    .svg-monochrome path {
+        fill: var(--sl-color-gray-1);
+    }
+}
+
+hr {
+    border-color: $db-gray-700;
+}
+
+@include color-mode(dark) {
+    hr {
+        border-color: var(--sl-color-gray-3);
+    }
+}
+
+// Fix for overflowing code block
+.container-fw {
+    min-width: 0;
+}
+
+// Link cards
+.card-nav {
+    column-gap: 1rem;
+}
+
+.card-nav .card {
+    margin: 0.5rem 0;
+}
+
+.card-nav .card:hover {
+    border: 1px solid $db-gray-600;
+    background-color: var(--sl-color-gray-7);
+}
+
+@include color-mode(dark) {
+    .card-nav .card {
+        border: 1px solid hsl(224deg, 10%, 23%);
+    }
+
+    .card-nav .card:hover {
+        border: 1px solid hsl(224deg, 6%, 56%);
+        background-color: var(--sl-color-gray-6);
+    }
+}

@@ -1,0 +1,63 @@
+{{- /* }}
+Supported schemas:
+- Website (homepage)
+- Organization or Person (homepage)
+- BreadcrumbList (all pages, except homepage)
+- Article (Article sections — globally defined)
+- NewsArticle (NewsArticle sections — globally defined)
+- BlogPosting (BlogPosting sections — globally defined)
+- Product (Product sections — globally defined)
+
+Resources:
+ - https://developers.google.com/search/docs/appearance/structured-data/search-gallery
+ - https://schema.org/docs/schemas.html
+ - https://bullaki.com/projects/web-design/seo-with-hugo-5-breadcrumbs/
+ - https://bullaki.com/projects/web-design/seo-with-hugo-4-structured-data-markup/
+ - https://developer.yoast.com/features/schema/pieces/
+{{ */}}
+
+{{- /* Initialize. */}}
+{{- $s := slice "Organization" "Person" }}
+{{- $v := delimit $s ", " " or "}}
+{{- $t := site.Params.seo.schemas.type }}
+{{- $a := site.Params.seo.schemas.article }}
+{{- $b := site.Params.seo.schemas.blogPosting }}
+{{- $n := site.Params.seo.schemas.newsArticle }}
+{{- $p := site.Params.seo.schemas.product }}
+
+{{- if .IsHome }}
+  {{- /* Parse Website schema. */}}
+  {{- partial "seo/schemas/website" . }}
+  {{- /* Validate schema type. */}}
+  {{- if in $s $t }}
+    {{- /* Determine schema path. */}}
+    {{- $p := printf `seo/schemas/%s` ( $t | lower ) }}
+    {{- /* Parse Organization or Person schema. */}}
+    {{- partial $p }}
+  {{- else }}
+    {{- warnf "[Thulite SEO] Unsupported schema type: %s. Set %s in .Site.Params.seo.schemas.type" $t $v }}
+  {{- end }}
+{{- else }}
+  {{- /* Parse BreadcrumbList schema. */}}
+  {{- partial "seo/schemas/breadcrumb" . }}
+{{- end }}
+
+{{- /* Parse Article schema. */}}
+{{- if and (in $a .Section) (.IsPage) }}
+  {{- partial "seo/schemas/article" . }}
+{{- end }}
+
+{{- /* Parse NewsArticle schema. */}}
+{{- if and (in $n .Section) (.IsPage) }}
+  {{- partial "seo/schemas/newsarticle" . }}
+{{- end }}
+
+{{- /* Parse BlogPosting schema. */}}
+{{- if and (in $b .Section) (.IsPage) }}
+  {{- partial "seo/schemas/blogposting" . }}
+{{- end }}
+
+{{- /* Parse Product schema. */}}
+{{- if and (in $p .Section) (.IsPage) }}
+  {{- partial "seo/schemas/product" . }}
+{{- end }}

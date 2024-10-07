@@ -1,0 +1,25 @@
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  {{- if templates.Exists "partials/head/resource-hints.html" }}
+    {{- partial "head/resource-hints" . }}
+  {{- end }}
+  {{- if templates.Exists "partials/head/script-header-priority.html" }}
+    {{- partial "head/script-header-priority" . }}
+  {{- end }}
+  {{- if templates.Exists "partials/head/stylesheet.html" }}
+    {{- partialCached "head/stylesheet" . }}
+  {{- end }}
+  {{- if templates.Exists "partials/head/seo.html" }}
+    {{- partial "head/seo" . }}
+  {{- else if templates.Exists "partials/head/seo-default.html" }}
+    {{- partial "head/seo-default" . }}
+  {{- end }}
+  {{- if templates.Exists "partials/head/script-header.html" }}
+    {{- partial "head/script-header" . }}
+  {{- end }}
+  {{- if templates.Exists "partials/head/custom-head.html" }}
+    {{- partial "head/custom-head" . }}
+  {{- end }}
+</head>

@@ -1,0 +1,33 @@
+img {
+    max-width: 100%;
+    height: auto;
+}
+
+img[data-sizes="auto"] {
+    display: block;
+}
+
+img,
+picture {
+    font-size: 0;
+}
+
+figcaption {
+    font-size: 1rem;
+    margin-top: 0.5rem;
+    font-style: italic;
+}
+
+.content .gitpod-mark-monochrome.icon {
+    margin-bottom: 0.125rem;
+    margin-right: 0.5rem;
+}
+
+.blur-up {
+    filter: blur(5px);
+    transition: filter 400ms;
+}
+
+.blur-up.lazyloaded {
+    filter: unset;
+}

@@ -1,0 +1,246 @@
+.docs-content > h2[id]::before,
+.docs-content > h3[id]::before,
+.docs-content > h4[id]::before {
+    display: block;
+    height: 6rem;
+    margin-top: -6rem;
+    content: "";
+}
+
+.docs-content ul,
+.docs-content ol {
+    margin-bottom: 1rem;
+}
+
+.anchor {
+    visibility: hidden;
+    margin-left: 0.375rem;
+}
+
+.edit-page a,
+.last-modified a {
+    color: var(--sl-color-gray-3);
+}
+
+h1:hover a,
+h2:hover a,
+h3:hover a,
+h4:hover a {
+    visibility: visible;
+    text-decoration: none;
+}
+
+.card-list {
+    margin-top: 2.25rem;
+}
+
+.page-footer-meta {
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+}
+
+.edit-page,
+.last-modified {
+    font-size: $font-size-sm;
+    margin-top: 0.25rem;
+    margin-bottom: 0.25rem;
+}
+
+@include media-breakpoint-up(md) {
+    .edit-page,
+    .last-modified {
+        font-size: $font-size-base;
+        margin-top: 0.75rem;
+        margin-bottom: 0.25rem;
+    }
+}
+
+.edit-page a:hover,
+.last-modified a:hover {
+    color: var(--sl-color-gray-4);
+    text-decoration: none;
+}
+
+@include color-mode(dark) {
+    .edit-page a:hover,
+    .last-modified a:hover {
+        color: var(--sl-color-gray-2);
+    }
+}
+
+.edit-page svg,
+.last-modified svg {
+    margin-right: 0.25rem;
+    margin-bottom: 0.25rem;
+}
+
+p.meta {
+    margin-top: 0.5rem;
+    font-size: $font-size-base;
+}
+
+.breadcrumb {
+    margin-top: 2.25rem;
+    font-size: $font-size-base;
+}
+
+.toc-mobile {
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+}
+
+.page-link:hover {
+    text-decoration: none;
+}
+
+.row-about {
+    padding-top: 5rem;
+    padding-bottom: 5rem;
+
+    @include media-breakpoint-up(lg) {
+        padding-top: 7rem;
+        padding-bottom: 7rem;
+    }
+}
+
+.row-about h1 {
+    margin-top: 1rem;
+}
+
+ul li {
+    margin: 0.25rem 0;
+}
+
+.list-contributors {
+    margin-left: 1.25rem;
+}
+
+.list-contributors li {
+    margin: 0.25rem 0 0.25rem -1.5rem;
+    padding: 0.25rem;
+    background-color: $white;
+    border-radius: 50%;
+}
+
+@include color-mode(dark) {
+    .list-contributors li {
+        background-color: $gray-900;
+    }
+}
+
+ul.list-toolbox li {
+    @extend .list-unstyled;
+
+    position: relative;
+    margin: 0.25rem 0;
+
+    &::before {
+        background: none;
+        content: "🧰";
+        height: 1rem;
+        width: 1rem;
+        position: absolute;
+        left: -2rem;
+        top: 0;
+    }
+}
+
+ul.list-books li {
+    @extend .list-unstyled;
+
+    position: relative;
+    margin: 0.25rem 0;
+
+    &::before {
+        background: none;
+        content: "📚";
+        height: 1rem;
+        width: 1rem;
+        position: absolute;
+        left: -2rem;
+        top: 0;
+    }
+}
+
+ul.list-speech-balloon li {
+    @extend .list-unstyled;
+
+    position: relative;
+    margin: 0.25rem 0;
+
+    &::before {
+        background: none;
+        content: "💬";
+        height: 1rem;
+        width: 1rem;
+        position: absolute;
+        left: -2rem;
+        top: 0;
+    }
+}
+
+ul.list-package li {
+    @extend .list-unstyled;
+
+    position: relative;
+    margin: 0.25rem 0;
+
+    &::before {
+        background: none;
+        content: "📦";
+        height: 1rem;
+        width: 1rem;
+        position: absolute;
+        left: -2rem;
+        top: 0;
+    }
+}
+
+ul.list-star li {
+    @extend .list-unstyled;
+
+    position: relative;
+    margin: 0.25rem 0;
+
+    &::before {
+        background: none;
+        content: "⭐";
+        height: 1rem;
+        width: 1rem;
+        position: absolute;
+        left: -2rem;
+        top: 0;
+    }
+}
+
+.page-nav .card {
+    .icon-tabler-arrow-left {
+        margin-right: 0.75rem;
+    }
+
+    .icon-tabler-arrow-right {
+        margin-left: 0.75rem;
+    }
+}
+
+.page-nav .card:hover {
+    border: 1px solid $db-gray-600;
+}
+
+@include color-mode(dark) {
+    .page-nav .card {
+        border: 1px solid hsl(224deg, 10%, 23%);
+    }
+
+    .page-nav .card:hover {
+        border: 1px solid hsl(224deg, 6%, 56%);
+    }
+}
+
+.container-fw {
+    max-width: 1200px;
+
+    .docs-toc {
+        margin-left: 3rem;
+    }
+}

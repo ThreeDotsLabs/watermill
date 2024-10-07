@@ -1,0 +1,135 @@
+{{- /* Last modified: 2023-09-04T20:30:30-07:00 */}}
+
+{{- /*
+Copyright 2023 Veriphor LLC
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not
+use this file except in compliance with the License. You may obtain a copy of
+the License at
+
+https://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+License for the specific language governing permissions and limitations under
+the License.
+*/}}
+
+{{- /*
+Renders an HTML picture element, in multiple formats and sizes.
+
+It resolves internal destinations by looking for a matching:
+
+  1. Page resource (an image in the current page bundle)
+  2. Section resource (an image in the current section)
+  3. Global resource (an image in the assets directory)
+
+It skips the section resource lookup if the current page is a leaf bundle, and
+captures external destinations as resources for local hosting. The build will
+fail if this shortcode is unable to resolve a destination.
+
+You must place global resources in the assets directory. If you have placed
+your resources in the static directory, and you are unable or unwilling to move
+them, you must mount the static directory to the assets directory by including
+both of these entries in your site configuration:
+
+  [[module.mounts]]
+  source = 'assets'
+  target = 'assets'
+
+  [[module.mounts]]
+  source = 'static'
+  target = 'assets'
+
+Add this CSS to your site to enable responsive image behavior:
+
+  img {
+    height: auto;
+    max-width: 100%;
+  }
+
+Add this CSS to your site to remove small gaps between adjacent elements:
+
+  img, picture {
+    font-size: 0;
+  }
+
+This shortcode is a wrapper for, and requires, the picture partial:
+<https://www.veriphor.com/articles/images-with-overlays/#partial-source-code>
+
+@context {string} Inner The content between the opening and closing shortcode tags.
+@context {string} InnerDeindent The content between the opening and closing shortcode tags with indentation removed.
+@context {string} Name The file name of the shortcode template, excluding the extension.
+@context {int} Ordinal The zero-based ordinal of the shortcode on the page, or within its parent shortcode.
+@context {page} Page A reference to the page containing the shortcode.
+@context {map} Params The parameters specified in the opening shortcode tag.
+@context {hugolib.ShortcodeWithPage} Parent The context of the parent shortcode.
+@context {text.Position} Position The position of the shortcode within the page content.
+
+@method {any} Get Returns the parameter value for the given key (for named parameters) or position (for positional parameters).
+@mathod {bool} IsNamedParams Returns true if the shortcode is called with named instead of positional parameters.
+@method {maps.Scratch) Scratch Returns a writable Scratch to store and manipulate data.
+
+@param {string} [src] The path to the image: a page resource, a global resource, or a remote resource.
+@param {int} [width] The display width of the image, in pixels, falling back to 100% of the viewport width.
+@param {string} [sizes] = "" # "100vw", "75vw", or "auto" for example
+@param {string slice} [formats] A slice of image formats, ordered by precedence, to use when creating images for the srcset attribute of each source element.
+@param {string} [process] = "" # "fill 1600x900" for example
+@param {string} [lqip] = "" # "16x webp q20" or "21x webp q20" for example
+@param {string} [decoding] The img element's decoding attribute.
+@param {string} [fetchpriority] The img element's fetchpriority attribute.
+@param {string} [loading] The img element's loading attribute.
+@param {string} [alt] The img element's alt attribute.
+@param {string} [title] The img element's title attribute.
+@param {string} [class] The img element's class attribute.
+
+@returns {template.HTML}
+
+@example (required args only)
+
+  {{< picture src="images/zion-national-park.jpg" >}}
+
+@example (all args)
+
+  {{< picture
+    src="images/bryce-canyon-national-park.jpg"
+    width=768
+    sizes="75w"
+    formats="webp, jpeg"
+    process="fill 1600x900"
+    lqip="16x webp q20"
+    decoding="async"
+    fetchpriority="auto"
+    loading="eager"
+    alt="Bryce Canyon National Park"
+    title="A beautiful day in Bryce Canyon National Park"
+    class="foo"
+  >}}
+
+*/}}
+
+{{- /* Create slices from comma or space separated values. */}}
+{{- $formats := slice }}
+{{- with .Get "formats" }}
+  {{- range partial "inline/split.html" . }}
+    {{- $formats = $formats | append . }}
+  {{- end }}
+{{- end }}
+
+{{- /* Build the context to send to the picture partial. */}}
+{{- $ctx := merge .Params
+  (dict "page" .Page)
+  (dict "formats" $formats)
+}}
+
+{{- /* Call the picture partial. */}}
+{{- partial "picture.html" $ctx -}}
+
+{{- /* Returns a slice of strings, splitting s by a comma or whitespace. */}}
+{{- define "partials/inline/split.html" }}
+  {{- $s := trim . " " }}
+  {{- $s = replace $s " " "," }}
+  {{- $s := replaceRE `,{2,}` "," $s }}
+  {{- return split $s "," }}
+{{- end -}}

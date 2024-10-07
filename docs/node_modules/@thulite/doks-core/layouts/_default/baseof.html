@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="{{ .Site.LanguageCode | default "en" }}" data-bs-theme="{{ site.Params.doks.colorMode | default "auto" }}">
+  {{ partial "head/head" . }}
+  {{ partial "head/body-class" . }}
+  <body class="{{ delimit (.Scratch.Get "class") " " }}"{{ if eq site.Params.doks.scrollSpy true }} data-bs-spy="scroll" data-bs-target="#toc" data-bs-root-margin="0px 0px -60%" data-bs-smooth-scroll="true" tabindex="0"{{ end }}>
+    {{ partial "header/header" . }}
+    <div class="wrap container-{{ site.Params.doks.containerBreakpoint | default "lg" }}" role="document">
+      <div class="content">
+      {{ if and (eq site.Params.doks.containerBreakpoint "fluid") (or (not (in .Site.Params.mainSections .Type)) (.IsNode)) }}<div class="container p-0">{{ end }}
+        {{ block "main" . }}{{ end }}
+      {{ if and (eq site.Params.doks.containerBreakpoint "fluid") (or (not (in .Site.Params.mainSections .Type)) (.IsNode)) }}</div>{{ end }}
+      </div>
+    </div>
+    {{ block "sidebar-prefooter" . }}{{ end }}
+    {{ block "sidebar-footer" . }}{{ end }}
+    {{ partial "footer/footer" . }}
+    {{ partial "footer/script-footer" . }}
+    {{ if eq site.Params.doks.toTopButton true -}}
+      {{ partial "footer/to-top" . }}
+    {{ end }}
+  </body>
+</html>

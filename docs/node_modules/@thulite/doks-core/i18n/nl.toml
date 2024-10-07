@@ -1,0 +1,54 @@
+[404_text]
+other = "De gezochte pagina bestaat niet of deze is verplaatst."
+
+[404_title]
+other = "Pagina niet gevonden :("
+
+[browse]
+other = "Browse"
+
+[chapter_next]
+other = "Volgende"
+
+[chapter_previous]
+other = "Voorheen"
+
+[edit_page]
+other = "Bewerk deze pagina op"
+
+[get_started]
+other = "Aan de slag"
+
+[home]
+other = "Thuis"
+
+[last_updated]
+other = "Laatst bijgewerkt op"
+
+[minute]
+one = "minuut"
+other = "minuten"
+
+[on_this_page]
+other = "Op deze pagina"
+
+[reading_time]
+other = "Geschatte leestijd"
+
+[search_loading]
+other = "Zoekindex wordt geladen…"
+
+[search_no_recent]
+other = "Geen recente zoekopdrachten"
+
+[search_no_results]
+other = "Geen resultaten"
+
+[search_placeholder]
+other = "Zoeken"
+
+[search_title]
+other = "Zoeken"
+
+[video_unsupported]
+other = "Je browser ondersteunt geen ingesloten video's, maar maak je geen zorgen, je kunt <a href=\"{{ .RelPermalink }}\">het downloaden</a> en bekijken met je favoriete videospeler!"

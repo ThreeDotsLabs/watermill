@@ -1,0 +1,17 @@
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  {{ if templates.Exists "partials/head/resource-hints.html" -}}
+    {{ partial "head/resource-hints.html" . }}
+  {{ end -}}
+  {{ partial "head/stylesheet.html" . }}
+  {{ if templates.Exists "partials/head/seo.html" -}}
+    {{ partial "head/seo.html" . }}
+  {{ else -}}
+    {{ partial "head/seo-default.html" . }}
+  {{ end -}}
+  {{ if templates.Exists "partials/head/script-header.html" -}}
+    {{ partial "head/script-header.html" . }}
+  {{ end -}}
+</head>

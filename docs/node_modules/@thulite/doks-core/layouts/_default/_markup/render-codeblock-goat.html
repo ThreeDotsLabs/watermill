@@ -1,0 +1,18 @@
+{{ $width := .Attributes.width }}
+{{ $height := .Attributes.height }}
+{{ $class := .Attributes.class | default "" }}
+<div class="goat svg-container {{ $class }}">
+  {{ with diagrams.Goat .Inner }}
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      font-family="'Jost', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', 'Noto Sans', 'Liberation Sans', Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji'"
+      {{ if or $width $height }}
+        {{ with $width }}width="{{ . }}"{{ end }}
+        {{ with $height }}height="{{ . }}"{{ end }}
+      {{ else }}
+        viewBox="0 0 {{ .Width }} {{ .Height }}"
+      {{ end }}>
+      {{ .Inner }}
+    </svg>
+  {{ end }}
+</div>

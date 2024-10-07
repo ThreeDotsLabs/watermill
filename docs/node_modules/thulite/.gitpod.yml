@@ -1,0 +1,13 @@
+# Source: https://github.com/gitpod-io/template-hugo/blob/main/.gitpod.yml
+
+# List the start up tasks. Learn more https://www.gitpod.io/docs/config-start-tasks/
+tasks:
+    - name: Run start up tasks
+      before: brew install hugo
+      init: pnpm install
+      command: hugo server --baseURL $(gp url 1313) --liveReloadPort=443 --appendPort=false --bind=0.0.0.0 --disableFastRender --noHTTPCache --navigateToChanged
+
+# List the ports to expose. Learn more https://www.gitpod.io/docs/config-ports/
+ports:
+    - port: 1313
+      onOpen: open-preview

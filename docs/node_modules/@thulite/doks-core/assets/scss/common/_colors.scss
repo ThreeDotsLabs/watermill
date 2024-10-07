@@ -1,0 +1,221 @@
+// Doks color scheme
+
+// Light mode
+
+/* Bluish cyan */
+$db-bluishCyan-100: #1d2d35;
+
+/* Gray */
+$db-gray-100: #ffffff;
+$db-gray-200: #fcf8f2;
+$db-gray-300: #f3f3f3;
+$db-gray-400: #efebf3;
+$db-gray-500: #e6e6e6;
+$db-gray-600: #d9d9d9;
+$db-gray-700: #808080;
+$db-gray-800: #666666;
+
+/* Yellow */
+$db-yellow-100: #fffce6;
+$db-yellow-200: #fff9cc;
+$db-yellow-300: #fff6b3;
+$db-yellow-400: #fff399;
+$db-yellow-500: #fff080;
+$db-yellow-600: #ffea4d;
+$db-yellow-700: #ffe733;
+$db-yellow-800: #ffe41a;
+$db-yellow-900: #ffe000;
+
+/* Khaki */
+$db-khaki-100: #fbf7f0;
+$db-khaki-200: #dcccaf;
+$db-khaki-300: #aa9c84;
+
+/* Purple */
+$db-purple-100: #cfc1db;
+$db-purple-200: #8e6eab;
+$db-purple-300: #5d2f86;
+
+/* Vermilion */
+$db-vermilion-100: #e55235;
+
+:root[data-bs-theme="light"],
+[data-bs-theme="light"] ::backdrop {
+    --sl-color-white: hsl(224, 10%, 10%);
+    --sl-color-gray-1: hsl(224, 14%, 16%);
+    --sl-color-gray-2: hsl(224, 10%, 23%);
+    --sl-color-gray-3: hsl(224, 7%, 36%);
+    --sl-color-gray-4: hsl(224, 6%, 56%);
+    --sl-color-gray-5: hsl(224, 6%, 77%);
+    --sl-color-gray-6: hsl(224, 20%, 94%);
+    --sl-color-gray-7: hsl(224, 19%, 97%);
+    --sl-color-black: hsl(0, 0%, 100%);
+}
+
+// Dark mode
+
+:root,
+::backdrop {
+    --sl-color-white: hsl(0, 0%, 100%);
+    --sl-color-gray-1: hsl(224, 20%, 94%);
+    --sl-color-gray-2: hsl(224, 6%, 77%);
+    --sl-color-gray-3: hsl(224, 6%, 56%);
+    --sl-color-gray-4: hsl(224, 7%, 36%);
+    --sl-color-gray-5: hsl(224, 10%, 23%);
+    --sl-color-gray-6: hsl(224, 14%, 16%);
+    --sl-color-black: hsl(224, 10%, 10%);
+    --sl-hue-orange: 41;
+    --sl-color-orange-low: hsl(var(--sl-hue-orange), 39%, 22%);
+    --sl-color-orange: hsl(var(--sl-hue-orange), 82%, 63%);
+    --sl-color-orange-high: hsl(var(--sl-hue-orange), 82%, 87%);
+    --sl-hue-green: 101;
+    --sl-color-green-low: hsl(var(--sl-hue-green), 39%, 22%);
+    --sl-color-green: hsl(var(--sl-hue-green), 82%, 63%);
+    --sl-color-green-high: hsl(var(--sl-hue-green), 82%, 80%);
+    --sl-hue-blue: 234;
+    --sl-color-blue-low: hsl(var(--sl-hue-blue), 54%, 20%);
+    --sl-color-blue: hsl(var(--sl-hue-blue), 100%, 60%);
+    --sl-color-blue-high: hsl(var(--sl-hue-blue), 100%, 87%);
+    --sl-hue-purple: 281;
+    --sl-color-purple-low: hsl(var(--sl-hue-purple), 39%, 22%);
+    --sl-color-purple: hsl(var(--sl-hue-purple), 82%, 63%);
+    --sl-color-purple-high: hsl(var(--sl-hue-purple), 82%, 89%);
+    --sl-hue-red: 339;
+    --sl-color-red-low: hsl(var(--sl-hue-red), 39%, 22%);
+    --sl-color-red: hsl(var(--sl-hue-red), 82%, 63%);
+    --sl-color-red-high: hsl(var(--sl-hue-red), 82%, 87%);
+    --sl-color-accent-low: hsl(224, 54%, 20%);
+    --sl-color-accent: hsl(224, 100%, 60%);
+    --sl-color-accent-high: hsl(224, 100%, 85%);
+    --sl-color-text: var(--sl-color-gray-2);
+    --sl-color-text-accent: var(--sl-color-accent-high);
+    --sl-color-text-invert: var(--sl-color-accent-low);
+    --sl-color-bg: var(--sl-color-black);
+    --sl-color-bg-nav: var(--sl-color-gray-6);
+    --sl-color-bg-sidebar: var(--sl-color-gray-6);
+    --sl-color-bg-inline-code: var(--sl-color-gray-5);
+    --sl-color-hairline-light: var(--sl-color-gray-5);
+    --sl-color-hairline: var(--sl-color-gray-6);
+    --sl-color-hairline-shade: var(--sl-color-black);
+    --sl-color-backdrop-overlay: hsla(223, 13%, 10%, 0.66);
+    --sl-shadow-sm: 0px 1px 1px hsla(0, 0%, 0%, 0.12), 0px 2px 1px hsla(0, 0%, 0%, 0.24);
+    --sl-shadow-md: 0px 8px 4px hsla(0, 0%, 0%, 0.08), 0px 5px 2px hsla(0, 0%, 0%, 0.08), 0px 3px 2px hsla(0, 0%, 0%, 0.12), 0px 1px 1px hsla(0, 0%, 0%, 0.15);
+    --sl-shadow-lg: 0px 25px 7px hsla(0, 0%, 0%, 0.03), 0px 16px 6px hsla(0, 0%, 0%, 0.1), 0px 9px 5px hsla(223, 13%, 10%, 0.33), 0px 4px 4px hsla(0, 0%, 0%, 0.75), 0px 4px 2px hsla(0, 0%, 0%, 0.25);
+    --sl-text-xs: 0.8125rem;
+    --sl-text-sm: 0.875rem;
+    --sl-text-base: 1rem;
+    --sl-text-lg: 1.125rem;
+    --sl-text-xl: 1.25rem;
+    --sl-text-2xl: 1.5rem;
+    --sl-text-3xl: 1.8125rem;
+    --sl-text-4xl: 2.1875rem;
+    --sl-text-5xl: 2.625rem;
+    --sl-text-6xl: 4rem;
+    --sl-text-body: var(--sl-text-base);
+    --sl-text-body-sm: var(--sl-text-xs);
+    --sl-text-code: var(--sl-text-sm);
+    --sl-text-code-sm: var(--sl-text-xs);
+    --sl-text-h1: var(--sl-text-4xl);
+    --sl-text-h2: var(--sl-text-3xl);
+    --sl-text-h3: var(--sl-text-2xl);
+    --sl-text-h4: var(--sl-text-xl);
+    --sl-text-h5: var(--sl-text-lg);
+    --sl-line-height: 1.8;
+    --sl-line-height-headings: 1.2;
+    --sl-font-system: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+    --sl-font-system-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    --__sl-font: var(--sl-font, ""), var(--sl-font-system);
+    --__sl-font-mono: var(--sl-font-mono, ""), var(--sl-font-system-mono);
+    --sl-nav-height: 3.5rem;
+    --sl-nav-pad-x: 1rem;
+    --sl-nav-pad-y: 0.75rem;
+    --sl-mobile-toc-height: 3rem;
+    --sl-sidebar-width: 18.75rem;
+    --sl-sidebar-pad-x: 1rem;
+    --sl-content-width: 45rem;
+    --sl-content-pad-x: 1rem;
+    --sl-menu-button-size: 2rem;
+    --sl-nav-gap: var(--sl-content-pad-x);
+    --sl-outline-offset-inside: -0.1875rem;
+    --sl-z-index-toc: 4;
+    --sl-z-index-menu: 5;
+    --sl-z-index-navbar: 10;
+    --sl-z-index-skiplink: 20;
+}
+
+:root {
+    --purple-hsl: 255, 60%, 60%;
+    --overlay-blurple: hsla(var(--purple-hsl), 0.2);
+}
+
+:root {
+    --ec-brdRad: 0px;
+    --ec-brdWd: 1px;
+    --ec-brdCol: color-mix(in srgb, var(--sl-color-gray-5), transparent 25%);
+    --ec-codeFontFml: var(--__sl-font-mono);
+    --ec-codeFontSize: var(--sl-text-code);
+    --ec-codeFontWg: 400;
+    --ec-codeLineHt: var(--sl-line-height);
+    --ec-codePadBlk: 0.75rem;
+    --ec-codePadInl: 1rem;
+    --ec-codeBg: #011627;
+    --ec-codeFg: #d6deeb;
+    --ec-codeSelBg: #1d3b53;
+    --ec-uiFontFml: var(--__sl-font);
+    --ec-uiFontSize: 0.9rem;
+    --ec-uiFontWg: 400;
+    --ec-uiLineHt: 1.65;
+    --ec-uiPadBlk: 0.25rem;
+    --ec-uiPadInl: 1rem;
+    --ec-uiSelBg: #234d708c;
+    --ec-uiSelFg: #ffffff;
+    --ec-focusBrd: #122d42;
+    --ec-sbThumbCol: #ffffff17;
+    --ec-sbThumbHoverCol: #ffffff49;
+    --ec-tm-lineMarkerAccentMarg: 0rem;
+    --ec-tm-lineMarkerAccentWd: 0.15rem;
+    --ec-tm-lineDiffIndMargLeft: 0.25rem;
+    --ec-tm-inlMarkerBrdWd: 1.5px;
+    --ec-tm-inlMarkerBrdRad: 0.2rem;
+    --ec-tm-inlMarkerPad: 0.15rem;
+    --ec-tm-insDiffIndContent: "+";
+    --ec-tm-delDiffIndContent: "-";
+    --ec-tm-markBg: #ffffff17;
+    --ec-tm-markBrdCol: #ffffff40;
+    --ec-tm-insBg: #1e571599;
+    --ec-tm-insBrdCol: #487f3bd0;
+    --ec-tm-insDiffIndCol: #79b169d0;
+    --ec-tm-delBg: #862d2799;
+    --ec-tm-delBrdCol: #b4554bd0;
+    --ec-tm-delDiffIndCol: #ed8779d0;
+    --ec-frm-shdCol: #011627;
+    --ec-frm-frameBoxShdCssVal: none;
+    --ec-frm-edActTabBg: var(--sl-color-gray-6);
+    --ec-frm-edActTabFg: var(--sl-color-text);
+    --ec-frm-edActTabBrdCol: transparent;
+    --ec-frm-edActTabIndHt: 1px;
+    --ec-frm-edActTabIndTopCol: var(--sl-color-accent-high);
+    --ec-frm-edActTabIndBtmCol: transparent;
+    --ec-frm-edTabsMargInlStart: 0;
+    --ec-frm-edTabsMargBlkStart: 0;
+    --ec-frm-edTabBrdRad: 0px;
+    --ec-frm-edTabBarBg: var(--sl-color-black);
+    --ec-frm-edTabBarBrdCol: color-mix(in srgb, var(--sl-color-gray-5), transparent 25%);
+    --ec-frm-edTabBarBrdBtmCol: color-mix(in srgb, var(--sl-color-gray-5), transparent 25%);
+    --ec-frm-edBg: var(--sl-color-gray-6);
+    --ec-frm-trmTtbDotsFg: color-mix(in srgb, var(--sl-color-gray-5), transparent 25%);
+    --ec-frm-trmTtbDotsOpa: 0.75;
+    --ec-frm-trmTtbBg: var(--sl-color-black);
+    --ec-frm-trmTtbFg: var(--sl-color-text);
+    --ec-frm-trmTtbBrdBtmCol: color-mix(in srgb, var(--sl-color-gray-5), transparent 25%);
+    --ec-frm-trmBg: var(--sl-color-gray-6);
+    --ec-frm-inlBtnFg: var(--sl-color-text);
+    --ec-frm-inlBtnBg: var(--sl-color-text);
+    --ec-frm-inlBtnBgIdleOpa: 0;
+    --ec-frm-inlBtnBgHoverOrFocusOpa: 0.2;
+    --ec-frm-inlBtnBgActOpa: 0.3;
+    --ec-frm-inlBtnBrd: var(--sl-color-text);
+    --ec-frm-inlBtnBrdOpa: 0.4;
+    --ec-frm-tooltipSuccessBg: #158744;
+    --ec-frm-tooltipSuccessFg: white;
+}

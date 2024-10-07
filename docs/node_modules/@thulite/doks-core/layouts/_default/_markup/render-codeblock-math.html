@@ -1,0 +1,127 @@
+{{- /* Last modified: 2023-06-30T12:24:14-07:00 */}}
+
+{{- /*
+Copyright 2023 Veriphor LLC
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not
+use this file except in compliance with the License. You may obtain a copy of
+the License at
+
+https://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+License for the specific language governing permissions and limitations under
+the License.
+*/}}
+
+{{- /*
+Renders an SVG image of a mathematical expression or equation from LaTeX using the Math API service.
+
+References:
+
+  - https://math.vercel.app/
+  - https://github.com/uetchy/math-api
+  - https://docs.mathjax.org/
+
+@context {map} Attributes The markdown attributes from the info string.
+@context {string} Inner The content between the leading and trailing code fences, excluding the info string.
+@context {map} Options The highlighting options from the info string.
+@context {int} Ordinal The zero-based ordinal of the code block on the page.
+@context {page} Page A reference to the page containing the code block.
+@context {text.Position} Position The position of the code block within the page content.
+@context {string} Type The first word of the info string.
+
+@param {string} [Attributes.color=black] The foreground color specified as a named CSS color or hex value.
+
+@returns {template.html}
+*/}}
+
+{{- /* Initialize. */}}
+{{- $renderHookName := "math" }}
+
+{{- /* Verify minimum required version. */}}
+{{- $minHugoVersion := "0.114.0" }}
+{{- if lt hugo.Version $minHugoVersion }}
+  {{- errorf "The %q code block render hook requires Hugo v%s or later." $renderHookName $minHugoVersion }}
+{{- end }}
+
+{{- /* Get context. */}}
+{{- $attrs := .Attributes }}
+{{- $inner := trim .Inner "\n\r" }}
+{{- $options := .Options }}
+{{- $ordinal := .Ordinal }}
+{{- $page := .Page }}
+{{- $position := .Position }}
+{{- $type := .Type }}
+
+{{- /* Initialize. */}}
+{{- $apiEndpoint := "https://math.vercel.app/" }}
+{{- $color := $attrs.color | default "" }}
+
+{{- /* Determine display mode. */}}
+{{- $displayMode := true }}
+{{- if or (strings.HasPrefix $inner `$$`) (strings.HasPrefix $inner `\[`) }}
+  {{- $displayMode = true }}
+{{- else if or (strings.HasPrefix $inner `$`) (strings.HasPrefix $inner `\(`) }}
+  {{- $displayMode = false }}
+{{- end }}
+
+{{- /* Strip display mode indicators. */}}
+{{- $inner = trim $inner `$` }}
+{{- $inner = $inner | strings.TrimPrefix `\[` }}
+{{- $inner = $inner | strings.TrimPrefix `\(` }}
+{{- $inner = $inner | strings.TrimSuffix `\]` }}
+{{- $inner = $inner | strings.TrimSuffix `\)` }}
+
+{{- /* Determine class attribute. */}}
+{{- $class := "math math-inline" }}
+{{- if $displayMode }}
+  {{- $class = "math math-block" }}
+{{- end }}
+{{- with $attrs.class }}
+  {{- $class = printf "%s %s" $class . }}
+{{- end }}
+
+{{- /* Determine id attribute. */}}
+{{- $id := printf "h-rh-cb-math-%d" $ordinal }}
+{{- with $attrs.id }}
+  {{- $id = . }}
+{{- end }}
+
+{{- /* Merge class and id attributes. */}}
+{{- $attrs = merge $attrs (dict "class" $class "id" $id) }}
+
+{{- /* Create query string. */}}
+{{- $mode := "inline" }}
+{{- if $displayMode }}
+  {{- $mode = "from" }}
+{{- end }}
+{{- $qs := querify $mode $inner "color" $color }}
+
+{{- /* Get image. */}}
+{{- $url := printf "%s?%s" $apiEndpoint $qs }}
+{{- with resources.GetRemote $url }}
+  {{- with .Err }}
+    {{- errorf "The %q code block render hook was unable to get the remote image. See %s. %s" $renderHookName $position . }}
+  {{- else }}
+    {{- $url = .RelPermalink }}
+  {{- end }}
+{{- else }}
+  {{- errorf "The %q code block render hook was unable to get the remote image. See %s" $renderHookName $position }}
+{{- end }}
+
+{{- /* Render. */}}
+<span
+{{- range $k, $v := $attrs }}
+  {{- if not (eq $k "color") }}
+    {{- if $v }}
+      {{- printf " %s=%q" $k (string $v) | safeHTMLAttr }}
+    {{- end }}
+  {{- end }}
+{{- end -}}
+>
+  <img src="{{ $url }}" alt="mathematical expression or equation">
+</span>
+{{- /**/ -}}

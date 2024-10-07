@@ -1,65 +1,59 @@
-{{ define "title"}} {{ .Site.Title}} {{end}}
-{{ define "header"}} {{ partial "header" .}} {{end}}
-{{ define "main"}}
-
-  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.5.0/css/all.css" integrity="sha384-B4dIYHKNBt8Bc12p+WXckhzcICo0wtJAoU8YZTY5qE0Id1GSseTk6S+L3BlXeVIU" crossorigin="anonymous">
-
-  <div id="main">
-  <div id="hero">
-    <h1>{{.Title}}</h1>
-    <p>Go library for building event-driven applications.</p>
-  </div>
-  <div id="action-buttons">
-    <a class="button primary big" href="{{ "/docs/getting-started/" | relURL }}" onclick="ga('send', 'event', 'watermill', 'open_getting_started');">Getting started</a>
-    <a class="button outline big" href="https://github.com/ThreeDotsLabs/watermill/" onclick="ga('send', 'event',  'watermill', 'open_github');">View on Github</a>
-  </div>
-  <div id="kube-features">
-    <div class="row gutters">
-      <div class="col col-4 item">
-        <figure style="font-size: 48px;">
-          <i class="fas fa-hand-spock"></i>
-        </figure>
-        <h3>Easy to use</h3>
-        <p>Our goal was to create a tool which is easy to understand, even by junior developers.</p>
-      </div>
-      <div class="col col-4 item">
-        <figure style="font-size: 48px;">
-          <i class="fas fa-globe-americas"></i>
-        </figure>
-        <h3>Universal</h3>
-        <p>It doesn't matter if you want to do Event-driven architecture, CQRS, Event Sourcing or just stream MySQL Binlog to Kafka.</p>
-      </div>
-      <div class="col col-4 item">
-        <figure style="font-size: 48px;">
-          <i class="fas fa-fighter-jet"></i>
-        </figure>
-        <h3>Fast</h3>
-        <p>Watermill was designed to process hundreds of thousands of messages per second.</p>
-      </div>
+{{ define "main" }}
+<section class="section container-fluid mt-n3 pb-3">
+  <div class="row justify-content-center">
+    <div class="col-lg-12 text-center">
+      <h1>{{ .Title }}</h1>
     </div>
-    <div class="row gutters align-center">
-      <div class="col col-4 item">
-        <figure style="font-size: 48px;">
-          <i class="fas fa-expand-arrows-alt"></i>
-        </figure>
-        <h3>Flexible</h3>
-        <p>Every component is built in a way that allows you to configure it for your needs. You can also implement your own middlewares for the router.</p>
-      </div>
-      <div class="col col-4 item">
-        <figure style="font-size: 48px;">
-          <i class="fas fa-mountain"></i>
-        </figure>
-        <h3>Resilient</h3>
-        <p>Watermill is using proven technologies and has a strong unit and integration tests coverage for the critical areas.</p>
-      </div>
-    </div>
-
-    <br>
-    <div class="message" data-component="message">
-      You can find a detailed explanation of why we've built Watermill in <a href="https://threedots.tech/post/introducing-watermill/">our <i>Introducing Watermill</i> blog post</a>.
+    <div class="col-lg-9 col-xl-8 text-center">
+      <p class="lead">{{ .Params.lead | safeHTML }}</p>
+      <a class="btn btn-primary btn-cta rounded-pill btn-lg my-3" href="/docs/{{ if site.Params.doks.docsVersioning }}{{ site.Params.doks.docsVersion }}/{{ end }}guides/example-guide/" role="button">{{ i18n "get_started" }}</a>
+      {{ .Content }}
     </div>
   </div>
-</div>
-</div>
+</section>
 {{ end }}
-{{ define "footer"}} {{ partial "footer" .}} {{end}}
+
+{{ define "sidebar-prefooter" }}
+  {{ if site.Params.doks.backgroundDots -}}
+  <div class="d-flex justify-content-start">
+    <div class="bg-dots"></div>
+  </div>
+  {{ end -}}
+  {{ if eq $.Site.Language.LanguageName "English" }}
+  <section class="section section-md section-features">
+    <div class="container">
+      <div class="row justify-content-center text-center">
+        <div class="col-lg-5">
+          <h2 class="h4">Update content</h2>
+          <p>Edit <code>content/_index.md</code> to see this page change.</p>
+        </div>
+        <div class="col-lg-5">
+          <h2 class="h4">Add new content</h2>
+          <p>Add Markdown files to <code>content</code> to create new pages.</p>
+        </div>
+        <div class="col-lg-5">
+          <h2 class="h4">Configure your site</h2>
+          <p>Edit your config in <code>config/_default/params.toml</code>.</p>
+        </div>
+        <div class="col-lg-5">
+          <h2 class="h4">Read the docs</h2>
+          <p>Learn more in the <a href="https://getdoks.org/">Docs</a>.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+  {{ end }}
+{{ end }}
+
+{{ define "sidebar-footer" }}
+{{ if site.Params.doks.sectionFooter -}}
+<section class="section section-md container-fluid bg-light">
+  <div class="row justify-content-center text-center">
+    <div class="col-lg-7">
+      <h2 class="mt-2">Start building with Doks today</h2>
+      <a class="btn btn-primary rounded-pill px-4 my-2" href="/docs/{{ if site.Params.doks.docsVersioning }}{{ site.Params.doks.docsVersion }}/{{ end }}prologue/introduction/" role="button">{{ i18n "get-started" }}</a>
+    </div>
+  </div>
+</section>
+{{ end -}}
+{{ end }}

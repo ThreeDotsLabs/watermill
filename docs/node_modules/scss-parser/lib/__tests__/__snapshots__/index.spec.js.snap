@@ -1,0 +1,238 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`parse 1`] = `
+Object {
+  "next": undefined,
+  "start": undefined,
+  "type": "stylesheet",
+  "value": Array [
+    Object {
+      "next": Object {
+        "column": 23,
+        "cursor": 23,
+        "line": 1,
+      },
+      "start": Object {
+        "column": 0,
+        "cursor": 0,
+        "line": 1,
+      },
+      "type": "rule",
+      "value": Array [
+        Object {
+          "next": Object {
+            "column": 3,
+            "cursor": 3,
+            "line": 1,
+          },
+          "start": Object {
+            "column": 0,
+            "cursor": 0,
+            "line": 1,
+          },
+          "type": "selector",
+          "value": Array [
+            Object {
+              "next": Object {
+                "column": 2,
+                "cursor": 2,
+                "line": 1,
+              },
+              "start": Object {
+                "column": 0,
+                "cursor": 0,
+                "line": 1,
+              },
+              "type": "class",
+              "value": Array [
+                Object {
+                  "next": Object {
+                    "column": 2,
+                    "cursor": 2,
+                    "line": 1,
+                  },
+                  "start": Object {
+                    "column": 1,
+                    "cursor": 1,
+                    "line": 1,
+                  },
+                  "type": "identifier",
+                  "value": "a",
+                },
+              ],
+            },
+            Object {
+              "next": Object {
+                "column": 3,
+                "cursor": 3,
+                "line": 1,
+              },
+              "start": Object {
+                "column": 2,
+                "cursor": 2,
+                "line": 1,
+              },
+              "type": "space",
+              "value": " ",
+            },
+          ],
+        },
+        Object {
+          "next": Object {
+            "column": 23,
+            "cursor": 23,
+            "line": 1,
+          },
+          "start": Object {
+            "column": 3,
+            "cursor": 3,
+            "line": 1,
+          },
+          "type": "block",
+          "value": Array [
+            Object {
+              "next": Object {
+                "column": 5,
+                "cursor": 5,
+                "line": 1,
+              },
+              "start": Object {
+                "column": 4,
+                "cursor": 4,
+                "line": 1,
+              },
+              "type": "space",
+              "value": " ",
+            },
+            Object {
+              "next": undefined,
+              "start": Object {
+                "column": 5,
+                "cursor": 5,
+                "line": 1,
+              },
+              "type": "declaration",
+              "value": Array [
+                Object {
+                  "next": Object {
+                    "column": 15,
+                    "cursor": 15,
+                    "line": 1,
+                  },
+                  "start": Object {
+                    "column": 5,
+                    "cursor": 5,
+                    "line": 1,
+                  },
+                  "type": "property",
+                  "value": Array [
+                    Object {
+                      "next": Object {
+                        "column": 15,
+                        "cursor": 15,
+                        "line": 1,
+                      },
+                      "start": Object {
+                        "column": 5,
+                        "cursor": 5,
+                        "line": 1,
+                      },
+                      "type": "identifier",
+                      "value": "background",
+                    },
+                  ],
+                },
+                Object {
+                  "next": Object {
+                    "column": 16,
+                    "cursor": 16,
+                    "line": 1,
+                  },
+                  "start": Object {
+                    "column": 15,
+                    "cursor": 15,
+                    "line": 1,
+                  },
+                  "type": "punctuation",
+                  "value": ":",
+                },
+                Object {
+                  "next": Object {
+                    "column": 20,
+                    "cursor": 20,
+                    "line": 1,
+                  },
+                  "start": Object {
+                    "column": 16,
+                    "cursor": 16,
+                    "line": 1,
+                  },
+                  "type": "value",
+                  "value": Array [
+                    Object {
+                      "next": Object {
+                        "column": 17,
+                        "cursor": 17,
+                        "line": 1,
+                      },
+                      "start": Object {
+                        "column": 16,
+                        "cursor": 16,
+                        "line": 1,
+                      },
+                      "type": "space",
+                      "value": " ",
+                    },
+                    Object {
+                      "next": Object {
+                        "column": 20,
+                        "cursor": 20,
+                        "line": 1,
+                      },
+                      "start": Object {
+                        "column": 17,
+                        "cursor": 17,
+                        "line": 1,
+                      },
+                      "type": "identifier",
+                      "value": "red",
+                    },
+                  ],
+                },
+                Object {
+                  "next": Object {
+                    "column": 21,
+                    "cursor": 21,
+                    "line": 1,
+                  },
+                  "start": Object {
+                    "column": 20,
+                    "cursor": 20,
+                    "line": 1,
+                  },
+                  "type": "punctuation",
+                  "value": ";",
+                },
+              ],
+            },
+            Object {
+              "next": Object {
+                "column": 22,
+                "cursor": 22,
+                "line": 1,
+              },
+              "start": Object {
+                "column": 21,
+                "cursor": 21,
+                "line": 1,
+              },
+              "type": "space",
+              "value": " ",
+            },
+          ],
+        },
+      ],
+    },
+  ],
+}
+`;

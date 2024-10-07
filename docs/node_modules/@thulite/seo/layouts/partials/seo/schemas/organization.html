@@ -1,0 +1,38 @@
+{{- /* Initialize. */}}
+{{- $b := site.BaseURL }}
+{{- $l := default "images/favicon.png" site.Params.seo.schemas.logo }}
+{{- $n := site.Params.seo.schemas.name }}
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "url": {{ $b }},
+      "name": "{{ $n }}",
+      {{- with site.Params.seo.schemas.sameAs }}
+      "sameAs": [
+        {{- range $index, $element := . -}}
+        {{- if ne $index 0 -}}, {{ end }}
+        {{ printf "%s" (absURL . ) -}}
+        {{ end }}
+      ],
+      {{- end }}
+      {{- with site.Params.seo.schemas.images }}
+      "image": [
+        {{- range $index, $element := . -}}
+        {{ if ne $index 0 }},{{ end }}
+        {
+          "@id": {{ printf "%s" (absURL . ) }}
+        }
+        {{- end }}
+      ],
+      {{- end }}
+      "logo": {
+        "@id": {{ $l | absURL }}
+      }
+    }
+  ]
+}
+</script>

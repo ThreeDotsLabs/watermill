@@ -1,0 +1,38 @@
+.nav-tabs {
+    border-bottom: 0.0625rem solid rgb(216, 222, 228);
+    margin-bottom: 1rem;
+}
+
+.nav-tabs .nav-link {
+    margin-bottom: -0.0625rem !important;
+    background: none;
+    border: 0;
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+    color: inherit;
+}
+
+.nav-tabs .nav-link:hover,
+.nav-tabs .nav-link:focus {
+    isolation: isolate;
+    border-color: transparent;
+    color: $nav-tabs-link-active-color;
+}
+
+.nav-tabs .nav-link.active,
+.nav-tabs .nav-item.show .nav-link {
+    background-color: transparent;
+    border-color: transparent;
+    border-bottom: 0.125rem solid $primary;
+}
+
+@include color-mode(dark) {
+    .nav-tabs {
+        border-bottom: 0.0625rem solid $gray-800;
+    }
+
+    .nav-tabs .nav-link.active,
+    .nav-tabs .nav-item.show .nav-link {
+        border-bottom: 0.125rem solid $link-color-dark;
+    }
+}

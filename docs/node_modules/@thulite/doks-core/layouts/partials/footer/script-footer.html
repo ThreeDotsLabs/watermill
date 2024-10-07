@@ -1,0 +1,25 @@
+{{ $bootstrapJavascript := site.Params.doks.bootstrapJavascript -}}
+{{ if $bootstrapJavascript -}}
+  {{ partial "footer/esbuild" (dict "src" "js/bootstrap.js" "load" "async" "transpile" false) -}}
+{{- end }}
+
+{{ partial "footer/esbuild" (dict "src" "js/app.js" "targetPath" "main.js" "load" "async" "transpile" false) -}}
+
+{{ partial "footer/script-footer-custom.html" . -}}
+
+{{ partial "main/showFlexSearch" . -}}
+{{ $showFlexSearch := .Scratch.Get "showFlexSearch" -}}
+{{ $searchLimit := site.Params.doks.searchLimit -}}
+{{ if $showFlexSearch -}}
+  {{- /* use lang-specific FlexSearch JS config file for multilingual site */ -}}
+  {{- $flexsearchLangConfigPath := "" -}}
+  {{- if site.LanguagePrefix -}}
+    {{- $flexsearchLangConfigPath = printf "js/flexsearch.%s.js" site.Language.Lang -}}
+    {{- /*  NOTE: we have to assign the pipe below to avoid outputting its return value ($flexsearchLangConfigPath) */ -}}
+    {{- $unusedVar := resources.Get "js/flexsearch.js" | resources.Copy $flexsearchLangConfigPath -}}
+  {{- else -}}
+    {{- $flexsearchLangConfigPath = "js/flexsearch.js" -}}
+  {{- end -}}
+  {{ partial "footer/esbuild-template" (dict "src" $flexsearchLangConfigPath "load" "async" "transpile" false "isMultilingual" site.IsMultiLingual "searchLimit" $searchLimit) -}}
+  {{ partial "footer/esbuild" (dict "src" "js/search-modal.js" "load" "async" "transpile" false) -}}
+{{ end -}}

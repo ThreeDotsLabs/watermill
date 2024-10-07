@@ -1,0 +1,13 @@
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "url": {{ .Site.BaseURL }},
+      "name": "{{ .Site.Params.title }}",
+      "description": "{{ .Site.Params.description }}"
+    }
+  ]
+}
+</script>

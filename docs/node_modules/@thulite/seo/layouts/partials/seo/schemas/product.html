@@ -1,0 +1,52 @@
+{{- /* Initialize. */}}
+{{- $c := .Params.seo.structured_data.product.currency }}
+{{- $p := .Params.seo.structured_data.product.price }}
+{{- $a := .Params.seo.structured_data.product.availability }}
+
+{{- $title := "" }}
+{{- if .Params.seo.title }}
+	{{ $title = .Params.seo.title }}
+{{- else }}
+  {{ $title = .Params.title }}
+{{- end }}
+
+{{- $description := "" }}
+{{- if .Params.seo.description }}
+	{{ $description = .Params.seo.description }}
+{{- else }}
+	{{ $description = .Params.description }}
+{{- end }}
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Product",
+      "name": "{{ $title }}",
+      "description": "{{ $description }}",
+      "brand": {
+        "@type": "Brand",
+        "name": "{{ .Site.Params.title }}"
+      },
+      {{- with .Resources.ByType "image" }}
+      "image": [
+        {{- range $index, $element := . -}}
+        {{ if ne $index 0 }},{{ end }}
+        {
+          "@id": {{ printf "%s" ( .Permalink ) }}
+        }
+        {{- end }}
+      ],
+      {{- end }}
+      "offers": {
+        "@type": "Offer",
+        "url": {{ .Permalink }},
+        "priceCurrency": "{{ $c }}",
+        "price": "{{ $p }}",
+        "availability": {{ $a }}
+      }
+    }
+  ]
+}
+</script>

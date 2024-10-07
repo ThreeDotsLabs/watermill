@@ -1,0 +1,97 @@
+{{- /* ESBUILD.HTML - Build javascript modules with esbuild
+  * Simple Usage: {{ partial "esbuild" "js/file.js" }}
+  * Simple Usage: {{ partial "esbuild" (dict "src" "js/file.js" "load" "defer/async" "babel" true ) }}
+  * Parameters:
+  * src - javascript file to build, relative to assets folder. Must include file extension can be .js or .ts
+  * load - can set to "defer" or "async" defaults to null.
+  * babel - set to true to transpile your js using babel. Note: all js is lowered to es6 by default.
+  * for babel you must have the required babel dependencies installed , and configured
+  * see hugo babel doc https://gohugo.io/hugo-pipes/babel
+  * use the babel option if esbuild can't handle lowering your es6+ code, or you wish to go lower than es6
+  * for unsupported es6+ syntax see
+  * https://esbuild.github.io/content-types/#javascript
+  *
+  * example for checking hugo env from js file
+  *
+  * import * as params from '@params';
+  *
+  * if (params.env === 'development') {
+  *   console.log('hugo deveolopment environment')
+  * } else {
+  *   console.log('hugo production environment')
+  * }
+  *
+  * ----------------------------------------------------------------*/ -}}
+{{- /* get source from . or .src and fetch resource */ -}}
+{{- $src := . -}}
+{{- if not $src -}}
+  {{- errorf `You must provide a source as the partial context, or (dict .src "path")` -}}
+{{- end -}}
+
+{{- /* set .load only if valid option provided in dict */ -}}
+{{- $load := "" -}}
+
+{{- /* set .babel only if provided in dict */ -}}
+{{- $babel := false -}}
+
+{{- /* check for dict */ -}}
+{{- if reflect.IsMap . -}}
+  {{- with .src -}}
+    {{- $src = . -}}
+  {{- else -}}
+    {{- errorf "as you are providing params as a dict, you must provide the source file as .src" -}}
+  {{- end -}}
+  {{- with .load -}}
+    {{- $loadOpts := slice "async" "defer" -}}
+    {{- if not (in $loadOpts . ) -}}
+      {{- errorf "Invalid .load %q for file /assets/%s - valid options are %s." . $src (delimit $loadOpts ", " " and " ) -}}
+    {{- end -}}
+    {{- $load = . }}
+  {{- end -}}
+  {{- with .babel -}}
+    {{- if eq . true -}}
+      {{- $babel = true -}}
+    {{- else -}}
+      {{- errorf "Invalid .babel option of %q. The only valid option is true" . -}}
+    {{- end -}}
+  {{- end -}}
+{{ end }}
+
+{{- /* get the resource from .src path */ -}}
+{{- $resource := resources.Get $src -}}
+
+{{- /* if resources.Get fails */ -}}
+{{- if not $resource }}
+  {{- errorf "No js resource found at /assets/%s" $src -}}
+{{- end -}}
+
+{{- /* pass hugo env to the js file as a param */ -}}
+{{- /* $params := (dict "env" hugo.Environment) */ -}}
+
+{{- $paramsDefault := (dict "env" hugo.Environment) -}}
+{{- $params := "" -}}
+{{- with .params -}}
+  {{- $params = merge $paramsDefault . -}}
+{{- else -}}
+  {{- $params = $paramsDefault -}}
+{{- end -}}
+
+{{- /* standard production configuration for es build */ -}}
+{{- $jsConfig := (dict "target" "es2015" "minify" "true" "params" $params) }}
+{{- $js := $resource -}}
+
+{{- /* is .babelEs6 is set to true - use babel to lower to es6 */ -}}
+{{- if $babel -}}
+  {{- $babelConfig := (dict "noComments" true "minified" true "config" "config/babel.module.config.js") -}}
+  {{- $js = $js | js.Build $jsConfig | babel $babelConfig | fingerprint -}}
+{{- else if eq (hugo.Environment) "development" -}}
+  {{- $jsConfig = (dict "sourceMap" "inline" "target" "es2015" "params" $params) -}}
+  {{- $js = $js | js.Build $jsConfig | fingerprint -}}
+{{- else -}}
+  {{- $js = $js | js.Build $jsConfig | fingerprint -}}
+{{- end -}}
+
+<script {{ with $load }}{{ . | safeHTMLAttr }}{{ end }}
+  src="{{- $js.RelPermalink -}}"
+  integrity="{{- $js.Data.Integrity -}}">
+</script>

@@ -1,0 +1,87 @@
+$blue: hsl(234, 100%, 60%);
+$purple: hsl(281, 82%, 63%);
+$red: hsl(339, 82%, 63%);
+$yellow: hsl(41, 82%, 63%);
+$green: hsl(101, 82%, 63%);
+
+$primary: $db-purple-300;
+$info: $blue;
+
+$enable-negative-margins: true;
+
+$body-color: $db-bluishCyan-100;
+
+$link-decoration: none;
+$link-hover-decoration: underline;
+
+$container-max-widths: (
+    sm: 540px,
+    md: 720px,
+    lg: 960px,
+    xl: 1240px,
+    xxl: 1320px
+);
+
+@include _assert-ascending($container-max-widths, "$container-max-widths");
+
+$grid-columns: 16;
+$grid-gutter-width: 3rem;
+
+$font-family-sans-serif:
+    "Jost",
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    "Helvetica Neue",
+    "Noto Sans",
+    "Liberation Sans",
+    Arial,
+    sans-serif,
+    "Apple Color Emoji",
+    "Segoe UI Emoji",
+    "Segoe UI Symbol",
+    "Noto Color Emoji";
+
+$font-size-base: 1rem;
+$font-size-md: $font-size-base * 1.125;
+$font-size-xl: $font-size-base * 1.375;
+
+$headings-font-weight: 700;
+$headings-color: null;
+
+$lead-font-weight: 400;
+
+$input-btn-focus-width: 0;
+$input-btn-focus-box-shadow: none;
+
+$gray-200: #e9ecef;
+
+$card-border-color: $gray-200;
+
+$spacer: 1rem;
+
+$alert-padding-x: $spacer * 1.5;
+$alert-margin-bottom: 0;
+$alert-border-radius: 0;
+$alert-border-width: 0;
+
+$offcanvas-horizontal-width: 332px;
+
+// Dark color mode variables
+$light-bg-subtle-dark: hsl(224, 14%, 16%);
+$light-border-subtle-dark: hsl(224, 10%, 23%);
+
+$body-bg-dark: hsl(224, 10%, 10%);
+$body-overlay-dark: hsl(224, 14%, 16%);
+$border-dark: hsl(224, 14%, 16%);
+$body-color-dark: hsl(224, 6%, 77%);
+$headings-color-dark: hsl(0, 0%, 100%);
+$dots-dark: darken($body-color-dark, 50%);
+$link-color-dark: hsl(224, 100%, 85%);
+$button-color-dark: $link-color-dark;
+$focus-color-dark: lighten($link-color-dark, 2.5%);
+
+$navbar-dark-color: $body-color-dark;
+$navbar-dark-hover-color: $link-color-dark;
+$navbar-dark-active-color: $link-color-dark;
