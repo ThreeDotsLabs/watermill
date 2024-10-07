@@ -15,7 +15,7 @@ Watermill offers a significant amount of logs on different severity levels.
 
 If you are using `StdLoggerAdapter`, just change `debug`, and `trace` options to true:
 
-```go
+```bash
 logger := watermill.NewStdLogger(true, true)
 ````
 
@@ -23,7 +23,7 @@ logger := watermill.NewStdLogger(true, true)
 
 #### Running single tests
 
-```go
+```bash
 make up
 go test -v ./... -run TestPublishSubscribe/TestContinueAfterSubscribeClose
 ```

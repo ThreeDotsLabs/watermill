@@ -5,5 +5,5 @@
   [en.params]
     languageISO = "EN"
     languageTag = "en-US"
-    footer = '<a href="https://threedots.tech?utm_source=watermill-docs">Three Dots Labs</a>'
+    footer = ''
     alertText = ''
