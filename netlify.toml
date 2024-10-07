@@ -6,7 +6,7 @@
 [build.environment]
   NODE_VERSION = "20.11.0"
   NPM_VERSION = "10.2.4"
-  HUGO_VERSION = "0.125.1"
+  HUGO_VERSION = "0.127.0"
 
 [[redirects]]
   from = "/api/event"
