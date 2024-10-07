@@ -1,4 +1,5 @@
 [build]
+  command = "./build.sh --copy && npm run build"
   base = "docs/"
   publish = "docs/public/"
 
@@ -6,15 +7,6 @@
   NODE_VERSION = "20.11.0"
   NPM_VERSION = "10.2.4"
   HUGO_VERSION = "0.125.1"
-
-[context.production]
-  command = "npm run build"
-
-[context.deploy-preview]
-  command = "npm run build"
-
-[context.branch-deploy]
-  command = "npm run build"
 
 [[redirects]]
   from = "/api/event"
