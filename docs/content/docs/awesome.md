@@ -4,7 +4,6 @@ description = "Selected unofficial libraries"
 weight = 0
 draft = false
 bref = "Selected unofficial libraries"
-type = "docs"
 +++
 
 Below is a list of libraries that are not maintained by Three Dots Labs, but you may find them useful.

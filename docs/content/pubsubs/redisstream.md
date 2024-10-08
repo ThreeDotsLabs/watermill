@@ -3,9 +3,6 @@ title = "Redis Stream"
 description = "A fast, open source, in-memory, key-value data store"
 date = 2023-02-01T22:30:00+08:00
 bref = "A fast, open source, in-memory, key-value data store"
-weight = -70
-type = "docs"
-toc = false
 +++
 
 ### Redis Stream

@@ -3,9 +3,6 @@ title = "NATS Jetstream"
 description = "A simple, secure and high performance open source messaging system"
 date = 2022-02-03T10:30:00+05:00
 bref = "A simple, secure and high performance open source messaging system"
-weight = -50
-type = "docs"
-toc = false
 +++
 
 ### NATS Jetstream

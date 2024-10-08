@@ -3,9 +3,6 @@ title = "RabbitMQ (AMQP)"
 description = "The most widely deployed open source message broker"
 date = 2019-07-06T22:30:00+02:00
 bref = "The most widely deployed open source message broker"
-weight = -40
-type = "docs"
-toc = false
 +++
 
 ### RabbitMQ (AMQP)

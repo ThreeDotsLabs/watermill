@@ -4,7 +4,6 @@ description = "Watermill up and running"
 weight = -9999
 draft = false
 bref = "Watermill up and running"
-type = "docs"
 +++
 
 ### What is Watermill?

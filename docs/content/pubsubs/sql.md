@@ -3,9 +3,6 @@ title = "SQL"
 description = "Pub/Sub based on MySQL or PostgreSQL."
 date = 2019-07-06T22:30:00+02:00
 bref = "Pub/Sub based on MySQL or PostgreSQL."
-weight = -50
-type = "docs"
-toc = false
 +++
 
 ### SQL

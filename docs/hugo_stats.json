@@ -339,7 +339,6 @@
       "introduction",
       "iowriterioreader",
       "kafka",
-      "keep-going",
       "logging",
       "marshaler",
       "marshalingunmarshaling",

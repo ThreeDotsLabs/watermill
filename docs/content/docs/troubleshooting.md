@@ -4,7 +4,6 @@ description = "When something goes wrong"
 weight = -90
 draft = false
 bref = "When something goes wrong"
-type = "docs"
 +++
 
 ### Logging

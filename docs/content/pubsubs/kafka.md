@@ -3,9 +3,6 @@ title = "Kafka"
 description = "A distributed streaming platform from Apache"
 date = 2019-07-06T22:30:00+02:00
 bref = "A distributed streaming platform from Apache"
-weight = -80
-type = "docs"
-toc = false
 +++
 
 ### Kafka

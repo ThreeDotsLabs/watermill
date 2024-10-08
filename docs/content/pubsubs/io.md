@@ -3,9 +3,6 @@ title = "io.Writer/io.Reader"
 description = "Pub/Sub implemented as Go stdlib's most loved interfaces"
 date = 2019-07-06T22:30:00+02:00
 bref = "Pub/Sub implemented as Go stdlib's most loved interfaces"
-weight = -30
-type = "docs"
-toc = false
 +++
 
 ### io.Writer/io.Reader

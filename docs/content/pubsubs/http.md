@@ -3,9 +3,6 @@ title = "HTTP"
 description = "Call and listen to webhooks asynchronously"
 date = 2019-07-06T22:30:00+02:00
 bref = "Call and listen to webhooks asynchronously"
-weight = -70
-type = "docs"
-toc = false
 +++
 
 ### HTTP
