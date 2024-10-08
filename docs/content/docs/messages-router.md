@@ -15,7 +15,7 @@ You also might not want to send an Ack when processing was successful. Sometimes
 
 To handle these requirements, there is a component named **Router**.
 
-<img src="/img/watermill-router.svg" alt="Watermill Router" style="width:100%;">
+<img src="/img/watermill-router.svg" alt="Watermill Router" style="width:100%; background-color: white; padding: 2rem;">
 
 ### Configuration
 

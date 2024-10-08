@@ -15,7 +15,7 @@ bref = "Golang CQRS implementation in Watermill"
 >
 > Source: [www.cqrs.nu FAQ](http://www.cqrs.nu/Faq/command-query-responsibility-segregation)
 
-<img src="https://threedots.tech/watermill-io/cqrs-big-picture.svg" alt="CQRS Schema" style="width:100%; margin-bottom: 3rem" />
+<img src="https://threedots.tech/watermill-io/cqrs-big-picture.svg" alt="CQRS Schema" style="width:100%; margin-bottom: 3rem; background-color: white; padding: 2rem;" />
 
 The `cqrs` component provides some useful abstractions built on top of Pub/Sub and Router that help to implement the CQRS pattern.
 

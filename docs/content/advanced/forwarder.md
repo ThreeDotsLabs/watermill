@@ -26,7 +26,7 @@ In order to make the Forwarder universal and usable transparently, it listens to
 database based Pub/Sub, where enveloped messages are sent with help of a decorated [Forwarder Publisher](https://github.com/ThreeDotsLabs/watermill/blob/9e04bfefbd6fef9f9ffa59956654277005fa2e8a/components/forwarder/publisher.go#L30). 
 The Forwarder unwraps them, and sends to a specified destined topic on the message broker.  
 
-<img src="/img/forwarder-envelope.svg" alt="Forwarder envelope" style="width:100%;" />
+<img src="/img/forwarder-envelope.svg" alt="Forwarder envelope" style="width:100%; background-color: white; padding: 2rem;" />
 
 ## Example
 

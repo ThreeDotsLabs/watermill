@@ -2,7 +2,9 @@
   <div class="container-{{ site.Params.doks.containerBreakpoint | default "lg" }}">
     <div class="row">
       <div class="col-lg-8 text-center text-lg-start">
-        <img fetchpriority="high" decoding="async"  width="200" height="31" src="https://threedots.tech/images/logo-darkmode.svg" alt="Three Dots Labs">
+        <a href="https://threedots.tech">
+          <img fetchpriority="high" decoding="async"  width="200" height="31" src="https://threedots.tech/images/logo-darkmode.svg" alt="Three Dots Labs">
+        </a>
       </div>
       <div class="col-lg-8 text-center text-lg-end">
         <p>© Three Dots Labs 2014 — {{ dateFormat "2006" now }}</p>
@@ -16,6 +18,11 @@
     <p>
     </p>
 
-    <p>We are a bootstrapped company. By supporting us, you support independent creators.</p>
+    <p><small>
+      Watermill is open-source software are is not backed by venture capital.
+      <br>
+      We are an independent, bootstrapped company.
+    </small>
+    </p>
   </div>
 </footer>

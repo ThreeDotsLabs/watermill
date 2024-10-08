@@ -2,7 +2,7 @@ defaultMarkdownHandler = "goldmark"
 
 [goldmark]
   [goldmark.extensions]
-    linkify = false
+    linkify = true
   [goldmark.parser]
     autoHeadingID = true
     autoHeadingIDType = "github"
