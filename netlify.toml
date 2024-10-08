@@ -13,3 +13,18 @@
   to = "https://academy-api.threedots.tech/api/event"
   force = true
   status = 200
+
+[[redirects]]
+  from = "/docs/fanin"
+  to = "/advanced/fanin"
+  status = 301
+
+[[redirects]]
+  from = "/docs/metrics"
+  to = "/advanced/metrics"
+  status = 301
+
+[[redirects]]
+  from = "/docs/pub-sub-implementing"
+  to = "/advanced/pub-sub-implementing"
+  status = 301

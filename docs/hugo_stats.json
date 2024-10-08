@@ -64,6 +64,7 @@
     "classes": [
       "DocSearch-Label",
       "active",
+      "advanced",
       "anchor",
       "bg-dots",
       "bi",

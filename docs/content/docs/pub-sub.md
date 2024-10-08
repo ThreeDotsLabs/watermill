@@ -65,13 +65,9 @@ To check available Pub/Sub implementations, see [Supported Pub/Subs]({{< ref "/p
 
 ### Implementing custom Pub/Sub
 
-See [Implementing custom Pub/Sub]({{< ref "/docs/pub-sub-implementing" >}}) for instructions on how to introduce support for
+See [Implementing custom Pub/Sub]({{< ref "/advanced/pub-sub-implementing" >}}) for instructions on how to introduce support for
 a new Pub/Sub.
 
 We will also be thankful for submitting [pull requests](https://github.com/ThreeDotsLabs/watermill/pulls) with the new Pub/Sub implementations.
 
 You can also request a new Pub/Sub implementation by submitting a [new issue](https://github.com/ThreeDotsLabs/watermill/issues).
-
-### Keep going!
-
-Now that you already know how a Pub/Sub is working, we recommend learning about the [*Message Router component*]({{< ref "/docs/messages-router" >}}).

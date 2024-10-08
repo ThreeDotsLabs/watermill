@@ -58,24 +58,49 @@
   weight = 30
 
 [[sidebar_docs]]
-  name = "Docs"
+  name = "Basics"
   pageRef = "/docs"
   weight = 10
 
 [[sidebar_docs]]
-  name = "Supported Pub/Subs"
-  pageRef = "/pubsubs"
+  name = "Advanced Topics"
+  pageRef = "/advanced"
   weight = 20
 
+[[sidebar_docs]]
+  name = "Supported Pub/Subs"
+  pageRef = "/pubsubs"
+  weight = 30
+
+[[sidebar_advanced]]
+  name = "Basics"
+  pageRef = "/docs"
+  weight = 10
+
+[[sidebar_advanced]]
+  name = "Advanced Topics"
+  pageRef = "/advanced"
+  weight = 20
+
+[[sidebar_advanced]]
+  name = "Supported Pub/Subs"
+  pageRef = "/pubsubs"
+  weight = 30
+
 [[sidebar_pubsubs]]
-  name = "Docs"
+  name = "Basics"
   pageRef = "/docs"
   weight = 10
 
 [[sidebar_pubsubs]]
+  name = "Advanced Topics"
+  pageRef = "/advanced"
+  weight = 20
+
+[[sidebar_pubsubs]]
   name = "Supported Pub/Subs"
   pageRef = "/pubsubs"
-  weight = 20
+  weight = 30
 
 # [[footer]]
 #   name = "Terms of Service"
