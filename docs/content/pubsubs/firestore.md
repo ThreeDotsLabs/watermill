@@ -3,9 +3,8 @@ title = "Firestore Pub/Sub"
 description = "A scalable document database from Google"
 date = 2021-07-29T15:30:00+02:00
 bref = "A scalable document database from Google"
+weight = 30
 +++
-
-### Firestore Pub/Sub
 
 Cloud Firestore is a cloud-hosted, NoSQL database from Google.
 

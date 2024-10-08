@@ -7,8 +7,6 @@ draft = false
 bref = "Monitor Watermill in realtime using Prometheus"
 +++
 
-### Metrics
-
 Monitoring of Watermill may be performed by using decorators for publishers/subscribers and middlewares for handlers. 
 We provide a default implementation using Prometheus, based on the official [Prometheus client](https://github.com/prometheus/client_golang) for Go.
 

@@ -3,9 +3,8 @@ title = "Redis Stream"
 description = "A fast, open source, in-memory, key-value data store"
 date = 2023-02-01T22:30:00+08:00
 bref = "A fast, open source, in-memory, key-value data store"
+weight = 110
 +++
-
-### Redis Stream
 
 Redis is the open source, in-memory data store used by millions of developers. Redis stream is a data structure that acts like an append-only log in Redis. We are providing Pub/Sub implementation based on [redis/go-redis](https://github.com/redis/go-redis).
 

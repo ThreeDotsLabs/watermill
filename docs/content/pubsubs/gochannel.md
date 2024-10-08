@@ -1,11 +1,10 @@
 +++
-title = "Golang Channel"
+title = "Go Channel"
 description = "A Pub/Sub implemented on Golang goroutines and channels"
 date = 2019-07-06T22:30:00+02:00
 bref = "A Pub/Sub implemented on Golang goroutines and channels"
+weight = 40
 +++
-
-### Golang Channel
 
 {{% load-snippet-partial file="src-link/pubsub/gochannel/pubsub.go" first_line_contains="// GoChannel" last_line_contains="type GoChannel struct {" %}}
 

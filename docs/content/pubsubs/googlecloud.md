@@ -3,9 +3,8 @@ title = "Google Cloud Pub/Sub"
 description = "The fully-managed real-time messaging service from Google"
 date = 2019-07-06T22:30:00+02:00
 bref = "The fully-managed real-time messaging service from Google"
+weight = 50
 +++
-
-### Google Cloud Pub/Sub
 
 Cloud Pub/Sub brings the flexibility and reliability of enterprise message-oriented middleware to
 the cloud.

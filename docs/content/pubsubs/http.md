@@ -3,9 +3,8 @@ title = "HTTP"
 description = "Call and listen to webhooks asynchronously"
 date = 2019-07-06T22:30:00+02:00
 bref = "Call and listen to webhooks asynchronously"
+weight = 60
 +++
-
-### HTTP
 
 The HTTP subscriber listens to HTTP requests (for example - webhooks) and outputs them as messages.
 You can then post them to any Publisher. Here is an example with [sending HTTP messages to Kafka](https://github.com/ThreeDotsLabs/watermill/blob/master/_examples/real-world-examples/receiving-webhooks/main.go).

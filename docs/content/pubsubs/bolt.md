@@ -3,9 +3,8 @@ title = "Bolt Pub/Sub"
 description = "A pure Go key/value store"
 date = 2021-11-19T00:00:00+02:00
 bref = "A pure Go key/value store"
+weight = 20
 +++
-
-### Bolt Pub/Sub
 
 Bolt is a pure Go key/value store which provides a simple, fast, and reliable
 database for projects that don't require a full database server such as

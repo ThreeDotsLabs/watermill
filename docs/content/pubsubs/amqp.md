@@ -3,9 +3,8 @@ title = "RabbitMQ (AMQP)"
 description = "The most widely deployed open source message broker"
 date = 2019-07-06T22:30:00+02:00
 bref = "The most widely deployed open source message broker"
+weight = 100
 +++
-
-### RabbitMQ (AMQP)
 
 > RabbitMQ is the most widely deployed open source message broker.
 

@@ -3,9 +3,8 @@ title = "io.Writer/io.Reader"
 description = "Pub/Sub implemented as Go stdlib's most loved interfaces"
 date = 2019-07-06T22:30:00+02:00
 bref = "Pub/Sub implemented as Go stdlib's most loved interfaces"
+weight = 70
 +++
-
-### io.Writer/io.Reader
 
 This is an experimental Pub/Sub implementation that leverages the [standard library's](https://golang.org/pkg/io/) `io.Writer` and `io.Reader` interfaces as sources of Publisher and Subscriber, respectively.
 

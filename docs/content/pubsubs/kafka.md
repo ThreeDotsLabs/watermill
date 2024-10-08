@@ -3,9 +3,8 @@ title = "Kafka"
 description = "A distributed streaming platform from Apache"
 date = 2019-07-06T22:30:00+02:00
 bref = "A distributed streaming platform from Apache"
+weight = 80
 +++
-
-### Kafka
 
 Apache Kafka is one of the most popular Pub/Subs. We are providing Pub/Sub implementation based on [Shopify's Sarama](https://github.com/Shopify/sarama).
 
