@@ -31,7 +31,9 @@ Firestore documentation: <https://firebase.google.com/docs/firestore/>
 
 ### Installation
 
-    go get github.com/ThreeDotsLabs/watermill-firestore
+```bash
+go get github.com/ThreeDotsLabs/watermill-firestore
+```
 
 #### Characteristics
 
@@ -46,15 +48,11 @@ Firestore documentation: <https://firebase.google.com/docs/firestore/>
 
 ##### Publisher configuration
 
-{{% render-md %}}
 {{% load-snippet-partial file="src-link/watermill-firestore/pkg/firestore/publisher.go" first_line_contains="type PublisherConfig struct {" last_line_equals="}" %}}
-{{% /render-md %}}
 
 ##### Subscriber configuration
 
-{{% render-md %}}
 {{% load-snippet-partial file="src-link/watermill-firestore/pkg/firestore/subscriber.go" first_line_contains="type SubscriberConfig struct {" last_line_equals="}" %}}
-{{% /render-md %}}
 
 ##### Subscription name
 
@@ -81,8 +79,6 @@ responsible for converting them to a type which can be stored by Firestore.
 The default implementation should be enough for most applications so it is
 unlikely that you need to implement your own marshaler.
 
-{{% render-md %}}
 {{% load-snippet-partial file="src-link/watermill-firestore/pkg/firestore/marshaler.go" first_line_contains="// Marshaler" last_line_equals="}" padding_after="0" %}}
-{{% /render-md %}}
 
 

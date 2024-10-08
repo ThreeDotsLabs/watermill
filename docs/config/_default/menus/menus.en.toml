@@ -30,7 +30,7 @@
 [[main]]
   name = "Releases"
   post = '<svg class="ms-1 mb-1 icon icon-tabler icon-tabler-external-link" width="20" height="20" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentcolor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><path d="M12 6H6A2 2 0 004 8v10a2 2 0 002 2h10a2 2 0 002-2v-6"></path><path d="M11 13l9-9"></path><path d="M15 4h5v5"></path></svg>'
-  url = "https://releases.watermill.io"
+  url = "https://releases.threedots.tech"
   weight = 30
 
 [[main]]

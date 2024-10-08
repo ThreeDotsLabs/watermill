@@ -13,9 +13,7 @@ The FanIn component merges two topics into one.
 
 ### Configuring
 
-{{% render-md %}}
 {{% load-snippet-partial file="src-link/components/fanin/fanin.go" first_line_contains="type Config struct {" last_line_contains="CloseTimeout time.Duration" padding_after="1" %}}
-{{% /render-md %}}
 
 ### Running
 
@@ -54,6 +52,4 @@ if err := fi.Run(context.Background()); err != nil {
 
 The FanIn component can be stopped by cancelling the context passed to the `Run` method or by calling the `Close` method.
 
-{{% render-md %}}
 {{% load-snippet-partial file="src-link/components/fanin/fanin.go" first_line_contains="func (f *FanIn) Run" last_line_contains=" Close() error" padding_after="2" %}}
-{{% /render-md %}}

@@ -20,7 +20,9 @@ Note that these aren't full-fledged Pub/Subs like Kafka, RabbitMQ, or the likes,
 
 ### Installation
 
-    go get github.com/ThreeDotsLabs/watermill-io
+```bash
+go get github.com/ThreeDotsLabs/watermill-io
+```
 
 #### Characteristics
 
@@ -37,23 +39,17 @@ This is a very bare-bones implementation for now, so no extra features are suppo
 
 The publisher configuration is relatively simple.
 
-{{% render-md %}}
 {{% load-snippet-partial file="src-link/watermill-io/pkg/io/publisher.go" first_line_contains="type PublisherConfig struct" last_line_contains="// Publisher" %}}
-{{% /render-md %}}
 
 The subscriber may work in two modes – either perform buffered reads of constant size from the io.Reader, or split the byte stream into messages using a delimiter byte.
 
 The reading will continue even if the reads come up empty, but they will not be sent out as messages. The time to wait after an empty read is configured through the `PollInterval` parameter. As soon as a non-empty input is read, it will be packaged as a message and sent out.
 
-{{% render-md %}}
 {{% load-snippet-partial file="src-link/watermill-io/pkg/io/subscriber.go" first_line_contains="type SubscriberConfig struct" last_line_contains="// Subscriber" %}}
-{{% /render-md %}}
 
 The continuous reading may be used, for example, to emulate the behaviour of a `tail -f` command, like in this snippet:
 
-{{% render-md %}}
 {{% load-snippet-partial file="docs/snippets/tail-log-file/main.go" first_line_contains="// this will" last_line_contains="return false" padding_after="1" %}}
-{{% /render-md %}}
 
 #### Marshaling/Unmarshaling
 
@@ -61,13 +57,9 @@ The MarshalFunc is an important part of `io.Publisher`, because it fully control
 
 Correspondingly, the UnmarshalFunc regulates how the bytes read by the `io.Reader` will be interpreted as Watermill messages.
 
-{{% render-md %}}
 {{% load-snippet-partial file="src-link/watermill-io/pkg/io/marshal.go" first_line_contains="// MarshalMessageFunc" last_line_contains="// PayloadMarshalFunc" %}}
-{{% /render-md %}}
 
-{{% render-md %}}
 {{% load-snippet-partial file="src-link/watermill-io/pkg/io/marshal.go" first_line_contains="// UnmarshalMessageFunc" last_line_contains="// PayloadUnmarshalFunc" %}}
-{{% /render-md %}}
 
 The package comes with some predefined marshal and unmarshal functions, but you might want to write your own marshaler/unmarshaler to work with the specific implementation of `io.Writer/io.Reader` that you are working with.
 

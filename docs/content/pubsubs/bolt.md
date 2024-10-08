@@ -20,7 +20,9 @@ Bolt documentation: https://github.com/etcd-io/bbolt
 
 ### Installation
 
-    go get github.com/ThreeDotsLabs/watermill-bolt
+```bash
+go get github.com/ThreeDotsLabs/watermill-bolt
+```
 
 #### Characteristics
 
@@ -33,17 +35,11 @@ Bolt documentation: https://github.com/etcd-io/bbolt
 
 #### Configuration
 
-{{% render-md %}}
 {{% load-snippet-partial file="src-link/watermill-bolt/pkg/bolt/bolt.go" first_line_contains="type CommonConfig struct " last_line_equals="}" %}}
-{{% /render-md %}}
 
-{{% render-md %}}
 {{% load-snippet-partial file="src-link/watermill-bolt/pkg/bolt/bolt.go" first_line_contains="type PublisherConfig struct " last_line_equals="}" %}}
-{{% /render-md %}}
 
-{{% render-md %}}
 {{% load-snippet-partial file="src-link/watermill-bolt/pkg/bolt/bolt.go" first_line_contains="type SubscriberConfig struct " last_line_equals="}" %}}
-{{% /render-md %}}
 
 ##### Subscription name
 
@@ -68,8 +64,6 @@ for easier debugging. The performance should be enough for most applications
 unless a very large messages are used within your system. If that is the case
 you may want to consider implementing a more efficient marshaler.
 
-{{% render-md %}}
 {{% load-snippet-partial file="src-link/watermill-bolt/pkg/bolt/marshaler.go" first_line_contains="// Marshaler" last_line_equals="}" %}}
-{{% /render-md %}}
 
 

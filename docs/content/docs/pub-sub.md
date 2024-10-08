@@ -9,9 +9,7 @@ bref = "Publishers and Subscribers"
 
 ### Publisher
 
-{{% render-md %}}
 {{% load-snippet-partial file="src-link/message/pubsub.go" first_line_contains="Publisher interface {" last_line_contains="Close() error" padding_after="1" %}}
-{{% /render-md %}}
 
 #### Publishing multiple messages
 
@@ -29,9 +27,7 @@ Publish can be synchronous or asynchronous - it depends on the implementation.
 
 ### Subscriber
 
-{{% render-md %}}
 {{% load-snippet-partial file="src-link/message/pubsub.go" first_line_contains="Subscriber interface {" last_line_contains="Close() error" padding_after="1" %}}
-{{% /render-md %}}
 
 #### Ack/Nack mechanism
 

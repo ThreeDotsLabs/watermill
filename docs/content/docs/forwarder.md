@@ -67,9 +67,7 @@ be able to verify who's the winner, so their action would have to be considered 
 We still can get out of this situation, but most probably it will require some manual action, i.e., rerunning the command 
 with the lottery ID that the emitted event has.
 
-{{% render-md %}}
 {{% load-snippet-partial file="src-link/_examples/real-world-examples/transactional-events-forwarder/main.go" first_line_contains="// 1. Publishes event" last_line_contains="// In case this fails" padding_after="9" %}}
-{{% /render-md %}}
 
 ### Storing data first, publishing an event next
 In the second approach, we're going to try address first approach's drawbacks. We won't leak our failure to outer 
@@ -87,9 +85,7 @@ because no event would be delivered to the component responsible for this action
 
 That probably can be fixed by some manual action as well, i.e., emitting the event manually. We still can do better. 
 
-{{% render-md %}}
 {{% load-snippet-partial file="src-link/_examples/real-world-examples/transactional-events-forwarder/main.go" first_line_contains="// 2. Persists data" last_line_contains="// In case this fails" padding_after="9" %}}
-{{% /render-md %}}
 
 ### Storing data and publishing an event in one transaction
 Let's imagine our command could do the 2nd, and the 3rd point at the same time. They would be committed atomically, 
@@ -113,15 +109,11 @@ Everything you have to do is to make sure that:
 
 The command could look like following in this case:
 
-{{% render-md %}}
 {{% load-snippet-partial file="src-link/_examples/real-world-examples/transactional-events-forwarder/main.go" first_line_contains="// 3. Persists data" last_line_contains="err = publisher.Publish(googleCloudEventTopic" padding_after="5" %}}
-{{% /render-md %}}
 
 In order to make the **Forwarder** component work in background for you and forward messages from MySQL to Google Pub/Sub,
 you'd have to set it up as follows:
 
-{{% render-md %}}
 {{% load-snippet-partial file="src-link/_examples/real-world-examples/transactional-events-forwarder/main.go" first_line_contains="// Setup the Forwarder " last_line_contains="err := fwd.Run" padding_after="3" %}}
-{{% /render-md %}}
 
 If you wish to explore the example more, you can find it implemented [here](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/real-world-examples/transactional-events-forwarder/main.go).

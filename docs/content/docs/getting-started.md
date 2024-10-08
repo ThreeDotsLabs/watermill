@@ -53,7 +53,9 @@ They build on top of each other, each step providing a higher-level API:
 * The `Router` is similar to HTTP routers you probably know. It introduces message handlers.
 * The `CQRS` component adds generic handlers without needing to marshal and unmarshal messages yourself.
 
-<img src="/img/pyramid.png" alt="Watermill components pyramid" style="width:100%;" />
+<div class="text-center">
+    <img src="/img/pyramid.png" alt="Watermill components pyramid" style="width:35rem;" />
+</div>
 
 ## Publisher & Subscriber
 
@@ -92,21 +94,19 @@ for msg := range messages {
 
 See detailed examples below for supported PubSubs.
 
-{{< tabs id="subscribing" tabs="go-channel,kafka,nats-streaming,gcloud,amqp,sql" labels="Go Channel,Kafka,NATS Streaming,Google Cloud Pub/Sub,RabbitMQ (AMQP),SQL" >}}
+{{< tabs "getting-started" >}}
 
-{{% tabs-tab id="go-channel"%}}
+{{< tab "Go Channel" >}}
+
 {{% load-snippet-partial file="src-link/_examples/pubsubs/go-channel/main.go" first_line_contains="package main" last_line_contains="process(messages)" %}}
 {{% load-snippet-partial file="src-link/_examples/pubsubs/go-channel/main.go" first_line_contains="func process" %}}
-{{% /tabs-tab %}}
+{{< /tab >}}
 
-{{% tabs-tab id="kafka" %}}
+{{< tab "Kafka" >}}
 
-{{< collapse id="installing_rdkafka" >}}
+<details>
+<summary><strong>Running in Docker</strong></summary>
 
-{{< collapse-toggle box_id="docker" >}}
-Running in Docker
-{{% /collapse-toggle %}}
-{{% collapse-box id="docker" %}}
 The easiest way to run Watermill locally with Kafka is by using Docker.
 
 {{% load-snippet file="src-link/_examples/pubsubs/kafka/docker-compose.yml" type="yaml" %}}
@@ -116,22 +116,17 @@ The source should go to `main.go`.
 To run, execute the `docker-compose up` command.
 
 A more detailed explanation of how it works (and how to add live code reload) can be found in the [*Go Docker dev environment* article](https://threedots.tech/post/go-docker-dev-environment-with-go-modules-and-live-code-reloading/).
-
-{{% /collapse-box %}}
-{{< /collapse >}}
+</details>
 
 {{% load-snippet-partial file="src-link/_examples/pubsubs/kafka/main.go" first_line_contains="package main" last_line_contains="process(messages)" %}}
 {{% load-snippet-partial file="src-link/_examples/pubsubs/kafka/main.go" first_line_contains="func process" %}}
-{{% /tabs-tab %}}
+{{< /tab >}}
 
-{{% tabs-tab id="nats-streaming"%}}
+{{< tab "NATS Streaming" >}}
 
-{{< collapse id="running_nats" >}}
+<details>
+<summary><strong>Running in Docker</strong></summary>
 
-{{< collapse-toggle box_id="nats-streaming-docker" >}}
-Running in Docker
-{{% /collapse-toggle %}}
-{{% collapse-box id="nats-streaming-docker" %}}
 The easiest way to run Watermill locally with NATS is using Docker.
 
 {{% load-snippet file="src-link/_examples/pubsubs/nats-streaming/docker-compose.yml" type="yaml" %}}
@@ -141,22 +136,18 @@ The source should go to `main.go`.
 To run, execute the `docker-compose up` command.
 
 A more detailed explanation of how it is working (and how to add live code reload) can be found in [*Go Docker dev environment* article](https://threedots.tech/post/go-docker-dev-environment-with-go-modules-and-live-code-reloading/).
-{{% /collapse-box %}}
-{{< /collapse >}}
+</details>
 
 {{% load-snippet-partial file="src-link/_examples/pubsubs/nats-streaming/main.go" first_line_contains="package main" last_line_contains="process(messages)" %}}
 {{% load-snippet-partial file="src-link/_examples/pubsubs/nats-streaming/main.go" first_line_contains="func process" %}}
-{{% /tabs-tab %}}
+{{< /tabs >}}
 
 
-{{% tabs-tab id="gcloud"%}}
+{{< tab "Google Cloud Pub/Sub" >}}
 
-{{< collapse id="running_gcloud" >}}
+<details>
+<summary><strong>Running in Docker</strong></summary>
 
-{{< collapse-toggle box_id="gcloud-streaming-docker" >}}
-Running in Docker
-{{% /collapse-toggle %}}
-{{% collapse-box id="gcloud-streaming-docker" %}}
 You can run the Google Cloud Pub/Sub emulator locally for development.
 
 {{% load-snippet file="src-link/_examples/pubsubs/googlecloud/docker-compose.yml" type="yaml" %}}
@@ -166,21 +157,17 @@ The source should go to `main.go`.
 To run, execute `docker-compose up`.
 
 A more detailed explanation of how it is working (and how to add live code reload) can be found in [*Go Docker dev environment* article](https://threedots.tech/post/go-docker-dev-environment-with-go-modules-and-live-code-reloading/).
-{{% /collapse-box %}}
-{{< /collapse >}}
+</details>
 
 {{% load-snippet-partial file="src-link/_examples/pubsubs/googlecloud/main.go" first_line_contains="package main" last_line_contains="process(messages)" %}}
 {{% load-snippet-partial file="src-link/_examples/pubsubs/googlecloud/main.go" first_line_contains="func process" %}}
-{{% /tabs-tab %}}
+{{< /tab >}}
 
-{{% tabs-tab id="amqp"%}}
+{{< tab "RabbitMQ (AMQP)" >}}
 
-{{< collapse id="running_amqp" >}}
+<details>
+<summary><strong>Running in Docker</strong></summary>
 
-{{< collapse-toggle box_id="amqp-docker" >}}
-Running in Docker
-{{% /collapse-toggle %}}
-{{% collapse-box id="amqp-docker" %}}
 {{% load-snippet file="src-link/_examples/pubsubs/amqp/docker-compose.yml" type="yaml" %}}
 
 The source should go to `main.go`.
@@ -188,21 +175,17 @@ The source should go to `main.go`.
 To run, execute `docker-compose up`.
 
 A more detailed explanation of how it is working (and how to add live code reload) can be found in [*Go Docker dev environment* article](https://threedots.tech/post/go-docker-dev-environment-with-go-modules-and-live-code-reloading/).
-{{% /collapse-box %}}
-{{< /collapse >}}
+</details>
 
 {{% load-snippet-partial file="src-link/_examples/pubsubs/amqp/main.go" first_line_contains="package main" last_line_contains="process(messages)" %}}
 {{% load-snippet-partial file="src-link/_examples/pubsubs/amqp/main.go" first_line_contains="func process" %}}
-{{% /tabs-tab %}}
+{{< /tab >}}
 
-{{% tabs-tab id="sql"%}}
+{{< tab "SQL" >}}
 
-{{< collapse id="running_sql" >}}
+<details>
+<summary><strong>Running in Docker</strong></summary>
 
-{{< collapse-toggle box_id="sql-docker" >}}
-Running in Docker
-{{% /collapse-toggle %}}
-{{% collapse-box id="sql-docker" %}}
 {{% load-snippet file="src-link/_examples/pubsubs/sql/docker-compose.yml" type="yaml" %}}
 
 The source should go to `main.go`.
@@ -210,12 +193,11 @@ The source should go to `main.go`.
 To run, execute `docker-compose up`.
 
 A more detailed explanation of how it is working (and how to add live code reload) can be found in [*Go Docker dev environment* article](https://threedots.tech/post/go-docker-dev-environment-with-go-modules-and-live-code-reloading/).
-{{% /collapse-box %}}
-{{< /collapse >}}
+</details>
 
 {{% load-snippet-partial file="src-link/_examples/pubsubs/sql/main.go" first_line_contains="package main" last_line_contains="process(messages)" %}}
 {{% load-snippet-partial file="src-link/_examples/pubsubs/sql/main.go" first_line_contains="func process" %}}
-{{% /tabs-tab %}}
+{{< /tab >}}
 
 {{< /tabs >}}
 
@@ -241,31 +223,32 @@ if err != nil {
 }
 ```
 
-{{< tabs id="publishing" tabs="go-channel,kafka,nats-streaming,gcloud,amqp,sql" labels="Go Channel,Kafka,NATS Streaming,Google Cloud Pub/Sub,RabbitMQ (AMQP),SQL" >}}
 
-{{% tabs-tab id="go-channel"%}}
+{{< tabs "publishing" >}}
+
+{{< tab "Go Channel" >}}
 {{% load-snippet-partial file="src-link/_examples/pubsubs/go-channel/main.go" first_line_contains="message.NewMessage" last_line_contains="publisher.Publish" padding_after="2" %}}
-{{% /tabs-tab %}}
+{{< /tab >}}
 
-{{% tabs-tab id="kafka" %}}
+{{< tab "Kafka" >}}
 {{% load-snippet-partial file="src-link/_examples/pubsubs/kafka/main.go" first_line_contains="message.NewMessage" last_line_contains="publisher.Publish" padding_after="2" %}}
-{{% /tabs-tab %}}
+{{< /tab >}}
 
-{{% tabs-tab id="nats-streaming" %}}
+{{< tab "NATS Streaming" >}}
 {{% load-snippet-partial file="src-link/_examples/pubsubs/nats-streaming/main.go" first_line_contains="message.NewMessage" last_line_contains="publisher.Publish" padding_after="2" %}}
-{{% /tabs-tab %}}
+{{< /tab >}}
 
-{{% tabs-tab id="gcloud" %}}
+{{< tab "Google Cloud Pub/Sub" >}}
 {{% load-snippet-partial file="src-link/_examples/pubsubs/googlecloud/main.go" first_line_contains="message.NewMessage" last_line_contains="publisher.Publish" padding_after="2" %}}
-{{% /tabs-tab %}}
+{{< /tab >}}
 
-{{% tabs-tab id="amqp" %}}
+{{< tab "RabbitMQ (AMQP)" >}}
 {{% load-snippet-partial file="src-link/_examples/pubsubs/amqp/main.go" first_line_contains="message.NewMessage" last_line_contains="publisher.Publish" padding_after="2" %}}
-{{% /tabs-tab %}}
+{{< /tab >}}
 
-{{% tabs-tab id="sql" %}}
+{{< tab "SQL" >}}
 {{% load-snippet-partial file="src-link/_examples/pubsubs/sql/main.go" first_line_contains="message.NewMessage" last_line_contains="publisher.Publish" padding_after="2" %}}
-{{% /tabs-tab %}}
+{{< /tab >}}
 
 {{< /tabs >}}
 
@@ -282,9 +265,7 @@ A middleware is a function executed for each incoming message.
 You can use one of the existing ones for things like [correlation, metrics, poison queue, retrying, throttling, etc.]({{< ref "/docs/messages-router#middleware" >}}).
 You can also create your own.
 
-{{% render-md %}}
 {{% load-snippet-partial file="src-link/_examples/basic/3-router/main.go" first_line_contains="message.NewRouter" last_line_contains="middleware.Recoverer," padding_after="1" %}}
-{{% /render-md %}}
 
 #### Handlers
 
@@ -294,18 +275,14 @@ Each handler independently handles incoming messages.
 A handler listens to messages from the given subscriber and topic.
 Any messages returned from the handler function will be published to the given publisher and topic.
 
-{{% render-md %}}
 {{% load-snippet-partial file="src-link/_examples/basic/3-router/main.go" first_line_contains="AddHandler returns" last_line_contains=")" padding_after="0" %}}
-{{% /render-md %}}
 
 *Note: the example above uses one `pubSub` argument for both the subscriber and publisher.
 It's because we use the `GoChannel` implementation, which is a simple in-memory Pub/Sub.*
 
 Alternatively, if you don't plan to publish messages from within the handler, you can use the simpler `AddNoPublisherHandler` method.
 
-{{% render-md %}}
 {{% load-snippet-partial file="src-link/_examples/basic/3-router/main.go" first_line_contains="AddNoPublisherHandler" last_line_contains=")" padding_after="0" %}}
-{{% /render-md %}}
 
 You can use two types of *handler functions*:
 
@@ -315,15 +292,11 @@ You can use two types of *handler functions*:
 Use the first one if your handler is a function without any dependencies.
 The second option is useful when your handler requires dependencies such as a database handle or a logger.
 
-{{% render-md %}}
 {{% load-snippet-partial file="src-link/_examples/basic/3-router/main.go" first_line_contains="func printMessages" last_line_contains="return message.Messages{msg}, nil" padding_after="3" %}}
-{{% /render-md %}}
 
 Finally, run the router.
 
-{{% render-md %}}
 {{% load-snippet-partial file="src-link/_examples/basic/3-router/main.go" first_line_contains="router.Run" last_line_contains="}" padding_after="0" %}}
-{{% /render-md %}}
 
 The complete example's source can be found at [/_examples/basic/3-router/main.go](https://github.com/ThreeDotsLabs/watermill/blob/master/_examples/basic/3-router/main.go).
 

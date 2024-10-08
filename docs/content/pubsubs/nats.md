@@ -19,7 +19,9 @@ For production use it is recommended to use the pubsub implementations in `pkg/n
 
 ### Installation
 
-    go get github.com/ThreeDotsLabs/watermill-nats/v2
+```bash
+go get github.com/ThreeDotsLabs/watermill-nats/v2
+```
 
 #### Characteristics
 
@@ -34,53 +36,39 @@ For production use it is recommended to use the pubsub implementations in `pkg/n
 
 Configuration is done through PublisherConfig and SubscriberConfig types.  These share a common JetStreamConfig.  To use the experimental nats-core support, set Disabled=true.
 
-{{% render-md %}}
 {{% load-snippet-partial file="src-link/watermill-nats/pkg/nats/jetstream.go" first_line_contains="// JetStreamConfig contains" last_line_contains="type DurableCalculator =" %}}
-{{% /render-md %}}
 
 PublisherConfig:
 
-{{% render-md %}}
 {{% load-snippet-partial file="src-link/watermill-nats/pkg/nats/publisher.go" first_line_contains="type PublisherConfig struct" last_line_contains="type Publisher struct {" %}}
-{{% /render-md %}}
 
 Subscriber Config:
 
-{{% render-md %}}
 {{% load-snippet-partial file="src-link/watermill-nats/pkg/nats/subscriber.go" first_line_contains="type SubscriberConfig struct" last_line_contains="type Subscriber struct" %}}
-{{% /render-md %}}
 
 #### Connecting
 
 By default NATS client will try to connect to `localhost:4222`. If you are using different hostname or port you should specify using the URL property of `SubscriberConfig` and `PublisherConfig`.
 
-{{% render-md %}}
 {{% load-snippet-partial file="src-link/watermill-nats/pkg/nats/publisher.go" first_line_contains="// NewPublisher" last_line_contains="func NewPublisher" %}}
 
 Example:
 {{% load-snippet-partial file="src-link/_examples/pubsubs/nats-jetstream/main.go" first_line_contains="publisher, err :=" last_line_contains="panic(err)" padding_after="1" %}}
-{{% /render-md %}}
 
-{{% render-md %}}
 {{% load-snippet-partial file="src-link/watermill-nats/pkg/nats/subscriber.go" first_line_contains="// NewSubscriber" last_line_contains="func NewSubscriber" %}}
 
 Example:
 {{% load-snippet-partial file="src-link/_examples/pubsubs/nats-jetstream/main.go" first_line_contains="subscriber, err :=" last_line_contains="panic(err)" padding_after="1" %}}
-{{% /render-md %}}
 
 You can also use `NewSubscriberWithNatsConn` and `NewPublisherWithNatsConn` to use a custom `*nats.Conn`.
 
 #### Publishing
 
-{{% render-md %}}
 {{% load-snippet-partial file="src-link/watermill-nats/pkg/nats/publisher.go" first_line_contains="// Publish publishes" last_line_contains="func (p *Publisher) Publish" %}}
-{{% /render-md %}}
 
 #### Subscribing
 
-{{% render-md %}}
 {{% load-snippet-partial file="src-link/watermill-nats/pkg/nats/subscriber.go" first_line_contains="// Subscribe " last_line_contains="func (s *Subscriber) Subscribe" %}}
-{{% /render-md %}}
 
 #### Marshaler
 
@@ -88,9 +76,7 @@ NATS provides a header passing mechanism that allows conveying the watermill mes
 
 Other builtin marshalers are based on Golang's [`gob`](https://golang.org/pkg/encoding/gob/) and [`json`](https://golang.org/packages/encoding/json) packages.
 
-{{% render-md %}}
 {{% load-snippet-partial file="src-link/watermill-nats/pkg/nats/marshaler.go" first_line_contains="type Marshaler " last_line_contains="func defaultNatsMsg" padding_after="0" %}}
-{{% /render-md %}}
 
 When you have your own format of the messages, you can implement your own Marshaler, which will serialize messages in your format.  An example protobuf implementation with tests and benchmarks can be found [here](https://github.com/ThreeDotsLabs/watermill-nats/tree/master/_examples/marshalers/protobuf/)
 

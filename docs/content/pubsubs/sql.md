@@ -28,7 +28,9 @@ See also the [SQL example](https://github.com/ThreeDotsLabs/watermill/tree/maste
 
 ### Installation
 
-    go get github.com/ThreeDotsLabs/watermill-sql/v2
+```bash
+go get github.com/ThreeDotsLabs/watermill-sql/v3
+```
 
 #### Characteristics
 
@@ -44,9 +46,7 @@ See also the [SQL example](https://github.com/ThreeDotsLabs/watermill/tree/maste
 SQL Pub/Sub uses user-defined schema to handle select and insert queries. You need to implement `SchemaAdapter` and pass
 it to `SubscriberConfig` or `PublisherConfig`.
 
-{{% render-md %}}
 {{% load-snippet-partial file="src-link/watermill-sql/pkg/sql/schema_adapter_mysql.go" first_line_contains="// DefaultMySQLSchema" last_line_contains="type DefaultMySQLSchema" %}}
-{{% /render-md %}}
 
 There is a default schema provided for each supported engine (`DefaultMySQLSchema` and `DefaultPostgreSQLSchema`).
 It supports the most common use case (storing events in a table). You can base your schema on one of these, extending only chosen methods.
@@ -62,32 +62,22 @@ the `uuid` column, instead of `VARCHAR(36)`. In that case, you have to define tw
 Note that you don't have to use the initialization queries provided by Watermill. They will be run only if you set the
 `InitializeSchema` field to `true` in the config. Otherwise, you can use your own solution for database migrations.
 
-{{% render-md %}}
 {{% load-snippet-partial file="src-link/watermill-sql/pkg/sql/schema_adapter_mysql.go" first_line_contains="// DefaultMySQLSchema" last_line_contains="type DefaultMySQLSchema" %}}
-{{% /render-md %}}
 
 #### Configuration
 
-{{% render-md %}}
 {{% load-snippet-partial file="src-link/watermill-sql/pkg/sql/publisher.go" first_line_contains="type PublisherConfig struct" last_line_contains="}" %}}
-{{% /render-md %}}
 
-{{% render-md %}}
 {{% load-snippet-partial file="src-link/watermill-sql/pkg/sql/subscriber.go" first_line_contains="type SubscriberConfig struct" last_line_contains="}" %}}
-{{% /render-md %}}
 
 ### Publishing
 
-{{% render-md %}}
 {{% load-snippet-partial file="src-link/watermill-sql/pkg/sql/publisher.go" first_line_contains="func NewPublisher" last_line_contains="func NewPublisher" %}}
 
 Example:
 {{% load-snippet-partial file="src-link/_examples/pubsubs/sql/main.go" first_line_contains="publisher, err :=" last_line_contains="panic(err)" padding_after="1" %}}
-{{% /render-md %}}
 
-{{% render-md %}}
 {{% load-snippet-partial file="src-link/watermill-sql/pkg/sql/publisher.go" first_line_contains="// Publish " last_line_contains="func (p *Publisher) Publish" %}}
-{{% /render-md %}}
 
 #### Transactions
 
@@ -95,9 +85,7 @@ If you need to publish messages within a database transaction, you have to pass 
 constructor. You have to create one publisher for each transaction. 
 
 Example:
-{{% render-md %}}
 {{% load-snippet-partial file="src-link/_examples/real-world-examples/transactional-events/main.go" first_line_contains="func simulateEvents" last_line_contains="return pub.Publish(" padding_after="3" %}}
-{{% /render-md %}}
 
 #### Subscribing
 
@@ -106,22 +94,16 @@ To create a subscriber, you need to pass not only proper schema adapter, but als
 * For MySQL schema use `DefaultMySQLOffsetsAdapter`
 * For PostgreSQL schema use `DefaultPostgreSQLOffsetsAdapter`
 
-{{% render-md %}}
 {{% load-snippet-partial file="src-link/watermill-sql/pkg/sql/subscriber.go" first_line_contains="func NewSubscriber" last_line_contains="func NewSubscriber" %}}
 
 Example:
 {{% load-snippet-partial file="src-link/_examples/pubsubs/sql/main.go" first_line_contains="subscriber, err :=" last_line_contains="panic(err)" padding_after="1" %}}
-{{% /render-md %}}
 
-{{% render-md %}}
 {{% load-snippet-partial file="src-link/watermill-sql/pkg/sql/subscriber.go" first_line_contains="func (s *Subscriber) Subscribe" last_line_contains="func (s *Subscriber) Subscribe" %}}
-{{% /render-md %}}
 
 #### Offsets Adapter
 
 The logic for storing offsets of messages is provided by the `OffsetsAdapter`. If your schema uses auto-incremented integer as the row ID,
 it should work out of the box with default offset adapters.
 
-{{% render-md %}}
 {{% load-snippet-partial file="src-link/watermill-sql/pkg/sql/offsets_adapter.go" first_line_contains="type OffsetsAdapter" %}}
-{{% /render-md %}}
