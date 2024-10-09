@@ -95,13 +95,13 @@ See detailed examples below for supported PubSubs.
 
 {{< tabs "getting-started" >}}
 
-{{< tab "Go Channel" >}}
+{{< tab "Go Channel" "go-channel" >}}
 
 {{% load-snippet-partial file="src-link/_examples/pubsubs/go-channel/main.go" first_line_contains="package main" last_line_contains="process(messages)" %}}
 {{% load-snippet-partial file="src-link/_examples/pubsubs/go-channel/main.go" first_line_contains="func process" %}}
 {{< /tab >}}
 
-{{< tab "Kafka" >}}
+{{< tab "Kafka" "kafka" >}}
 
 <details>
 <summary><strong>Running in Docker</strong></summary>
@@ -121,7 +121,7 @@ A more detailed explanation of how it works (and how to add live code reload) ca
 {{% load-snippet-partial file="src-link/_examples/pubsubs/kafka/main.go" first_line_contains="func process" %}}
 {{< /tab >}}
 
-{{< tab "NATS Streaming" >}}
+{{< tab "NATS Streaming" "nats" >}}
 
 <details>
 <summary><strong>Running in Docker</strong></summary>
@@ -142,7 +142,7 @@ A more detailed explanation of how it is working (and how to add live code reloa
 {{< /tabs >}}
 
 
-{{< tab "Google Cloud Pub/Sub" >}}
+{{< tab "Google Cloud Pub/Sub" "gcp" >}}
 
 <details>
 <summary><strong>Running in Docker</strong></summary>
@@ -162,7 +162,7 @@ A more detailed explanation of how it is working (and how to add live code reloa
 {{% load-snippet-partial file="src-link/_examples/pubsubs/googlecloud/main.go" first_line_contains="func process" %}}
 {{< /tab >}}
 
-{{< tab "RabbitMQ (AMQP)" >}}
+{{< tab "RabbitMQ (AMQP)" "amqp" >}}
 
 <details>
 <summary><strong>Running in Docker</strong></summary>
@@ -180,7 +180,7 @@ A more detailed explanation of how it is working (and how to add live code reloa
 {{% load-snippet-partial file="src-link/_examples/pubsubs/amqp/main.go" first_line_contains="func process" %}}
 {{< /tab >}}
 
-{{< tab "SQL" >}}
+{{< tab "SQL" "sql" >}}
 
 <details>
 <summary><strong>Running in Docker</strong></summary>
@@ -225,27 +225,27 @@ if err != nil {
 
 {{< tabs "publishing" >}}
 
-{{< tab "Go Channel" >}}
+{{< tab "Go Channel" "go-channel" >}}
 {{% load-snippet-partial file="src-link/_examples/pubsubs/go-channel/main.go" first_line_contains="message.NewMessage" last_line_contains="publisher.Publish" padding_after="2" %}}
 {{< /tab >}}
 
-{{< tab "Kafka" >}}
+{{< tab "Kafka" "kafka" >}}
 {{% load-snippet-partial file="src-link/_examples/pubsubs/kafka/main.go" first_line_contains="message.NewMessage" last_line_contains="publisher.Publish" padding_after="2" %}}
 {{< /tab >}}
 
-{{< tab "NATS Streaming" >}}
+{{< tab "NATS Streaming" "nats" >}}
 {{% load-snippet-partial file="src-link/_examples/pubsubs/nats-streaming/main.go" first_line_contains="message.NewMessage" last_line_contains="publisher.Publish" padding_after="2" %}}
 {{< /tab >}}
 
-{{< tab "Google Cloud Pub/Sub" >}}
+{{< tab "Google Cloud Pub/Sub" "gcp" >}}
 {{% load-snippet-partial file="src-link/_examples/pubsubs/googlecloud/main.go" first_line_contains="message.NewMessage" last_line_contains="publisher.Publish" padding_after="2" %}}
 {{< /tab >}}
 
-{{< tab "RabbitMQ (AMQP)" >}}
+{{< tab "RabbitMQ (AMQP)" "amqp" >}}
 {{% load-snippet-partial file="src-link/_examples/pubsubs/amqp/main.go" first_line_contains="message.NewMessage" last_line_contains="publisher.Publish" padding_after="2" %}}
 {{< /tab >}}
 
-{{< tab "SQL" >}}
+{{< tab "SQL" "sql" >}}
 {{% load-snippet-partial file="src-link/_examples/pubsubs/sql/main.go" first_line_contains="message.NewMessage" last_line_contains="publisher.Publish" padding_after="2" %}}
 {{< /tab >}}
 
