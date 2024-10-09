@@ -2,7 +2,7 @@
 title = "Implementing a new Pub/Sub"
 description = "Bring Your Own Pub/Sub"
 date = 2018-12-05T12:48:34+01:00
-weight = -500
+weight = 200
 draft = false
 bref = "Bring Your Own Pub/Sub"
 +++

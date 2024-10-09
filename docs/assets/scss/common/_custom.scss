@@ -7,3 +7,11 @@ h1, h2, h3, h4, h5, .navbar-brand {
   font-family: Quicksand, sans-serif;
   font-weight: 700;
 }
+
+[data-bs-theme="dark"] .only-light {
+    display: none;
+}
+
+[data-bs-theme="light"] .only-dark {
+    display: none;
+}

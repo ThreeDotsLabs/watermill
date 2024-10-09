@@ -65,7 +65,7 @@ To check available Pub/Sub implementations, see [Supported Pub/Subs]({{< ref "/p
 
 ## Implementing custom Pub/Sub
 
-See [Implementing custom Pub/Sub]({{< ref "/advanced/pub-sub-implementing" >}}) for instructions on how to introduce support for
+See [Implementing custom Pub/Sub]({{< ref "/development/pub-sub-implementing" >}}) for instructions on how to introduce support for
 a new Pub/Sub.
 
 We will also be thankful for submitting [pull requests](https://github.com/ThreeDotsLabs/watermill/pulls) with the new Pub/Sub implementations.

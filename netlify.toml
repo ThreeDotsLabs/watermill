@@ -26,5 +26,5 @@
 
 [[redirects]]
   from = "/docs/pub-sub-implementing"
-  to = "/advanced/pub-sub-implementing/"
+  to = "/development/pub-sub-implementing/"
   status = 301
