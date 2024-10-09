@@ -11,8 +11,9 @@ mainSections = ["docs"]
 
 # Doks (@thulite/doks-core)
 [doks]
-  # Color mode
-  colorMode = "dark" # auto (default), light or dark
+  # Color mode - it should stay auto to render toggle button,
+  # in practice we are using dark by default (see docs/assets/js/custom.js)
+  colorMode = "auto" # auto (default), light or dark
   colorModeToggler = true # true (default) or false (this setting is only relevant when colorMode = auto)
 
   # Navbar

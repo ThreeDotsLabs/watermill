@@ -1,6 +1,7 @@
 // Put your custom SCSS variables here
 $font-family-sans-serif:
-  "Quicksand",
+  "Heebo",
+  "sans-serif",
   system-ui,
   -apple-system,
   "Segoe UI",
@@ -22,3 +23,6 @@ $container-max-widths: (
     xl: 1240px,
     xxl: 1820px
 );
+
+
+$primary: #4f46e5;

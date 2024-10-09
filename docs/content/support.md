@@ -11,4 +11,4 @@ Join us on the `#watermill` channel on the [Three Dots Labs discord](https://dis
 
 For enterprise support, please contact us by e-mail: contact@threedotslabs.com
 
-You can also use the [contact form on our website](https://threedots.tech).
+You can also use the [contact form on our website](https://threedots.tech/contact/?utm_source=watermill-docs).
