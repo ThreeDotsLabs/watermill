@@ -1,5 +1,5 @@
 +++
-title = "Forwarder"
+title = "Forwarder (the outbox pattern)"
 description = "Implement outbox pattern by publishing messages in transactional way"
 date = 2021-01-13T12:47:30+01:00
 weight = -300
