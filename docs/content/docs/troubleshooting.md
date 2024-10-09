@@ -6,7 +6,7 @@ draft = false
 bref = "When something goes wrong"
 +++
 
-### Logging
+## Logging
 
 In most cases, you will find the answer to your problem in the logs.
 Watermill offers a significant amount of logs on different severity levels.
@@ -17,20 +17,21 @@ If you are using `StdLoggerAdapter`, just change `debug`, and `trace` options to
 logger := watermill.NewStdLogger(true, true)
 ````
 
-### Debugging Pub/Sub tests
+## Debugging Pub/Sub tests
 
-#### Running single tests
+### Running a single test
 
 ```bash
 make up
 go test -v ./... -run TestPublishSubscribe/TestContinueAfterSubscribeClose
 ```
 
-#### grep is your friend
+### grep is your friend
 
-Every test case that is executed, have a unique UUID of the test case. It is used in the topic name.
+Each executed test case has a unique UUID.
+It's used in the topic's name.
 Thanks to that, you can easily grep the output of the test.
-It gives you very detailed information about test execution.
+It gives you detailed information about the test execution.
 
 ```bash
 > go test -v ./... > test.out
@@ -56,7 +57,7 @@ cat test.out | grep 81eeb56c-3336-4eb9-a0ac-13abda6f38ff | less
         --- PASS: TestPublishSubscribe/TestPublishSubscribe/81eeb56c-3336-4eb9-a0ac-13abda6f38ff (2.38s)
 ```
 
-### I have a deadlock
+## I have a deadlock
 
 When running locally, you can send a `SIGQUIT` to the running process:
 

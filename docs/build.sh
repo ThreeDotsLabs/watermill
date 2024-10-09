@@ -31,6 +31,7 @@ else
         "message/router.go"
         "message/router_context.go"
         "pubsub/gochannel/pubsub.go"
+        "pubsub/gochannel/fanout.go"
 
         "components/cqrs/command_bus.go"
         "components/cqrs/command_processor.go"

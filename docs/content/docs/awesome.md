@@ -1,7 +1,7 @@
 +++
 title = "Awesome Watermill"
 description = "Selected unofficial libraries"
-weight = 0
+weight = 200
 draft = false
 bref = "Selected unofficial libraries"
 +++
@@ -12,13 +12,13 @@ Below is a list of libraries that are not maintained by Three Dots Labs, but you
 
 If you know another library or are an author of one, please [add it to the list](https://github.com/ThreeDotsLabs/watermill/edit/master/docs/content/docs/awesome.md).
 
-### Examples
+## Examples
 
 * https://github.com/minghsu0107/golang-taipei-watermill-example
 * https://github.com/minghsu0107/Kafka-PubSub
 * https://github.com/pperaltaisern/go-example-financing
 
-### Pub/Subs
+## Pub/Subs
 
 * AMQP 1.0 https://github.com/kahowell/watermill-amqp10
 * Apache Pulsar https://github.com/AlexCuse/watermill-pulsar
@@ -35,7 +35,7 @@ If you know another library or are an author of one, please [add it to the list]
 If you want to find out how to implement your own Pub/Sub adapter, 
 check out [Implementing custom Pub/Sub](/advanced/pub-sub-implementing).
 
-### Logging
+## Logging
 
 * logrus
   * https://github.com/ma-hartma/watermill-logrus-adapter
@@ -49,7 +49,7 @@ check out [Implementing custom Pub/Sub](/advanced/pub-sub-implementing).
   * https://github.com/bogatyr285/watermillzlog
   * https://github.com/vsvp21/zerolog-watermill-adapter
 
-### Observability
+## Observability
 
 * OpenCensus
   * https://github.com/czeslavo/watermill-opencensus
@@ -60,7 +60,7 @@ check out [Implementing custom Pub/Sub](/advanced/pub-sub-implementing).
   * AMQP https://github.com/hpcslag/otel-watermill-amqp
   * GoChannel https://github.com/hpcslag/watermill-otel-tracable-gochannel
 
-### Other
+## Other
 
 * https://github.com/asyncapi/go-watermill-template
 * https://github.com/goph/watermillx

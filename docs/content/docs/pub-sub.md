@@ -7,16 +7,16 @@ draft = false
 bref = "Publishers and Subscribers"
 +++
 
-### Publisher
+## Publisher
 
 {{% load-snippet-partial file="src-link/message/pubsub.go" first_line_contains="Publisher interface {" last_line_contains="Close() error" padding_after="1" %}}
 
-#### Publishing multiple messages
+### Publishing multiple messages
 
 Most publishers implementations don't support atomic publishing of messages.
 This means that if publishing one of the messages fails, the next messages won't be published.
 
-#### Async publish
+### Async publish
 
 Publish can be synchronous or asynchronous - it depends on the implementation.
 
@@ -25,11 +25,11 @@ Publish can be synchronous or asynchronous - it depends on the implementation.
 `Close` should flush unsent messages if the publisher is asynchronous.
 **It is important to not forget to close the subscriber**. Otherwise you may lose some of the messages.
 
-### Subscriber
+## Subscriber
 
 {{% load-snippet-partial file="src-link/message/pubsub.go" first_line_contains="Subscriber interface {" last_line_contains="Close() error" padding_after="1" %}}
 
-#### Ack/Nack mechanism
+### Ack/Nack mechanism
 
 It is the *Subscriber's* responsibility to handle an `Ack` and a `Nack` from a message.
 A proper implementation should wait for an `Ack` or a `Nack` before consuming the next message.
@@ -42,7 +42,7 @@ Otherwise there is a chance to lose messages if the process dies before the mess
 
 `Close` closes all subscriptions with their output channels and flushes offsets, etc. when needed.
 
-### At-least-once delivery
+## At-least-once delivery
 
 Watermill is built with [at-least-once delivery](http://www.cloudcomputingpatterns.org/at_least_once_delivery/) semantics.
 That means when some error occurs when processing a message and an Ack cannot be sent, the message will be redelivered.
@@ -51,7 +51,7 @@ You need to keep it in mind and build your application to be [idempotent](http:/
 
 Unfortunately, it's not possible to create an universal [*middleware*]({{< ref "/docs/messages-router#middleware" >}}) for deduplication, so we encourage you to build your own.
 
-### Universal tests
+## Universal tests
 
 Every Pub/Sub is similar in most aspects.
 To avoid implementing separate tests for every Pub/Sub, we've created a test suite which should be passed by any Pub/Sub
@@ -59,11 +59,11 @@ implementation.
 
 These tests can be found in `pubsub/tests/test_pubsub.go`.
 
-### Built-in implementations
+## Built-in implementations
 
 To check available Pub/Sub implementations, see [Supported Pub/Subs]({{< ref "/pubsubs" >}}).
 
-### Implementing custom Pub/Sub
+## Implementing custom Pub/Sub
 
 See [Implementing custom Pub/Sub]({{< ref "/advanced/pub-sub-implementing" >}}) for instructions on how to introduce support for
 a new Pub/Sub.

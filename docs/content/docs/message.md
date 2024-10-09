@@ -14,23 +14,23 @@ When a message is processed, you should send an [`Ack()`]({{< ref "#ack" >}}) or
 
 {{% load-snippet-partial file="src-link/message/message.go" first_line_contains="type Message struct {" last_line_contains="ctx context.Context" padding_after="2" %}}
 
-### Ack
+## Ack
 
 #### Sending `Ack`
 
 {{% load-snippet-partial file="src-link/message/message.go" first_line_contains="// Ack" last_line_contains="func (m *Message) Ack() bool {" padding_after="0" %}}
 
 
-### Nack
+## Nack
 
 {{% load-snippet-partial file="src-link/message/message.go" first_line_contains="// Nack" last_line_contains="func (m *Message) Nack() bool {" padding_after="0" %}}
 
-### Receiving `Ack/Nack`
+#### Receiving `Ack/Nack`
 
 {{% load-snippet-partial file="docs/message/receiving-ack.go" first_line_contains="select {" last_line_contains="}" padding_after="0" %}}
 
 
-### Context
+## Context
 
 Message contains the standard library context, just like an HTTP request.
 

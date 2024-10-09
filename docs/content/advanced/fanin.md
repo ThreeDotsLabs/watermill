@@ -1,5 +1,5 @@
 +++
-title = "Merging two topics into one"
+title = "FanIn (merging topics)"
 description = "Merging two topics into one with the FanIn component"
 date = 2023-01-21T12:47:30+01:00
 weight = -100

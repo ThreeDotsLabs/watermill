@@ -1,8 +1,8 @@
 +++
-title = "Forwarder component"
+title = "Forwarder"
 description = "Implement outbox pattern by publishing messages in transactional way"
 date = 2021-01-13T12:47:30+01:00
-weight = -400
+weight = -300
 draft = false
 bref = "Emitting events along with storing data in a database in one transaction"
 +++

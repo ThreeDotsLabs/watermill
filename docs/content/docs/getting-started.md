@@ -6,7 +6,7 @@ draft = false
 bref = "Watermill up and running"
 +++
 
-### What is Watermill?
+## What is Watermill?
 
 Watermill is a Go library for working with message streams.
 You can use it to build event-driven systems with popular Pub/Sub implementations like Kafka or RabbitMQ, as well as HTTP or Postgres if that fits your use case.
@@ -15,7 +15,7 @@ It comes with a set of Pub/Sub implementations and can be easily extended.
 Watermill also ships with standard middlewares like instrumentation, poison queue, throttling, correlation,
 and other tools used by every message-driven application.
 
-### Why use Watermill?
+## Why use Watermill?
 
 When using microservices, synchronous communication is not always the right choice.
 Asynchronous methods became a new standard way to communicate.
@@ -30,13 +30,13 @@ It provides all you need to build an application based on events or other asynch
 **Watermill is NOT a framework**.
 It's a lightweight library that's easy to plug in or remove from your project.
 
-### Install
+## Install
 
 ```bash
 go get -u github.com/ThreeDotsLabs/watermill
 ```
 
-### One-Minute Background
+## One-Minute Background
 
 The idea behind event-driven applications is always the same: listen to and react to incoming messages.
 Watermill supports this behavior for multiple [publishers and subscribers]({{< ref "/pubsubs" >}}).
@@ -251,12 +251,12 @@ if err != nil {
 
 {{< /tabs >}}
 
-### Router
+## Router
 
 [*Publishers and subscribers*]({{< ref "/docs/pub-sub" >}}) are the low-level parts of Watermill.
 For most cases, you want to use a high-level API: [*Router*]({{< ref "/docs/messages-router" >}}) component.
 
-#### Router configuration
+### Router configuration
 
 Start with configuring the router and adding plugins and middlewares.
 
@@ -266,7 +266,7 @@ You can also create your own.
 
 {{% load-snippet-partial file="src-link/_examples/basic/3-router/main.go" first_line_contains="message.NewRouter" last_line_contains="middleware.Recoverer," padding_after="1" %}}
 
-#### Handlers
+### Handlers
 
 Set up handlers that the router uses.
 Each handler independently handles incoming messages.
@@ -299,7 +299,7 @@ Finally, run the router.
 
 The complete example's source can be found at [/_examples/basic/3-router/main.go](https://github.com/ThreeDotsLabs/watermill/blob/master/_examples/basic/3-router/main.go).
 
-### Logging
+## Logging
 
 To see Watermill's logs, pass any logger that implements the [LoggerAdapter](https://github.com/ThreeDotsLabs/watermill/blob/master/log.go).
 For experimental development, you can use `NewStdLogger`.

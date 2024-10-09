@@ -2,7 +2,7 @@
 title = "Metrics"
 description = "Monitor Watermill in realtime"
 date = 2019-02-12T21:00:00+01:00
-weight = -200
+weight = -400
 draft = false
 bref = "Monitor Watermill in realtime using Prometheus"
 +++
@@ -14,7 +14,7 @@ The `components/metrics` package exports `PrometheusMetricsBuilder`, which provi
 
 {{% load-snippet-partial file="src-link/components/metrics/builder.go" first_line_contains="// PrometheusMetricsBuilder" last_line_contains="func (b PrometheusMetricsBuilder)" %}}
 
-### Wrapping publishers, subscribers and handlers
+## Wrapping publishers, subscribers and handlers
 
 If you are using Watermill's [router](/docs/messages-router) (which is recommended in most cases), you can use a single convenience function `AddPrometheusRouterMetrics` to ensure that all the handlers added to this router are wrapped to update the Prometheus registry, together with their publishers and subscribers:
 
@@ -34,7 +34,7 @@ Standalone publishers and subscribers may also be decorated through the use of d
 
 {{% load-snippet-partial file="src-link/_examples/basic/4-metrics/main.go" first_line_contains="subWithMetrics, err := " last_line_contains="pubWithMetrics, err := " padding_after="3" %}}
 
-### Exposing the /metrics endpoint
+## Exposing the /metrics endpoint
 
 In accordance with how Prometheus works, the service needs to expose a HTTP endpoint for scraping. By convention, it is a GET endpoint, and its path is usually `/metrics`.
 
@@ -46,13 +46,13 @@ Here is an example of its use in practice:
 
 {{% load-snippet-partial file="src-link/_examples/basic/4-metrics/main.go" first_line_contains="prometheusRegistry, closeMetricsServer :=" last_line_contains="metricsBuilder.AddPrometheusRouterMetrics" %}}
 
-### Example application
+## Example application
 
 To see how the metrics dashboard works in practice, you can check out the [metrics example](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/basic/4-metrics). 
 
 Follow the instructions in the example's [README](https://github.com/ThreeDotsLabs/watermill/blob/master/_examples/basic/4-metrics/README.md) to make it run and add the Prometheus data source to Grafana.
 
-### Grafana dashboard
+## Grafana dashboard
 
 We have prepared a [Grafana dashboard](https://grafana.com/grafana/dashboards/9777-watermill/) to use with the metrics implementation described above. It provides basic information about the throughput, failure rates and publish/handler durations.
 
@@ -62,7 +62,7 @@ To find out more about the metrics that are exported to Prometheus, see [Exporte
 
 <a target="_blank" href="https://threedots.tech/watermill-io/grafana_dashboard.png"><img src="https://threedots.tech/watermill-io/grafana_dashboard_small.png" /></a>
 
-#### Importing the dashboard
+### Importing the dashboard
 
 To import the Grafana dashboard, select Dashboard/Manage from the left menu, and then click on `+Import`.
 
@@ -72,7 +72,7 @@ Enter the dashboard URL https://grafana.com/dashboards/9777 (or just the ID, 977
 
 Then select your the Prometheus data source that scrapes the `/metrics` endpoint. Click on `Import`, and you're done!
 
-### Exported metrics
+## Exported metrics
 
 Listed below are all the metrics that are registered on the Prometheus Registry by `PrometheusMetricsBuilder`.
  
@@ -124,7 +124,7 @@ Additionally, every metric has the `node` label, provided by Prometheus, with va
 
 **NOTE**: As described [above](#wrapping-publishers-subscribers-and-handlers), using non-empty `namespace` or `subsystem` will result in prefixed metric names. You might need to adjust for it, for example in the definitions of panels in the Grafana dashboard.
 
-### Customization
+## Customization
 
 If you feel like some metric is missing, you can easily expand this basic implementation. The best way to do so is to use the prometheus registry that is used with the [ServeHTTP method](#exposing-the-metrics-endpoint) and register a metric according to [the documentation](https://godoc.org/github.com/prometheus/client_golang/prometheus) of the Prometheus client.
 
