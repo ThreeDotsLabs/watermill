@@ -1,0 +1,5 @@
+{{ $hasHeadings := false }}
+{{ if (isset .Fragments "Headings") }}
+  {{ $hasHeadings = gt (len .Fragments.Headings) 0 }}
+{{ end }}
+{{ $hasHeadings }}

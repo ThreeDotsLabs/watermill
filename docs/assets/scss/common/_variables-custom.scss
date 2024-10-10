@@ -1,0 +1,28 @@
+// Put your custom SCSS variables here
+$font-family-sans-serif:
+  "Heebo",
+  "sans-serif",
+  system-ui,
+  -apple-system,
+  "Segoe UI",
+  Roboto,
+  "Helvetica Neue",
+  "Noto Sans",
+  "Liberation Sans",
+  Arial,
+  sans-serif,
+  "Apple Color Emoji",
+  "Segoe UI Emoji",
+  "Segoe UI Symbol",
+  "Noto Color Emoji";
+
+$container-max-widths: (
+    sm: 540px,
+    md: 720px,
+    lg: 960px,
+    xl: 1240px,
+    xxl: 1820px
+);
+
+
+$primary: #4f46e5;
