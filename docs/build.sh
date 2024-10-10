@@ -80,3 +80,7 @@ find content/src-link -name '*.md' -delete
 python3 ./extract_middleware_godocs.py > content/src-link/middleware-defs.md
 
 hugo --gc --minify
+
+if [[ "$1" == "--copy" ]]; then
+    rm -rf content/src-link
+fi
