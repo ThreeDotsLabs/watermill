@@ -46,7 +46,7 @@ func main() {
 	poisonSubscriber, err := sql.NewSubscriber(db, sql.SubscriberConfig{
 		SchemaAdapter: sql.ConditionalPostgreSQLSchema{
 			GenerateWhereClause: func(params sql.GenerateWhereClauseParams) (string, []any) {
-				return "(metadata->>'delayed_until')::timestamptz < NOW() AT TIME ZONE 'UTC'", nil
+				return fmt.Sprintf("(metadata->>'%v')::timestamptz < NOW() AT TIME ZONE 'UTC'", delay.DelayedUntilKey), nil
 			},
 		},
 		OffsetsAdapter: sql.ConditionalPostgreSQLOffsetsAdapter{
@@ -76,7 +76,7 @@ func main() {
 
 	router := message.NewDefaultRouter(logger)
 	router.AddMiddleware(poisonQueue)
-	router.AddMiddleware(middleware.NewDelay(middleware.DelayConfig{}).Middleware)
+	router.AddMiddleware(middleware.NewDelayOnError(middleware.DelayOnErrorConfig{}).Middleware)
 
 	eventProcessor, err := cqrs.NewEventProcessorWithConfig(router, cqrs.EventProcessorConfig{
 		GenerateSubscribeTopic: func(params cqrs.EventProcessorGenerateSubscribeTopicParams) (string, error) {

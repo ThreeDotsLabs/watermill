@@ -33,8 +33,8 @@ func main() {
 		panic(err)
 	}
 
-	publisher, err = delay.DelayingPublisherDecorator(publisher, delay.DelayingPublisherDecoratorConfig{
-		DefaultDelay: 10 * time.Second,
+	publisher, err = delay.NewDelayingPublisher(publisher, delay.DelayingPublisherConfig{
+		DefaultDelay: delay.For(10 * time.Second),
 	})
 	if err != nil {
 		panic(err)
@@ -61,7 +61,7 @@ func main() {
 			return sql.NewSubscriber(db, sql.SubscriberConfig{
 				SchemaAdapter: sql.ConditionalPostgreSQLSchema{
 					GenerateWhereClause: func(params sql.GenerateWhereClauseParams) (string, []any) {
-						return "(metadata->>'delayed_until')::timestamptz < NOW() AT TIME ZONE 'UTC'", nil
+						return fmt.Sprintf("(metadata->>'%v')::timestamptz < NOW() AT TIME ZONE 'UTC'", delay.DelayedUntilKey), nil
 					},
 				},
 				OffsetsAdapter: sql.ConditionalPostgreSQLOffsetsAdapter{
@@ -109,6 +109,9 @@ func main() {
 
 	<-router.Running()
 
+	msg := message.NewMessage(watermill.NewUUID(), nil)
+	delay.Message(msg, delay.For(10*time.Second))
+
 	for {
 		e := OrderPlaced{
 			OrderID: uuid.NewString(),
@@ -117,8 +120,10 @@ func main() {
 		ctx := context.Background()
 
 		chance := rand.Intn(10)
-		if chance > 2 {
-			ctx = delay.ForWithContext(ctx, 20*time.Second)
+		if chance > 8 {
+			ctx = delay.WithContext(ctx, delay.Until(time.Now().UTC().Add(time.Minute)))
+		} else if chance > 5 {
+			ctx = delay.WithContext(ctx, delay.For(20*time.Second))
 		}
 
 		err = eventBus.Publish(ctx, e)

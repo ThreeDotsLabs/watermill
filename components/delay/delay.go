@@ -7,11 +7,33 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
+type Delay struct {
+	time     time.Time
+	duration time.Duration
+}
+
+func (d Delay) IsZero() bool {
+	return d.time.IsZero()
+}
+
+func Until(delayedUntil time.Time) Delay {
+	return Delay{
+		time:     delayedUntil,
+		duration: delayedUntil.Sub(time.Now().UTC()),
+	}
+}
+
+func For(delayedFor time.Duration) Delay {
+	return Delay{
+		time:     time.Now().UTC().Add(delayedFor),
+		duration: delayedFor,
+	}
+}
+
 type contextKey string
 
 var (
-	DelayedUntilCtxKey = contextKey("delayed_until")
-	DelayedForCtxKey   = contextKey("delayed_for")
+	delayCtxKey = contextKey("delay")
 )
 
 const (
@@ -19,29 +41,20 @@ const (
 	DelayedForKey   = "delayed_for"
 )
 
-func Until(msg *message.Message, delayedUntil time.Time) {
-	msg.Metadata.Set(DelayedUntilKey, delayedUntil.Format(time.RFC3339))
-	msg.Metadata.Set(DelayedForKey, delayedUntil.Sub(time.Now().UTC()).String())
+func WithContext(ctx context.Context, delay Delay) context.Context {
+	return context.WithValue(ctx, delayCtxKey, delay)
 }
 
-func For(msg *message.Message, delayedFor time.Duration) {
-	msg.Metadata.Set(DelayedForKey, delayedFor.String())
-	msg.Metadata.Set(DelayedUntilKey, time.Now().UTC().Add(delayedFor).Format(time.RFC3339))
+func Message(msg *message.Message, delay Delay) {
+	msg.Metadata.Set(DelayedUntilKey, delay.time.Format(time.RFC3339))
+	msg.Metadata.Set(DelayedForKey, delay.duration.String())
 }
 
-func UntilWithContext(ctx context.Context, delayedUntil time.Time) context.Context {
-	return context.WithValue(ctx, DelayedUntilCtxKey, delayedUntil)
+type DelayingPublisherConfig struct {
+	DefaultDelay Delay
 }
 
-func ForWithContext(ctx context.Context, delayedFor time.Duration) context.Context {
-	return context.WithValue(ctx, DelayedForCtxKey, delayedFor)
-}
-
-type DelayingPublisherDecoratorConfig struct {
-	DefaultDelay time.Duration
-}
-
-func DelayingPublisherDecorator(pub message.Publisher, config DelayingPublisherDecoratorConfig) (message.Publisher, error) {
+func NewDelayingPublisher(pub message.Publisher, config DelayingPublisherConfig) (message.Publisher, error) {
 	return &delayingPublisher{
 		pub:    pub,
 		config: config,
@@ -50,7 +63,7 @@ func DelayingPublisherDecorator(pub message.Publisher, config DelayingPublisherD
 
 type delayingPublisher struct {
 	pub    message.Publisher
-	config DelayingPublisherDecoratorConfig
+	config DelayingPublisherConfig
 }
 
 func (p *delayingPublisher) Publish(topic string, messages ...*message.Message) error {
@@ -69,17 +82,13 @@ func (p *delayingPublisher) applyDelay(msg *message.Message) {
 		return
 	}
 
-	if msg.Context().Value(DelayedUntilCtxKey) != nil {
-		Until(msg, msg.Context().Value(DelayedUntilCtxKey).(time.Time))
+	if msg.Context().Value(delayCtxKey) != nil {
+		delay := msg.Context().Value(delayCtxKey).(Delay)
+		Message(msg, delay)
 		return
 	}
 
-	if msg.Context().Value(DelayedForCtxKey) != nil {
-		For(msg, msg.Context().Value(DelayedForCtxKey).(time.Duration))
-		return
-	}
-
-	if p.config.DefaultDelay > 0 {
-		For(msg, p.config.DefaultDelay)
+	if !p.config.DefaultDelay.IsZero() {
+		Message(msg, p.config.DefaultDelay)
 	}
 }

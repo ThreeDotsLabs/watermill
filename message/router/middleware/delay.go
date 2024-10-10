@@ -7,16 +7,16 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
-type Delay struct {
-	config DelayConfig
+type DelayOnError struct {
+	config DelayOnErrorConfig
 }
 
-type DelayConfig struct {
+type DelayOnErrorConfig struct {
 	Delay    time.Duration
 	MaxDelay time.Duration
 }
 
-func (c *DelayConfig) setDefaults() {
+func (c *DelayOnErrorConfig) setDefaults() {
 	if c.Delay == 0 {
 		c.Delay = 10 * time.Second
 	}
@@ -25,15 +25,15 @@ func (c *DelayConfig) setDefaults() {
 	}
 }
 
-func NewDelay(config DelayConfig) *Delay {
+func NewDelayOnError(config DelayOnErrorConfig) *DelayOnError {
 	config.setDefaults()
 
-	return &Delay{
+	return &DelayOnError{
 		config: config,
 	}
 }
 
-func (d *Delay) Middleware(h message.HandlerFunc) message.HandlerFunc {
+func (d *DelayOnError) Middleware(h message.HandlerFunc) message.HandlerFunc {
 	return func(msg *message.Message) ([]*message.Message, error) {
 		msgs, err := h(msg)
 		if err != nil {
@@ -44,7 +44,7 @@ func (d *Delay) Middleware(h message.HandlerFunc) message.HandlerFunc {
 	}
 }
 
-func (d *Delay) applyDelay(msg *message.Message) {
+func (d *DelayOnError) applyDelay(msg *message.Message) {
 	delayedForStr := msg.Metadata.Get(delay.DelayedForKey)
 	delayedFor, err := time.ParseDuration(delayedForStr)
 	if err != nil {
@@ -53,7 +53,5 @@ func (d *Delay) applyDelay(msg *message.Message) {
 		delayedFor = delayedFor * 2
 	}
 
-	delayedUntil := time.Now().UTC().Add(delayedFor)
-	msg.Metadata.Set(delay.DelayedUntilKey, delayedUntil.Format(time.RFC3339))
-	msg.Metadata.Set(delay.DelayedForKey, delayedFor.String())
+	delay.Message(msg, delay.For(delayedFor))
 }
