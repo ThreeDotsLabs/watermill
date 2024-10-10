@@ -1,6 +1,6 @@
 {{/* Based on: https://github.com/gohugoio/hugo/blob/master/tpl/tplimpl/embedded/templates/twitter_cards.html */}}
 
-{{ $imagePermalink := (printf "https://academy-api.threedots.tech/ssr/image.png?%s" (collections.Querify "url" .Page.Permalink) ) }}
+{{ $imagePermalink := (printf "https://academy-api.threedots.tech/ssr/image.png?%s" (collections.Querify "url" .Permalink) ) }}
 <meta name="twitter:image" content="{{ $imagePermalink }}">
 <meta name="twitter:card" content="summary_large_image">
 

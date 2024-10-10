@@ -4,7 +4,7 @@
 <meta property="og:type" content="{{ if .IsPage }}article{{ else }}website{{ end }}">
 <meta property="og:url" content="{{ .Permalink }}">
 
-{{ $imagePermalink := (printf "https://academy-api.threedots.tech/ssr/image.png?%s" (collections.Querify "url" .Page.Permalink) ) }}
+{{ $imagePermalink := (printf "https://academy-api.threedots.tech/ssr/image.png?%s" (collections.Querify "url" .Permalink) ) }}
 <meta property="og:image" content="{{ $imagePermalink }}">
 
 {{- if .IsPage }}
