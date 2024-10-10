@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/ThreeDotsLabs/watermill/components/delay"
-
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 

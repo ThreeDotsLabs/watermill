@@ -1,9 +1,17 @@
 package delay
 
 import (
+	"context"
 	"time"
 
 	"github.com/ThreeDotsLabs/watermill/message"
+)
+
+type contextKey string
+
+var (
+	DelayedUntilCtxKey = contextKey("delayed_until")
+	DelayedForCtxKey   = contextKey("delayed_for")
 )
 
 const (
@@ -21,25 +29,57 @@ func For(msg *message.Message, delayedFor time.Duration) {
 	msg.Metadata.Set(DelayedUntilKey, time.Now().UTC().Add(delayedFor).Format(time.RFC3339))
 }
 
-func DelayingPublisherDecorator(pub message.Publisher, delay time.Duration) message.Publisher {
+func UntilWithContext(ctx context.Context, delayedUntil time.Time) context.Context {
+	return context.WithValue(ctx, DelayedUntilCtxKey, delayedUntil)
+}
+
+func ForWithContext(ctx context.Context, delayedFor time.Duration) context.Context {
+	return context.WithValue(ctx, DelayedForCtxKey, delayedFor)
+}
+
+type DelayingPublisherDecoratorConfig struct {
+	DefaultDelay time.Duration
+}
+
+func DelayingPublisherDecorator(pub message.Publisher, config DelayingPublisherDecoratorConfig) (message.Publisher, error) {
 	return &delayingPublisher{
-		pub:   pub,
-		delay: delay,
-	}
+		pub:    pub,
+		config: config,
+	}, nil
 }
 
 type delayingPublisher struct {
-	pub   message.Publisher
-	delay time.Duration
+	pub    message.Publisher
+	config DelayingPublisherDecoratorConfig
 }
 
 func (p *delayingPublisher) Publish(topic string, messages ...*message.Message) error {
 	for i := range messages {
-		For(messages[i], p.delay)
+		p.applyDelay(messages[i])
 	}
 	return p.pub.Publish(topic, messages...)
 }
 
 func (p *delayingPublisher) Close() error {
 	return p.pub.Close()
+}
+
+func (p *delayingPublisher) applyDelay(msg *message.Message) {
+	if msg.Metadata.Get(DelayedForKey) != "" {
+		return
+	}
+
+	if msg.Context().Value(DelayedUntilCtxKey) != nil {
+		Until(msg, msg.Context().Value(DelayedUntilCtxKey).(time.Time))
+		return
+	}
+
+	if msg.Context().Value(DelayedForCtxKey) != nil {
+		For(msg, msg.Context().Value(DelayedForCtxKey).(time.Duration))
+		return
+	}
+
+	if p.config.DefaultDelay > 0 {
+		For(msg, p.config.DefaultDelay)
+	}
 }

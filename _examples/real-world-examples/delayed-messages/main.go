@@ -14,9 +14,7 @@ import (
 	"github.com/ThreeDotsLabs/watermill-sql/v3/pkg/sql"
 	"github.com/ThreeDotsLabs/watermill/components/cqrs"
 	"github.com/ThreeDotsLabs/watermill/components/delay"
-	"github.com/ThreeDotsLabs/watermill/components/requeuer"
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
 )
 
 func main() {
@@ -27,33 +25,17 @@ func main() {
 
 	logger := watermill.NewStdLogger(false, false)
 
-	poisonPublisher, err := sql.NewPublisher(db, sql.PublisherConfig{
-		SchemaAdapter:        sql.ConditionalPostgreSQLSchema{},
-		AutoInitializeSchema: true,
+	var publisher message.Publisher
+	publisher, err = sql.NewPublisher(db, sql.PublisherConfig{
+		SchemaAdapter: sql.ConditionalPostgreSQLSchema{},
 	}, logger)
 	if err != nil {
 		panic(err)
 	}
 
-	publisher, err := sql.NewPublisher(db, sql.PublisherConfig{
-		SchemaAdapter:        sql.DefaultPostgreSQLSchema{},
-		AutoInitializeSchema: true,
-	}, logger)
-	if err != nil {
-		panic(err)
-	}
-
-	poisonSubscriber, err := sql.NewSubscriber(db, sql.SubscriberConfig{
-		SchemaAdapter: sql.ConditionalPostgreSQLSchema{
-			GenerateWhereClause: func(params sql.GenerateWhereClauseParams) (string, []any) {
-				return "(metadata->>'delayed_until')::timestamptz < NOW() AT TIME ZONE 'UTC'", nil
-			},
-		},
-		OffsetsAdapter: sql.ConditionalPostgreSQLOffsetsAdapter{
-			DeleteOnAck: true,
-		},
-		InitializeSchema: true,
-	}, logger)
+	publisher, err = delay.DelayingPublisherDecorator(publisher, delay.DelayingPublisherDecoratorConfig{
+		DefaultDelay: 10 * time.Second,
+	})
 	if err != nil {
 		panic(err)
 	}
@@ -69,14 +51,7 @@ func main() {
 		panic(err)
 	}
 
-	poisonQueue, err := middleware.PoisonQueue(poisonPublisher, "poison")
-	if err != nil {
-		panic(err)
-	}
-
 	router := message.NewDefaultRouter(logger)
-	router.AddMiddleware(poisonQueue)
-	router.AddMiddleware(middleware.NewDelay(middleware.DelayConfig{}).Middleware)
 
 	eventProcessor, err := cqrs.NewEventProcessorWithConfig(router, cqrs.EventProcessorConfig{
 		GenerateSubscribeTopic: func(params cqrs.EventProcessorGenerateSubscribeTopicParams) (string, error) {
@@ -84,8 +59,14 @@ func main() {
 		},
 		SubscriberConstructor: func(params cqrs.EventProcessorSubscriberConstructorParams) (message.Subscriber, error) {
 			return sql.NewSubscriber(db, sql.SubscriberConfig{
-				SchemaAdapter:    sql.DefaultPostgreSQLSchema{},
-				OffsetsAdapter:   sql.DefaultPostgreSQLOffsetsAdapter{},
+				SchemaAdapter: sql.ConditionalPostgreSQLSchema{
+					GenerateWhereClause: func(params sql.GenerateWhereClauseParams) (string, []any) {
+						return "(metadata->>'delayed_until')::timestamptz < NOW() AT TIME ZONE 'UTC'", nil
+					},
+				},
+				OffsetsAdapter: sql.ConditionalPostgreSQLOffsetsAdapter{
+					DeleteOnAck: true,
+				},
 				InitializeSchema: true,
 			}, logger)
 		},
@@ -103,18 +84,12 @@ func main() {
 				fmt.Println("Received order placed:", event.OrderID)
 
 				msg := cqrs.OriginalMessageFromCtx(ctx)
-				retries := msg.Metadata.Get(requeuer.RetriesKey)
 				delayedUntil := msg.Metadata.Get(delay.DelayedUntilKey)
 				delayedFor := msg.Metadata.Get(delay.DelayedForKey)
 
-				if retries != "" {
-					fmt.Println("\tRetries:", retries)
+				if delayedUntil != "" {
 					fmt.Println("\tDelayed until:", delayedUntil)
 					fmt.Println("\tDelayed for:", delayedFor)
-				}
-
-				if event.OrderID == "" {
-					return fmt.Errorf("empty order_id")
 				}
 
 				return nil
@@ -124,29 +99,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
-	requeuer, err := requeuer.NewRequeuer(requeuer.Config{
-		Subscriber:     poisonSubscriber,
-		SubscribeTopic: "poison",
-		Publisher:      publisher,
-		GeneratePublishTopic: func(params requeuer.GeneratePublishTopicParams) (string, error) {
-			topic := params.Message.Metadata.Get(middleware.PoisonedTopicKey)
-			if topic == "" {
-				return "", fmt.Errorf("missing topic in metadata")
-			}
-			return topic, nil
-		},
-	}, logger)
-	if err != nil {
-		panic(err)
-	}
-
-	go func() {
-		err = requeuer.Run(context.Background())
-		if err != nil {
-			panic(err)
-		}
-	}()
 
 	go func() {
 		err = router.Run(context.Background())
@@ -158,15 +110,18 @@ func main() {
 	<-router.Running()
 
 	for {
-		var orderID string
+		e := OrderPlaced{
+			OrderID: uuid.NewString(),
+		}
+
+		ctx := context.Background()
+
 		chance := rand.Intn(10)
 		if chance > 2 {
-			orderID = uuid.NewString()
+			ctx = delay.ForWithContext(ctx, 20*time.Second)
 		}
-		e := OrderPlaced{
-			OrderID: orderID,
-		}
-		err = eventBus.Publish(context.Background(), e)
+
+		err = eventBus.Publish(ctx, e)
 		if err != nil {
 			panic(err)
 		}

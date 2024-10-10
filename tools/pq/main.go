@@ -9,6 +9,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 
+	"github.com/ThreeDotsLabs/watermill/components/delay"
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
@@ -199,12 +200,12 @@ func (r *Repository) AllMessages() ([]Message, error) {
 		if err != nil {
 			return nil, err
 		}
-		messages[i].DelayedUntil = metadata["delayed_until"]
-		messages[i].DelayedFor = metadata["delayed_for"]
+		messages[i].DelayedUntil = metadata[delay.DelayedUntilKey]
+		messages[i].DelayedFor = metadata[delay.DelayedForKey]
 		messages[i].Topic = metadata[middleware.PoisonedTopicKey]
 
 		// Calculate the time until the message should be requeued
-		delayedUntil, err := time.Parse(time.RFC3339, metadata["delayed_until"])
+		delayedUntil, err := time.Parse(time.RFC3339, metadata[delay.DelayedUntilKey])
 		if err != nil {
 			return nil, err
 		}
