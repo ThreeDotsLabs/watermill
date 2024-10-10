@@ -15,12 +15,12 @@ function cloneOrPull() {
 }
 
 if [[ "$1" == "--copy" ]]; then
-    rm content/src-link -r || true
+    rm -rf content/src-link || true
     mkdir content/src-link/
-    cp ../message/ content/src-link/ -r
-    cp ../pubsub/ content/src-link/ -r
-    cp ../_examples/ content/src-link/ -r
-    cp ../components/ content/src-link/ -r
+    cp -r ../message content/src-link/
+    cp -r ../pubsub content/src-link/
+    cp -r ../_examples content/src-link/
+    cp -r ../components content/src-link/
 else
     declare -a files_to_link=(
         "_examples"
@@ -76,11 +76,8 @@ cloneOrPull "https://github.com/ThreeDotsLabs/watermill-bolt.git" content/src-li
 cloneOrPull "https://github.com/ThreeDotsLabs/watermill-redisstream.git" content/src-link/watermill-redisstream
 
 find content/src-link -name '*.md' -delete
+find content/src-link -name '*.html' -delete
 
 python3 ./extract_middleware_godocs.py > content/src-link/middleware-defs.md
 
 hugo --gc --minify
-
-if [[ "$1" == "--copy" ]]; then
-    rm -rf content/src-link
-fi
