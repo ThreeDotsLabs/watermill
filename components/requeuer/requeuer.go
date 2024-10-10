@@ -13,6 +13,7 @@ import (
 
 const RetriesKey = "requeuer_retries"
 
+// Requeuer is a component that moves messages from one topic to another, with optional delay.
 type Requeuer struct {
 	config Config
 }
