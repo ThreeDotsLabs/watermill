@@ -50,34 +50,34 @@ func Message(msg *message.Message, delay Delay) {
 	msg.Metadata.Set(DelayedForKey, delay.duration.String())
 }
 
-type DelayingPublisherConfig struct {
+type PublisherConfig struct {
 	DefaultDelay Delay
 }
 
-func NewDelayingPublisher(pub message.Publisher, config DelayingPublisherConfig) (message.Publisher, error) {
-	return &delayingPublisher{
+func NewPublisher(pub message.Publisher, config PublisherConfig) (message.Publisher, error) {
+	return &publisher{
 		pub:    pub,
 		config: config,
 	}, nil
 }
 
-type delayingPublisher struct {
+type publisher struct {
 	pub    message.Publisher
-	config DelayingPublisherConfig
+	config PublisherConfig
 }
 
-func (p *delayingPublisher) Publish(topic string, messages ...*message.Message) error {
+func (p *publisher) Publish(topic string, messages ...*message.Message) error {
 	for i := range messages {
 		p.applyDelay(messages[i])
 	}
 	return p.pub.Publish(topic, messages...)
 }
 
-func (p *delayingPublisher) Close() error {
+func (p *publisher) Close() error {
 	return p.pub.Close()
 }
 
-func (p *delayingPublisher) applyDelay(msg *message.Message) {
+func (p *publisher) applyDelay(msg *message.Message) {
 	if msg.Metadata.Get(DelayedForKey) != "" {
 		return
 	}

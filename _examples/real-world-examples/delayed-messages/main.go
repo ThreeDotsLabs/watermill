@@ -25,16 +25,11 @@ func main() {
 
 	logger := watermill.NewStdLogger(false, false)
 
-	var publisher message.Publisher
-	publisher, err = sql.NewPublisher(db, sql.PublisherConfig{
-		SchemaAdapter: sql.ConditionalPostgreSQLSchema{},
-	}, logger)
-	if err != nil {
-		panic(err)
-	}
-
-	publisher, err = delay.NewDelayingPublisher(publisher, delay.DelayingPublisherConfig{
-		DefaultDelay: delay.For(10 * time.Second),
+	publisher, err := sql.NewDelayedPostgresPublisher(db, sql.DelayedPostgresPublisherConfig{
+		DelayPublisherConfig: delay.PublisherConfig{
+			DefaultDelay: delay.For(10 * time.Second),
+		},
+		Logger: logger,
 	})
 	if err != nil {
 		panic(err)
@@ -58,17 +53,9 @@ func main() {
 			return params.EventName, nil
 		},
 		SubscriberConstructor: func(params cqrs.EventProcessorSubscriberConstructorParams) (message.Subscriber, error) {
-			return sql.NewSubscriber(db, sql.SubscriberConfig{
-				SchemaAdapter: sql.ConditionalPostgreSQLSchema{
-					GenerateWhereClause: func(params sql.GenerateWhereClauseParams) (string, []any) {
-						return fmt.Sprintf("(metadata->>'%v')::timestamptz < NOW() AT TIME ZONE 'UTC'", delay.DelayedUntilKey), nil
-					},
-				},
-				OffsetsAdapter: sql.ConditionalPostgreSQLOffsetsAdapter{
-					DeleteOnAck: true,
-				},
-				InitializeSchema: true,
-			}, logger)
+			return sql.NewDelayedPostgresSubscriber(db, sql.DelayedPostgresSubscriberConfig{
+				Logger: logger,
+			})
 		},
 		Marshaler: cqrs.JSONMarshaler{},
 		Logger:    logger,

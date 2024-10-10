@@ -21,3 +21,4 @@ require (
 )
 
 replace github.com/ThreeDotsLabs/watermill => ../../../
+replace github.com/ThreeDotsLabs/watermill-sql/v3 => ../../../../watermill-sql

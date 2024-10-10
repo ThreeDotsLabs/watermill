@@ -27,10 +27,9 @@ func main() {
 
 	logger := watermill.NewStdLogger(false, false)
 
-	poisonPublisher, err := sql.NewPublisher(db, sql.PublisherConfig{
-		SchemaAdapter:        sql.ConditionalPostgreSQLSchema{},
-		AutoInitializeSchema: true,
-	}, logger)
+	poisonPublisher, err := sql.NewDelayedPostgresPublisher(db, sql.DelayedPostgresPublisherConfig{
+		Logger: logger,
+	})
 	if err != nil {
 		panic(err)
 	}
@@ -43,17 +42,9 @@ func main() {
 		panic(err)
 	}
 
-	poisonSubscriber, err := sql.NewSubscriber(db, sql.SubscriberConfig{
-		SchemaAdapter: sql.ConditionalPostgreSQLSchema{
-			GenerateWhereClause: func(params sql.GenerateWhereClauseParams) (string, []any) {
-				return fmt.Sprintf("(metadata->>'%v')::timestamptz < NOW() AT TIME ZONE 'UTC'", delay.DelayedUntilKey), nil
-			},
-		},
-		OffsetsAdapter: sql.ConditionalPostgreSQLOffsetsAdapter{
-			DeleteOnAck: true,
-		},
-		InitializeSchema: true,
-	}, logger)
+	poisonSubscriber, err := sql.NewDelayedPostgresSubscriber(db, sql.DelayedPostgresSubscriberConfig{
+		Logger: logger,
+	})
 	if err != nil {
 		panic(err)
 	}
