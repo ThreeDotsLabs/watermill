@@ -1,23 +1,30 @@
 [build]
-  command = "hugo version && ./build.sh --copy"
+  command = "./build.sh --copy && npm run build"
   base = "docs/"
   publish = "docs/public/"
 
-[context.production.environment]
-  HUGO_VERSION = "0.110.0"
-  HUGO_ENV = "production"
-  HUGO_ENABLEGITINFO = "true"
-
-[context.deploy-preview.environment]
-  HUGO_VERSION = "0.110.0"
-  HUGO_ENABLEGITINFO = "true"
-
-[context.branch-deploy.environment]
-  HUGO_VERSION = "0.110.0"
-  HUGO_ENABLEGITINFO = "true"
+[build.environment]
+  NODE_VERSION = "20.11.0"
+  NPM_VERSION = "10.2.4"
+  HUGO_VERSION = "0.127.0"
 
 [[redirects]]
   from = "/api/event"
   to = "https://academy-api.threedots.tech/api/event"
   force = true
   status = 200
+
+[[redirects]]
+  from = "/docs/fanin"
+  to = "/advanced/fanin/"
+  status = 301
+
+[[redirects]]
+  from = "/docs/metrics"
+  to = "/advanced/metrics/"
+  status = 301
+
+[[redirects]]
+  from = "/docs/pub-sub-implementing"
+  to = "/development/pub-sub-implementing/"
+  status = 301

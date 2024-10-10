@@ -22,13 +22,16 @@
     {{ $linkFile = print "docs/content/" $linkFile }}
 {{ end }}
 
-<small class="smaller">Full source: [{{ $linkFile }}](https://github.com/ThreeDotsLabs/watermill/tree/master/{{ $linkFile }})</small>
-
 {{ range $elem_key, $elem_val := split $content "\n" }}
     {{if and (or (not $has_start_line) (ge (add $elem_key 1) ($start_line | int))) (or (not $has_end_line) (le (add $elem_key 1) ($end_line | int)))}}
         {{ $lines = $lines | append $elem_val }}
     {{ end }}
 {{ end }}
 
+<div class="expressive-code">
+    <figure class="frame not-content">
+        {{ transform.Highlight (delimit $lines "\n" | safeHTML) (.Get "type" | default "go") }}
+    </figure>
+</div>
 
-{{ highlight (delimit $lines "\n") (.Get "type" | default "go") "" }}
+<small class="smaller">Full source: [{{ $linkFile }}](https://github.com/ThreeDotsLabs/watermill/tree/master/{{ $linkFile }})</small>

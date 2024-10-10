@@ -10,8 +10,8 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
-// FanOut is a component that receives messages from the subscriber and passes them
-// to all publishers. In effect, messages are "multiplied".
+// FanOut is a component that receives messages from a topic and passes them
+// to all subscribers. In effect, messages are "multiplied".
 //
 // A typical use case for using FanOut is having one external subscription and multiple workers
 // inside the process.
