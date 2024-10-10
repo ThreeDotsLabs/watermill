@@ -1,5 +1,5 @@
 # Watermill
-<img align="right" width="200" src="https://threedots.tech/watermill-io/watermill-logo.png">
+<img align="right" width="300" src="https://watermill.io/img/gopher.svg">
 
 [![CI Status](https://github.com/ThreeDotsLabs/watermill/actions/workflows/master.yml/badge.svg)](https://github.com/ThreeDotsLabs/watermill/actions/workflows/master.yml)
 [![Go Reference](https://pkg.go.dev/badge/github.com/ThreeDotsLabs/watermill.svg)](https://pkg.go.dev/github.com/ThreeDotsLabs/watermill)
