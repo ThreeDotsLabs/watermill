@@ -77,7 +77,7 @@ func main() {
 
 	router := message.NewDefaultRouter(logger)
 	router.AddMiddleware(poisonQueue)
-	router.AddMiddleware(middleware.NewDelayMetadata(middleware.DelayMetadataConfig{}).Middleware)
+	router.AddMiddleware(middleware.NewDelay(middleware.DelayConfig{}).Middleware)
 
 	eventProcessor, err := cqrs.NewEventProcessorWithConfig(router, cqrs.EventProcessorConfig{
 		GenerateSubscribeTopic: func(params cqrs.EventProcessorGenerateSubscribeTopicParams) (string, error) {
