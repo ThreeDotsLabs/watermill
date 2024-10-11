@@ -13,15 +13,18 @@ import (
 
 const RetriesKey = "requeuer_retries"
 
-// Requeuer is a component that moves messages from one topic to another, with optional delay.
+// Requeuer is a component that moves messages from one topic to another.
+// It can be used to requeue messages that failed to process.
 type Requeuer struct {
 	config Config
 }
 
+// GeneratePublishTopicParams are the parameters passed to the GeneratePublishTopic function.
 type GeneratePublishTopicParams struct {
 	Message *message.Message
 }
 
+// Config is the configuration for the Requeuer.
 type Config struct {
 	// Subscriber is the subscriber to consume messages from. Required.
 	Subscriber message.Subscriber
@@ -83,6 +86,8 @@ func (c *Config) validate() error {
 	return nil
 }
 
+// NewRequeuer creates a new Requeuer with the provided Config.
+// It's not started automatically. You need to call Run on the returned Requeuer.
 func NewRequeuer(
 	config Config,
 	logger watermill.LoggerAdapter,
@@ -147,6 +152,7 @@ func (r *Requeuer) handler(msg *message.Message) error {
 	return nil
 }
 
+// Run runs the Requeuer.
 func (r *Requeuer) Run(ctx context.Context) error {
 	return r.config.Router.Run(ctx)
 }

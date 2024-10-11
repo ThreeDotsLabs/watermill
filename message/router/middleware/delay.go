@@ -7,10 +7,14 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
+// DelayOnError is a middleware that adds the delay metadata to the message if an error occurs.
+//
+// IMPORTANT: The delay metadata doesn't cause delays with all Pub/Subs! Using it won't have any effect on Pub/Subs that don't support it.
 type DelayOnError struct {
 	config DelayOnErrorConfig
 }
 
+// DelayOnErrorConfig is the configuration for the DelayOnError middleware.
 type DelayOnErrorConfig struct {
 	Delay    time.Duration
 	MaxDelay time.Duration
@@ -25,6 +29,7 @@ func (c *DelayOnErrorConfig) setDefaults() {
 	}
 }
 
+// NewDelayOnError creates a new DelayOnError middleware.
 func NewDelayOnError(config DelayOnErrorConfig) *DelayOnError {
 	config.setDefaults()
 
