@@ -7,16 +7,15 @@ import (
 	"slices"
 	"time"
 
-	"github.com/jmoiron/sqlx"
-	_ "github.com/lib/pq"
-	"golang.org/x/exp/maps"
-
 	"github.com/ThreeDotsLabs/watermill/components/delay"
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
+
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	_ "github.com/lib/pq"
+	"golang.org/x/exp/maps"
 )
 
 var messageActions = []string{"<- Back", "Show payload", "Requeue", "Delete"}
@@ -26,13 +25,11 @@ type MessagesUpdated struct {
 }
 
 func FetchMessages(sub chan MessagesUpdated) tea.Cmd {
-	db, err := sqlx.Connect("postgres", "postgres://watermill:password@localhost/watermill?sslmode=disable")
+	var repo repository
+	repo, err := NewPostgresRepository("postgres://watermill:password@localhost/watermill?sslmode=disable")
 	if err != nil {
 		panic(err)
 	}
-
-	var repo repository
-	repo = NewPostgresRepository(db)
 
 	return func() tea.Msg {
 		for {
@@ -96,9 +93,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			rows := make([]table.Row, len(msg.Messages))
 			for i, message := range msg.Messages {
 				rows[i] = table.Row{
-					fmt.Sprint(message.Offset),
+					message.ID,
 					message.UUID,
-					message.Topic,
+					message.OriginalTopic,
 					//message.DelayedUntil,
 					message.DelayedFor,
 					message.RequeueIn.String(),
@@ -188,10 +185,10 @@ func (m model) View() string {
 		msg := m.messages[*m.chosenMessage]
 
 		out := fmt.Sprintf(
-			"Offset: %v\nUUID: %v\nTopic: %v\nDelayed For: %v\nDelayed Until: %v\n\n",
-			msg.Offset,
+			"ID: %v\nUUID: %v\nOriginal Topic: %v\nDelayed For: %v\nDelayed Until: %v\n\n",
+			msg.ID,
 			msg.UUID,
-			msg.Topic,
+			msg.OriginalTopic,
 			msg.DelayedFor,
 			msg.DelayedUntil,
 		)
@@ -203,17 +200,11 @@ func (m model) View() string {
 
 		out += "Metadata:\n"
 
-		var metadata map[string]string
-		err := json.Unmarshal([]byte(msg.Metadata), &metadata)
-		if err != nil {
-			out += err.Error()
-		} else {
-			keys := maps.Keys(metadata)
-			slices.Sort(keys)
-			for _, k := range keys {
-				v := metadata[k]
-				out += fmt.Sprintf("  %v: %v\n", k, v)
-			}
+		keys := maps.Keys(msg.Metadata)
+		slices.Sort(keys)
+		for _, k := range keys {
+			v := msg.Metadata[k]
+			out += fmt.Sprintf("  %v: %v\n", k, v)
 		}
 
 		out += "\nActions:"
@@ -232,10 +223,10 @@ func (m model) View() string {
 
 func newModel() model {
 	columns := []table.Column{
-		{Title: "Offset", Width: 8},
+		{Title: "ID", Width: 8},
 		{Title: "UUID", Width: 40},
 		//{Title: "Delayed Until", Width: 22},
-		{Title: "Topic", Width: 20},
+		{Title: "Original Topic", Width: 20},
 		{Title: "Delayed For", Width: 14},
 		{Title: "Requeue In", Width: 14},
 	}
@@ -274,68 +265,45 @@ func main() {
 	}
 }
 
-// TODO split from db keys
 type Message struct {
-	Offset       int    `db:"offset"`
-	UUID         string `db:"uuid"`
-	Payload      string `db:"payload"`
-	Metadata     string `db:"metadata"`
-	DelayedUntil string
-	DelayedFor   string
-	RequeueIn    time.Duration
-	Topic        string
-	CreatedAt    time.Time `db:"created_at"`
+	// ID is a unique message ID across the Pub/Sub's topic.
+	ID       string
+	UUID     string
+	Payload  string
+	Metadata map[string]string
+
+	OriginalTopic string
+	DelayedUntil  string
+	DelayedFor    string
+	RequeueIn     time.Duration
+}
+
+func NewMessage(id string, uuid string, payload string, metadata map[string]string) (Message, error) {
+	originalTopic := metadata[middleware.PoisonedTopicKey]
+
+	// Calculate the time until the message should be requeued
+	delayedUntil, err := time.Parse(time.RFC3339, metadata[delay.DelayedUntilKey])
+	if err != nil {
+		return Message{}, err
+	}
+
+	delayedFor := metadata[delay.DelayedForKey]
+	requeueIn := delayedUntil.Sub(time.Now().UTC()).Round(time.Second)
+
+	return Message{
+		ID:            id,
+		UUID:          uuid,
+		Payload:       payload,
+		Metadata:      metadata,
+		OriginalTopic: originalTopic,
+		DelayedUntil:  delayedUntil.String(),
+		DelayedFor:    delayedFor,
+		RequeueIn:     requeueIn,
+	}, nil
 }
 
 type repository interface {
 	AllMessages(topic string) ([]Message, error)
 	Requeue(offset int) error
 	Delete(offset int) error
-}
-
-type PostgresRepository struct {
-	db *sqlx.DB
-}
-
-func NewPostgresRepository(db *sqlx.DB) *PostgresRepository {
-	return &PostgresRepository{db: db}
-}
-
-func (r *PostgresRepository) AllMessages(topic string) ([]Message, error) {
-	var messages []Message
-	err := r.db.Select(&messages, `SELECT "offset", uuid, payload, metadata, created_at FROM watermill_poison`)
-	if err != nil {
-		return nil, err
-	}
-
-	for i, msg := range messages {
-		var metadata map[string]string
-		err := json.Unmarshal([]byte(msg.Metadata), &metadata)
-		if err != nil {
-			return nil, err
-		}
-		messages[i].DelayedUntil = metadata[delay.DelayedUntilKey]
-		messages[i].DelayedFor = metadata[delay.DelayedForKey]
-		messages[i].Topic = metadata[middleware.PoisonedTopicKey]
-
-		// Calculate the time until the message should be requeued
-		delayedUntil, err := time.Parse(time.RFC3339, metadata[delay.DelayedUntilKey])
-		if err != nil {
-			return nil, err
-		}
-
-		messages[i].RequeueIn = delayedUntil.Sub(time.Now().UTC()).Round(time.Second)
-	}
-
-	return messages, nil
-}
-
-func (r *PostgresRepository) Requeue(offset int) error {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (r *PostgresRepository) Delete(offset int) error {
-	//TODO implement me
-	panic("implement me")
 }
