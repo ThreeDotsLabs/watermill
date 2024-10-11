@@ -7,7 +7,8 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/google/uuid"
+	"github.com/brianvoe/gofakeit/v6"
+
 	_ "github.com/lib/pq"
 
 	"github.com/ThreeDotsLabs/watermill"
@@ -27,7 +28,7 @@ func main() {
 
 	logger := watermill.NewStdLogger(false, false)
 
-	poisonPublisher, err := sql.NewDelayedPostgresPublisher(db, sql.DelayedPostgresPublisherConfig{
+	poisonPublisher, err := sql.NewDelayedPostgreSQLPublisher(db, sql.DelayedPostgreSQLPublisherConfig{
 		Logger: logger,
 	})
 	if err != nil {
@@ -42,8 +43,9 @@ func main() {
 		panic(err)
 	}
 
-	poisonSubscriber, err := sql.NewDelayedPostgresSubscriber(db, sql.DelayedPostgresSubscriberConfig{
-		Logger: logger,
+	poisonSubscriber, err := sql.NewDelayedPostgreSQLSubscriber(db, sql.DelayedPostgreSQLSubscriberConfig{
+		DeleteOnAck: true,
+		Logger:      logger,
 	})
 	if err != nil {
 		panic(err)
@@ -149,14 +151,13 @@ func main() {
 	<-router.Running()
 
 	for {
-		var orderID string
+		e := newFakeOrderPlaced()
+
 		chance := rand.Intn(10)
-		if chance > 2 {
-			orderID = uuid.NewString()
+		if chance < 2 {
+			e.OrderID = ""
 		}
-		e := OrderPlaced{
-			OrderID: orderID,
-		}
+
 		err = eventBus.Publish(context.Background(), e)
 		if err != nil {
 			panic(err)
@@ -166,6 +167,56 @@ func main() {
 	}
 }
 
+func newFakeOrderPlaced() OrderPlaced {
+	var products []Product
+
+	for i := 0; i < rand.Intn(5)+1; i++ {
+		products = append(products, Product{
+			ID:   watermill.NewShortUUID(),
+			Name: gofakeit.ProductName(),
+		})
+	}
+
+	return OrderPlaced{
+		OrderID: watermill.NewUUID(),
+		Customer: Customer{
+			ID:    watermill.NewULID(),
+			Name:  gofakeit.Name(),
+			Email: gofakeit.Email(),
+			Phone: gofakeit.Phone(),
+		},
+		Address: Address{
+			Street:  gofakeit.Street(),
+			City:    gofakeit.City(),
+			Zip:     gofakeit.Zip(),
+			Country: gofakeit.Country(),
+		},
+		Products: products,
+	}
+}
+
 type OrderPlaced struct {
-	OrderID string `json:"order_id"`
+	OrderID  string    `json:"order_id"`
+	Customer Customer  `json:"customer"`
+	Address  Address   `json:"address"`
+	Products []Product `json:"products"`
+}
+
+type Customer struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Email string `json:"email"`
+	Phone string `json:"phone"`
+}
+
+type Address struct {
+	Street  string `json:"street"`
+	City    string `json:"city"`
+	Zip     string `json:"zip"`
+	Country string `json:"country"`
+}
+
+type Product struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
 }

@@ -3,8 +3,8 @@ module delayed-messsages
 go 1.23.0
 
 require (
-	github.com/ThreeDotsLabs/watermill v1.3.7
-	github.com/ThreeDotsLabs/watermill-sql/v3 v3.0.4-0.20240906122508-e0de57ad1d8e
+	github.com/ThreeDotsLabs/watermill v1.4.0-rc.1.0.20241011082756-1cb09cdf7d08
+	github.com/ThreeDotsLabs/watermill-sql/v3 v3.1.1-0.20241011111920-9b207ae2da1c
 	github.com/google/uuid v1.6.0
 	github.com/lib/pq v1.10.2
 )
@@ -21,4 +21,5 @@ require (
 )
 
 replace github.com/ThreeDotsLabs/watermill => ../../../
+
 replace github.com/ThreeDotsLabs/watermill-sql/v3 => ../../../../watermill-sql

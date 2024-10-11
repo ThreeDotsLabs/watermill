@@ -4,17 +4,22 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"slices"
 	"time"
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
+	"golang.org/x/exp/maps"
 
 	"github.com/ThreeDotsLabs/watermill/components/delay"
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
 	"github.com/charmbracelet/bubbles/table"
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
+
+var messageActions = []string{"<- Back", "Show payload", "Requeue", "Delete"}
 
 type MessagesUpdated struct {
 	Messages []Message
@@ -26,11 +31,12 @@ func FetchMessages(sub chan MessagesUpdated) tea.Cmd {
 		panic(err)
 	}
 
-	repo := NewRepository(db)
+	var repo repository
+	repo = NewPostgresRepository(db)
 
 	return func() tea.Msg {
 		for {
-			msgs, err := repo.AllMessages()
+			msgs, err := repo.AllMessages("poison")
 			if err != nil {
 				panic(err)
 			}
@@ -58,6 +64,12 @@ type model struct {
 	sub           chan MessagesUpdated
 	chosenMessage *int
 	table         table.Model
+	messages      []Message
+
+	chosenAction int
+
+	showingPayload  bool
+	payloadViewport viewport.Model
 }
 
 func (m model) Init() tea.Cmd {
@@ -72,10 +84,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
 			switch msg.String() {
-			case "ctrl+c", "q", "esc":
+			case "ctrl+c", "q":
 				return m, tea.Quit
 			case " ", "enter":
 				c := m.table.Cursor()
+				m.chosenAction = 0
 				m.chosenMessage = &c
 			}
 
@@ -92,6 +105,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 			m.table.SetRows(rows)
+			m.messages = msg.Messages
 			return m, WaitForMessages(m.sub)
 		}
 
@@ -99,13 +113,67 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.table, cmd = m.table.Update(msg)
 		return m, cmd
 	} else {
-		switch msg := msg.(type) {
-		case tea.KeyMsg:
-			switch msg.String() {
-			case "ctrl+c", "q":
-				return m, tea.Quit
-			case "esc":
-				m.chosenMessage = nil
+		if m.showingPayload {
+			switch msg := msg.(type) {
+			case tea.KeyMsg:
+				switch msg.String() {
+				case "ctrl+c", "q":
+					return m, tea.Quit
+				case "esc", "backspace":
+					m.showingPayload = false
+				}
+			}
+
+			var cmd tea.Cmd
+			m.payloadViewport, cmd = m.payloadViewport.Update(msg)
+			return m, cmd
+		} else {
+			switch msg := msg.(type) {
+			case tea.KeyMsg:
+				switch msg.String() {
+				case "ctrl+c", "q":
+					return m, tea.Quit
+				case "esc", "backspace":
+					m.chosenMessage = nil
+				case "j", "down":
+					m.chosenAction++
+					if m.chosenAction >= len(messageActions) {
+						m.chosenAction = len(messageActions) - 1
+					}
+				case "k", "up":
+					m.chosenAction--
+					if m.chosenAction < 0 {
+						m.chosenAction = 0
+					}
+				case " ", "enter":
+					switch m.chosenAction {
+					case 0:
+						m.chosenMessage = nil
+					case 1:
+						// Show payload
+						m.showingPayload = true
+						m.payloadViewport = viewport.New(80, 20)
+						b := lipgloss.RoundedBorder()
+						m.payloadViewport.Style = lipgloss.NewStyle().BorderStyle(b).Padding(0, 1)
+
+						payload := m.messages[*m.chosenMessage].Payload
+
+						var jsonPayload any
+						err := json.Unmarshal([]byte(payload), &jsonPayload)
+						if err == nil {
+							pretty, err := json.MarshalIndent(jsonPayload, "", "    ")
+							if err == nil {
+								payload = string(pretty)
+							}
+						}
+
+						m.payloadViewport.SetContent(payload)
+					case 2:
+						// Requeue
+					case 3:
+						// Delete
+					}
+				}
 			}
 		}
 
@@ -117,9 +185,48 @@ func (m model) View() string {
 	if m.chosenMessage == nil {
 		return baseStyle.Render(m.table.View()) + "\n  " + m.table.HelpView() + "\n"
 	} else {
-		row := m.table.Rows()[*m.chosenMessage]
+		msg := m.messages[*m.chosenMessage]
 
-		return row[0]
+		out := fmt.Sprintf(
+			"Offset: %v\nUUID: %v\nTopic: %v\nDelayed For: %v\nDelayed Until: %v\n\n",
+			msg.Offset,
+			msg.UUID,
+			msg.Topic,
+			msg.DelayedFor,
+			msg.DelayedUntil,
+		)
+
+		if m.showingPayload {
+			out += m.payloadViewport.View()
+			return out
+		}
+
+		out += "Metadata:\n"
+
+		var metadata map[string]string
+		err := json.Unmarshal([]byte(msg.Metadata), &metadata)
+		if err != nil {
+			out += err.Error()
+		} else {
+			keys := maps.Keys(metadata)
+			slices.Sort(keys)
+			for _, k := range keys {
+				v := metadata[k]
+				out += fmt.Sprintf("  %v: %v\n", k, v)
+			}
+		}
+
+		out += "\nActions:"
+
+		for i, action := range messageActions {
+			if i == m.chosenAction {
+				out += fmt.Sprintf("\n  %v", lipgloss.NewStyle().Background(lipgloss.Color("57")).Render(action))
+			} else {
+				out += fmt.Sprintf("\n  %v", action)
+			}
+		}
+
+		return out
 	}
 }
 
@@ -128,7 +235,7 @@ func newModel() model {
 		{Title: "Offset", Width: 8},
 		{Title: "UUID", Width: 40},
 		//{Title: "Delayed Until", Width: 22},
-		{Title: "Topic", Width: 14},
+		{Title: "Topic", Width: 20},
 		{Title: "Delayed For", Width: 14},
 		{Title: "Requeue In", Width: 14},
 	}
@@ -136,7 +243,7 @@ func newModel() model {
 	t := table.New(
 		table.WithColumns(columns),
 		table.WithFocused(true),
-		table.WithHeight(7),
+		table.WithHeight(20),
 	)
 
 	s := table.DefaultStyles()
@@ -160,13 +267,14 @@ func newModel() model {
 func main() {
 	m := newModel()
 
-	p := tea.NewProgram(m)
+	p := tea.NewProgram(m, tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
-		fmt.Printf("Alas, there's been an error: %v", err)
+		fmt.Printf("error: %v", err)
 		os.Exit(1)
 	}
 }
 
+// TODO split from db keys
 type Message struct {
 	Offset       int    `db:"offset"`
 	UUID         string `db:"uuid"`
@@ -179,15 +287,21 @@ type Message struct {
 	CreatedAt    time.Time `db:"created_at"`
 }
 
-type Repository struct {
+type repository interface {
+	AllMessages(topic string) ([]Message, error)
+	Requeue(offset int) error
+	Delete(offset int) error
+}
+
+type PostgresRepository struct {
 	db *sqlx.DB
 }
 
-func NewRepository(db *sqlx.DB) *Repository {
-	return &Repository{db: db}
+func NewPostgresRepository(db *sqlx.DB) *PostgresRepository {
+	return &PostgresRepository{db: db}
 }
 
-func (r *Repository) AllMessages() ([]Message, error) {
+func (r *PostgresRepository) AllMessages(topic string) ([]Message, error) {
 	var messages []Message
 	err := r.db.Select(&messages, `SELECT "offset", uuid, payload, metadata, created_at FROM watermill_poison`)
 	if err != nil {
@@ -210,8 +324,18 @@ func (r *Repository) AllMessages() ([]Message, error) {
 			return nil, err
 		}
 
-		messages[i].RequeueIn = time.Until(delayedUntil).Round(time.Second) + 2*time.Hour + 18*time.Minute
+		messages[i].RequeueIn = delayedUntil.Sub(time.Now().UTC()).Round(time.Second)
 	}
 
 	return messages, nil
+}
+
+func (r *PostgresRepository) Requeue(offset int) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (r *PostgresRepository) Delete(offset int) error {
+	//TODO implement me
+	panic("implement me")
 }

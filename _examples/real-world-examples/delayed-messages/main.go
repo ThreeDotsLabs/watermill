@@ -25,7 +25,7 @@ func main() {
 
 	logger := watermill.NewStdLogger(false, false)
 
-	publisher, err := sql.NewDelayedPostgresPublisher(db, sql.DelayedPostgresPublisherConfig{
+	publisher, err := sql.NewDelayedPostgreSQLPublisher(db, sql.DelayedPostgreSQLPublisherConfig{
 		DelayPublisherConfig: delay.PublisherConfig{
 			DefaultDelay: delay.For(10 * time.Second),
 		},
@@ -53,8 +53,9 @@ func main() {
 			return params.EventName, nil
 		},
 		SubscriberConstructor: func(params cqrs.EventProcessorSubscriberConstructorParams) (message.Subscriber, error) {
-			return sql.NewDelayedPostgresSubscriber(db, sql.DelayedPostgresSubscriberConfig{
-				Logger: logger,
+			return sql.NewDelayedPostgreSQLSubscriber(db, sql.DelayedPostgreSQLSubscriberConfig{
+				DeleteOnAck: true,
+				Logger:      logger,
 			})
 		},
 		Marshaler: cqrs.JSONMarshaler{},
