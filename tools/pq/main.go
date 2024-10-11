@@ -18,27 +18,21 @@ import (
 	"golang.org/x/exp/maps"
 )
 
-var messageActions = []string{"<- Back", "Show payload", "Requeue", "Delete"}
+var messageActions = []string{"<- Back", "Show payload", "Requeue", "Ack (drop)"}
 
 type MessagesUpdated struct {
 	Messages []Message
 }
 
-func FetchMessages(sub chan MessagesUpdated) tea.Cmd {
-	var repo repository
-	repo, err := NewPostgresRepository("postgres://watermill:password@localhost/watermill?sslmode=disable")
-	if err != nil {
-		panic(err)
-	}
-
+func (m model) FetchMessages() tea.Cmd {
 	return func() tea.Msg {
 		for {
-			msgs, err := repo.AllMessages("poison")
+			msgs, err := m.repo.AllMessages(m.topic)
 			if err != nil {
 				panic(err)
 			}
 
-			sub <- MessagesUpdated{
+			m.sub <- MessagesUpdated{
 				Messages: msgs,
 			}
 
@@ -47,9 +41,9 @@ func FetchMessages(sub chan MessagesUpdated) tea.Cmd {
 	}
 }
 
-func WaitForMessages(sub chan MessagesUpdated) tea.Cmd {
+func (m model) WaitForMessages() tea.Cmd {
 	return func() tea.Msg {
-		return <-sub
+		return <-m.sub
 	}
 }
 
@@ -58,10 +52,15 @@ var baseStyle = lipgloss.NewStyle().
 	BorderForeground(lipgloss.Color("240"))
 
 type model struct {
-	sub           chan MessagesUpdated
-	chosenMessage *int
-	table         table.Model
-	messages      []Message
+	repo  repository
+	topic string
+	sub   chan MessagesUpdated
+
+	chosenMessage   *int
+	chosenMessageID string
+
+	table    table.Model
+	messages []Message
 
 	chosenAction int
 
@@ -71,12 +70,40 @@ type model struct {
 
 func (m model) Init() tea.Cmd {
 	return tea.Batch(
-		FetchMessages(m.sub),
-		WaitForMessages(m.sub),
+		m.FetchMessages(),
+		m.WaitForMessages(),
 	)
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case MessagesUpdated:
+		rows := make([]table.Row, len(msg.Messages))
+		for i, message := range msg.Messages {
+			rows[i] = table.Row{
+				message.ID,
+				message.UUID,
+				message.OriginalTopic,
+				message.DelayedFor,
+				message.RequeueIn.String(),
+			}
+		}
+		m.table.SetRows(rows)
+		m.messages = msg.Messages
+
+		// If the chosen message is no longer in the list, go back to the table.
+		// This is to avoid accidentally making an action on a message that has been requeued or deleted.
+		// TODO consider showing information in the view instead
+		if m.chosenMessage != nil {
+			if m.chosenMessageID != m.messages[*m.chosenMessage].ID {
+				m.chosenMessage = nil
+				m.chosenMessageID = ""
+			}
+		}
+
+		return m, m.WaitForMessages()
+	}
+
 	if m.chosenMessage == nil {
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
@@ -87,23 +114,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				c := m.table.Cursor()
 				m.chosenAction = 0
 				m.chosenMessage = &c
+				m.chosenMessageID = m.messages[c].ID
 			}
-
-		case MessagesUpdated:
-			rows := make([]table.Row, len(msg.Messages))
-			for i, message := range msg.Messages {
-				rows[i] = table.Row{
-					message.ID,
-					message.UUID,
-					message.OriginalTopic,
-					//message.DelayedUntil,
-					message.DelayedFor,
-					message.RequeueIn.String(),
-				}
-			}
-			m.table.SetRows(rows)
-			m.messages = msg.Messages
-			return m, WaitForMessages(m.sub)
 		}
 
 		var cmd tea.Cmd
@@ -132,6 +144,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, tea.Quit
 				case "esc", "backspace":
 					m.chosenMessage = nil
+					m.chosenMessageID = ""
 				case "j", "down":
 					m.chosenAction++
 					if m.chosenAction >= len(messageActions) {
@@ -146,6 +159,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					switch m.chosenAction {
 					case 0:
 						m.chosenMessage = nil
+						m.chosenMessageID = ""
 					case 1:
 						// Show payload
 						m.showingPayload = true
@@ -167,8 +181,20 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.payloadViewport.SetContent(payload)
 					case 2:
 						// Requeue
+						// TODO make a command
+						chosenMsg := m.messages[*m.chosenMessage]
+						err := m.repo.Requeue(m.topic, chosenMsg.ID)
+						if err != nil {
+							panic(err)
+						}
 					case 3:
-						// Delete
+						// Ack
+						// TODO make a command
+						chosenMsg := m.messages[*m.chosenMessage]
+						err := m.repo.Ack(m.topic, chosenMsg.ID)
+						if err != nil {
+							panic(err)
+						}
 					}
 				}
 			}
@@ -185,12 +211,13 @@ func (m model) View() string {
 		msg := m.messages[*m.chosenMessage]
 
 		out := fmt.Sprintf(
-			"ID: %v\nUUID: %v\nOriginal Topic: %v\nDelayed For: %v\nDelayed Until: %v\n\n",
+			"ID: %v\nUUID: %v\nOriginal Topic: %v\nDelayed For: %v\nDelayed Until: %v\nRequeue In: %v\n\n",
 			msg.ID,
 			msg.UUID,
 			msg.OriginalTopic,
 			msg.DelayedFor,
 			msg.DelayedUntil,
+			msg.RequeueIn,
 		)
 
 		if m.showingPayload {
@@ -221,11 +248,10 @@ func (m model) View() string {
 	}
 }
 
-func newModel() model {
+func newModel(repo repository, topic string) model {
 	columns := []table.Column{
 		{Title: "ID", Width: 8},
 		{Title: "UUID", Width: 40},
-		//{Title: "Delayed Until", Width: 22},
 		{Title: "Original Topic", Width: 20},
 		{Title: "Delayed For", Width: 14},
 		{Title: "Requeue In", Width: 14},
@@ -250,13 +276,20 @@ func newModel() model {
 	t.SetStyles(s)
 
 	return model{
+		repo:  repo,
 		sub:   make(chan MessagesUpdated),
+		topic: topic,
 		table: t,
 	}
 }
 
 func main() {
-	m := newModel()
+	repo, err := NewPostgresRepository("postgres://watermill:password@localhost/watermill?sslmode=disable")
+	if err != nil {
+		panic(err)
+	}
+
+	m := newModel(repo, "poison")
 
 	p := tea.NewProgram(m, tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
@@ -304,6 +337,6 @@ func NewMessage(id string, uuid string, payload string, metadata map[string]stri
 
 type repository interface {
 	AllMessages(topic string) ([]Message, error)
-	Requeue(offset int) error
-	Delete(offset int) error
+	Requeue(topic string, id string) error
+	Ack(topic string, id string) error
 }

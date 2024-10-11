@@ -3,6 +3,9 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"time"
+
+	"github.com/ThreeDotsLabs/watermill/components/delay"
 
 	"github.com/jmoiron/sqlx"
 )
@@ -55,12 +58,22 @@ func (r *PostgresRepository) AllMessages(topic string) ([]Message, error) {
 	return messages, nil
 }
 
-func (r *PostgresRepository) Requeue(offset int) error {
-	//TODO implement me
-	panic("implement me")
+func (r *PostgresRepository) Requeue(topic string, id string) error {
+	_, err := r.db.Exec(fmt.Sprintf(`UPDATE watermill_%v SET metadata = metadata::jsonb || jsonb_build_object($1::text, $2::text) WHERE "offset" = $3`, topic),
+		delay.DelayedUntilKey, time.Now().UTC().Format(time.RFC3339), id,
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (r *PostgresRepository) Delete(offset int) error {
-	//TODO implement me
-	panic("implement me")
+func (r *PostgresRepository) Ack(topic string, id string) error {
+	_, err := r.db.Exec(fmt.Sprintf(`UPDATE watermill_%v SET acked = true WHERE "offset" = %v`, topic, id))
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
