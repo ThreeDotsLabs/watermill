@@ -11,6 +11,11 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
+// NoSubscribersFallbackDefaultTopic is the default fallback topic messages without any subscribers
+// will be sent to – it is used if the `EnableNoSubscribersFallback` option is enabled and no
+// fallback topic is configured via the `NoSubscribersFallbackTopic` option.
+const NoSubscribersFallbackDefaultTopic = "*"
+
 // Config holds the GoChannel Pub/Sub's configuration options.
 type Config struct {
 	// Output channel buffer size.
@@ -20,12 +25,21 @@ type Config struct {
 	// it will receive all previously produced messages.
 	//
 	// All messages are persisted to the memory (simple slice),
-	// so be aware that with large amount of messages you can go out of the memory.
+	// so be aware that with a large amount of messages you can run out of memory.
 	Persistent bool
 
 	// When true, Publish will block until subscriber Ack's the message.
 	// If there are no subscribers, Publish will not block (also when Persistent is true).
 	BlockPublishUntilSubscriberAck bool
+
+	// When true, messages sent to a topic without any subscribers will be sent to the
+	// subscribers of the fallback topic (configured via `NoSubscribersFallbackTopic` option).
+	EnableNoSubscribersFallback bool
+
+	// NoSubscribersFallbackTopic is the fallback topic messages without any subscribers will be sent to.
+	// This is used if the `EnableNoSubscribersFallback` configuration option is enabled.
+	// If it's not set then `*` is used by default.
+	NoSubscribersFallbackTopic string
 }
 
 // GoChannel is the simplest Pub/Sub implementation.
@@ -52,13 +66,17 @@ type GoChannel struct {
 	persistedMessagesLock sync.RWMutex
 }
 
-// NewGoChannel creates new GoChannel Pub/Sub.
+// NewGoChannel creates a new GoChannel Pub/Sub.
 //
-// This GoChannel is not persistent.
-// That means if you send a message to a topic to which no subscriber is subscribed, that message will be discarded.
+// By default, GoChannel isn't persistent; that means messages sent to a topic
+// without any subscribers will be discarded if the fallback option isn't enabled.
 func NewGoChannel(config Config, logger watermill.LoggerAdapter) *GoChannel {
 	if logger == nil {
 		logger = watermill.NopLogger{}
+	}
+
+	if config.EnableNoSubscribersFallback && config.NoSubscribersFallbackTopic == "" {
+		config.NoSubscribersFallbackTopic = NoSubscribersFallbackDefaultTopic
 	}
 
 	return &GoChannel{
@@ -77,9 +95,9 @@ func NewGoChannel(config Config, logger watermill.LoggerAdapter) *GoChannel {
 }
 
 // Publish in GoChannel is NOT blocking until all consumers consume.
-// Messages will be send in background.
+// Messages will be sent in the background.
 //
-// Messages may be persisted or not, depending of persistent attribute.
+// Messages may be persisted or not, depending on whether the persistent option is enabled.
 func (g *GoChannel) Publish(topic string, messages ...*message.Message) error {
 	if g.isClosed() {
 		return errors.New("Pub/Sub closed")
@@ -141,9 +159,14 @@ func (g *GoChannel) sendMessage(topic string, message *message.Message) (<-chan 
 	logFields := watermill.LogFields{"message_uuid": message.UUID, "topic": topic}
 
 	if len(subscribers) == 0 {
-		close(ackedBySubscribers)
-		g.logger.Info("No subscribers to send message", logFields)
-		return ackedBySubscribers, nil
+		if !g.config.EnableNoSubscribersFallback {
+			return g.handleNoSubscribers(ackedBySubscribers, logFields)
+		}
+
+		g.logger.Debug("No subscribers to send the message to, trying the fallback subscribers", logFields)
+		if subscribers = g.topicSubscribers(g.config.NoSubscribersFallbackTopic); len(subscribers) == 0 {
+			return g.handleNoSubscribers(ackedBySubscribers, logFields)
+		}
 	}
 
 	go func(subscribers []*subscriber) {
@@ -163,6 +186,12 @@ func (g *GoChannel) sendMessage(topic string, message *message.Message) (<-chan 
 		close(ackedBySubscribers)
 	}(subscribers)
 
+	return ackedBySubscribers, nil
+}
+
+func (g *GoChannel) handleNoSubscribers(ackedBySubscribers chan struct{}, logFields watermill.LogFields) (<-chan struct{}, error) {
+	close(ackedBySubscribers)
+	g.logger.Info("No subscribers to send the message to", logFields)
 	return ackedBySubscribers, nil
 }
 
