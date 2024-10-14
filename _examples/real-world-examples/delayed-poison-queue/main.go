@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/brianvoe/gofakeit/v6"
-
 	_ "github.com/lib/pq"
 
 	"github.com/ThreeDotsLabs/watermill"
