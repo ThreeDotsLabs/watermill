@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -27,7 +28,7 @@ type MessagesUpdated struct {
 func (m model) FetchMessages() tea.Cmd {
 	return func() tea.Msg {
 		for {
-			msgs, err := m.repo.AllMessages(m.topic)
+			msgs, err := m.repo.AllMessages(context.Background(), m.topic)
 			if err != nil {
 				panic(err)
 			}
@@ -183,7 +184,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						// Requeue
 						// TODO make a command
 						chosenMsg := m.messages[*m.chosenMessage]
-						err := m.repo.Requeue(m.topic, chosenMsg.ID)
+						err := m.repo.Requeue(context.Background(), m.topic, chosenMsg.ID)
 						if err != nil {
 							panic(err)
 						}
@@ -191,7 +192,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						// Ack
 						// TODO make a command
 						chosenMsg := m.messages[*m.chosenMessage]
-						err := m.repo.Ack(m.topic, chosenMsg.ID)
+						err := m.repo.Ack(context.Background(), m.topic, chosenMsg.ID)
 						if err != nil {
 							panic(err)
 						}
@@ -336,7 +337,7 @@ func NewMessage(id string, uuid string, payload string, metadata map[string]stri
 }
 
 type repository interface {
-	AllMessages(topic string) ([]Message, error)
-	Requeue(topic string, id string) error
-	Ack(topic string, id string) error
+	AllMessages(ctx context.Context, topic string) ([]Message, error)
+	Requeue(ctx context.Context, topic string, id string) error
+	Ack(ctx context.Context, topic string, id string) error
 }
