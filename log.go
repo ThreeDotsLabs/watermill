@@ -1,6 +1,7 @@
 package watermill
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -216,7 +217,7 @@ func (c *CaptureLoggerAdapter) HasError(err error) bool {
 	defer c.lock.Unlock()
 
 	for _, capturedMsg := range c.captured[ErrorLogLevel] {
-		if capturedMsg.Err == err {
+		if errors.Is(err, capturedMsg.Err) {
 			return true
 		}
 	}
