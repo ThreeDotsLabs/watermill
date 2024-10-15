@@ -139,7 +139,9 @@ func assertMessage(t *testing.T, messages <-chan *message.Message, expectedID st
 			assert.Empty(t, msg.Metadata.Get(delay.DelayedUntilKey))
 			assert.Empty(t, msg.Metadata.Get(delay.DelayedForKey))
 		} else {
-			assert.Equal(t, expectedDelay.String(), msg.Metadata.Get(delay.DelayedForKey))
+			delayedFor, err := time.ParseDuration(msg.Metadata.Get(delay.DelayedForKey))
+			require.NoError(t, err)
+			assert.Equal(t, expectedDelay, delayedFor.Round(time.Second))
 
 			delayedUntil, err := time.Parse(time.RFC3339, msg.Metadata.Get(delay.DelayedUntilKey))
 			require.NoError(t, err)
