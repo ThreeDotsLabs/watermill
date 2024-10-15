@@ -1,4 +1,4 @@
-module pq
+module github.com/ThreeDotsLabs/watermill/tools/pq
 
 go 1.23.0
 
