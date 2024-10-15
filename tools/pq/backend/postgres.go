@@ -71,9 +71,9 @@ func (r *PostgresBackend) AllMessages(ctx context.Context) ([]cli.Message, error
 	return messages, nil
 }
 
-func (r *PostgresBackend) Requeue(ctx context.Context, id string) error {
+func (r *PostgresBackend) Requeue(ctx context.Context, msg cli.Message) error {
 	_, err := r.db.ExecContext(ctx, fmt.Sprintf(`UPDATE %v SET metadata = metadata::jsonb || jsonb_build_object($1::text, $2::text) WHERE "offset" = $3`, r.topic()),
-		delay.DelayedUntilKey, time.Now().UTC().Format(time.RFC3339), id,
+		delay.DelayedUntilKey, time.Now().UTC().Format(time.RFC3339), msg.ID,
 	)
 	if err != nil {
 		return err
@@ -82,8 +82,8 @@ func (r *PostgresBackend) Requeue(ctx context.Context, id string) error {
 	return nil
 }
 
-func (r *PostgresBackend) Ack(ctx context.Context, id string) error {
-	_, err := r.db.ExecContext(ctx, fmt.Sprintf(`UPDATE %v SET acked = true WHERE "offset" = %v`, r.topic(), id))
+func (r *PostgresBackend) Ack(ctx context.Context, msg cli.Message) error {
+	_, err := r.db.ExecContext(ctx, fmt.Sprintf(`UPDATE %v SET acked = true WHERE "offset" = %v`, r.topic(), msg.ID))
 	if err != nil {
 		return err
 	}

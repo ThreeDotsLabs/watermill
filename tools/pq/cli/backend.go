@@ -27,6 +27,6 @@ type BackendConstructor func(ctx context.Context, cfg BackendConfig) (Backend, e
 
 type Backend interface {
 	AllMessages(ctx context.Context) ([]Message, error)
-	Requeue(ctx context.Context, id string) error
-	Ack(ctx context.Context, id string) error
+	Requeue(ctx context.Context, msg Message) error
+	Ack(ctx context.Context, msg Message) error
 }
