@@ -16,7 +16,6 @@ import (
 	"github.com/ThreeDotsLabs/watermill/components/delay"
 	"github.com/ThreeDotsLabs/watermill/components/requeuer"
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
 )
 
 func main() {
@@ -27,13 +26,6 @@ func main() {
 
 	logger := watermill.NewStdLogger(false, false)
 
-	poisonPublisher, err := sql.NewDelayedPostgreSQLPublisher(db, sql.DelayedPostgreSQLPublisherConfig{
-		Logger: logger,
-	})
-	if err != nil {
-		panic(err)
-	}
-
 	publisher, err := sql.NewPublisher(db, sql.PublisherConfig{
 		SchemaAdapter:        sql.DefaultPostgreSQLSchema{},
 		AutoInitializeSchema: true,
@@ -42,9 +34,10 @@ func main() {
 		panic(err)
 	}
 
-	poisonSubscriber, err := sql.NewDelayedPostgreSQLSubscriber(db, sql.DelayedPostgreSQLSubscriberConfig{
-		DeleteOnAck: true,
-		Logger:      logger,
+	delayedRequeuer, err := sql.NewPostgreSQLDelayedRequeuer(sql.DelayedRequeuerConfig{
+		DB:        db,
+		Publisher: publisher,
+		Logger:    logger,
 	})
 	if err != nil {
 		panic(err)
@@ -61,14 +54,8 @@ func main() {
 		panic(err)
 	}
 
-	poisonQueue, err := middleware.PoisonQueue(poisonPublisher, "poison")
-	if err != nil {
-		panic(err)
-	}
-
 	router := message.NewDefaultRouter(logger)
-	router.AddMiddleware(poisonQueue)
-	router.AddMiddleware(middleware.NewDelayOnError(middleware.DelayOnErrorConfig{}).Middleware)
+	router.AddMiddleware(delayedRequeuer.Middleware()...)
 
 	eventProcessor, err := cqrs.NewEventProcessorWithConfig(router, cqrs.EventProcessorConfig{
 		GenerateSubscribeTopic: func(params cqrs.EventProcessorGenerateSubscribeTopicParams) (string, error) {
@@ -117,24 +104,8 @@ func main() {
 		panic(err)
 	}
 
-	requeuer, err := requeuer.NewRequeuer(requeuer.Config{
-		Subscriber:     poisonSubscriber,
-		SubscribeTopic: "poison",
-		Publisher:      publisher,
-		GeneratePublishTopic: func(params requeuer.GeneratePublishTopicParams) (string, error) {
-			topic := params.Message.Metadata.Get(middleware.PoisonedTopicKey)
-			if topic == "" {
-				return "", fmt.Errorf("missing topic in metadata")
-			}
-			return topic, nil
-		},
-	}, logger)
-	if err != nil {
-		panic(err)
-	}
-
 	go func() {
-		err = requeuer.Run(context.Background())
+		err = delayedRequeuer.Run(context.Background())
 		if err != nil {
 			panic(err)
 		}

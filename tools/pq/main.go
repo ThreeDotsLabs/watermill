@@ -12,7 +12,7 @@ import (
 
 func main() {
 	config := cli.BackendConfig{
-		Topic:    "poison",
+		Topic:    "requeue",
 		RawTopic: "",
 	}
 
