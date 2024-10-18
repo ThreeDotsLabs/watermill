@@ -7,9 +7,10 @@ on:
         required: false
         type: boolean
         default: false
-    codecov_token:
-      required: false
-      type: string
+    secrets:
+      codecov_token:
+        required: false
+        type: string
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -57,8 +58,8 @@ jobs:
       - run: make wait
       - run: make test_codecov
       - uses: codecov/codecov-action@v4
-        if: ${{ inputs.codecov_token != '' }}
+        if: ${{ secrets.codecov_token != '' }}
         with:
           fail_ci_if_error: true
           files: ./coverage.out
-          token: ${{ inputs.codecov_token }}
+          token: ${{ secrets.codecov_token }}
