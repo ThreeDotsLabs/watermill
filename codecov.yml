@@ -1,0 +1,2 @@
+ignore:
+  - "pubsub/tests"  # test helpers used to test Pub/Subs
