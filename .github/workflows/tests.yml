@@ -10,7 +10,6 @@ on:
     secrets:
       codecov_token:
         required: false
-        type: string
 jobs:
   build:
     runs-on: ubuntu-latest
