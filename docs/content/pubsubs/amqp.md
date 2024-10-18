@@ -15,7 +15,7 @@ We are providing Pub/Sub implementation based on [github.com/rabbitmq/amqp091-go
 ### Installation
 
 ```bash
-go get github.com/ThreeDotsLabs/watermill-amqp/v2
+go get github.com/ThreeDotsLabs/watermill-amqp/v3
 ```
 
 #### Characteristics
