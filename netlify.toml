@@ -28,3 +28,8 @@
   from = "/docs/pub-sub-implementing"
   to = "/development/pub-sub-implementing/"
   status = 301
+
+[[redirects]]
+  from = "/pubsubs/amazonsqs/"
+  to = "/pubsubs/aws/"
+  status = 301
