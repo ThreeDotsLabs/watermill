@@ -8,18 +8,20 @@ weight = 90
 
 NATS Jetstream is a data streaming system powered by NATS, and written in the Go programming language.
 
-As of v2.0.2 this middleware will contain a beta implementation in `pkg/jetstream` based on the 
-[nats.go Jetstream package](https://github.com/nats-io/nats.go/tree/main/jetstream). This implementation is 
-considered experimental tracking with the upstream client though we target a stable watermill API by v2.1.  
+As of v2.0.2 this middleware will contain a beta implementation in `pkg/jetstream` based on the
+[nats.go Jetstream package](https://github.com/nats-io/nats.go/tree/main/jetstream). This implementation is
+considered experimental tracking with the upstream client though we target a stable watermill API by v2.1.
 For production use it is recommended to use the pubsub implementations in `pkg/nats` with Jetstream enabled.
 
-### Installation
+You can find a fully functional example with NATS JetStream in the [Watermill examples](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/pubsubs/nats-jetstream).
+
+## Installation
 
 ```bash
 go get github.com/ThreeDotsLabs/watermill-nats/v2
 ```
 
-#### Characteristics
+### Characteristics
 
 | Feature             | Implements | Note                                                                                                                  |
 |---------------------|------------|-----------------------------------------------------------------------------------------------------------------------|
@@ -28,7 +30,7 @@ go get github.com/ThreeDotsLabs/watermill-nats/v2
 | GuaranteedOrder     | no         | [with the redelivery feature, order can't be guaranteed](https://github.com/nats-io/nats-streaming-server/issues/187) |
 | Persistent          | yes        |                                                                                                                       |
 
-#### Configuration
+### Configuration
 
 Configuration is done through PublisherConfig and SubscriberConfig types.  These share a common JetStreamConfig.  To use the experimental nats-core support, set Disabled=true.
 
@@ -42,7 +44,7 @@ Subscriber Config:
 
 {{% load-snippet-partial file="src-link/watermill-nats/pkg/nats/subscriber.go" first_line_contains="type SubscriberConfig struct" last_line_contains="type Subscriber struct" %}}
 
-#### Connecting
+### Connecting
 
 By default NATS client will try to connect to `localhost:4222`. If you are using different hostname or port you should specify using the URL property of `SubscriberConfig` and `PublisherConfig`.
 
@@ -58,15 +60,15 @@ Example:
 
 You can also use `NewSubscriberWithNatsConn` and `NewPublisherWithNatsConn` to use a custom `*nats.Conn`.
 
-#### Publishing
+### Publishing
 
 {{% load-snippet-partial file="src-link/watermill-nats/pkg/nats/publisher.go" first_line_contains="// Publish publishes" last_line_contains="func (p *Publisher) Publish" %}}
 
-#### Subscribing
+### Subscribing
 
 {{% load-snippet-partial file="src-link/watermill-nats/pkg/nats/subscriber.go" first_line_contains="// Subscribe " last_line_contains="func (s *Subscriber) Subscribe" %}}
 
-#### Marshaler
+### Marshaler
 
 NATS provides a header passing mechanism that allows conveying the watermill message details as metadata. This is done by default with only the binary payload sent in the message body.  The header `_watermill_message_uuid` is reserved.
 
@@ -79,6 +81,6 @@ When you have your own format of the messages, you can implement your own Marsha
 When needed, you can bypass both [UUID]({{< ref "message#message" >}}) and [Metadata]({{< ref "message#message" >}}) and send just a `message.Payload`,
 but some standard [middlewares]({{< ref "messages-router#middleware" >}}) may be not working.
 
-### Core-Nats
+## Core-Nats
 
 This package also includes limited support for connecting to [core-nats](https://docs.nats.io/nats-concepts/core-nats).  While core-nats does not support many of the streaming features needed for a perfect fit with watermill and most acks end up implemented as no-ops, in environments with a mix of jetstream and core-nats messaging in play it can be nice to use watermill consistently on the application side.

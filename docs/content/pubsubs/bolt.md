@@ -16,13 +16,13 @@ want to publish messages in transaction when saving other data.
 
 Bolt documentation: https://github.com/etcd-io/bbolt
 
-### Installation
+## Installation
 
 ```bash
 go get github.com/ThreeDotsLabs/watermill-bolt
 ```
 
-#### Characteristics
+### Characteristics
 
 | Feature             | Implements | Note |
 | ------------------- | ---------- | ---- |
@@ -31,7 +31,7 @@ go get github.com/ThreeDotsLabs/watermill-bolt
 | GuaranteedOrder     | no         |      |
 | Persistent          | yes        |      |
 
-#### Configuration
+### Configuration
 
 {{% load-snippet-partial file="src-link/watermill-bolt/pkg/bolt/bolt.go" first_line_contains="type CommonConfig struct " last_line_equals="}" %}}
 
@@ -39,7 +39,7 @@ go get github.com/ThreeDotsLabs/watermill-bolt
 
 {{% load-snippet-partial file="src-link/watermill-bolt/pkg/bolt/bolt.go" first_line_contains="type SubscriberConfig struct " last_line_equals="}" %}}
 
-##### Subscription name
+#### Subscription name
 
 To receive messages published to a topic, you must create a subscription to
 that topic. Only messages published to the topic after the subscription is
@@ -53,7 +53,7 @@ In Watermill, the subscription is created automatically during calling
 `SubscriberConfig.GenerateSubscriptionName`.  By default, it is the topic name
 with the string `_sub` appended to it.
 
-##### Marshaler
+#### Marshaler
 
 Watermill's messages cannot be directly saved in Bolt which operates on byte
 slices. Marshaller converts the messages to and from byte slices. The default
@@ -63,5 +63,3 @@ unless a very large messages are used within your system. If that is the case
 you may want to consider implementing a more efficient marshaler.
 
 {{% load-snippet-partial file="src-link/watermill-bolt/pkg/bolt/marshaler.go" first_line_contains="// Marshaler" last_line_equals="}" %}}
-
-
