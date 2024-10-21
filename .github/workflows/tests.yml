@@ -7,6 +7,13 @@ on:
         required: false
         type: boolean
         default: false
+      codecov:
+        required: false
+        type: boolean
+        default: false
+    secrets:
+      codecov_token:
+        required: false
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -42,7 +49,6 @@ jobs:
       - run: make test_race
       - run: make test_stress
         if: ${{ inputs.stress-tests }}
-
   codecov:
     runs-on: ubuntu-latest
     steps:
@@ -54,4 +60,9 @@ jobs:
       - run: make up
       - run: make wait
       - run: make test_codecov
-      - uses: codecov/codecov-action@v3
+      - uses: codecov/codecov-action@v4
+        if: ${{ inputs.codecov }}
+        with:
+          fail_ci_if_error: true
+          files: ./coverage.out
+          token: ${{ secrets.codecov_token }}

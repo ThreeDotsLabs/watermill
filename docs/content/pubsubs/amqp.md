@@ -12,13 +12,15 @@ We are providing Pub/Sub implementation based on [github.com/rabbitmq/amqp091-go
 
 {{% load-snippet-partial file="src-link/watermill-amqp/pkg/amqp/doc.go" first_line_contains="// AMQP" last_line_contains="package amqp" padding_after="0" %}}
 
-### Installation
+You can find a fully functional example with RabbitMQ in the [Watermill examples](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/pubsubs/amqp).
+
+## Installation
 
 ```bash
-go get github.com/ThreeDotsLabs/watermill-amqp/v2
+go get github.com/ThreeDotsLabs/watermill-amqp/v3
 ```
 
-#### Characteristics
+### Characteristics
 
 | Feature | Implements | Note |
 | ------- | ---------- | ---- |
@@ -27,7 +29,7 @@ go get github.com/ThreeDotsLabs/watermill-amqp/v2
 | GuaranteedOrder | yes |  yes, please check https://www.rabbitmq.com/semantics.html#ordering |
 | Persistent | yes* | when using `NewDurablePubSubConfig` or `NewDurableQueueConfig`  |
 
-#### Configuration
+### Configuration
 
 Our AMQP is shipped with some pre-created configurations:
 
@@ -35,25 +37,25 @@ Our AMQP is shipped with some pre-created configurations:
 
 For detailed configuration description, please check [watermill-amqp/pkg/amqp/config.go](https://github.com/ThreeDotsLabs/watermill-amqp/tree/master/pkg/amqp/config.go)
 
-##### TLS Config
+#### TLS Config
 
 TLS config can be passed to `Config.TLSConfig`.
 
-##### Connecting
+#### Connecting
 
 {{% load-snippet-partial file="src-link/_examples/pubsubs/amqp/main.go" first_line_contains="publisher, err :=" last_line_contains="panic(err)" padding_after="1" %}}
 
 {{% load-snippet-partial file="src-link/_examples/pubsubs/amqp/main.go" first_line_contains="subscriber, err :=" last_line_contains="panic(err)" padding_after="1" %}}
 
-#### Publishing
+### Publishing
 
 {{% load-snippet-partial file="src-link/watermill-amqp/pkg/amqp/publisher.go" first_line_contains="// Publish" last_line_contains="func (p *Publisher) Publish" %}}
 
-#### Subscribing
+### Subscribing
 
 {{% load-snippet-partial file="src-link/watermill-amqp/pkg/amqp/subscriber.go" first_line_contains="// Subscribe" last_line_contains="func (s *Subscriber) Subscribe" %}}
 
-#### Marshaler
+### Marshaler
 
 Marshaler is responsible for mapping AMQP's messages to Watermill's messages.
 
@@ -62,7 +64,7 @@ If you need to customize thing in `amqp.Delivery`, you can do it `PostprocessPub
 
 {{% load-snippet-partial file="src-link/watermill-amqp/pkg/amqp/marshaler.go" first_line_contains="// Marshaler" last_line_contains="func (d DefaultMarshaler)" padding_after="0" %}}
 
-#### AMQP "Consumer Groups"
+### AMQP "Consumer Groups"
 
 AMQP doesn't provide mechanism like Kafka's "consumer groups". You can still achieve similar behaviour with `GenerateQueueNameTopicNameWithSuffix` and `NewDurablePubSubConfig`.
 
@@ -70,7 +72,6 @@ AMQP doesn't provide mechanism like Kafka's "consumer groups". You can still ach
 
 In this example both `pubSub1` and `pubSub2` will receive some messages independently.
 
-#### AMQP `TopologyBuilder`
+### AMQP `TopologyBuilder`
 
 {{% load-snippet-partial file="src-link/watermill-amqp/pkg/amqp/topology_builder.go" first_line_contains="// TopologyBuilder" last_line_contains="}" padding_after="0" %}}
-

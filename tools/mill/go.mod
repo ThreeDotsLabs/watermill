@@ -7,8 +7,8 @@ toolchain go1.23.0
 require (
 	cloud.google.com/go/pubsub v1.42.0
 	github.com/IBM/sarama v1.43.3
-	github.com/ThreeDotsLabs/watermill v1.3.5
-	github.com/ThreeDotsLabs/watermill-amqp/v2 v2.1.2
+	github.com/ThreeDotsLabs/watermill v1.3.7
+	github.com/ThreeDotsLabs/watermill-amqp/v3 v3.0.0
 	github.com/ThreeDotsLabs/watermill-googlecloud v1.2.0
 	github.com/ThreeDotsLabs/watermill-io v1.1.0
 	github.com/ThreeDotsLabs/watermill-kafka/v3 v3.0.1

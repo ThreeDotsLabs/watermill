@@ -8,13 +8,15 @@ weight = 110
 
 Redis is the open source, in-memory data store used by millions of developers. Redis stream is a data structure that acts like an append-only log in Redis. We are providing Pub/Sub implementation based on [redis/go-redis](https://github.com/redis/go-redis).
 
-### Installation
+You can find a fully functional example with Redis Stream in the [Watermill examples](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/pubsubs/redisstream).
+
+## Installation
 
 ```bash
 go get github.com/ThreeDotsLabs/watermill-redisstream
 ```
 
-#### Characteristics
+### Characteristics
 
 | Feature | Implements | Note |
 | ------- | ---------- | ---- |
@@ -24,38 +26,38 @@ go get github.com/ThreeDotsLabs/watermill-redisstream
 | Persistent | yes | |
 | FanOut | yes | use XREAD to fan out messages when there is no consumer group |
 
-#### Configuration
+### Configuration
 {{% load-snippet-partial file="src-link/watermill-redisstream/pkg/redisstream/publisher.go" first_line_contains="type PublisherConfig struct" last_line_contains="// Publish publishes message to redis stream" %}}
 
 {{% load-snippet-partial file="src-link/watermill-redisstream/pkg/redisstream/subscriber.go" first_line_contains="type SubscriberConfig struct" last_line_contains="func (s *Subscriber) Subscribe" %}}
 
-##### Passing `redis.UniversalClient`
+#### Passing `redis.UniversalClient`
 
 You need to configure and pass your own go-redis client via `Client redis.UniversalClient` in `NewSubscriber` and `NewPublisher`. The client can be either `redis.Client` or `redis.ClusterClient`.
 
-##### Publisher
+#### Publisher
 {{% load-snippet-partial file="src-link/watermill-redisstream/pkg/redisstream/publisher.go" first_line_contains="// NewPublisher" last_line_contains="(*Publisher, error)" padding_after="0" %}}
 
 Example:
 {{% load-snippet-partial file="src-link/_examples/pubsubs/redisstream/main.go" first_line_contains="pubClient := redis.NewClient" last_line_contains="panic(err)" padding_after="1" %}}
 
 
-##### Subscriber
+#### Subscriber
 {{% load-snippet-partial file="src-link/watermill-redisstream/pkg/redisstream/subscriber.go" first_line_contains="// NewSubscriber" last_line_contains="(*Subscriber, error)" padding_after="0" %}}
 
 Example:
 {{% load-snippet-partial file="src-link/_examples/pubsubs/redisstream/main.go" first_line_contains="subClient := redis.NewClient" last_line_contains="panic(err)" padding_after="1" %}}
 
 
-#### Publishing
+### Publishing
 
 {{% load-snippet-partial file="src-link/watermill-redisstream/pkg/redisstream/publisher.go" first_line_contains="// Publish" last_line_contains="func (p *Publisher) Publish" %}}
 
-#### Subscribing
+### Subscribing
 
 {{% load-snippet-partial file="src-link/watermill-redisstream/pkg/redisstream/subscriber.go" first_line_contains="func (s *Subscriber) Subscribe" last_line_contains="func (s *Subscriber) Subscribe" %}}
 
-#### Marshaler
+### Marshaler
 
 Watermill's messages cannot be directly sent to Redis - they need to be marshaled. You can implement your marshaler or use default implementation. The default implementation uses [MessagePack](https://msgpack.org/index.html) for efficient serialization.
 

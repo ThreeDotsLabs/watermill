@@ -14,13 +14,13 @@ Note that these aren't full-fledged Pub/Subs like Kafka, RabbitMQ, or the likes,
 * Subscribing for data on a file or stdin and packaging it as messages
 * Interfacing with third-party libraries that implement `io.Writer` or `io.Reader`, like [github.com/colinmarc/hdfs](https://github.com/colinmarc/hdfs) or [github.com/mholt/archiver](https://github.com/mholt/archiver).
 
-### Installation
+## Installation
 
 ```bash
 go get github.com/ThreeDotsLabs/watermill-io
 ```
 
-#### Characteristics
+### Characteristics
 
 This is a very bare-bones implementation for now, so no extra features are supported. However, it is still sufficient for applications like a [CLI producer/consumer](https://github.com/ThreeDotsLabs/watermill/tree/master/tools/mill).
 
@@ -31,7 +31,7 @@ This is a very bare-bones implementation for now, so no extra features are suppo
 | GuaranteedOrder | no |  |
 | Persistent | no |   |
 
-#### Configuration
+### Configuration
 
 The publisher configuration is relatively simple.
 
@@ -47,7 +47,7 @@ The continuous reading may be used, for example, to emulate the behaviour of a `
 
 {{% load-snippet-partial file="docs/snippets/tail-log-file/main.go" first_line_contains="// this will" last_line_contains="return false" padding_after="1" %}}
 
-#### Marshaling/Unmarshaling
+### Marshaling/Unmarshaling
 
 The MarshalFunc is an important part of `io.Publisher`, because it fully controls the format in the underlying `io.Writer` will obtain the messages.
 
@@ -59,7 +59,7 @@ Correspondingly, the UnmarshalFunc regulates how the bytes read by the `io.Reade
 
 The package comes with some predefined marshal and unmarshal functions, but you might want to write your own marshaler/unmarshaler to work with the specific implementation of `io.Writer/io.Reader` that you are working with.
 
-#### Topic
+### Topic
 
 For the Publisher/Subscriber implementation itself, the topic has no meaning. It is difficult to interpret the meaning of topic in the general context of `io.Writer` and `io.Reader` interfaces.
 
