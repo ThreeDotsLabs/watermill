@@ -7,6 +7,10 @@ on:
         required: false
         type: boolean
         default: false
+      codecov:
+        required: false
+        type: boolean
+        default: false
     secrets:
       codecov_token:
         required: false
@@ -57,6 +61,7 @@ jobs:
       - run: make wait
       - run: make test_codecov
       - uses: codecov/codecov-action@v4
+        if: ${{ inputs.codecov }}
         with:
           fail_ci_if_error: true
           files: ./coverage.out
