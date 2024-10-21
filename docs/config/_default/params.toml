@@ -120,7 +120,7 @@ mainSections = ["docs"]
 [seo]
   [seo.title]
     separator = " | "
-    suffix = ""
+    suffix = "Watermill | Event-Driven in Go"
   [seo.favicons]
     sizes = []
     icon = "favicon.png" # favicon.png (default)

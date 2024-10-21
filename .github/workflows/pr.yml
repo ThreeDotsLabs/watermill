@@ -4,3 +4,7 @@ on:
 jobs:
   ci:
     uses: ThreeDotsLabs/watermill/.github/workflows/tests.yml@master
+    with:
+      codecov: true
+    secrets:
+      codecov_token: ${{ secrets.CODECOV_TOKEN }}

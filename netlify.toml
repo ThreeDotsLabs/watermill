@@ -8,6 +8,12 @@
   NPM_VERSION = "10.2.4"
   HUGO_VERSION = "0.127.0"
 
+[context.deploy-preview]
+  command = "./build.sh --copy && npm run build:branch"
+
+[context.branch-deploy]
+  command = "./build.sh --copy && npm run build:branch"
+
 [[redirects]]
   from = "/api/event"
   to = "https://academy-api.threedots.tech/api/event"
