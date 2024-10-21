@@ -17,7 +17,7 @@ You can find a fully functional example with RabbitMQ in the [Watermill examples
 ## Installation
 
 ```bash
-go get github.com/ThreeDotsLabs/watermill-amqp/v2
+go get github.com/ThreeDotsLabs/watermill-amqp/v3
 ```
 
 ### Characteristics

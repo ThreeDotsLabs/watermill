@@ -26,6 +26,11 @@
   status = 301
 
 [[redirects]]
+  from = "/docs/forwarder"
+  to = "/advanced/forwarder/"
+  status = 301
+
+[[redirects]]
   from = "/docs/metrics"
   to = "/advanced/metrics/"
   status = 301
