@@ -51,6 +51,7 @@ jobs:
         if: ${{ inputs.stress-tests }}
   codecov:
     runs-on: ubuntu-latest
+    if: ${{ inputs.codecov }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v4
@@ -61,7 +62,6 @@ jobs:
       - run: make wait
       - run: make test_codecov
       - uses: codecov/codecov-action@v4
-        if: ${{ inputs.codecov }}
         with:
           fail_ci_if_error: true
           files: ./coverage.out
