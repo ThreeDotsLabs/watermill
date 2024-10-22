@@ -21,7 +21,3 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/sony/gobreaker v1.0.0 // indirect
 )
-
-replace github.com/ThreeDotsLabs/watermill => ../../../
-
-replace github.com/ThreeDotsLabs/watermill-sql/v3 => ../../../../watermill-sql
