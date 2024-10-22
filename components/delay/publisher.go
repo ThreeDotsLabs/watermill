@@ -2,9 +2,16 @@ package delay
 
 import "github.com/ThreeDotsLabs/watermill/message"
 
+type DefaultDelayGeneratorParams struct {
+	Topic   string
+	Message *message.Message
+}
+
 // PublisherConfig is a configuration for the delay publisher.
 type PublisherConfig struct {
-	DefaultDelay Delay
+	// DefaultDelayGenerator is a function that generates the default delay for a message.
+	// If the message doesn't have the delay metadata set, the default delay will be applied.
+	DefaultDelayGenerator func(params DefaultDelayGeneratorParams) (Delay, error)
 }
 
 // NewPublisher wraps a publisher with a delay mechanism.
@@ -24,7 +31,10 @@ type publisher struct {
 
 func (p *publisher) Publish(topic string, messages ...*message.Message) error {
 	for i := range messages {
-		p.applyDelay(messages[i])
+		err := p.applyDelay(topic, messages[i])
+		if err != nil {
+			return err
+		}
 	}
 	return p.pub.Publish(topic, messages...)
 }
@@ -33,18 +43,27 @@ func (p *publisher) Close() error {
 	return p.pub.Close()
 }
 
-func (p *publisher) applyDelay(msg *message.Message) {
+func (p *publisher) applyDelay(topic string, msg *message.Message) error {
 	if msg.Metadata.Get(DelayedForKey) != "" {
-		return
+		return nil
 	}
 
 	if msg.Context().Value(delayContextKey) != nil {
 		delay := msg.Context().Value(delayContextKey).(Delay)
 		Message(msg, delay)
-		return
+		return nil
 	}
 
-	if !p.config.DefaultDelay.IsZero() {
-		Message(msg, p.config.DefaultDelay)
+	if p.config.DefaultDelayGenerator != nil {
+		delay, err := p.config.DefaultDelayGenerator(DefaultDelayGeneratorParams{
+			Topic:   topic,
+			Message: msg,
+		})
+		if err != nil {
+			return err
+		}
+		Message(msg, delay)
 	}
+
+	return nil
 }

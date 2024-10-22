@@ -24,7 +24,9 @@ func TestPublisher(t *testing.T) {
 	require.NoError(t, err)
 
 	defaultDelayPub, err := delay.NewPublisher(pubSub, delay.PublisherConfig{
-		DefaultDelay: delay.For(1 * time.Second),
+		DefaultDelayGenerator: func(params delay.DefaultDelayGeneratorParams) (delay.Delay, error) {
+			return delay.For(1 * time.Second), nil
+		},
 	})
 	require.NoError(t, err)
 
