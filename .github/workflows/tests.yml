@@ -7,6 +7,10 @@ on:
         required: false
         type: boolean
         default: false
+      codecov:
+        required: false
+        type: boolean
+        default: false
     secrets:
       codecov_token:
         required: false
@@ -47,6 +51,7 @@ jobs:
         if: ${{ inputs.stress-tests }}
   codecov:
     runs-on: ubuntu-latest
+    if: ${{ inputs.codecov }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v4

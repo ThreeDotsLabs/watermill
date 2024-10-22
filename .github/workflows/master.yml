@@ -8,5 +8,6 @@ jobs:
     uses: ThreeDotsLabs/watermill/.github/workflows/tests.yml@master
     with:
       stress-tests: true
+      codecov: true
     secrets:
       codecov_token: ${{ secrets.CODECOV_TOKEN }}
