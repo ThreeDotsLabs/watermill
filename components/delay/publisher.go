@@ -1,6 +1,10 @@
 package delay
 
-import "github.com/ThreeDotsLabs/watermill/message"
+import (
+	"errors"
+
+	"github.com/ThreeDotsLabs/watermill/message"
+)
 
 type DefaultDelayGeneratorParams struct {
 	Topic   string
@@ -12,6 +16,10 @@ type PublisherConfig struct {
 	// DefaultDelayGenerator is a function that generates the default delay for a message.
 	// If the message doesn't have the delay metadata set, the default delay will be applied.
 	DefaultDelayGenerator func(params DefaultDelayGeneratorParams) (Delay, error)
+
+	// AllowNoDelay allows publishing messages without a delay set.
+	// By default, the publisher returns an error when a message is published without a delay and no default delay generator is provided.
+	AllowNoDelay bool
 }
 
 // NewPublisher wraps a publisher with a delay mechanism.
@@ -63,6 +71,12 @@ func (p *publisher) applyDelay(topic string, msg *message.Message) error {
 			return err
 		}
 		Message(msg, delay)
+
+		return nil
+	}
+
+	if !p.config.AllowNoDelay {
+		return errors.New("message doesn't have a delay set")
 	}
 
 	return nil

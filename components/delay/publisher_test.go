@@ -23,6 +23,11 @@ func TestPublisher(t *testing.T) {
 	pub, err := delay.NewPublisher(pubSub, delay.PublisherConfig{})
 	require.NoError(t, err)
 
+	pubAllowNoDelay, err := delay.NewPublisher(pubSub, delay.PublisherConfig{
+		AllowNoDelay: true,
+	})
+	require.NoError(t, err)
+
 	defaultDelayPub, err := delay.NewPublisher(pubSub, delay.PublisherConfig{
 		DefaultDelayGenerator: func(params delay.DefaultDelayGeneratorParams) (delay.Delay, error) {
 			return delay.For(1 * time.Second), nil
@@ -34,11 +39,21 @@ func TestPublisher(t *testing.T) {
 		name               string
 		publisher          message.Publisher
 		messageConstructor func(id string) *message.Message
+		expectedError      bool
 		expectedDelay      time.Duration
 	}{
 		{
 			name:      "no delay",
 			publisher: pub,
+			messageConstructor: func(id string) *message.Message {
+				return message.NewMessage(id, nil)
+			},
+			expectedError: true,
+			expectedDelay: 0,
+		},
+		{
+			name:      "no delay but allowed",
+			publisher: pubAllowNoDelay,
 			messageConstructor: func(id string) *message.Message {
 				return message.NewMessage(id, nil)
 			},
@@ -124,8 +139,13 @@ func TestPublisher(t *testing.T) {
 
 			msg := testCase.messageConstructor(id)
 			err = testCase.publisher.Publish("test", msg)
-			require.NoError(t, err)
 
+			if testCase.expectedError {
+				require.Error(t, err)
+				return
+			}
+
+			require.NoError(t, err)
 			assertMessage(t, messages, id, testCase.expectedDelay)
 		})
 	}
