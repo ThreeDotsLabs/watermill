@@ -6,11 +6,16 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ThreeDotsLabs/watermill/components/forwarder"
+
+	"github.com/redis/go-redis/v9"
+
 	"github.com/brianvoe/gofakeit/v6"
 	"github.com/google/uuid"
 	_ "github.com/lib/pq"
 
 	"github.com/ThreeDotsLabs/watermill"
+	"github.com/ThreeDotsLabs/watermill-redisstream/pkg/redisstream"
 	"github.com/ThreeDotsLabs/watermill-sql/v3/pkg/sql"
 	"github.com/ThreeDotsLabs/watermill/components/cqrs"
 	"github.com/ThreeDotsLabs/watermill/components/delay"
@@ -25,15 +30,20 @@ func main() {
 
 	logger := watermill.NewStdLogger(false, false)
 
-	eventPublisher, err := sql.NewPublisher(db, sql.PublisherConfig{
-		SchemaAdapter:        sql.DefaultPostgreSQLSchema{},
-		AutoInitializeSchema: true,
+	redisClient := redis.NewClient(&redis.Options{Addr: "redis:6379"})
+	marshaler := cqrs.JSONMarshaler{
+		GenerateName: cqrs.StructName,
+	}
+
+	redisPublisher, err := redisstream.NewPublisher(redisstream.PublisherConfig{
+		Client: redisClient,
 	}, logger)
 	if err != nil {
 		panic(err)
 	}
 
-	commandPublisher, err := sql.NewDelayedPostgreSQLPublisher(db, sql.DelayedPostgreSQLPublisherConfig{
+	var sqlPublisher message.Publisher
+	sqlPublisher, err = sql.NewDelayedPostgreSQLPublisher(db, sql.DelayedPostgreSQLPublisherConfig{
 		DelayPublisherConfig: delay.PublisherConfig{},
 		Logger:               logger,
 	})
@@ -41,22 +51,26 @@ func main() {
 		panic(err)
 	}
 
-	eventBus, err := cqrs.NewEventBusWithConfig(eventPublisher, cqrs.EventBusConfig{
+	sqlPublisher = forwarder.NewPublisher(sqlPublisher, forwarder.PublisherConfig{
+		ForwarderTopic: "forwarder",
+	})
+
+	eventBus, err := cqrs.NewEventBusWithConfig(redisPublisher, cqrs.EventBusConfig{
 		GeneratePublishTopic: func(params cqrs.GenerateEventPublishTopicParams) (string, error) {
 			return params.EventName, nil
 		},
-		Marshaler: cqrs.JSONMarshaler{},
+		Marshaler: marshaler,
 		Logger:    logger,
 	})
 	if err != nil {
 		panic(err)
 	}
 
-	commandBus, err := cqrs.NewCommandBusWithConfig(commandPublisher, cqrs.CommandBusConfig{
+	commandBus, err := cqrs.NewCommandBusWithConfig(sqlPublisher, cqrs.CommandBusConfig{
 		GeneratePublishTopic: func(params cqrs.CommandBusGeneratePublishTopicParams) (string, error) {
 			return params.CommandName, nil
 		},
-		Marshaler: cqrs.JSONMarshaler{},
+		Marshaler: marshaler,
 		Logger:    logger,
 	})
 	if err != nil {
@@ -70,13 +84,12 @@ func main() {
 			return params.EventName, nil
 		},
 		SubscriberConstructor: func(params cqrs.EventProcessorSubscriberConstructorParams) (message.Subscriber, error) {
-			return sql.NewSubscriber(db, sql.SubscriberConfig{
-				SchemaAdapter:    sql.DefaultPostgreSQLSchema{},
-				OffsetsAdapter:   sql.DefaultPostgreSQLOffsetsAdapter{},
-				InitializeSchema: true,
+			return redisstream.NewSubscriber(redisstream.SubscriberConfig{
+				Client:        redisClient,
+				ConsumerGroup: params.HandlerName,
 			}, logger)
 		},
-		Marshaler: cqrs.JSONMarshaler{},
+		Marshaler: marshaler,
 		Logger:    logger,
 	})
 	if err != nil {
@@ -88,12 +101,12 @@ func main() {
 			return params.CommandName, nil
 		},
 		SubscriberConstructor: func(params cqrs.CommandProcessorSubscriberConstructorParams) (message.Subscriber, error) {
-			return sql.NewDelayedPostgreSQLSubscriber(db, sql.DelayedPostgreSQLSubscriberConfig{
-				DeleteOnAck: true,
-				Logger:      logger,
-			})
+			return redisstream.NewSubscriber(redisstream.SubscriberConfig{
+				Client:        redisClient,
+				ConsumerGroup: params.HandlerName,
+			}, logger)
 		},
-		Marshaler: cqrs.JSONMarshaler{},
+		Marshaler: marshaler,
 		Logger:    logger,
 	})
 	if err != nil {
@@ -112,7 +125,7 @@ func main() {
 				}
 
 				// In a real world scenario, we would delay the command by a few days
-				ctx = delay.WithContext(ctx, delay.For(10*time.Second))
+				ctx = delay.WithContext(ctx, delay.For(8*time.Second))
 
 				err := commandBus.Send(ctx, cmd)
 				if err != nil {
@@ -141,6 +154,27 @@ func main() {
 				return nil
 			},
 		),
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	sqlSubscriber, err := sql.NewDelayedPostgreSQLSubscriber(db, sql.DelayedPostgreSQLSubscriberConfig{
+		DeleteOnAck: true,
+		Logger:      logger,
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	_, err = forwarder.NewForwarder(
+		sqlSubscriber,
+		redisPublisher,
+		logger,
+		forwarder.Config{
+			ForwarderTopic: "forwarder",
+			Router:         router,
+		},
 	)
 	if err != nil {
 		panic(err)

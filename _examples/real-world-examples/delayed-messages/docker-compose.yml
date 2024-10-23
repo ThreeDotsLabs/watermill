@@ -8,6 +8,12 @@ services:
     working_dir: /app
     command: go run main.go
 
+  redis:
+    image: redis:7
+    ports:
+      - 6379:6379
+    restart: unless-stopped
+
   postgres:
     image: postgres:15
     restart: unless-stopped
