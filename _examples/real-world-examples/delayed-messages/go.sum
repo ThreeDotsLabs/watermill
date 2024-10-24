@@ -1,11 +1,13 @@
 github.com/Rican7/retry v0.3.1 h1:scY4IbO8swckzoA/11HgBwaZRJEyY9vaNJshcdhp1Mc=
 github.com/Rican7/retry v0.3.1/go.mod h1:CxSDrhAyXmTMeEuRAnArMu1FHu48vtfjLREWqVl7Vw0=
-github.com/ThreeDotsLabs/watermill v1.4.0-rc.1.0.20241011082756-1cb09cdf7d08 h1:UvySxNI2W1AqbwnHlEQmFylYhtZ/+YnLugXzedQtaWU=
-github.com/ThreeDotsLabs/watermill v1.4.0-rc.1.0.20241011082756-1cb09cdf7d08/go.mod h1:lBnrLbxOjeMRgcJbv+UiZr8Ylz8RkJ4m6i/VN/Nk+to=
+github.com/ThreeDotsLabs/watermill v1.4.0-rc.1.0.20241024100330-cb068b72e948 h1:b8qRHpWtlO94x6dVzSulrO2znSQqz8iYsxUyrdTixHo=
+github.com/ThreeDotsLabs/watermill v1.4.0-rc.1.0.20241024100330-cb068b72e948/go.mod h1:lBnrLbxOjeMRgcJbv+UiZr8Ylz8RkJ4m6i/VN/Nk+to=
 github.com/ThreeDotsLabs/watermill-redisstream v1.4.2 h1:FY6tsBcbhbJpKDOssU4bfybstqY0hQHwiZmVq9qyILQ=
 github.com/ThreeDotsLabs/watermill-redisstream v1.4.2/go.mod h1:69++855LyB+ckYDe60PiJLBcUrpckfDE2WwyzuVJRCk=
-github.com/ThreeDotsLabs/watermill-sql/v3 v3.1.1-0.20241017154019-7fb34fb6d66a h1:u9LF4A1kFQUyBHC0jbZKX7HnGUsOfg3VJyCFSVS6Wo0=
-github.com/ThreeDotsLabs/watermill-sql/v3 v3.1.1-0.20241017154019-7fb34fb6d66a/go.mod h1:6K8b9ZYGGzd231RM9uMk+fhWIY+ePiF/FicMza1HiS8=
+github.com/ThreeDotsLabs/watermill-sql/v4 v4.0.0-20241024101952-75257d7d0602 h1:CKdW3wb3+C36mMa44DF53KUyM5L6mGOjI3hikBOlAl4=
+github.com/ThreeDotsLabs/watermill-sql/v4 v4.0.0-20241024101952-75257d7d0602/go.mod h1:GMWcpauehgI40EeoKPxLnXBWjT7oOm7dJfzk5uU4IOc=
+github.com/ThreeDotsLabs/watermill-sql/v4 v4.0.0-20241024102321-584a6f7dab93 h1:KeRk2EG5AtdxfpjqIVPigZqscMvIcy0E2h8k7y38OAE=
+github.com/ThreeDotsLabs/watermill-sql/v4 v4.0.0-20241024102321-584a6f7dab93/go.mod h1:GMWcpauehgI40EeoKPxLnXBWjT7oOm7dJfzk5uU4IOc=
 github.com/brianvoe/gofakeit/v6 v6.28.0 h1:Xib46XXuQfmlLS2EXRuJpqcw8St6qSZz75OUo0tgAW4=
 github.com/brianvoe/gofakeit/v6 v6.28.0/go.mod h1:Xj58BMSnFqcn/fAQeSK+/PLtC5kSb7FJIq4JyGa8vEs=
 github.com/bsm/ginkgo/v2 v2.12.0 h1:Ny8MWAHyOepLGlLKYmXG4IEkioBysk6GpaRTLC8zwWs=

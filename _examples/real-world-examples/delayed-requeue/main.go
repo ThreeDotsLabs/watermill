@@ -9,9 +9,11 @@ import (
 
 	"github.com/brianvoe/gofakeit/v6"
 	_ "github.com/lib/pq"
+	"github.com/redis/go-redis/v9"
 
 	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill-sql/v3/pkg/sql"
+	"github.com/ThreeDotsLabs/watermill-redisstream/pkg/redisstream"
+	"github.com/ThreeDotsLabs/watermill-sql/v4/pkg/sql"
 	"github.com/ThreeDotsLabs/watermill/components/cqrs"
 	"github.com/ThreeDotsLabs/watermill/components/delay"
 	"github.com/ThreeDotsLabs/watermill/components/requeuer"
@@ -19,16 +21,17 @@ import (
 )
 
 func main() {
-	db, err := stdSQL.Open("postgres", "postgres://watermill:password@localhost:5432/watermill?sslmode=disable")
+	db, err := stdSQL.Open("postgres", "postgres://watermill:password@postgres:5432/watermill?sslmode=disable")
 	if err != nil {
 		panic(err)
 	}
 
 	logger := watermill.NewStdLogger(false, false)
 
-	publisher, err := sql.NewPublisher(db, sql.PublisherConfig{
-		SchemaAdapter:        sql.DefaultPostgreSQLSchema{},
-		AutoInitializeSchema: true,
+	redisClient := redis.NewClient(&redis.Options{Addr: "redis:6379"})
+
+	redisPublisher, err := redisstream.NewPublisher(redisstream.PublisherConfig{
+		Client: redisClient,
 	}, logger)
 	if err != nil {
 		panic(err)
@@ -36,18 +39,22 @@ func main() {
 
 	delayedRequeuer, err := sql.NewPostgreSQLDelayedRequeuer(sql.DelayedRequeuerConfig{
 		DB:        db,
-		Publisher: publisher,
+		Publisher: redisPublisher,
 		Logger:    logger,
 	})
 	if err != nil {
 		panic(err)
 	}
 
-	eventBus, err := cqrs.NewEventBusWithConfig(publisher, cqrs.EventBusConfig{
+	marshaler := cqrs.JSONMarshaler{
+		GenerateName: cqrs.StructName,
+	}
+
+	eventBus, err := cqrs.NewEventBusWithConfig(redisPublisher, cqrs.EventBusConfig{
 		GeneratePublishTopic: func(params cqrs.GenerateEventPublishTopicParams) (string, error) {
 			return params.EventName, nil
 		},
-		Marshaler: cqrs.JSONMarshaler{},
+		Marshaler: marshaler,
 		Logger:    logger,
 	})
 	if err != nil {
@@ -62,13 +69,12 @@ func main() {
 			return params.EventName, nil
 		},
 		SubscriberConstructor: func(params cqrs.EventProcessorSubscriberConstructorParams) (message.Subscriber, error) {
-			return sql.NewSubscriber(db, sql.SubscriberConfig{
-				SchemaAdapter:    sql.DefaultPostgreSQLSchema{},
-				OffsetsAdapter:   sql.DefaultPostgreSQLOffsetsAdapter{},
-				InitializeSchema: true,
+			return redisstream.NewSubscriber(redisstream.SubscriberConfig{
+				Client:        redisClient,
+				ConsumerGroup: params.HandlerName,
 			}, logger)
 		},
-		Marshaler: cqrs.JSONMarshaler{},
+		Marshaler: marshaler,
 		Logger:    logger,
 	})
 	if err != nil {

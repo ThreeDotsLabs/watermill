@@ -3,12 +3,13 @@ module delayed-messsages
 go 1.23.0
 
 require (
-	github.com/ThreeDotsLabs/watermill v1.4.0-rc.1.0.20241011082756-1cb09cdf7d08
+	github.com/ThreeDotsLabs/watermill v1.4.0-rc.1.0.20241024100330-cb068b72e948
 	github.com/ThreeDotsLabs/watermill-redisstream v1.4.2
-	github.com/ThreeDotsLabs/watermill-sql/v3 v3.1.1-0.20241017154019-7fb34fb6d66a
+	github.com/ThreeDotsLabs/watermill-sql/v4 v4.0.0-20241024102321-584a6f7dab93
 	github.com/brianvoe/gofakeit/v6 v6.28.0
 	github.com/google/uuid v1.6.0
 	github.com/lib/pq v1.10.2
+	github.com/redis/go-redis/v9 v9.6.1
 )
 
 require (
@@ -23,7 +24,6 @@ require (
 	github.com/lithammer/shortuuid/v3 v3.0.7 // indirect
 	github.com/oklog/ulid v1.3.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/redis/go-redis/v9 v9.6.1 // indirect
 	github.com/sony/gobreaker v1.0.0 // indirect
 	github.com/vmihailenco/msgpack v4.0.4+incompatible // indirect
 	google.golang.org/appengine v1.6.8 // indirect
