@@ -11,7 +11,7 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
-const RetriesKey = "requeuer_retries"
+const RetriesKey = "_watermill_requeuer_retries"
 
 // Requeuer is a component that moves messages from one topic to another.
 // It can be used to requeue messages that failed to process.

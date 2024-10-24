@@ -10,32 +10,14 @@ import (
 // DelayOnError is a middleware that adds the delay metadata to the message if an error occurs.
 //
 // IMPORTANT: The delay metadata doesn't cause delays with all Pub/Subs! Using it won't have any effect on Pub/Subs that don't support it.
+// See the list of supported Pub/Subs in the documentation: https://watermill.io/advanced/delayed-messages/
 type DelayOnError struct {
-	config DelayOnErrorConfig
-}
-
-// DelayOnErrorConfig is the configuration for the DelayOnError middleware.
-type DelayOnErrorConfig struct {
-	Delay    time.Duration
-	MaxDelay time.Duration
-}
-
-func (c *DelayOnErrorConfig) setDefaults() {
-	if c.Delay == 0 {
-		c.Delay = 10 * time.Second
-	}
-	if c.MaxDelay == 0 {
-		c.MaxDelay = 160 * time.Second
-	}
-}
-
-// NewDelayOnError creates a new DelayOnError middleware.
-func NewDelayOnError(config DelayOnErrorConfig) *DelayOnError {
-	config.setDefaults()
-
-	return &DelayOnError{
-		config: config,
-	}
+	// InitialInterval is the first interval between retries. Subsequent intervals will be scaled by Multiplier.
+	InitialInterval time.Duration
+	// MaxInterval sets the limit for the exponential backoff of retries. The interval will not be increased beyond MaxInterval.
+	MaxInterval time.Duration
+	// Multiplier is the factor by which the waiting interval will be multiplied between retries.
+	Multiplier float64
 }
 
 func (d *DelayOnError) Middleware(h message.HandlerFunc) message.HandlerFunc {
@@ -52,11 +34,14 @@ func (d *DelayOnError) Middleware(h message.HandlerFunc) message.HandlerFunc {
 func (d *DelayOnError) applyDelay(msg *message.Message) {
 	delayedForStr := msg.Metadata.Get(delay.DelayedForKey)
 	delayedFor, err := time.ParseDuration(delayedForStr)
-	if err != nil {
-		delayedFor = d.config.Delay
-	} else {
-		delayedFor = delayedFor * 2
-	}
+	if delayedForStr != "" && err == nil {
+		delayedFor *= time.Duration(d.Multiplier)
+		if delayedFor > d.MaxInterval {
+			delayedFor = d.MaxInterval
+		}
 
-	delay.Message(msg, delay.For(delayedFor))
+		delay.Message(msg, delay.For(delayedFor))
+	} else {
+		delay.Message(msg, delay.For(d.InitialInterval))
+	}
 }
