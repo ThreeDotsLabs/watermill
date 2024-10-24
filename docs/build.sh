@@ -46,6 +46,9 @@ else
         "components/cqrs/cqrs.go"
         "components/cqrs/marshaler.go"
 
+        "components/delay/delay.go"
+        "components/delay/publisher.go"
+
         "components/metrics/builder.go"
         "components/metrics/http.go"
 

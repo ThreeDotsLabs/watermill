@@ -5,13 +5,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ThreeDotsLabs/watermill"
-
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/pkg/errors"
-
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
 )
 
