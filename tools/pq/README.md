@@ -14,6 +14,12 @@ go install github.com/ThreeDotsLabs/watermill/tools/pq@latest
 
 Set the `DATABASE_URL` environment variable to your PostgreSQL connection string.
 
+For example, to connect to the database used for the [delayed requeue example](../../_examples/real-world-examples/delayed-requeue):
+
+```bash
+export DATABASE_URL="postgres://watermill:password@postgres:5432/watermill?sslmode=disable"
+```
+
 ```bash
 pq -backend postgres -topic requeue
 ```
