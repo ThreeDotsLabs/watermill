@@ -2,21 +2,20 @@ package middleware_test
 
 import (
 	"context"
+	stdErrors "errors"
 	"testing"
 	"time"
 
-	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill/message/subscriber"
-	"github.com/ThreeDotsLabs/watermill/pubsub/gochannel"
-
 	"github.com/hashicorp/go-multierror"
-
-	"github.com/ThreeDotsLabs/watermill/message"
-
-	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/ThreeDotsLabs/watermill"
+	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
+	"github.com/ThreeDotsLabs/watermill/message/subscriber"
+	"github.com/ThreeDotsLabs/watermill/pubsub/gochannel"
 )
 
 const topic = "testing_poison_queue_topic"
@@ -213,7 +212,7 @@ func TestPoisonQueueWithFilter_poison_queue(t *testing.T) {
 	msg := message.NewMessage("uuid", []byte("payload"))
 
 	poisonQueue, err := middleware.PoisonQueueWithFilter(&poisonPublisher, topic, func(err error) bool {
-		return err == poisonQueueErr
+		return stdErrors.Is(err, poisonQueueErr)
 	})
 	require.NoError(t, err)
 
@@ -232,7 +231,7 @@ func TestPoisonQueueWithFilter_non_poison_queue(t *testing.T) {
 	msg := message.NewMessage("uuid", []byte("payload"))
 
 	poisonQueue, err := middleware.PoisonQueueWithFilter(&poisonPublisher, topic, func(err error) bool {
-		return err != nonPoisonQueueErr
+		return !stdErrors.Is(err, nonPoisonQueueErr)
 	})
 	require.NoError(t, err)
 
