@@ -45,8 +45,7 @@ func NewPostgresBackend(ctx context.Context, config cli.BackendConfig) (*Postgre
 
 func (r *PostgresBackend) AllMessages(ctx context.Context) ([]cli.Message, error) {
 	var dbMessages []PostgresMessage
-	// TODO custom table name?
-	err := r.db.SelectContext(ctx, &dbMessages, fmt.Sprintf(`SELECT "offset", uuid, payload, metadata FROM %v WHERE acked = false`, r.topic()))
+	err := r.db.SelectContext(ctx, &dbMessages, fmt.Sprintf(`SELECT "offset", uuid, payload, metadata FROM %v WHERE acked = false ORDER BY "offset"`, r.topic()))
 	if err != nil {
 		return nil, err
 	}
