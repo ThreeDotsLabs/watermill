@@ -1,2 +1,12 @@
 ignore:
-  - "pubsub/tests"  # test helpers used to test Pub/Subs
+  - "pubsub/tests" # test helpers used to test Pub/Subs
+
+comment: no # do not comment PR with the result
+
+coverage:
+  project:
+      default:
+        target: auto
+        threshold: 5%
+  status:
+    patch: false # do not run coverage on patch nor changes
