@@ -1,2 +1,8 @@
 ignore:
-  - "pubsub/tests"  # test helpers used to test Pub/Subs
+  - "pubsub/tests" # test helpers used to test Pub/Subs
+
+comment: no # do not comment PR with the result
+
+coverage:
+  status:
+    patch: false # do not run coverage on patch nor changes
