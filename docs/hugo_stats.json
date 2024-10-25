@@ -392,6 +392,7 @@
       "publishing-multiple-messages",
       "pubsubs",
       "query",
+      "queue",
       "randomfail",
       "receiving-acknack",
       "recoverer",
