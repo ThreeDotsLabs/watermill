@@ -1,6 +1,6 @@
 +++
 title = "Amazon AWS SNS/SQS"
-description = "Work in Progress"
+description = "AWS SQS and SNS are fully-managed message queuing and Pub/Sub-like services that make it easy to decouple and scale microservices, distributed systems, and serverless applications."
 date = 2024-10-19T15:30:00+02:00
 bref = "AWS SQS and SNS are fully-managed message queuing and Pub/Sub-like services that make it easy to decouple and scale microservices, distributed systems, and serverless applications."
 weight = 10
