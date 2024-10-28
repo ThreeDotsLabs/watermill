@@ -347,6 +347,9 @@ The complete example's source can be found at [/_examples/basic/3-router/main.go
 To see Watermill's logs, pass any logger that implements the [LoggerAdapter](https://github.com/ThreeDotsLabs/watermill/blob/master/log.go).
 For experimental development, you can use `NewStdLogger`.
 
+Watermill provides ready-to-use `slog` adapter. You can create it with [`watermill.NewSlogLogger`](https://github.com/ThreeDotsLabs/watermill/blob/master/slog.go).
+You can also map Watermill's log levels to `slog` levels with [`watermill.NewSlogLoggerWithLevelMapping`](https://github.com/ThreeDotsLabs/watermill/blob/master/slog.go).
+
 ## What's next?
 
 For more details, see [documentation topics]({{< ref "/docs" >}}).
