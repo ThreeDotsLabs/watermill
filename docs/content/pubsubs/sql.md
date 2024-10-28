@@ -104,18 +104,18 @@ it should work out of the box with default offset adapters.
 
 {{% load-snippet-partial file="src-link/watermill-sql/pkg/sql/offsets_adapter.go" first_line_contains="type OffsetsAdapter" %}}
 
-
 ## Queue
 
-Instead of the default Pub/Sub schema, you can use the queue schema and offsets adapters.
+Instead of the default Pub/Sub schema, you can use the *queue* schema and offsets adapters.
 
-It's a simpler version of schema that doesn't support consumer groups.
+It's a simpler schema that doesn't support consumer groups.
 However, it has other advantages.
+
 It lets you specify a custom `WHERE` clause for getting the messages.
 You can use it to filter messages by some condition in the payload or in the metadata.
 
 Additionally, you can choose to delete messages from the table after they are acknowledged.
-Thanks to this, the table doesn't grow in size of time.
+Thanks to this, the table doesn't grow in size with time.
 
 Currently, this schema is supported only for PostgreSQL.
 
