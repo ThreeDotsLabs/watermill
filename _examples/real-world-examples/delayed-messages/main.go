@@ -4,6 +4,7 @@ import (
 	"context"
 	stdSQL "database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/brianvoe/gofakeit/v6"
@@ -115,7 +116,7 @@ func main() {
 		cqrs.NewEventHandler(
 			"OnOrderPlacedHandler",
 			func(ctx context.Context, event *OrderPlaced) error {
-				fmt.Printf("Received order placed from %v\n", event.Customer.Name)
+				fmt.Printf("💰 Received order from %v <%v>\n", event.Customer.Name, event.Customer.Email)
 
 				cmd := SendFeedbackForm{
 					To:   event.Customer.Email,
@@ -142,10 +143,7 @@ func main() {
 		cqrs.NewCommandHandler(
 			"OnSendFeedbackForm",
 			func(ctx context.Context, cmd *SendFeedbackForm) error {
-				msg := fmt.Sprintf("Hello %s! It's been a while since you placed your order, how did you like it? Let us know!", cmd.Name)
-
-				fmt.Println("Sending feedback form to:", cmd.To)
-				fmt.Println("\tMessage:", msg)
+				fmt.Printf("📧 Sending feedback form to %v <%v>\n", cmd.Name, cmd.To)
 
 				// In a real world scenario, we would send an email to the customer here
 
@@ -188,11 +186,12 @@ func main() {
 	<-router.Running()
 
 	for {
+		name := gofakeit.FirstName()
 		e := OrderPlaced{
 			OrderID: uuid.NewString(),
 			Customer: Customer{
-				Name:  gofakeit.FirstName(),
-				Email: gofakeit.Email(),
+				Name:  name,
+				Email: fmt.Sprintf("%v@%v", strings.ToLower(name), gofakeit.DomainName()),
 			},
 		}
 

@@ -49,6 +49,8 @@ else
         "components/delay/delay.go"
         "components/delay/publisher.go"
 
+        "components/requeuer/requeuer.go"
+
         "components/metrics/builder.go"
         "components/metrics/http.go"
 

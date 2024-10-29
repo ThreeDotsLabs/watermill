@@ -30,12 +30,12 @@ go get github.com/ThreeDotsLabs/watermill-sql/v3
 
 ### Characteristics
 
-| Feature             | Implements | Note                                      |
-|---------------------|------------|-------------------------------------------|
-| ConsumerGroups      | yes        | See `ConsumerGroup` in `SubscriberConfig` |
-| ExactlyOnceDelivery | yes*       | Just for MySQL implementation             |
-| GuaranteedOrder     | yes        |                                           |
-| Persistent          | yes        |                                           |
+| Feature             | Implements | Note                                                                          |
+|---------------------|------------|-------------------------------------------------------------------------------|
+| ConsumerGroups      | yes        | See `ConsumerGroup` in `SubscriberConfig` (not supported by the queue schema) |
+| ExactlyOnceDelivery | yes*       | Just for MySQL implementation                                                 |
+| GuaranteedOrder     | yes        |                                                                               |
+| Persistent          | yes        |                                                                               |
 
 ### Schema
 
@@ -83,7 +83,7 @@ constructor. You have to create one publisher for each transaction.
 Example:
 {{% load-snippet-partial file="src-link/_examples/real-world-examples/transactional-events/main.go" first_line_contains="func simulateEvents" last_line_contains="return pub.Publish(" padding_after="3" %}}
 
-### Subscribing
+## Subscribing
 
 To create a subscriber, you need to pass not only proper schema adapter, but also an offsets adapter.
 
@@ -97,9 +97,28 @@ Example:
 
 {{% load-snippet-partial file="src-link/watermill-sql/pkg/sql/subscriber.go" first_line_contains="func (s *Subscriber) Subscribe" last_line_contains="func (s *Subscriber) Subscribe" %}}
 
-### Offsets Adapter
+## Offsets Adapter
 
 The logic for storing offsets of messages is provided by the `OffsetsAdapter`. If your schema uses auto-incremented integer as the row ID,
 it should work out of the box with default offset adapters.
 
 {{% load-snippet-partial file="src-link/watermill-sql/pkg/sql/offsets_adapter.go" first_line_contains="type OffsetsAdapter" %}}
+
+## Queue
+
+Instead of the default Pub/Sub schema, you can use the *queue* schema and offsets adapters.
+
+It's a simpler schema that doesn't support consumer groups.
+However, it has other advantages.
+
+It lets you specify a custom `WHERE` clause for getting the messages.
+You can use it to filter messages by some condition in the payload or in the metadata.
+
+Additionally, you can choose to delete messages from the table after they are acknowledged.
+Thanks to this, the table doesn't grow in size with time.
+
+Currently, this schema is supported only for PostgreSQL.
+
+{{% load-snippet-partial file="src-link/watermill-sql/pkg/sql/queue_schema_adapter_postgresql.go" first_line_contains="// PostgreSQLQueueSchema" last_line_contains="}" %}}
+
+{{% load-snippet-partial file="src-link/watermill-sql/pkg/sql/queue_offsets_adapter_postgresql.go" first_line_contains="// PostgreSQLQueueOffsetsAdapter" last_line_contains="}" %}}

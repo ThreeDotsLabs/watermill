@@ -3,9 +3,9 @@ module delayed-requeue
 go 1.23.0
 
 require (
-	github.com/ThreeDotsLabs/watermill v1.4.0-rc.1.0.20241024100330-cb068b72e948
+	github.com/ThreeDotsLabs/watermill v1.4.0-rc.2
 	github.com/ThreeDotsLabs/watermill-redisstream v1.4.2
-	github.com/ThreeDotsLabs/watermill-sql/v4 v4.0.0-20241024102321-584a6f7dab93
+	github.com/ThreeDotsLabs/watermill-sql/v4 v4.0.0-rc.1
 	github.com/brianvoe/gofakeit/v6 v6.28.0
 	github.com/lib/pq v1.10.9
 	github.com/redis/go-redis/v9 v9.7.0

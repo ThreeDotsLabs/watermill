@@ -258,7 +258,6 @@ if err != nil {
 }
 ```
 
-
 {{< tabs "publishing" >}}
 
 {{< tab "Go Channel" "go-channel" >}}
