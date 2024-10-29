@@ -20,7 +20,7 @@ import (
 // BookRoomHandler is a command handler, which handles BookRoom command and emits RoomBooked.
 //
 // In CQRS, one command must be handled by only one handler.
-// When another handler with this command is added to command processor, error will be retuerned.
+// When another handler with this command is added to command processor, error will be returned.
 type BookRoomHandler struct {
 	eventBus *cqrs.EventBus
 }
@@ -65,7 +65,7 @@ func (b BookRoomHandler) Handle(ctx context.Context, c interface{}) error {
 	return nil
 }
 
-// OrderBeerOnRoomBooked is a event handler, which handles RoomBooked event and emits OrderBeer command.
+// OrderBeerOnRoomBooked is an event handler, which handles RoomBooked event and emits OrderBeer command.
 type OrderBeerOnRoomBooked struct {
 	commandBus *cqrs.CommandBus
 }
@@ -175,7 +175,7 @@ func main() {
 
 	// You can use any Pub/Sub implementation from here: https://watermill.io/pubsubs/
 	// Detailed RabbitMQ implementation: https://watermill.io/pubsubs/amqp/
-	// Commands will be send to queue, because they need to be consumed once.
+	// Commands will be sent to queue, because they need to be consumed once.
 	commandsAMQPConfig := amqp.NewDurableQueueConfig(amqpAddress)
 	commandsPublisher, err := amqp.NewPublisher(commandsAMQPConfig, logger)
 	if err != nil {

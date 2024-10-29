@@ -106,7 +106,7 @@ type Features struct {
 	// Some Pub/Subs guarantee the order only when one subscriber is subscribed at a time.
 	GuaranteedOrderWithSingleSubscriber bool
 
-	// Persistent should be true, if messages are persistent between multiple instancees of a Pub/Sub
+	// Persistent should be true, if messages are persistent between multiple instances of a Pub/Sub
 	// (in practice, only GoChannel doesn't support that).
 	Persistent bool
 
@@ -555,7 +555,7 @@ func TestNoAck(
 	case <-receivedMessage:
 	// ok
 	case <-time.After(defaultTimeout):
-		t.Fatal("timeouted")
+		t.Fatal("timed out")
 	}
 
 	select {
@@ -647,7 +647,7 @@ func TestContinueAfterSubscribeClose(
 	}
 
 	// to make this test more robust - let's consume all missing messages
-	// (we care here if we didn't lost any message, not if we received duplicated)
+	// (we care here if we didn't lose any message, not if we received duplicated)
 	missingMessagesCount := totalMessagesCount - len(receivedMessages)
 	if missingMessagesCount > 0 && !tCtx.Features.ExactlyOnceDelivery {
 		messages, err := sub.Subscribe(context.Background(), topicName)
