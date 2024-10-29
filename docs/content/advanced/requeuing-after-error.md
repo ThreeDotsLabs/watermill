@@ -7,7 +7,7 @@ bref = "How to requeue a message after it fails to process"
 +++
 
 If a message fails to process (a nack is sent), it usually blocks other messages on the same topic.
-If you care about the message order, there's not much you can do about it.
+There's not much you can do if you care about the message order. 
 But if you accept that the order might change, you can requeue the failed message back to the tail of the queue.
 
 ## Requeuer
