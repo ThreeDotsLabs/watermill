@@ -7,6 +7,8 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
+
 	"github.com/brianvoe/gofakeit/v6"
 	_ "github.com/lib/pq"
 	"github.com/redis/go-redis/v9"
@@ -15,8 +17,6 @@ import (
 	"github.com/ThreeDotsLabs/watermill-redisstream/pkg/redisstream"
 	"github.com/ThreeDotsLabs/watermill-sql/v4/pkg/sql"
 	"github.com/ThreeDotsLabs/watermill/components/cqrs"
-	"github.com/ThreeDotsLabs/watermill/components/delay"
-	"github.com/ThreeDotsLabs/watermill/components/requeuer"
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
@@ -40,7 +40,12 @@ func main() {
 	delayedRequeuer, err := sql.NewPostgreSQLDelayedRequeuer(sql.DelayedRequeuerConfig{
 		DB:        db,
 		Publisher: redisPublisher,
-		Logger:    logger,
+		DelayOnError: &middleware.DelayOnError{
+			InitialInterval: 10 * time.Second,
+			MaxInterval:     3 * time.Minute,
+			Multiplier:      2,
+		},
+		Logger: logger,
 	})
 	if err != nil {
 		panic(err)
@@ -85,22 +90,12 @@ func main() {
 		cqrs.NewEventHandler(
 			"OnOrderPlacedHandler",
 			func(ctx context.Context, event *OrderPlaced) error {
-				fmt.Println("Received order placed:", event.OrderID)
-
-				msg := cqrs.OriginalMessageFromCtx(ctx)
-				retries := msg.Metadata.Get(requeuer.RetriesKey)
-				delayedUntil := msg.Metadata.Get(delay.DelayedUntilKey)
-				delayedFor := msg.Metadata.Get(delay.DelayedForKey)
-
-				if retries != "" {
-					fmt.Println("\tRetries:", retries)
-					fmt.Println("\tDelayed until:", delayedUntil)
-					fmt.Println("\tDelayed for:", delayedFor)
-				}
-
 				if event.OrderID == "" {
+					fmt.Println("ERROR: Received order placed without order_id")
 					return fmt.Errorf("empty order_id")
 				}
+
+				fmt.Println("Received order placed:", event.OrderID)
 
 				return nil
 			},
@@ -126,12 +121,16 @@ func main() {
 
 	<-router.Running()
 
+	i := 0
+
 	for {
 		e := newFakeOrderPlaced()
 
-		chance := rand.Intn(10)
-		if chance < 2 {
+		i++
+
+		if i == 10 {
 			e.OrderID = ""
+			i = 0
 		}
 
 		err = eventBus.Publish(context.Background(), e)
@@ -139,7 +138,7 @@ func main() {
 			panic(err)
 		}
 
-		time.Sleep(1 * time.Second)
+		time.Sleep(2 * time.Second)
 	}
 }
 

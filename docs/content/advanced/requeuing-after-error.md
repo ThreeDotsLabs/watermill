@@ -6,9 +6,13 @@ draft = false
 bref = "How to requeue a message after it fails to process"
 +++
 
-When a message fails to process (a nack is sent), it usually blocks other messages on the same topic.
-If you don't care about the message order, you can requeue the failed message back to the tail of the queue,
-and let other messages process.
+When a message fails to process (a nack is sent), it usually blocks other messages on the same topic (within the same consumer group or partition).
+
+Depending on your setup, it may be useful to requeue the failed message back to the tail of the queue.
+
+Consider this if:
+* You don't care about the order of messages.
+* Your system isn't resilient to blocked messages.
 
 ## Requeuer
 
