@@ -16,7 +16,9 @@ Official Documentation:
 - [SQS](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/welcome.html)
 - [SNS](https://docs.aws.amazon.com/sns/latest/dg/welcome.html)
 
-You can find a fully functional example with AWS SNS in the [Watermill examples](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/pubsubs/aws).
+You can find a fully functional example with AWS SNS in the Watermill examples:
+- [SNS](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/pubsubs/aws-sns)
+- [SQS](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/pubsubs/aws-sqs)
 
 ## Installation
 
