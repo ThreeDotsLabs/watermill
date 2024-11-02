@@ -826,7 +826,6 @@ func (h *handler) publishProducedMessages(producedMessages Messages, msgFields w
 	}))
 
 	if err := h.publisher.Publish(h.publishTopic, producedMessages...); err != nil {
-		// todo - how to deal with it better/transactional/retry?
 		h.logger.Error("Cannot publish messages", err, msgFields.Add(watermill.LogFields{
 			"not_sent_message": fmt.Sprintf("%#v", producedMessages),
 		}))
