@@ -825,15 +825,13 @@ func (h *handler) publishProducedMessages(producedMessages Messages, msgFields w
 		"publish_topic":           h.publishTopic,
 	}))
 
-	for _, msg := range producedMessages {
-		if err := h.publisher.Publish(h.publishTopic, msg); err != nil {
-			// todo - how to deal with it better/transactional/retry?
-			h.logger.Error("Cannot publish message", err, msgFields.Add(watermill.LogFields{
-				"not_sent_message": fmt.Sprintf("%#v", producedMessages),
-			}))
+	if err := h.publisher.Publish(h.publishTopic, producedMessages...); err != nil {
+		// todo - how to deal with it better/transactional/retry?
+		h.logger.Error("Cannot publish messages", err, msgFields.Add(watermill.LogFields{
+			"not_sent_message": fmt.Sprintf("%#v", producedMessages),
+		}))
 
-			return err
-		}
+		return err
 	}
 
 	return nil
