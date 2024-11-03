@@ -622,7 +622,7 @@ func (h *handler) run(ctx context.Context, middlewares []middleware) {
 
 	middlewareHandler := h.handlerFunc
 	// first added middlewares should be executed first (so should be at the top of call stack)
-	for i := len(middlewares) - 1; i >= 0; i-- {
+	for i := 0; i < len(middlewares); i++ {
 		currentMiddleware := middlewares[i]
 		isValidHandlerLevelMiddleware := currentMiddleware.HandlerName == h.name
 		if currentMiddleware.IsRouterLevel || isValidHandlerLevelMiddleware {
