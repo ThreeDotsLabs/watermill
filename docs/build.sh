@@ -46,6 +46,11 @@ else
         "components/cqrs/cqrs.go"
         "components/cqrs/marshaler.go"
 
+        "components/delay/delay.go"
+        "components/delay/publisher.go"
+
+        "components/requeuer/requeuer.go"
+
         "components/metrics/builder.go"
         "components/metrics/http.go"
 
@@ -74,6 +79,7 @@ cloneOrPull "https://github.com/ThreeDotsLabs/watermill-sql.git" content/src-lin
 cloneOrPull "https://github.com/ThreeDotsLabs/watermill-firestore.git" content/src-link/watermill-firestore
 cloneOrPull "https://github.com/ThreeDotsLabs/watermill-bolt.git" content/src-link/watermill-bolt
 cloneOrPull "https://github.com/ThreeDotsLabs/watermill-redisstream.git" content/src-link/watermill-redisstream
+cloneOrPull "https://github.com/ThreeDotsLabs/watermill-aws.git" content/src-link/watermill-aws
 
 find content/src-link -name '*.md' -delete
 find content/src-link -name '*.html' -delete

@@ -198,6 +198,42 @@ A more detailed explanation of how it is working (and how to add live code reloa
 {{% load-snippet-partial file="src-link/_examples/pubsubs/sql/main.go" first_line_contains="func process" %}}
 {{< /tab >}}
 
+{{< tab "AWS SQS" "aws-sqs" >}}
+
+<details>
+<summary><strong>Running in Docker</strong></summary>
+
+{{% load-snippet file="src-link/_examples/pubsubs/aws-sqs/docker-compose.yml" type="yaml" %}}
+
+The source should go to `main.go`.
+
+To run, execute `docker-compose up`.
+
+A more detailed explanation of how it is working (and how to add live code reload) can be found in [*Go Docker dev environment* article](https://threedots.tech/post/go-docker-dev-environment-with-go-modules-and-live-code-reloading/).
+</details>
+
+{{% load-snippet-partial file="src-link/_examples/pubsubs/aws-sqs/main.go" first_line_contains="package main" last_line_contains="process(messages)" %}}
+{{% load-snippet-partial file="src-link/_examples/pubsubs/aws-sqs/main.go" first_line_contains="func process" %}}
+{{< /tab >}}
+
+{{< tab "AWS SNS" "aws-sns" >}}
+
+<details>
+<summary><strong>Running in Docker</strong></summary>
+
+{{% load-snippet file="src-link/_examples/pubsubs/aws-sns/docker-compose.yml" type="yaml" %}}
+
+The source should go to `main.go`.
+
+To run, execute `docker-compose up`.
+
+A more detailed explanation of how it is working (and how to add live code reload) can be found in [*Go Docker dev environment* article](https://threedots.tech/post/go-docker-dev-environment-with-go-modules-and-live-code-reloading/).
+</details>
+
+{{% load-snippet-partial file="src-link/_examples/pubsubs/aws-sns/main.go" first_line_contains="package main" last_line_contains="go process(" padding_after="1" %}}
+{{% load-snippet-partial file="src-link/_examples/pubsubs/aws-sns/main.go" first_line_contains="func process" %}}
+{{< /tab >}}
+
 {{< /tabs >}}
 
 ### Creating Messages
@@ -221,7 +257,6 @@ if err != nil {
     panic(err)
 }
 ```
-
 
 {{< tabs "publishing" >}}
 
@@ -247,6 +282,14 @@ if err != nil {
 
 {{< tab "SQL" "sql" >}}
 {{% load-snippet-partial file="src-link/_examples/pubsubs/sql/main.go" first_line_contains="message.NewMessage" last_line_contains="publisher.Publish" padding_after="2" %}}
+{{< /tab >}}
+
+{{< tab "AWS SQS" "aws-sqs" >}}
+{{% load-snippet-partial file="src-link/_examples/pubsubs/aws-sqs/main.go" first_line_contains="message.NewMessage" last_line_contains="publisher.Publish" padding_after="2" %}}
+{{< /tab >}}
+
+{{< tab "AWS SNS" "aws-sns" >}}
+{{% load-snippet-partial file="src-link/_examples/pubsubs/aws-sns/main.go" first_line_contains="message.NewMessage" last_line_contains="publisher.Publish" padding_after="2" %}}
 {{< /tab >}}
 
 {{< /tabs >}}
@@ -303,6 +346,9 @@ The complete example's source can be found at [/_examples/basic/3-router/main.go
 
 To see Watermill's logs, pass any logger that implements the [LoggerAdapter](https://github.com/ThreeDotsLabs/watermill/blob/master/log.go).
 For experimental development, you can use `NewStdLogger`.
+
+Watermill provides ready-to-use `slog` adapter. You can create it with [`watermill.NewSlogLogger`](https://github.com/ThreeDotsLabs/watermill/blob/master/slog.go).
+You can also map Watermill's log levels to `slog` levels with [`watermill.NewSlogLoggerWithLevelMapping`](https://github.com/ThreeDotsLabs/watermill/blob/master/slog.go).
 
 ## What's next?
 
