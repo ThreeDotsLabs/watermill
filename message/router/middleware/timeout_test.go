@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ThreeDotsLabs/watermill/message"
@@ -25,6 +26,9 @@ func TestTimeout(t *testing.T) {
 		}
 	})
 
-	_, err := h(message.NewMessage("any-uuid", nil))
+	msg := message.NewMessage("any-uuid", nil)
+
+	_, err := h(msg)
 	require.NoError(t, err)
+	assert.Nil(t, msg.Context().Err())
 }
