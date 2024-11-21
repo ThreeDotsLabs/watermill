@@ -16,7 +16,7 @@ func Timeout(timeout time.Duration) func(message.HandlerFunc) message.HandlerFun
 		return func(msg *message.Message) ([]*message.Message, error) {
 			orgCtx := msg.Context()
 
-			ctx, cancel := context.WithTimeout(msg.Context(), timeout)
+			ctx, cancel := context.WithTimeout(orgCtx, timeout)
 			defer func() {
 				msg.SetContext(orgCtx)
 				cancel()
