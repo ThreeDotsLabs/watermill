@@ -25,19 +25,7 @@ type BookRoomHandler struct {
 	eventBus *cqrs.EventBus
 }
 
-func (b BookRoomHandler) HandlerName() string {
-	return "BookRoomHandler"
-}
-
-// NewCommand returns type of command which this handle should handle. It must be a pointer.
-func (b BookRoomHandler) NewCommand() interface{} {
-	return &BookRoom{}
-}
-
-func (b BookRoomHandler) Handle(ctx context.Context, c interface{}) error {
-	// c is always the type returned by `NewCommand`, so casting is always safe
-	cmd := c.(*BookRoom)
-
+func (b BookRoomHandler) Handle(ctx context.Context, cmd *BookRoom) error {
 	// some random price, in production you probably will calculate in wiser way
 	price := (rand.Int63n(40) + 1) * 10
 
@@ -70,18 +58,7 @@ type OrderBeerOnRoomBooked struct {
 	commandBus *cqrs.CommandBus
 }
 
-func (o OrderBeerOnRoomBooked) HandlerName() string {
-	// this name is passed to EventsSubscriberConstructor and used to generate queue name
-	return "OrderBeerOnRoomBooked"
-}
-
-func (OrderBeerOnRoomBooked) NewEvent() interface{} {
-	return &RoomBooked{}
-}
-
-func (o OrderBeerOnRoomBooked) Handle(ctx context.Context, e interface{}) error {
-	event := e.(*RoomBooked)
-
+func (o OrderBeerOnRoomBooked) Handle(ctx context.Context, event *RoomBooked) error {
 	orderBeerCmd := &OrderBeer{
 		RoomId: event.RoomId,
 		Count:  rand.Int63n(10) + 1,
@@ -100,13 +77,7 @@ func (o OrderBeerHandler) HandlerName() string {
 	return "OrderBeerHandler"
 }
 
-func (o OrderBeerHandler) NewCommand() interface{} {
-	return &OrderBeer{}
-}
-
-func (o OrderBeerHandler) Handle(ctx context.Context, c interface{}) error {
-	cmd := c.(*OrderBeer)
-
+func (o OrderBeerHandler) Handle(ctx context.Context, cmd *OrderBeer) error {
 	if rand.Int63n(10) == 0 {
 		// sometimes there is no beer left, command will be retried
 		return fmt.Errorf("no beer left for room %s, please try later", cmd.RoomId)
@@ -137,21 +108,10 @@ func NewBookingsFinancialReport() *BookingsFinancialReport {
 	return &BookingsFinancialReport{handledBookings: map[string]struct{}{}}
 }
 
-func (b BookingsFinancialReport) HandlerName() string {
-	// this name is passed to EventsSubscriberConstructor and used to generate queue name
-	return "BookingsFinancialReport"
-}
-
-func (BookingsFinancialReport) NewEvent() interface{} {
-	return &RoomBooked{}
-}
-
-func (b *BookingsFinancialReport) Handle(ctx context.Context, e interface{}) error {
+func (b *BookingsFinancialReport) Handle(ctx context.Context, event *RoomBooked) error {
 	// Handle may be called concurrently, so it need to be thread safe.
 	b.lock.Lock()
 	defer b.lock.Unlock()
-
-	event := e.(*RoomBooked)
 
 	// When we are using Pub/Sub which doesn't provide exactly-once delivery semantics, we need to deduplicate messages.
 	// GoChannel Pub/Sub provides exactly-once delivery,
@@ -323,8 +283,8 @@ func main() {
 	}
 
 	err = commandProcessor.AddHandlers(
-		BookRoomHandler{eventBus},
-		OrderBeerHandler{eventBus},
+		cqrs.NewCommandHandler("BookRoomHandler", BookRoomHandler{eventBus}.Handle),
+		cqrs.NewCommandHandler("OrderBeerHandler", OrderBeerHandler{eventBus}.Handle),
 	)
 	if err != nil {
 		panic(err)
@@ -332,10 +292,8 @@ func main() {
 
 	err = eventProcessor.AddHandlersGroup(
 		"events",
-		OrderBeerOnRoomBooked{commandBus},
-
-		NewBookingsFinancialReport(),
-
+		cqrs.NewGroupEventHandler(OrderBeerOnRoomBooked{commandBus}.Handle),
+		cqrs.NewGroupEventHandler(NewBookingsFinancialReport().Handle),
 		cqrs.NewGroupEventHandler(func(ctx context.Context, event *BeerOrdered) error {
 			logger.Info("Beer ordered", watermill.LogFields{
 				"room_id": event.RoomId,
