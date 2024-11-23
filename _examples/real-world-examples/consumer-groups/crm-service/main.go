@@ -88,8 +88,8 @@ func main() {
 			EventsPublisher: publisher,
 			EventHandlers: func(commandBus *cqrs.CommandBus, eventBus *cqrs.EventBus) []cqrs.EventHandler {
 				return []cqrs.EventHandler{
-					AddToCRM8Handler{},
-					AddToSupport8Handler{},
+					cqrs.NewEventHandler("AddToCRM-8", AddToCRM8Handler{}.Handle),
+					cqrs.NewEventHandler("AddToSupport-8", AddToSupport8Handler{}.Handle),
 				}
 			},
 			EventsSubscriberConstructor: func(handlerName string) (message.Subscriber, error) {
@@ -120,8 +120,8 @@ func main() {
 		EventsPublisher: publisher,
 		EventHandlers: func(commandBus *cqrs.CommandBus, eventBus *cqrs.EventBus) []cqrs.EventHandler {
 			return []cqrs.EventHandler{
-				AddToCRM9Handler{},
-				AddToSupport9Handler{},
+				cqrs.NewEventHandler("AddToCRM-9", AddToCRM9Handler{}.Handle),
+				cqrs.NewEventHandler("AddToSupport-9", AddToSupport9Handler{}.Handle),
 			}
 		},
 		EventsSubscriberConstructor: func(handlerName string) (message.Subscriber, error) {
@@ -152,17 +152,7 @@ func main() {
 
 type AddToCRM8Handler struct{}
 
-func (h AddToCRM8Handler) HandlerName() string {
-	return "AddToCRM-8"
-}
-
-func (h AddToCRM8Handler) NewEvent() interface{} {
-	return &common.UserSignedUp{}
-}
-
-func (h AddToCRM8Handler) Handle(ctx context.Context, event interface{}) error {
-	e := event.(*common.UserSignedUp)
-
+func (h AddToCRM8Handler) Handle(ctx context.Context, e *common.UserSignedUp) error {
 	fmt.Println("Adding user", e.UserID, "to the CRM")
 
 	return nil
@@ -170,17 +160,7 @@ func (h AddToCRM8Handler) Handle(ctx context.Context, event interface{}) error {
 
 type AddToSupport8Handler struct{}
 
-func (h AddToSupport8Handler) HandlerName() string {
-	return "AddToSupport-8"
-}
-
-func (h AddToSupport8Handler) NewEvent() interface{} {
-	return &common.UserSignedUp{}
-}
-
-func (h AddToSupport8Handler) Handle(ctx context.Context, event interface{}) error {
-	e := event.(*common.UserSignedUp)
-
+func (h AddToSupport8Handler) Handle(ctx context.Context, e *common.UserSignedUp) error {
 	fmt.Println("Adding user", e.UserID, "to the support channel")
 
 	return nil
@@ -188,17 +168,7 @@ func (h AddToSupport8Handler) Handle(ctx context.Context, event interface{}) err
 
 type AddToCRM9Handler struct{}
 
-func (h AddToCRM9Handler) HandlerName() string {
-	return "AddToCRM-9"
-}
-
-func (h AddToCRM9Handler) NewEvent() interface{} {
-	return &common.UserSignedUp{}
-}
-
-func (h AddToCRM9Handler) Handle(ctx context.Context, event interface{}) error {
-	e := event.(*common.UserSignedUp)
-
+func (h AddToCRM9Handler) Handle(ctx context.Context, e *common.UserSignedUp) error {
 	fmt.Println("Adding user", e.UserID, "to the CRM")
 
 	return nil
@@ -206,17 +176,7 @@ func (h AddToCRM9Handler) Handle(ctx context.Context, event interface{}) error {
 
 type AddToSupport9Handler struct{}
 
-func (h AddToSupport9Handler) HandlerName() string {
-	return "AddToSupport-9"
-}
-
-func (h AddToSupport9Handler) NewEvent() interface{} {
-	return &common.UserSignedUp{}
-}
-
-func (h AddToSupport9Handler) Handle(ctx context.Context, event interface{}) error {
-	e := event.(*common.UserSignedUp)
-
+func (h AddToSupport9Handler) Handle(ctx context.Context, e *common.UserSignedUp) error {
 	fmt.Println("Adding user", e.UserID, "to the support channel")
 
 	return nil
