@@ -40,11 +40,11 @@ type Config struct {
 	// Required.
 	GeneratePublishTopic func(params GeneratePublishTopicParams) (string, error)
 
-	// Delay is the duration to wait before requeueing the message. Optional.
+	// Delay is the duration to wait before requeuing the message. Optional.
 	// The default is no delay.
 	//
-	// This can be useful to avoid requeueing messages too quickly, for example, to avoid
-	// requeueing a message that failed to process due to a temporary issue.
+	// This can be useful to avoid requeuing messages too quickly, for example, to avoid
+	// requeuing a message that failed to process due to a temporary issue.
 	//
 	// Avoid setting this to a very high value, as it will block the message processing.
 	Delay time.Duration

@@ -70,7 +70,7 @@ Enter the dashboard URL https://grafana.com/dashboards/9777 (or just the ID, 977
 
 ![Importing the dashboard](https://threedots.tech/watermill-io/grafana_import_dashboard.png)
 
-Then select your the Prometheus data source that scrapes the `/metrics` endpoint. Click on `Import`, and you're done!
+Then select your Prometheus data source that scrapes the `/metrics` endpoint. Click on `Import`, and you're done!
 
 ## Exported metrics
 

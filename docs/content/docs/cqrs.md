@@ -111,13 +111,13 @@ For the beginning, we need to simulate the guest's action.
 
 `BookRoomHandler` will handle our command.
 
-{{% load-snippet-partial file="src-link/_examples/basic/5-cqrs-protobuf/main.go" first_line_contains="// BookRoomHandler is a command handler" last_line_contains="// OrderBeerOnRoomBooked is a event handler" padding_after="0" %}}
+{{% load-snippet-partial file="src-link/_examples/basic/5-cqrs-protobuf/main.go" first_line_contains="// BookRoomHandler is a command handler" last_line_contains="// OrderBeerOnRoomBooked is an event handler" padding_after="0" %}}
 
 ### Event handler
 
 As mentioned before, we want to order a beer every time when a room is booked (*"Whenever a Room is booked"* post-it). We do it by using the `OrderBeer` command.
 
-{{% load-snippet-partial file="src-link/_examples/basic/5-cqrs-protobuf/main.go" first_line_contains="// OrderBeerOnRoomBooked is a event handler" last_line_contains="// OrderBeerHandler is a command handler" padding_after="0" %}}
+{{% load-snippet-partial file="src-link/_examples/basic/5-cqrs-protobuf/main.go" first_line_contains="// OrderBeerOnRoomBooked is an event handler" last_line_contains="// OrderBeerHandler is a command handler" padding_after="0" %}}
 
 `OrderBeerHandler` is very similar to `BookRoomHandler`. The only difference is, that it sometimes returns an error when there are not enough beers, which causes redelivery of the command.
 You can find the entire implementation in the [example source code](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/basic/5-cqrs-protobuf/?utm_source=cqrs_doc).

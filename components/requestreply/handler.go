@@ -37,7 +37,7 @@ func NewCommandHandler[Command any](
 // NewCommandHandlerWithResult creates a new CommandHandler which supports the request-reply pattern with a result.
 // The result handler is handler compatible with cqrs.CommandHandler.
 //
-// In addition to cqrs.CommandHandler, it also allows returninga result from the handler.
+// In addition to cqrs.CommandHandler, it also allows returning a result from the handler.
 // The result is passed to the Backend implementation and sent to the caller.
 //
 // The logic if a command should be acked or not is based on the logic of the Backend.

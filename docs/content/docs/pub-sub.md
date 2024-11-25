@@ -49,7 +49,7 @@ That means when some error occurs when processing a message and an Ack cannot be
 
 You need to keep it in mind and build your application to be [idempotent](http://www.cloudcomputingpatterns.org/idempotent_processor/) or implement a deduplication mechanism.
 
-Unfortunately, it's not possible to create an universal [*middleware*]({{< ref "/docs/messages-router#middleware" >}}) for deduplication, so we encourage you to build your own.
+Unfortunately, it's not possible to create a universal [*middleware*]({{< ref "/docs/messages-router#middleware" >}}) for deduplication, so we encourage you to build your own.
 
 ## Universal tests
 

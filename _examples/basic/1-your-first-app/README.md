@@ -1,7 +1,7 @@
 # Your first Watermill app
 
 This example project shows a basic setup of Watermill. The application runs in a loop, consuming events from a Kafka
-topic, modyfing them and publishing to another topic.
+topic, modifying them and publishing to another topic.
 
 There's a docker-compose file included, so you can run the example and see it in action.
 

@@ -91,7 +91,7 @@ Additional flags are available for `subscription add` to regulate the newly crea
 
 #### Listing subscriptions
 
-You can use `mill` to list existings subscriptions:
+You can use `mill` to list existing subscriptions:
 
 ```bash
 mill googlecloud subscription ls [-t topic]

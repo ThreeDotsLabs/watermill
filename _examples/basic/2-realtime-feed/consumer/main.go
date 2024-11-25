@@ -162,7 +162,7 @@ func (p PostsCounter) Count(msg *message.Message) ([]*message.Message, error) {
 
 // postAdded might look similar to the postAdded type from producer.
 // It's intentionally not imported here. We avoid coupling the services at the cost of duplication.
-// We don't need all of it's data either (content is not displayed on the feed).
+// We don't need all of its data either (content is not displayed on the feed).
 type postAdded struct {
 	OccurredOn time.Time `json:"occurred_on"`
 	Author     string    `json:"author"`

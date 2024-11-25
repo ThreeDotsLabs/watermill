@@ -94,7 +94,7 @@ type PubSubBackendConfig struct {
 	AckCommandErrors bool
 
 	// ReplyPublishErrorHandler if not nil will be invoked when sending the reply fails. If it returns an error
-	// the command will ba nacked.
+	// the command will be nacked.
 	ReplyPublishErrorHandler ReplyPublishErrorHandler
 }
 
