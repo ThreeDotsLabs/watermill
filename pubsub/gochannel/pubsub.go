@@ -142,8 +142,9 @@ func (g *GoChannel) sendMessage(topic string, message *message.Message) (<-chan 
 
 	if len(subscribers) == 0 {
 		close(ackedBySubscribers)
-		g.logger.Info("No subscribers to send message", logFields)
-		return ackedBySubscribers, nil
+		err := errors.New("No subscribers")
+		g.logger.Error("No subscribers to send message", err, logFields)
+		return ackedBySubscribers, err
 	}
 
 	go func(subscribers []*subscriber) {
