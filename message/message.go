@@ -193,3 +193,11 @@ func (m *Message) Copy() *Message {
 	}
 	return msg
 }
+
+// CopyWithContext copies all message without Acks/Nacks.
+// The context is also propagated to the copy.
+func (m *Message) CopyWithContext() *Message {
+	msg := m.Copy()
+	msg.ctx = m.ctx
+	return msg
+}
