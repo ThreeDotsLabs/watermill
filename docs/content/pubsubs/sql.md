@@ -1,5 +1,5 @@
 +++
-title = "SQL"
+title = "SQL (PostgreSQL, MySQL)"
 description = "Pub/Sub based on MySQL or PostgreSQL."
 date = 2019-07-06T22:30:00+02:00
 bref = "Pub/Sub based on MySQL or PostgreSQL."
@@ -7,9 +7,7 @@ weight = 120
 +++
 
 SQL Pub/Sub executes queries on any SQL database, using it like a messaging system. At the moment, **MySQL** and **PostgreSQL** are supported.
-
-While the performance of this approach isn't the best, it fits many use cases, where eventual consistency is acceptable.
-It can also be useful for projects that are not using any specialized message queue at the moment, but have access to a SQL database.
+It be useful for projects that are not using any specialized message queue at the moment, but have access to a SQL database.
 
 The SQL subscriber runs a `SELECT` query within short periods, remembering the position of the last record. If it finds
 any new records, they are returned. One handy use case is consuming events from a database table, that can be later published
@@ -122,3 +120,22 @@ Currently, this schema is supported only for PostgreSQL.
 {{% load-snippet-partial file="src-link/watermill-sql/pkg/sql/queue_schema_adapter_postgresql.go" first_line_contains="// PostgreSQLQueueSchema" last_line_contains="}" %}}
 
 {{% load-snippet-partial file="src-link/watermill-sql/pkg/sql/queue_offsets_adapter_postgresql.go" first_line_contains="// PostgreSQLQueueOffsetsAdapter" last_line_contains="}" %}}
+
+## Caveats
+
+### Using last processed transaction ID in PostgreSQL to ensure no messages are lost
+
+In some cases, PostgreSQL `SERIAL` is not incremental.
+The `SERIAL` value is generated while the transaction is in progress, not when it is committed.
+If transactions are committed in a different order than they were started, message offsets based on `SERIAL` values will not be incremental.
+
+To keep storing acknowledgment information efficient, Watermill keeps only the last message's acknowledgment information.
+To ensure no messages are missed when a message order is not kept, Watermill also uses the transaction ID to ensure no message is lost.
+For more details, see [Watermill#311](https://github.com/ThreeDotsLabs/watermill/issues/311).
+
+It is important to note that very long-running transactions may result in delayed message delivery.
+For instance, if a transaction is running for an hour, no messages will be delivered until the transaction is committed.
+While we do not recommend the use of such long transactions, **if they are necessary, we advise the use of the [Queue schema adapter](#queue), which does not depend on the transaction ID.**
+You have nothing to worry about if you don't have such long transactions.
+
+If you are migrating your data to a new database, you may need to set `last_processed_transaction_id` in your offsets table.
