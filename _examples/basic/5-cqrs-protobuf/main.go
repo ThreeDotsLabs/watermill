@@ -8,13 +8,12 @@ import (
 	"sync"
 	"time"
 
-	"google.golang.org/protobuf/types/known/timestamppb"
-
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill-amqp/v3/pkg/amqp"
 	"github.com/ThreeDotsLabs/watermill/components/cqrs"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // BookRoomHandler is a command handler, which handles BookRoom command and emits RoomBooked.
@@ -295,8 +294,8 @@ func main() {
 	err = eventProcessor.AddHandlers(
 		cqrs.NewEventHandler(
 			"OrderBeerOnRoomBooked",
-			OrderBeerOnRoomBooked{commandBus}.Handle),
-
+			OrderBeerOnRoomBooked{commandBus}.Handle,
+		),
 		cqrs.NewEventHandler(
 			"LogBeerOrdered",
 			func(ctx context.Context, event *BeerOrdered) error {
@@ -304,7 +303,8 @@ func main() {
 					"room_id": event.RoomId,
 				})
 				return nil
-			}),
+			},
+		),
 		cqrs.NewEventHandler(
 			"BookingsFinancialReport",
 			NewBookingsFinancialReport().Handle,
