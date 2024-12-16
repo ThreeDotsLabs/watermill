@@ -182,6 +182,8 @@ After that, you can use `AddHandlersGroup` on [`EventProcessor`](#event-processo
 
 Both `GenerateHandlerGroupSubscribeTopic` and `GroupSubscriberConstructor` receives information about group name in function arguments.
 
+You can see a fully working example with event groups in our [examples](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/basic/6-cqrs-ordered-events/).
+
 ### Generic handlers
 
 Since Watermill v1.3 it's possible to use generic handlers for commands and events. It's useful when you have a lot of commands/events and you don't want to create a handler for each of them.
