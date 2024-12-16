@@ -1,5 +1,6 @@
 syntax = "proto3";
 package cqrs_test;
+option go_package = "./cqrs_test";
 
 import "google/protobuf/timestamp.proto";
 
