@@ -132,11 +132,52 @@ In the scenario, when we have multiple event types on one topic, you have two op
 1. You can set `EventConfig.AckOnUnknownEvent` to true - it will acknowledge all events that are not handled by handler,
 2. You can use Event Handler groups mechanism.
 
+**Key differences between `EventProcessor` and `EventGroupProcessor`:**
+
+1. `EventProcessor`:
+- Each handler has its own subscriber
+- One handler per event type
+- Simple one-to-one matching of events to handlers
+2. `EventGroupProcessor`:
+- Multiple handlers share a single subscriber
+- Can have multiple handlers for the same event type
+- Iterates through all handlers in the group
+- Message is considered processed if at least one handler processes it
+- All handlers in a group receive messages in the same order
+- If one handler fails, the message is nacked and will be redelivered to all handlers
+
+```kroki {type=mermaid}
+graph TD
+    subgraph Individual Handlers
+        E[Event Bus] --> S1[Subscriber 1]
+        E --> S2[Subscriber 2]
+        E --> S3[Subscriber 3]
+        S1 --> H1[Handler 1]
+        S2 --> H2[Handler 2]
+        S3 --> H3[Handler 3]
+    end
+
+    subgraph Group Handlers
+        EB[Event Bus] --> SharedSub[Shared Subscriber]
+        SharedSub --> GH[Handler Group]
+        GH --> GH1[Handler 1]
+        GH --> GH2[Handler 2]
+        GH --> GH3[Handler 3]
+    end
+```
+
+{{< callout context="note" title="Note" icon="outline/info-circle" >}}
+It's allowed to have multiple handlers for the same event type in one group, but we recommend to not do that.
+
+Please keep in mind that those handlers will be processed within the same message.
+If first handler succeeds and the second fails, the message will be re-delivered and the first will be re-executed.
+{{< /callout >}}
+
 To use event groups, you need to set `GenerateHandlerGroupSubscribeTopic` and `GroupSubscriberConstructor` options in [`EventConfig`](#event-config).
 
 After that, you can use `AddHandlersGroup` on [`EventProcessor`](#event-processor).
 
-{{% load-snippet-partial file="src-link/_examples/basic/5-cqrs-protobuf/main.go" first_line_contains="eventProcessor.AddHandlersGroup(" last_line_contains="if err != nil {" padding_after="0" %}}
+{{% load-snippet-partial file="src-link/_examples/basic/6-cqrs-ordered-events/main.go" first_line_contains="eventProcessor.AddHandlersGroup(" last_line_contains="if err != nil {" padding_after="0" %}}
 
 Both `GenerateHandlerGroupSubscribeTopic` and `GroupSubscriberConstructor` receives information about group name in function arguments.
 
@@ -144,7 +185,7 @@ Both `GenerateHandlerGroupSubscribeTopic` and `GroupSubscriberConstructor` recei
 
 Since Watermill v1.3 it's possible to use generic handlers for commands and events. It's useful when you have a lot of commands/events and you don't want to create a handler for each of them.
 
-{{% load-snippet-partial file="src-link/_examples/basic/5-cqrs-protobuf/main.go" first_line_contains="cqrs.NewGroupEventHandler" last_line_contains="})," padding_after="0" %}}
+{{% load-snippet-partial file="src-link/_examples/basic/6-cqrs-ordered-events/main.go" first_line_contains="cqrs.NewGroupEventHandler" last_line_contains=")," padding_after="0" %}}
 
 Under the hood, it creates EventHandler or CommandHandler implementation.
 It's available for all kind of handlers.
@@ -154,7 +195,6 @@ It's available for all kind of handlers.
 {{% load-snippet-partial file="src-link/components/cqrs/event_handler.go" first_line_contains="// NewEventHandler" last_line_contains="func NewEventHandler" padding_after="0" %}}
 
 {{% load-snippet-partial file="src-link/components/cqrs/event_handler.go" first_line_contains="// NewGroupEventHandler" last_line_contains="func NewGroupEventHandler" padding_after="0" %}}
-
 ### Building a read model with the event handler
 
 {{% load-snippet-partial file="src-link/_examples/basic/5-cqrs-protobuf/main.go" first_line_contains="// BookingsFinancialReport is a read model" last_line_contains="func main() {" padding_after="0" %}}
