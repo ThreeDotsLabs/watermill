@@ -122,7 +122,7 @@ func (b *BookingsFinancialReport) Handle(ctx context.Context, event *RoomBooked)
 
 	b.totalCharge += event.Price
 
-	slog.Info(">>> Already booked rooms for $%d\n", b.totalCharge)
+	slog.Info(fmt.Sprintf(">>> Already booked rooms for $%d\n", b.totalCharge))
 	return nil
 }
 
