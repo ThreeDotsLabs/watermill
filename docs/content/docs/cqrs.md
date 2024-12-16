@@ -135,16 +135,14 @@ In the scenario, when we have multiple event types on one topic, you have two op
 **Key differences between `EventProcessor` and `EventGroupProcessor`:**
 
 1. `EventProcessor`:
-- Each handler has its own subscriber
+- Each handler has its own subscriber instance
 - One handler per event type
 - Simple one-to-one matching of events to handlers
+
 2. `EventGroupProcessor`:
-- Multiple handlers share a single subscriber
-- Can have multiple handlers for the same event type
-- Iterates through all handlers in the group
-- Message is considered processed if at least one handler processes it
-- All handlers in a group receive messages in the same order
-- If one handler fails, the message is nacked and will be redelivered to all handlers
+- Group of handlers share a single subscriber instance (and one consumer group, if such mechanism is supported)
+- One handler group can support multiple event types,
+- When message arrives to the topic, Watermill will match it to the handler in the group based on event type
 
 ```kroki {type=mermaid}
 graph TD
@@ -165,6 +163,9 @@ graph TD
         GH --> GH3[Handler 3]
     end
 ```
+
+**Event Handler groups are helpful, when you have multiple event of different types, and you want to maintain order of events.**
+Thanks to using one subscriber instance and consumer group, events will be processed in the order they were sent.
 
 {{< callout context="note" title="Note" icon="outline/info-circle" >}}
 It's allowed to have multiple handlers for the same event type in one group, but we recommend to not do that.

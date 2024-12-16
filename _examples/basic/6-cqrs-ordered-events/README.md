@@ -4,7 +4,7 @@ This application is using [Watermill CQRS](http://watermill.io/docs/cqrs) compon
 
 Detailed documentation for CQRS can be found in Watermill's docs: [http://watermill.io/docs/cqrs#usage](http://watermill.io/docs/cqrs).
 
-This example, uses event groups to maintain order of events. You can read more about them in the [Watermill documentation](https://watermill.io/docs/cqrs/).
+This example, uses event groups to keep order for multiple events. You can read more about them in the [Watermill documentation](https://watermill.io/docs/cqrs/).
 We are also using Kafka's partitioning keys to increase processing throughput without losing order of events.
 
 
@@ -22,6 +22,10 @@ The system maintains:
 
 If events won't be ordered, and `SubscriberSubscribed` would arrive after `SubscriberUnsubscribed` event,
 the subscriber will be still subscribed.
+
+## Possible improvements
+
+You may consider creating sub-topics xxxx
 
 ## Running
 
