@@ -3,12 +3,12 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"math/rand"
 	"sync"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill-amqp/v3/pkg/amqp"
@@ -29,12 +29,12 @@ func (b BookRoomHandler) Handle(ctx context.Context, cmd *BookRoom) error {
 	// some random price, in production you probably will calculate in wiser way
 	price := (rand.Int63n(40) + 1) * 10
 
-	log.Printf(
-		"Booked %s for %s from %s to %s",
-		cmd.RoomId,
-		cmd.GuestName,
-		time.Unix(cmd.StartDate.Seconds, int64(cmd.StartDate.Nanos)),
-		time.Unix(cmd.EndDate.Seconds, int64(cmd.EndDate.Nanos)),
+	slog.Info(
+		"Booked room",
+		"room_id", cmd.RoomId,
+		"guest_name", cmd.GuestName,
+		"start_date", time.Unix(cmd.StartDate.Seconds, int64(cmd.StartDate.Nanos)),
+		"end_date", time.Unix(cmd.EndDate.Seconds, int64(cmd.EndDate.Nanos)),
 	)
 
 	// RoomBooked will be handled by OrderBeerOnRoomBooked event handler,
@@ -90,7 +90,7 @@ func (o OrderBeerHandler) Handle(ctx context.Context, cmd *OrderBeer) error {
 		return err
 	}
 
-	log.Printf("%d beers ordered to room %s", cmd.Count, cmd.RoomId)
+	slog.Info(fmt.Sprintf("%d beers ordered to room %s", cmd.Count, cmd.RoomId))
 	return nil
 }
 
@@ -123,15 +123,23 @@ func (b *BookingsFinancialReport) Handle(ctx context.Context, event *RoomBooked)
 
 	b.totalCharge += event.Price
 
-	fmt.Printf(">>> Already booked rooms for $%d\n", b.totalCharge)
+	slog.Info(">>> Already booked rooms for $%d\n", b.totalCharge)
 	return nil
 }
 
 var amqpAddress = "amqp://guest:guest@rabbitmq:5672/"
 
 func main() {
-	logger := watermill.NewStdLogger(false, false)
-	cqrsMarshaler := cqrs.ProtobufMarshaler{}
+	logger := watermill.NewSlogLoggerWithLevelMapping(nil, map[slog.Level]slog.Level{
+		slog.LevelInfo: slog.LevelDebug,
+	})
+
+	cqrsMarshaler := cqrs.ProtobufMarshaler{
+		// It will generate topic names based on the event/command type.
+		// So for example, for "RoomBooked" name will be "RoomBooked".
+		// It's later used to generate topic names.
+		GenerateName: cqrs.StructName,
+	}
 
 	// You can use any Pub/Sub implementation from here: https://watermill.io/pubsubs/
 	// Detailed RabbitMQ implementation: https://watermill.io/pubsubs/amqp/
@@ -168,8 +176,7 @@ func main() {
 
 	commandBus, err := cqrs.NewCommandBusWithConfig(commandsPublisher, cqrs.CommandBusConfig{
 		GeneratePublishTopic: func(params cqrs.CommandBusGeneratePublishTopicParams) (string, error) {
-			// we are using queue RabbitMQ config, so we need to have topic per command type
-			return params.CommandName, nil
+			return generateCommandsTopic(params.CommandName), nil
 		},
 		OnSend: func(params cqrs.CommandBusOnSendParams) error {
 			logger.Info("Sending command", watermill.LogFields{
@@ -191,8 +198,7 @@ func main() {
 		router,
 		cqrs.CommandProcessorConfig{
 			GenerateSubscribeTopic: func(params cqrs.CommandProcessorGenerateSubscribeTopicParams) (string, error) {
-				// we are using queue RabbitMQ config, so we need to have topic per command type
-				return params.CommandName, nil
+				return generateCommandsTopic(params.CommandName), nil
 			},
 			SubscriberConstructor: func(params cqrs.CommandProcessorSubscriberConstructorParams) (message.Subscriber, error) {
 				// we can reuse subscriber, because all commands have separated topics
@@ -221,11 +227,7 @@ func main() {
 
 	eventBus, err := cqrs.NewEventBusWithConfig(eventsPublisher, cqrs.EventBusConfig{
 		GeneratePublishTopic: func(params cqrs.GenerateEventPublishTopicParams) (string, error) {
-			// because we are using PubSub RabbitMQ config, we can use one topic for all events
-			return "events", nil
-
-			// we can also use topic per event type
-			// return params.EventName, nil
+			return generateEventsTopic(params.EventName), nil
 		},
 
 		OnPublish: func(params cqrs.OnEventSendParams) error {
@@ -245,22 +247,22 @@ func main() {
 		panic(err)
 	}
 
-	eventProcessor, err := cqrs.NewEventGroupProcessorWithConfig(
+	eventProcessor, err := cqrs.NewEventProcessorWithConfig(
 		router,
-		cqrs.EventGroupProcessorConfig{
-			GenerateSubscribeTopic: func(params cqrs.EventGroupProcessorGenerateSubscribeTopicParams) (string, error) {
-				return "events", nil
+		cqrs.EventProcessorConfig{
+			GenerateSubscribeTopic: func(params cqrs.EventProcessorGenerateSubscribeTopicParams) (string, error) {
+				return generateEventsTopic(params.EventName), nil
 			},
-			SubscriberConstructor: func(params cqrs.EventGroupProcessorSubscriberConstructorParams) (message.Subscriber, error) {
+			SubscriberConstructor: func(params cqrs.EventProcessorSubscriberConstructorParams) (message.Subscriber, error) {
 				config := amqp.NewDurablePubSubConfig(
 					amqpAddress,
-					amqp.GenerateQueueNameTopicNameWithSuffix(params.EventGroupName),
+					amqp.GenerateQueueNameTopicNameWithSuffix(params.HandlerName),
 				)
 
 				return amqp.NewSubscriber(config, logger)
 			},
 
-			OnHandle: func(params cqrs.EventGroupProcessorOnHandleParams) error {
+			OnHandle: func(params cqrs.EventProcessorOnHandleParams) error {
 				start := time.Now()
 
 				err := params.Handler.Handle(params.Message.Context(), params.Event)
@@ -290,16 +292,23 @@ func main() {
 		panic(err)
 	}
 
-	err = eventProcessor.AddHandlersGroup(
-		"events",
-		cqrs.NewGroupEventHandler(OrderBeerOnRoomBooked{commandBus}.Handle),
-		cqrs.NewGroupEventHandler(NewBookingsFinancialReport().Handle),
-		cqrs.NewGroupEventHandler(func(ctx context.Context, event *BeerOrdered) error {
-			logger.Info("Beer ordered", watermill.LogFields{
-				"room_id": event.RoomId,
-			})
-			return nil
-		}),
+	err = eventProcessor.AddHandlers(
+		cqrs.NewEventHandler(
+			"OrderBeerOnRoomBooked",
+			OrderBeerOnRoomBooked{commandBus}.Handle),
+
+		cqrs.NewEventHandler(
+			"LogBeerOrdered",
+			func(ctx context.Context, event *BeerOrdered) error {
+				logger.Info("Beer ordered", watermill.LogFields{
+					"room_id": event.RoomId,
+				})
+				return nil
+			}),
+		cqrs.NewEventHandler(
+			"BookingsFinancialReport",
+			NewBookingsFinancialReport().Handle,
+		),
 	)
 	if err != nil {
 		panic(err)
@@ -319,15 +328,8 @@ func publishCommands(commandBus *cqrs.CommandBus) func() {
 	for {
 		i++
 
-		startDate, err := ptypes.TimestampProto(time.Now())
-		if err != nil {
-			panic(err)
-		}
-
-		endDate, err := ptypes.TimestampProto(time.Now().Add(time.Hour * 24 * 3))
-		if err != nil {
-			panic(err)
-		}
+		startDate := timestamppb.New(time.Now())
+		endDate := timestamppb.New(time.Now().Add(time.Hour * 24 * 3))
 
 		bookRoomCmd := &BookRoom{
 			RoomId:    fmt.Sprintf("%d", i),
@@ -341,4 +343,12 @@ func publishCommands(commandBus *cqrs.CommandBus) func() {
 
 		time.Sleep(time.Second)
 	}
+}
+
+func generateEventsTopic(eventName string) string {
+	return "events." + eventName
+}
+
+func generateCommandsTopic(commandName string) string {
+	return "commands." + commandName
 }
