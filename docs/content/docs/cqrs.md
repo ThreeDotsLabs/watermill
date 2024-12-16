@@ -164,7 +164,7 @@ graph TD
     end
 ```
 
-**Event Handler groups are helpful, when you have multiple event of different types, and you want to maintain order of events.**
+**Event Handler groups are helpful when you have multiple event types on one topic and you want to maintain order of events.**
 Thanks to using one subscriber instance and consumer group, events will be processed in the order they were sent.
 
 {{< callout context="note" title="Note" icon="outline/info-circle" >}}
