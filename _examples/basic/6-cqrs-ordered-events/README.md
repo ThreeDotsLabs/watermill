@@ -23,6 +23,13 @@ The system maintains:
 If events won't be ordered, and `SubscriberSubscribed` would arrive after `SubscriberUnsubscribed` event,
 the subscriber will be still subscribed.
 
+## Possible improvements
+
+In this example, we are using global `events` and `commands` topics.
+You can consider splitting them into smaller topics, for example, per aggregate type.
+
+Thanks to that, you can scale your application horizontally and increase the throughput and processing less events.
+
 ## Running
 
 ```bash
