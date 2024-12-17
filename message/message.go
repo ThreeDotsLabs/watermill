@@ -42,7 +42,7 @@ type Message struct {
 
 	// ack is closed when acknowledge is received.
 	ack chan struct{}
-	// noACk is closed when negative acknowledge is received.
+	// noAck is closed when negative acknowledge is received.
 	noAck chan struct{}
 
 	ackMutex    sync.Mutex
