@@ -17,3 +17,4 @@ services:
   rabbitmq:
     image: rabbitmq:3.7
     restart: unless-stopped
+    attach: false

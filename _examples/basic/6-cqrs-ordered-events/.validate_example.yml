@@ -1,0 +1,10 @@
+validation_cmd: "docker compose up"
+teardown_cmd: "docker compose down"
+timeout: 120
+expected_outputs:
+  - "Subscriber added subscriber_id"
+  - "Subscriber updated subscriber_id"
+  - "Subscriber removed subscriber_id"
+  - "\\[ACTIVITY\\] activity_type=SUBSCRIBED"
+  - "\\[ACTIVITY\\] activity_type=UNSUBSCRIBED"
+  - "\\[ACTIVITY\\] activity_type=EMAIL_UPDATED"
