@@ -13,8 +13,6 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
 )
 
-var amqpAddress = "amqp://guest:guest@rabbitmq:5672/"
-
 func main() {
 	slog.SetLogLoggerLevel(slog.LevelDebug)
 
