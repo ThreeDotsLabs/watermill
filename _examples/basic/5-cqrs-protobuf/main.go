@@ -72,10 +72,6 @@ type OrderBeerHandler struct {
 	eventBus *cqrs.EventBus
 }
 
-func (o OrderBeerHandler) HandlerName() string {
-	return "OrderBeerHandler"
-}
-
 func (o OrderBeerHandler) Handle(ctx context.Context, cmd *OrderBeer) error {
 	if rand.Int63n(10) == 0 {
 		// sometimes there is no beer left, command will be retried
@@ -136,13 +132,22 @@ func main() {
 	cqrsMarshaler := cqrs.ProtobufMarshaler{
 		// It will generate topic names based on the event/command type.
 		// So for example, for "RoomBooked" name will be "RoomBooked".
-		// It's later used to generate topic names.
+		//
+		// This value is used to generate topic names with "generateEventsTopic" and "generateCommandsTopic" functions.
 		GenerateName: cqrs.StructName,
+	}
+
+	generateEventsTopic := func(eventName string) string {
+		return "events." + eventName
+	}
+
+	generateCommandsTopic := func(commandName string) string {
+		return "commands." + commandName
 	}
 
 	// You can use any Pub/Sub implementation from here: https://watermill.io/pubsubs/
 	// Detailed RabbitMQ implementation: https://watermill.io/pubsubs/amqp/
-	// Commands will be send to queue, because they need to be consumed once.
+	// Commands will be sent to queue, because they need to be consumed once.
 	commandsAMQPConfig := amqp.NewDurableQueueConfig(amqpAddress)
 	commandsPublisher, err := amqp.NewPublisher(commandsAMQPConfig, logger)
 	if err != nil {
@@ -343,12 +348,4 @@ func publishCommands(commandBus *cqrs.CommandBus) func() {
 
 		time.Sleep(time.Second)
 	}
-}
-
-func generateEventsTopic(eventName string) string {
-	return "events." + eventName
-}
-
-func generateCommandsTopic(commandName string) string {
-	return "commands." + commandName
 }

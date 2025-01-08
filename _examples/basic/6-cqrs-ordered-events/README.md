@@ -1,4 +1,4 @@
-# Example Golang CQRS application - ordered events
+# Example Golang CQRS application - ordered events with Kafka
 
 This application is using [Watermill CQRS](http://watermill.io/docs/cqrs) component.
 
@@ -20,6 +20,7 @@ The system maintains:
 - A current list of all active subscribers
 - A timeline of all subscription-related activities
 
+In this example, keeping order of events is crucial.
 If events won't be ordered, and `SubscriberSubscribed` would arrive after `SubscriberUnsubscribed` event,
 the subscriber will be still subscribed.
 

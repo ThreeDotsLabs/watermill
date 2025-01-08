@@ -140,7 +140,7 @@ In the scenario, when we have multiple event types on one topic, you have two op
 - Simple one-to-one matching of events to handlers
 
 2. `EventGroupProcessor`:
-- Group of handlers share a single subscriber instance (and one consumer group, if such mechanism is supported)
+- Group of handlers share a single subscriber instance (and one consumer group, if such mechanism is supported -- allows to maintain order of events),
 - One handler group can support multiple event types,
 - When message arrives to the topic, Watermill will match it to the handler in the group based on event type
 
@@ -168,7 +168,7 @@ graph TD
 Thanks to using one subscriber instance and consumer group, events will be processed in the order they were sent.
 
 {{< callout context="note" title="Note" icon="outline/info-circle" >}}
-It's allowed to have multiple handlers for the same event type in one group, but we recommend to not do that.
+It's supported to have multiple handlers for the same event type in one group, but we recommend to not do that.
 
 Please keep in mind that those handlers will be processed within the same message.
 If first handler succeeds and the second fails, the message will be re-delivered and the first will be re-executed.

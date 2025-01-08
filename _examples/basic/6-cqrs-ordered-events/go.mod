@@ -1,7 +1,7 @@
 module main.go
 
 require (
-	github.com/ThreeDotsLabs/watermill v1.4.2-0.20241216125745-7ab13543158c
+	github.com/ThreeDotsLabs/watermill v1.4.2
 	github.com/ThreeDotsLabs/watermill-kafka/v3 v3.0.5
 	google.golang.org/protobuf v1.34.2
 )
