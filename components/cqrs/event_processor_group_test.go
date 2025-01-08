@@ -298,6 +298,7 @@ func TestEventProcessor_handler_group(t *testing.T) {
 			msg1,
 			msg2,
 		},
+		WaitForAckBeforeSendingNext: true,
 	}
 
 	var handlersCalls []int
