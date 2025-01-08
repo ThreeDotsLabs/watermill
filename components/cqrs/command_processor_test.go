@@ -178,8 +178,10 @@ func TestCommandProcessor_multiple_same_command_handlers(t *testing.T) {
 }
 
 type mockSubscriber struct {
-	MessagesToSend []*message.Message
-	out            chan *message.Message
+	MessagesToSend              []*message.Message
+	WaitForAckBeforeSendingNext bool
+
+	out chan *message.Message
 }
 
 func (m *mockSubscriber) Subscribe(ctx context.Context, topic string) (<-chan *message.Message, error) {
@@ -188,7 +190,10 @@ func (m *mockSubscriber) Subscribe(ctx context.Context, topic string) (<-chan *m
 	go func() {
 		for _, msg := range m.MessagesToSend {
 			m.out <- msg
-			<-msg.Acked()
+
+			if m.WaitForAckBeforeSendingNext {
+				<-msg.Acked()
+			}
 		}
 	}()
 
