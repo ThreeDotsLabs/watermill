@@ -32,15 +32,6 @@ type Config struct {
 	Router *message.Router
 }
 
-func (c *Config) PublicMethod() {
-	if c.CloseTimeout == 0 {
-		c.CloseTimeout = time.Second * 30
-	}
-	if c.ForwarderTopic == "" {
-		c.ForwarderTopic = defaultForwarderTopic
-	}
-}
-
 func (c *Config) setDefaults() {
 	if c.CloseTimeout == 0 {
 		c.CloseTimeout = time.Second * 30
