@@ -188,6 +188,7 @@ func (m *mockSubscriber) Subscribe(ctx context.Context, topic string) (<-chan *m
 	go func() {
 		for _, msg := range m.MessagesToSend {
 			m.out <- msg
+			<-msg.Acked()
 		}
 	}()
 
