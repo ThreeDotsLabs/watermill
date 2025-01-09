@@ -471,7 +471,7 @@ func (r *Router) RunHandlers(ctx context.Context) error {
 	return nil
 }
 
-// closeWhenAllHandlersStopped closed router, when all handlers has stopped,
+// closeWhenAllHandlersStopped closed router, when all handlers have stopped,
 // because for example all subscriptions are closed.
 func (r *Router) closeWhenAllHandlersStopped(ctx context.Context) {
 	r.handlersLock.RLock()
@@ -553,8 +553,8 @@ func (r *Router) Close() error {
 	close(r.closingInProgressCh)
 	defer close(r.closedCh)
 
-	timeouted := r.waitForHandlers()
-	if timeouted {
+	timedout := r.waitForHandlers()
+	if timedout {
 		return errors.New("router close timeout")
 	}
 
