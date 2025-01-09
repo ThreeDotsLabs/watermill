@@ -313,8 +313,8 @@ func main() {
 			EventsPublisher: publisher,
 			EventHandlers: func(commandBus *cqrs.CommandBus, eventBus *cqrs.EventBus) []cqrs.EventHandler {
 				return []cqrs.EventHandler{
-					AddToPromotionsList8Handler{},
-					AddToNewsList8Handler{},
+					cqrs.NewEventHandler("AddToPromotionsList-8", AddToPromotionsList8Handler{}.Handle),
+					cqrs.NewEventHandler("AddToNewsList-8", AddToNewsList8Handler{}.Handle),
 				}
 			},
 			EventsSubscriberConstructor: func(handlerName string) (message.Subscriber, error) {
@@ -345,8 +345,8 @@ func main() {
 		EventsPublisher: publisher,
 		EventHandlers: func(commandBus *cqrs.CommandBus, eventBus *cqrs.EventBus) []cqrs.EventHandler {
 			return []cqrs.EventHandler{
-				AddToPromotionsList9Handler{},
-				AddToNewsList9Handler{},
+				cqrs.NewEventHandler("AddToPromotionsList-9", AddToPromotionsList9Handler{}.Handle),
+				cqrs.NewEventHandler("AddToNewsList-9", AddToNewsList9Handler{}.Handle),
 			}
 		},
 		EventsSubscriberConstructor: func(handlerName string) (message.Subscriber, error) {
@@ -381,13 +381,7 @@ func (h AddToPromotionsList8Handler) HandlerName() string {
 	return "AddToPromotionsList-8"
 }
 
-func (h AddToPromotionsList8Handler) NewEvent() interface{} {
-	return &common.UserSignedUp{}
-}
-
-func (h AddToPromotionsList8Handler) Handle(ctx context.Context, event interface{}) error {
-	e := event.(*common.UserSignedUp)
-
+func (h AddToPromotionsList8Handler) Handle(ctx context.Context, e *common.UserSignedUp) error {
 	if !e.Consents.Marketing {
 		return nil
 	}
@@ -399,17 +393,7 @@ func (h AddToPromotionsList8Handler) Handle(ctx context.Context, event interface
 
 type AddToNewsList8Handler struct{}
 
-func (h AddToNewsList8Handler) HandlerName() string {
-	return "AddToNewsList-8"
-}
-
-func (h AddToNewsList8Handler) NewEvent() interface{} {
-	return &common.UserSignedUp{}
-}
-
-func (h AddToNewsList8Handler) Handle(ctx context.Context, event interface{}) error {
-	e := event.(*common.UserSignedUp)
-
+func (h AddToNewsList8Handler) Handle(ctx context.Context, e *common.UserSignedUp) error {
 	if !e.Consents.News {
 		return nil
 	}
@@ -420,17 +404,7 @@ func (h AddToNewsList8Handler) Handle(ctx context.Context, event interface{}) er
 
 type AddToPromotionsList9Handler struct{}
 
-func (h AddToPromotionsList9Handler) HandlerName() string {
-	return "AddToPromotionsList-9"
-}
-
-func (h AddToPromotionsList9Handler) NewEvent() interface{} {
-	return &common.UserSignedUp{}
-}
-
-func (h AddToPromotionsList9Handler) Handle(ctx context.Context, event interface{}) error {
-	e := event.(*common.UserSignedUp)
-
+func (h AddToPromotionsList9Handler) Handle(ctx context.Context, e *common.UserSignedUp) error {
 	if !e.Consents.Marketing {
 		return nil
 	}
@@ -442,17 +416,7 @@ func (h AddToPromotionsList9Handler) Handle(ctx context.Context, event interface
 
 type AddToNewsList9Handler struct{}
 
-func (h AddToNewsList9Handler) HandlerName() string {
-	return "AddToNewsList-9"
-}
-
-func (h AddToNewsList9Handler) NewEvent() interface{} {
-	return &common.UserSignedUp{}
-}
-
-func (h AddToNewsList9Handler) Handle(ctx context.Context, event interface{}) error {
-	e := event.(*common.UserSignedUp)
-
+func (h AddToNewsList9Handler) Handle(ctx context.Context, e *common.UserSignedUp) error {
 	if !e.Consents.News {
 		return nil
 	}
