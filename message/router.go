@@ -428,10 +428,12 @@ func (r *Router) RunHandlers(ctx context.Context) error {
 			return errors.Wrapf(err, "could not decorate subscriber of handler %s", name)
 		}
 
-		r.logger.Debug("Subscribing to topic", watermill.LogFields{
+		logger := r.logger.With(watermill.LogFields{
 			"subscriber_name": h.name,
 			"topic":           h.subscribeTopic,
 		})
+
+		logger.Debug("Subscribing to topic", nil)
 
 		ctx, cancel := context.WithCancel(ctx)
 
@@ -458,14 +460,15 @@ func (r *Router) RunHandlers(ctx context.Context) error {
 			h.run(ctx, middlewares)
 
 			r.handlersWg.Done()
-			r.logger.Info("Subscriber stopped", watermill.LogFields{
-				"subscriber_name": h.name,
-				"topic":           h.subscribeTopic,
-			})
+			logger.Info("Subscriber stopped", nil)
 
 			r.handlersLock.Lock()
 			delete(r.handlers, name)
 			r.handlersLock.Unlock()
+
+			logger.Trace("Removed subscriber from r.handlers", nil)
+
+			close(h.stopped)
 		}()
 	}
 	return nil
@@ -492,6 +495,7 @@ func (r *Router) closeWhenAllHandlersStopped(ctx context.Context) {
 
 	r.handlersWg.Wait()
 	if r.IsClosed() {
+		r.logger.Trace("closeWhenAllHandlersStopped: already closed", nil)
 		// already closed
 		return
 	}
@@ -543,8 +547,11 @@ func (r *Router) Close() error {
 	defer r.handlersLock.Unlock()
 
 	if r.closed {
+		r.logger.Debug("Already closed", nil)
 		return nil
 	}
+
+	r.logger.Debug("Running Close()", nil)
 	r.closed = true
 
 	r.logger.Info("Closing router", nil)
@@ -649,7 +656,6 @@ func (h *handler) run(ctx context.Context, middlewares []middleware) {
 	}
 
 	h.logger.Debug("Router handler stopped", nil)
-	close(h.stopped)
 }
 
 // Handler handles Messages.

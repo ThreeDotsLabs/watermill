@@ -1,6 +1,7 @@
 package watermill
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -9,6 +10,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 )
 
 // LogFields is the logger's key-value list of fields.
@@ -162,9 +164,17 @@ const (
 
 type CapturedMessage struct {
 	Level  LogLevel
+	Time   time.Time
 	Fields LogFields
 	Msg    string
 	Err    error
+}
+
+func (c CapturedMessage) ContentEquals(other CapturedMessage) bool {
+	return c.Level == other.Level &&
+		reflect.DeepEqual(c.Fields, other.Fields) &&
+		c.Msg == other.Msg &&
+		errors.Is(c.Err, other.Err)
 }
 
 // CaptureLoggerAdapter is a logger which captures all logs.
@@ -172,24 +182,40 @@ type CapturedMessage struct {
 type CaptureLoggerAdapter struct {
 	captured map[LogLevel][]CapturedMessage
 	fields   LogFields
-	lock     sync.Mutex
+	lock     *sync.Mutex
 }
 
 func NewCaptureLogger() *CaptureLoggerAdapter {
 	return &CaptureLoggerAdapter{
 		captured: map[LogLevel][]CapturedMessage{},
+		lock:     &sync.Mutex{},
 	}
 }
 
 func (c *CaptureLoggerAdapter) With(fields LogFields) LoggerAdapter {
-	return &CaptureLoggerAdapter{captured: c.captured, fields: c.fields.Add(fields)}
-}
-
-func (c *CaptureLoggerAdapter) capture(msg CapturedMessage) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
-	c.captured[msg.Level] = append(c.captured[msg.Level], msg)
+	return &CaptureLoggerAdapter{
+		captured: c.captured, // we are passing the same map, so we'll capture logs from this instance as well
+		fields:   c.fields.Copy().Add(fields),
+		lock:     c.lock,
+	}
+}
+
+func (c *CaptureLoggerAdapter) capture(level LogLevel, msg string, err error, fields LogFields) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	logMsg := CapturedMessage{
+		Level:  level,
+		Time:   time.Now(),
+		Fields: c.fields.Add(fields),
+		Msg:    msg,
+		Err:    err,
+	}
+
+	c.captured[level] = append(c.captured[level], logMsg)
 }
 
 func (c *CaptureLoggerAdapter) Captured() map[LogLevel][]CapturedMessage {
@@ -199,12 +225,24 @@ func (c *CaptureLoggerAdapter) Captured() map[LogLevel][]CapturedMessage {
 	return c.captured
 }
 
+type Logfer interface {
+	Logf(format string, a ...interface{})
+}
+
+func (c *CaptureLoggerAdapter) PrintCaptured(t Logfer) {
+	for level, messages := range c.Captured() {
+		for _, msg := range messages {
+			t.Logf("%s %d %s %v", msg.Time.Format("15:04:05.999999999"), level, msg.Msg, msg.Fields)
+		}
+	}
+}
+
 func (c *CaptureLoggerAdapter) Has(msg CapturedMessage) bool {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
 	for _, capturedMsg := range c.captured[msg.Level] {
-		if reflect.DeepEqual(msg, capturedMsg) {
+		if msg.ContentEquals(capturedMsg) {
 			return true
 		}
 	}
@@ -224,34 +262,17 @@ func (c *CaptureLoggerAdapter) HasError(err error) bool {
 }
 
 func (c *CaptureLoggerAdapter) Error(msg string, err error, fields LogFields) {
-	c.capture(CapturedMessage{
-		Level:  ErrorLogLevel,
-		Fields: c.fields.Add(fields),
-		Msg:    msg,
-		Err:    err,
-	})
+	c.capture(ErrorLogLevel, msg, err, fields)
 }
 
 func (c *CaptureLoggerAdapter) Info(msg string, fields LogFields) {
-	c.capture(CapturedMessage{
-		Level:  InfoLogLevel,
-		Fields: c.fields.Add(fields),
-		Msg:    msg,
-	})
+	c.capture(InfoLogLevel, msg, nil, fields)
 }
 
 func (c *CaptureLoggerAdapter) Debug(msg string, fields LogFields) {
-	c.capture(CapturedMessage{
-		Level:  DebugLogLevel,
-		Fields: c.fields.Add(fields),
-		Msg:    msg,
-	})
+	c.capture(DebugLogLevel, msg, nil, fields)
 }
 
 func (c *CaptureLoggerAdapter) Trace(msg string, fields LogFields) {
-	c.capture(CapturedMessage{
-		Level:  TraceLogLevel,
-		Fields: c.fields.Add(fields),
-		Msg:    msg,
-	})
+	c.capture(TraceLogLevel, msg, nil, fields)
 }
