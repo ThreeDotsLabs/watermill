@@ -24,10 +24,13 @@ docker-compose.yml
 ```
 
 ### Expected behavior
+
 <!-- What should happen -->
 
 ### Actual behavior
+
 <!-- What happens instead -->
 
 ### Possible solution
+
 <!-- Consider submitting a pull request - it will help us provide faster feedback on your solution. -->
