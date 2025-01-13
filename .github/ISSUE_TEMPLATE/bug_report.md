@@ -1,4 +1,11 @@
-## Bug Report
+---
+name: Bug report
+about: Create a report to help us improve
+title: ''
+labels: bug
+assignees: ''
+
+---
 
 <!--
 The resources of our team are limited.
