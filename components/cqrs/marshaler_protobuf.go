@@ -10,8 +10,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-// ProtobufMarshaler is the default Protocol Buffers marshaler.
-type ProtobufMarshaler struct {
+// ProtoMarshaler is the default Protocol Buffers marshaler.
+type ProtoMarshaler struct {
 	NewUUID      func() string
 	GenerateName func(v interface{}) string
 }
@@ -31,7 +31,7 @@ func (e NoProtoMessageError) Error() string {
 }
 
 // Marshal marshals the given protobuf's message into watermill's Message.
-func (m ProtobufMarshaler) Marshal(v interface{}) (*message.Message, error) {
+func (m ProtoMarshaler) Marshal(v interface{}) (*message.Message, error) {
 	protoMsg, ok := v.(proto.Message)
 	if !ok {
 		return nil, errors.WithStack(NoProtoMessageError{v})
@@ -51,7 +51,7 @@ func (m ProtobufMarshaler) Marshal(v interface{}) (*message.Message, error) {
 	return msg, nil
 }
 
-func (m ProtobufMarshaler) newUUID() string {
+func (m ProtoMarshaler) newUUID() string {
 	if m.NewUUID != nil {
 		return m.NewUUID()
 	}
@@ -61,12 +61,17 @@ func (m ProtobufMarshaler) newUUID() string {
 }
 
 // Unmarshal unmarshals given watermill's Message into protobuf's message.
-func (ProtobufMarshaler) Unmarshal(msg *message.Message, v interface{}) (err error) {
-	return proto.Unmarshal(msg.Payload, v.(proto.Message))
+func (ProtoMarshaler) Unmarshal(msg *message.Message, v interface{}) (err error) {
+	protoV, ok := v.(proto.Message)
+	if !ok {
+		return errors.WithStack(NoProtoMessageError{v})
+	}
+
+	return proto.Unmarshal(msg.Payload, protoV)
 }
 
 // Name returns the command or event's name.
-func (m ProtobufMarshaler) Name(cmdOrEvent interface{}) string {
+func (m ProtoMarshaler) Name(cmdOrEvent interface{}) string {
 	if m.GenerateName != nil {
 		return m.GenerateName(cmdOrEvent)
 	}
@@ -75,6 +80,6 @@ func (m ProtobufMarshaler) Name(cmdOrEvent interface{}) string {
 }
 
 // NameFromMessage returns the metadata name value for a given Message.
-func (m ProtobufMarshaler) NameFromMessage(msg *message.Message) string {
+func (m ProtoMarshaler) NameFromMessage(msg *message.Message) string {
 	return msg.Metadata.Get("name")
 }
