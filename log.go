@@ -230,7 +230,10 @@ type Logfer interface {
 }
 
 func (c *CaptureLoggerAdapter) PrintCaptured(t Logfer) {
-	for level, messages := range c.Captured() {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	for level, messages := range c.captured {
 		for _, msg := range messages {
 			t.Logf("%s %d %s %v", msg.Time.Format("15:04:05.999999999"), level, msg.Msg, msg.Fields)
 		}
