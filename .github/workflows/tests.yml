@@ -11,6 +11,10 @@ on:
         required: false
         type: boolean
         default: false
+      runs-on:
+        required: false
+        type: string
+        default: 'ubuntu-latest'
     secrets:
       codecov_token:
         required: false
@@ -34,7 +38,7 @@ jobs:
         uses: golangci/golangci-lint-action@v3
   tests:
     needs: [build]
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v4
@@ -50,7 +54,7 @@ jobs:
       - run: make test_stress
         if: ${{ inputs.stress-tests }}
   codecov:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
     if: ${{ inputs.codecov }}
     steps:
       - uses: actions/checkout@v4
