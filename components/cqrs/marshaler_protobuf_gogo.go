@@ -9,8 +9,8 @@ import (
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/gogo/protobuf/proto"
-	stdproto "github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
+	stdproto "google.golang.org/protobuf/proto"
 )
 
 // ProtobufMarshaler a protobuf marshaler using github.com/gogo/protobuf/proto (deprecated).
