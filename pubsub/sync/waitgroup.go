@@ -6,7 +6,7 @@ import (
 )
 
 // WaitGroupTimeout adds timeout feature for sync.WaitGroup.Wait().
-// It returns true, when timeouted.
+// It returns true, when timed out.
 func WaitGroupTimeout(wg *sync.WaitGroup, timeout time.Duration) bool {
 	wgClosed := make(chan struct{}, 1)
 	go func() {

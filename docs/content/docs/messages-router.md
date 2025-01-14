@@ -42,12 +42,12 @@ Not every handler will produce new messages. You can add this kind of handler by
 
 ## Ack
 
-By default, `msg.Ack()` is called when `HanderFunc` doesn't return an error. If an error is returned, `msg.Nack()` will be called.
+By default, `msg.Ack()` is called when `HandlerFunc` doesn't return an error. If an error is returned, `msg.Nack()` will be called.
 Because of this, you don't have to call `msg.Ack()` or `msg.Nack()` after a message is processed (you can if you want, of course).
 
 ## Producing messages
 
-When returning multiple messages from a handler, be aware that most Publisher implementations don't support [atomic publishing of messages]({{< ref "/docs/pub-sub#publishing-multiple-messages" >}}). It may end up producing only some of messages and sending `msg.Nack()` if the broker or the storage are not available.
+When returning multiple messages from a handler, be aware that most Publisher implementations don't support [atomic publishing of messages]({{< ref "/docs/pub-sub#publishing-multiple-messages" >}}). It may end up producing only some messages and sending `msg.Nack()` if the broker or the storage are not available.
 
 If it is an issue, consider publishing just one message with each handler.
 

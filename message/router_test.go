@@ -1372,6 +1372,8 @@ func TestRouter_stopping_all_handlers_logs_error(t *testing.T) {
 
 	logger := watermill.NewCaptureLogger()
 
+	defer logger.PrintCaptured(t)
+
 	r, err := message.NewRouter(message.RouterConfig{}, logger)
 	require.NoError(t, err)
 
@@ -1392,13 +1394,19 @@ func TestRouter_stopping_all_handlers_logs_error(t *testing.T) {
 	}()
 	<-r.Running()
 
-	// Stop the subscriber - this should close the router with an error
+	// Stop the subscriber - this should close the router with an error logged
 	err = sub.Close()
 	require.NoError(t, err)
 
-	require.Eventually(t, func() bool {
-		return r.IsClosed()
-	}, 1*time.Second, 1*time.Millisecond, "Router should be closed after all handlers are stopped")
+	require.Eventually(
+		t,
+		func() bool {
+			return r.IsClosed()
+		},
+		1*time.Second,
+		1*time.Millisecond,
+		"Router should be closed after all handlers are stopped",
+	)
 
 	expectedLogMessage := watermill.CapturedMessage{
 		Level: watermill.ErrorLogLevel,
