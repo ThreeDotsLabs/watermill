@@ -320,7 +320,7 @@ func (r *Router) AddHandler(
 	select {
 	case r.handlerAdded <- struct{}{}:
 	default:
-		// closeWhenAllHandlersStopped is not always waiting for handlerAdded
+		// watchAllHandlersStopped is not always waiting for handlerAdded
 	}
 
 	return &Handler{
@@ -379,13 +379,13 @@ func (r *Router) Run(ctx context.Context) (err error) {
 		}
 	}
 
+	r.watchAllHandlersStopped(ctx)
+
 	if err := r.RunHandlers(ctx); err != nil {
 		return err
 	}
 
 	close(r.running)
-
-	go r.closeWhenAllHandlersStopped(ctx)
 
 	<-r.closingInProgressCh
 	cancel()
@@ -474,42 +474,45 @@ func (r *Router) RunHandlers(ctx context.Context) error {
 	return nil
 }
 
-// closeWhenAllHandlersStopped closed router, when all handlers have stopped,
-// because for example all subscriptions are closed.
-func (r *Router) closeWhenAllHandlersStopped(ctx context.Context) {
+// watchAllHandlersStopped closes router when all handlers have stopped,
+// (for example, because for example all subscriptions are closed)
+func (r *Router) watchAllHandlersStopped(ctx context.Context) {
 	r.handlersLock.RLock()
-	hasHandlers := len(r.handlers) == 0
+	hasNoHandlersYet := len(r.handlers) == 0
 	r.handlersLock.RUnlock()
 
-	if hasHandlers {
-		// in that situation router will be closed immediately (even if they are no routers)
-		// let's wait for
-		select {
-		case <-r.handlerAdded:
-			// it should be some handler to track
-		case <-r.closedCh:
-			// let's avoid goroutine leak
+	go func() {
+		if hasNoHandlersYet {
+			// we can start router without any handlers,
+			// in that situation router would be closed immediately (even if they are no routers)
+			// let's wait for
+			select {
+			case <-r.handlerAdded:
+				// it should be some handler to track
+			case <-r.closedCh:
+				// let's avoid goroutine leak
+				return
+			}
+		}
+
+		r.handlersWg.Wait()
+		if r.IsClosed() {
+			r.logger.Trace("watchAllHandlersStopped: already closed", nil)
+			// already closed
 			return
 		}
-	}
 
-	r.handlersWg.Wait()
-	if r.IsClosed() {
-		r.logger.Trace("closeWhenAllHandlersStopped: already closed", nil)
-		// already closed
-		return
-	}
+		// Only log an error if the context was not canceled, but handlers were stopped.
+		select {
+		case <-ctx.Done():
+		default:
+			r.logger.Error("All handlers stopped, closing router", errors.New("all router handlers stopped"), nil)
+		}
 
-	// Only log an error if the context was not canceled, but handlers were stopped.
-	select {
-	case <-ctx.Done():
-	default:
-		r.logger.Error("All handlers stopped, closing router", errors.New("all router handlers stopped"), nil)
-	}
-
-	if err := r.Close(); err != nil {
-		r.logger.Error("Cannot close router", err, nil)
-	}
+		if err := r.Close(); err != nil {
+			r.logger.Error("Cannot close router", err, nil)
+		}
+	}()
 }
 
 // Running is closed when router is running.
