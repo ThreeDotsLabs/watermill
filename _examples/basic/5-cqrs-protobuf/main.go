@@ -129,7 +129,7 @@ func main() {
 		slog.LevelInfo: slog.LevelDebug,
 	})
 
-	cqrsMarshaler := cqrs.ProtobufMarshaler{
+	cqrsMarshaler := cqrs.ProtoMarshaler{
 		// It will generate topic names based on the event/command type.
 		// So for example, for "RoomBooked" name will be "RoomBooked".
 		//

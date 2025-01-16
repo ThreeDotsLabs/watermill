@@ -22,7 +22,7 @@ func main() {
 
 	// We are decorating ProtobufMarshaler to add extra metadata to the message.
 	cqrsMarshaler := CqrsMarshalerDecorator{
-		cqrs.ProtobufMarshaler{
+		cqrs.ProtoMarshaler{
 			// It will generate topic names based on the event/command type.
 			// So for example, for "RoomBooked" name will be "RoomBooked".
 			GenerateName: cqrs.StructName,

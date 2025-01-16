@@ -17,13 +17,13 @@ func GenerateMessageMetadata(partitionKey string) *MessageMetadata {
 }
 
 type CqrsMarshalerDecorator struct {
-	cqrs.ProtobufMarshaler
+	cqrs.ProtoMarshaler
 }
 
 const PartitionKeyMetadataField = "partition_key"
 
 func (c CqrsMarshalerDecorator) Marshal(v interface{}) (*message.Message, error) {
-	msg, err := c.ProtobufMarshaler.Marshal(v)
+	msg, err := c.ProtoMarshaler.Marshal(v)
 	if err != nil {
 		return nil, err
 	}
