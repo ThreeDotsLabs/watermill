@@ -189,11 +189,23 @@ func TestMapExpiringKeyRepositoryCleanup(t *testing.T) {
 		t.Errorf("expected 6 tags, but %d remain", l)
 	}
 
-	time.Sleep(wait * 2)
-	if count != 6 {
-		t.Errorf("sent six messages, but only received %d", count)
-	}
-	if l := measurable.Len(); l != 0 {
-		t.Errorf("tags should have been cleaned out, but %d remain", l)
-	}
+	assert.Eventually(
+		t,
+		func() bool {
+			return count == 6
+		},
+		wait*3,
+		time.Millisecond,
+		"sent six messages, but only received %d", count,
+	)
+	assert.Eventually(
+		t,
+		func() bool {
+			return measurable.Len() == 0
+		},
+		wait*3,
+		time.Millisecond,
+		"tags should have been cleaned out, but %d remain",
+		measurable.Len(),
+	)
 }

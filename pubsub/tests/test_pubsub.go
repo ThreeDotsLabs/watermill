@@ -106,7 +106,7 @@ type Features struct {
 	// Some Pub/Subs guarantee the order only when one subscriber is subscribed at a time.
 	GuaranteedOrderWithSingleSubscriber bool
 
-	// Persistent should be true, if messages are persistent between multiple instancees of a Pub/Sub
+	// Persistent should be true, if messages are persistent between multiple instances of a Pub/Sub
 	// (in practice, only GoChannel doesn't support that).
 	Persistent bool
 
@@ -124,6 +124,10 @@ type Features struct {
 
 	// GenerateTopicFunc overrides standard topic name generation.
 	GenerateTopicFunc func(tctx TestContext) string
+
+	// ForceShort forces running tests in short mode.
+	// It's useful for Pub/Subs that are slow or have some limitations.
+	ForceShort bool
 }
 
 // RunOnlyFastTests returns true if -short flag was provided -race was not provided.
@@ -275,7 +279,7 @@ func TestConcurrentSubscribe(
 	messagesCount := 5000
 	subscribersCount := 50
 
-	if testing.Short() {
+	if testing.Short() || tCtx.Features.ForceShort {
 		messagesCount = 100
 		subscribersCount = 10
 	}
@@ -316,7 +320,7 @@ func TestConcurrentSubscribeMultipleTopics(
 	messagesCount := 100
 	topicsCount := 20
 
-	if testing.Short() {
+	if testing.Short() || tCtx.Features.ForceShort {
 		messagesCount = 50
 		topicsCount = 10
 	}
@@ -393,7 +397,7 @@ func TestPublishSubscribeInOrder(
 	}
 
 	messagesCount := 1000
-	if testing.Short() {
+	if testing.Short() || tCtx.Features.ForceShort {
 		messagesCount = 100
 	}
 
@@ -555,7 +559,7 @@ func TestNoAck(
 	case <-receivedMessage:
 	// ok
 	case <-time.After(defaultTimeout):
-		t.Fatal("timeouted")
+		t.Fatal("timed out")
 	}
 
 	select {
@@ -600,7 +604,7 @@ func TestContinueAfterSubscribeClose(
 
 	totalMessagesCount := 5000
 	batches := 5
-	if testing.Short() {
+	if testing.Short() || tCtx.Features.ForceShort {
 		totalMessagesCount = 50
 		batches = 2
 	}
@@ -647,7 +651,7 @@ func TestContinueAfterSubscribeClose(
 	}
 
 	// to make this test more robust - let's consume all missing messages
-	// (we care here if we didn't lost any message, not if we received duplicated)
+	// (we care here if we didn't lose any message, not if we received duplicated)
 	missingMessagesCount := totalMessagesCount - len(receivedMessages)
 	if missingMessagesCount > 0 && !tCtx.Features.ExactlyOnceDelivery {
 		messages, err := sub.Subscribe(context.Background(), topicName)
@@ -750,7 +754,7 @@ func TestContinueAfterErrors(
 	subscribersToNack := 3
 	nacksPerSubscriber := 100
 
-	if testing.Short() {
+	if testing.Short() || tCtx.Features.ForceShort {
 		subscribersToNack = 1
 		nacksPerSubscriber = 5
 	}
@@ -837,7 +841,7 @@ func TestPublisherClose(
 	}
 
 	messagesCount := 10000
-	if testing.Short() {
+	if testing.Short() || tCtx.Features.ForceShort {
 		messagesCount = 100
 	}
 
