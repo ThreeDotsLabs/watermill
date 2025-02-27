@@ -308,15 +308,9 @@ func main() {
 	if replica == "1" {
 		eventProc8, err := cqrs.NewEventProcessorWithConfig(router, cqrs.EventProcessorConfig{
 			GenerateSubscribeTopic: func(params cqrs.EventProcessorGenerateSubscribeTopicParams) (string, error) {
-				if params.EventName == "" {
-					return "", fmt.Errorf("EventName is empty")
-				}
 				return fmt.Sprintf("%s-8", params.EventName), nil
 			},
 			SubscriberConstructor: func(params cqrs.EventProcessorSubscriberConstructorParams) (message.Subscriber, error) {
-				if params.HandlerName == "" {
-					return nil, fmt.Errorf("HandlerName is empty")
-				}
 				handlerName := strings.Split(params.HandlerName, "-")[0]
 				return redisstream.NewSubscriber(
 					redisstream.SubscriberConfig{
@@ -334,22 +328,20 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		eventProc8.AddHandlers(
-			cqrs.NewEventHandler("AddToPromotionsList-8", AddToPromotionsList8Handler{}.Handle),
-			cqrs.NewEventHandler("AddToNewsList-8", AddToNewsList8Handler{}.Handle),
+		err = eventProc8.AddHandlers(
+			cqrs.NewEventHandler("AddToPromotionsList-8", HandlePromotions),
+			cqrs.NewEventHandler("AddToNewsList-8", HandleNews),
 		)
+		if err != nil {
+			panic(err)
+		}
 	}
+
 	eventProc9, err := cqrs.NewEventProcessorWithConfig(router, cqrs.EventProcessorConfig{
 		GenerateSubscribeTopic: func(params cqrs.EventProcessorGenerateSubscribeTopicParams) (string, error) {
-			if params.EventName == "" {
-				return "", fmt.Errorf("EventName is empty")
-			}
 			return fmt.Sprintf("%s-9", params.EventName), nil
 		},
 		SubscriberConstructor: func(params cqrs.EventProcessorSubscriberConstructorParams) (message.Subscriber, error) {
-			if params.HandlerName == "" {
-				return nil, fmt.Errorf("HandlerName is empty")
-			}
 			handlerName := strings.Split(params.HandlerName, "-")[0]
 			return redisstream.NewSubscriber(
 				redisstream.SubscriberConfig{
@@ -367,10 +359,14 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	eventProc9.AddHandlers(
-		cqrs.NewEventHandler("AddToPromotionsList-9", AddToPromotionsList9Handler{}.Handle),
-		cqrs.NewEventHandler("AddToNewsList-9", AddToNewsList9Handler{}.Handle),
+
+	err = eventProc9.AddHandlers(
+		cqrs.NewEventHandler("AddToPromotionsList-9", HandlePromotions),
+		cqrs.NewEventHandler("AddToNewsList-9", HandleNews),
 	)
+	if err != nil {
+		panic(err)
+	}
 
 	err = router.Run(context.Background())
 	if err != nil {
@@ -378,21 +374,7 @@ func main() {
 	}
 }
 
-type AddToPromotionsList8Handler struct{}
-
-func (h AddToPromotionsList8Handler) Handle(ctx context.Context, e *common.UserSignedUp) error {
-	if !e.Consents.Marketing {
-		return nil
-	}
-
-	fmt.Println("Adding user", e.UserID, "to the promotions list")
-
-	return nil
-}
-
-type AddToNewsList8Handler struct{}
-
-func (h AddToNewsList8Handler) Handle(ctx context.Context, e *common.UserSignedUp) error {
+func HandleNews(ctx context.Context, e *common.UserSignedUp) error {
 	if !e.Consents.News {
 		return nil
 	}
@@ -402,26 +384,12 @@ func (h AddToNewsList8Handler) Handle(ctx context.Context, e *common.UserSignedU
 	return nil
 }
 
-type AddToPromotionsList9Handler struct{}
-
-func (h AddToPromotionsList9Handler) Handle(ctx context.Context, e *common.UserSignedUp) error {
+func HandlePromotions(ctx context.Context, e *common.UserSignedUp) error {
 	if !e.Consents.Marketing {
 		return nil
 	}
 
 	fmt.Println("Adding user", e.UserID, "to the promotions list")
-
-	return nil
-}
-
-type AddToNewsList9Handler struct{}
-
-func (h AddToNewsList9Handler) Handle(ctx context.Context, e *common.UserSignedUp) error {
-	if !e.Consents.News {
-		return nil
-	}
-
-	fmt.Println("Adding user", e.UserID, "to the news list")
 
 	return nil
 }

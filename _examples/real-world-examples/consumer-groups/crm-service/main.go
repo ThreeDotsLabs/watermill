@@ -109,11 +109,16 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		eventProc8.AddHandlers(
-			cqrs.NewEventHandler("AddToCRM-8", AddToCRM8Handler{}.Handle),
-			cqrs.NewEventHandler("AddToSupport-8", AddToSupport8Handler{}.Handle),
+
+		err = eventProc8.AddHandlers(
+			cqrs.NewEventHandler("AddToCRM-8", HandleCRM),
+			cqrs.NewEventHandler("AddToSupport-8", HandleSupport),
 		)
+		if err != nil {
+			panic(err)
+		}
 	}
+
 	eventProc9, err := cqrs.NewEventProcessorWithConfig(router, cqrs.EventProcessorConfig{
 		GenerateSubscribeTopic: func(params cqrs.EventProcessorGenerateSubscribeTopicParams) (string, error) {
 			if params.EventName == "" {
@@ -142,10 +147,14 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	eventProc9.AddHandlers(
-		cqrs.NewEventHandler("AddToCRM-9", AddToCRM9Handler{}.Handle),
-		cqrs.NewEventHandler("AddToSupport-9", AddToSupport9Handler{}.Handle),
+
+	err = eventProc9.AddHandlers(
+		cqrs.NewEventHandler("AddToCRM-9", HandleCRM),
+		cqrs.NewEventHandler("AddToSupport-9", HandleSupport),
 	)
+	if err != nil {
+		panic(err)
+	}
 
 	err = router.Run(context.Background())
 	if err != nil {
@@ -153,33 +162,13 @@ func main() {
 	}
 }
 
-type AddToCRM8Handler struct{}
-
-func (h AddToCRM8Handler) Handle(ctx context.Context, e *common.UserSignedUp) error {
+func HandleCRM(ctx context.Context, e *common.UserSignedUp) error {
 	fmt.Println("Adding user", e.UserID, "to the CRM")
 
 	return nil
 }
 
-type AddToSupport8Handler struct{}
-
-func (h AddToSupport8Handler) Handle(ctx context.Context, e *common.UserSignedUp) error {
-	fmt.Println("Adding user", e.UserID, "to the support channel")
-
-	return nil
-}
-
-type AddToCRM9Handler struct{}
-
-func (h AddToCRM9Handler) Handle(ctx context.Context, e *common.UserSignedUp) error {
-	fmt.Println("Adding user", e.UserID, "to the CRM")
-
-	return nil
-}
-
-type AddToSupport9Handler struct{}
-
-func (h AddToSupport9Handler) Handle(ctx context.Context, e *common.UserSignedUp) error {
+func HandleSupport(ctx context.Context, e *common.UserSignedUp) error {
 	fmt.Println("Adding user", e.UserID, "to the support channel")
 
 	return nil

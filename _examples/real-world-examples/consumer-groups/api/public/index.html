@@ -670,15 +670,9 @@ router.AddNoPublisherHandler(
                     service: 'newsletter-service',
             code: `eventProc, err := cqrs.NewEventProcessorWithConfig(router, cqrs.EventProcessorConfig{
     GenerateSubscribeTopic: func(params cqrs.EventProcessorGenerateSubscribeTopicParams) (string, error) {
-        if params.EventName == "" {
-            return "", fmt.Errorf("EventName is empty")
-        }
         return params.EventName, nil
     },
     SubscriberConstructor: func(params cqrs.EventProcessorSubscriberConstructorParams) (message.Subscriber, error) {
-        if params.HandlerName == "" {
-            return nil, fmt.Errorf("HandlerName is empty")
-        }
         return redisstream.NewSubscriber(
             redisstream.SubscriberConfig{
                 Client:        subClient,
@@ -695,25 +689,14 @@ router.AddNoPublisherHandler(
 if err != nil {
     panic(err)
 }
-eventProc.AddHandlers(
-    cqrs.NewEventHandler("AddToPromotionsList", AddToPromotionsListHandler{}.Handle),
-    cqrs.NewEventHandler("AddToNewsList", AddToNewsListHandler{}.Handle),
+err = eventProc.AddHandlers(
+    cqrs.NewEventHandler("AddToPromotionsList", HandlePromotions),
+    cqrs.NewEventHandler("AddToNewsList", HandleNews),
 )
-type AddToPromotionsListHandler struct{}
-
-func (h AddToPromotionsListHandler) Handle(ctx context.Context, e *common.UserSignedUp) error {
-	if !e.Consents.Marketing {
-		return nil
-	}
-
-	fmt.Println("Adding user", e.UserID, "to the promotions list")
-
-	return nil
+if err != nil {
+    panic(err)
 }
-
-type AddToNewsListHandler struct{}
-
-func (h AddToNewsListHandler) Handle(ctx context.Context, e *common.UserSignedUp) error {
+func HandleNews(ctx context.Context, e *common.UserSignedUp) error {
 	if !e.Consents.News {
 		return nil
 	}
@@ -721,20 +704,24 @@ func (h AddToNewsListHandler) Handle(ctx context.Context, e *common.UserSignedUp
 	fmt.Println("Adding user", e.UserID, "to the news list")
 
 	return nil
+}
+
+func HandlePromotions(ctx context.Context, e *common.UserSignedUp) error {
+	if !e.Consents.Marketing {
+		return nil
+	}
+
+	fmt.Println("Adding user", e.UserID, "to the promotions list")
+
+	return nil
 }`,
                 }, {
                     service: 'crm-service',
                     code: `eventProc, err := cqrs.NewEventProcessorWithConfig(router, cqrs.EventProcessorConfig{
     GenerateSubscribeTopic: func(params cqrs.EventProcessorGenerateSubscribeTopicParams) (string, error) {
-        if params.EventName == "" {
-            return "", fmt.Errorf("EventName is empty")
-        }
         return params.EventName, nil
     },
     SubscriberConstructor: func(params cqrs.EventProcessorSubscriberConstructorParams) (message.Subscriber, error) {
-        if params.HandlerName == "" {
-            return nil, fmt.Errorf("HandlerName is empty")
-        }
         return redisstream.NewSubscriber(
             redisstream.SubscriberConfig{
                 Client:        subClient,
@@ -751,21 +738,21 @@ func (h AddToNewsListHandler) Handle(ctx context.Context, e *common.UserSignedUp
 if err != nil {
     panic(err)
 }
-eventProc.AddHandlers(
-    cqrs.NewEventHandler("AddToCRM", AddToCRMHandler{}.Handle),
-    cqrs.NewEventHandler("AddToSupport", AddToSupport8Handler{}.Handle),
+err = eventProc.AddHandlers(
+    cqrs.NewEventHandler("AddToCRM", HandleCRM),
+    cqrs.NewEventHandler("AddToSupport", HandleSupport),
 )
-type AddToCRMHandler struct{}
+if err != nil {
+    panic(err)
+}
 
-func (h AddToCRMHandler) Handle(ctx context.Context, e *common.UserSignedUp) error {
+func HandleCRM(ctx context.Context, e *common.UserSignedUp) error {
 	fmt.Println("Adding user", e.UserID, "to the CRM")
 
 	return nil
 }
 
-type AddToSupportHandler struct{}
-
-func (h AddToSupportHandler) Handle(ctx context.Context, e *common.UserSignedUp) error {
+func HandleSupport(ctx context.Context, e *common.UserSignedUp) error {
 	fmt.Println("Adding user", e.UserID, "to the support channel")
 
 	return nil
@@ -877,15 +864,9 @@ func (h AddToSupportHandler) Handle(ctx context.Context, e *common.UserSignedUp)
                     service: "newsletter-service",
                     code: `eventProc, err := cqrs.NewEventProcessorWithConfig(router, cqrs.EventProcessorConfig{
     GenerateSubscribeTopic: func(params cqrs.EventProcessorGenerateSubscribeTopicParams) (string, error) {
-        if params.EventName == "" {
-            return "", fmt.Errorf("EventName is empty")
-        }
         return params.EventName, nil
     },
     SubscriberConstructor: func(params cqrs.EventProcessorSubscriberConstructorParams) (message.Subscriber, error) {
-        if params.HandlerName == "" {
-            return nil, fmt.Errorf("HandlerName is empty")
-        }
         return redisstream.NewSubscriber(
             redisstream.SubscriberConfig{
                 Client:        subClient,
@@ -902,42 +883,14 @@ func (h AddToSupportHandler) Handle(ctx context.Context, e *common.UserSignedUp)
 if err != nil {
     panic(err)
 }
-eventProc.AddHandlers(
-    cqrs.NewEventHandler("AddToCRM", AddToCRMHandler{}.Handle),
-    cqrs.NewEventHandler("AddToSupport", AddToSupportHandler{}.Handle),
+err = eventProc.AddHandlers(
+    cqrs.NewEventHandler("AddToPromotionsList", HandlePromotions),
+    cqrs.NewEventHandler("AddToNewsList", HandleNews),
 )
-
-type AddToPromotionsListHandler struct{}
-
-func (h AddToPromotionsListHandler) HandlerName() string {
-	return "AddToPromotionsList"
+if err != nil {
+    panic(err)
 }
-
-func (h AddToPromotionsListHandler) NewEvent() interface{} {
-	return &common.UserSignedUp{}
-}
-
-func (h AddToPromotionsListHandler) Handle(ctx context.Context, event interface{}) error {
-	e := event.(*common.UserSignedUp)
-
-	if !e.Consents.Marketing {
-		return nil
-	}
-
-	fmt.Println("Adding user", e.UserID, "to the promotions list")
-
-	return nil
-}
-
-type AddToNewsListHandler struct{}
-
-func (h AddToNewsListHandler) NewEvent() interface{} {
-	return &common.UserSignedUp{}
-}
-
-func (h AddToNewsListHandler) Handle(ctx context.Context, event interface{}) error {
-	e := event.(*common.UserSignedUp)
-
+func HandleNews(ctx context.Context, e *common.UserSignedUp) error {
 	if !e.Consents.News {
 		return nil
 	}
@@ -945,20 +898,24 @@ func (h AddToNewsListHandler) Handle(ctx context.Context, event interface{}) err
 	fmt.Println("Adding user", e.UserID, "to the news list")
 
 	return nil
+}
+
+func HandlePromotions(ctx context.Context, e *common.UserSignedUp) error {
+	if !e.Consents.Marketing {
+		return nil
+	}
+
+	fmt.Println("Adding user", e.UserID, "to the promotions list")
+
+	return nil
 }`,
                 }, {
                     service: "crm-service",
                     code: `ventProc, err := cqrs.NewEventProcessorWithConfig(router, cqrs.EventProcessorConfig{
     GenerateSubscribeTopic: func(params cqrs.EventProcessorGenerateSubscribeTopicParams) (string, error) {
-        if params.EventName == "" {
-            return "", fmt.Errorf("EventName is empty")
-        }
         return params.EventName, nil
     },
     SubscriberConstructor: func(params cqrs.EventProcessorSubscriberConstructorParams) (message.Subscriber, error) {
-        if params.HandlerName == "" {
-            return nil, fmt.Errorf("HandlerName is empty")
-        }
         return redisstream.NewSubscriber(
             redisstream.SubscriberConfig{
                 Client:        subClient,
@@ -975,42 +932,21 @@ func (h AddToNewsListHandler) Handle(ctx context.Context, event interface{}) err
 if err != nil {
     panic(err)
 }
-eventProc.AddHandlers(
-    cqrs.NewEventHandler("AddToCRM", AddToCRMHandler{}.Handle),
-    cqrs.NewEventHandler("AddToSupport", AddToSupportHandler{}.Handle),
+err = eventProc.AddHandlers(
+    cqrs.NewEventHandler("AddToCRM", HandleCRM),
+    cqrs.NewEventHandler("AddToSupport", HandleSupport),
 )
-
-type AddToCRMHandler struct{}
-
-func (h AddToCRMHandler) HandlerName() string {
-	return "AddToCRM"
+if err != nil {
+    panic(err)
 }
 
-func (h AddToCRMHandler) NewEvent() interface{} {
-	return &common.UserSignedUp{}
-}
-
-func (h AddToCRMHandler) Handle(ctx context.Context, event interface{}) error {
-	e := event.(*common.UserSignedUp)
-
+func HandleCRM(ctx context.Context, e *common.UserSignedUp) error {
 	fmt.Println("Adding user", e.UserID, "to the CRM")
 
 	return nil
 }
 
-type AddToSupportHandler struct{}
-
-func (h AddToSupportHandler) HandlerName() string {
-	return "AddToSupport"
-}
-
-func (h AddToSupportHandler) NewEvent() interface{} {
-	return &common.UserSignedUp{}
-}
-
-func (h AddToSupportHandler) Handle(ctx context.Context, event interface{}) error {
-	e := event.(*common.UserSignedUp)
-
+func HandleSupport(ctx context.Context, e *common.UserSignedUp) error {
 	fmt.Println("Adding user", e.UserID, "to the support channel")
 
 	return nil
