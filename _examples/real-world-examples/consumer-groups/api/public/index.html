@@ -911,7 +911,7 @@ func HandlePromotions(ctx context.Context, e *common.UserSignedUp) error {
 }`,
                 }, {
                     service: "crm-service",
-                    code: `ventProc, err := cqrs.NewEventProcessorWithConfig(router, cqrs.EventProcessorConfig{
+                    code: `eventProc, err := cqrs.NewEventProcessorWithConfig(router, cqrs.EventProcessorConfig{
     GenerateSubscribeTopic: func(params cqrs.EventProcessorGenerateSubscribeTopicParams) (string, error) {
         return params.EventName, nil
     },
