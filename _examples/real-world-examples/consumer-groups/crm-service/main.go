@@ -83,15 +83,9 @@ func main() {
 	if replica == "1" {
 		eventProc8, err := cqrs.NewEventProcessorWithConfig(router, cqrs.EventProcessorConfig{
 			GenerateSubscribeTopic: func(params cqrs.EventProcessorGenerateSubscribeTopicParams) (string, error) {
-				if params.EventName == "" {
-					return "", fmt.Errorf("EventName is empty")
-				}
 				return fmt.Sprintf("%s-8", params.EventName), nil
 			},
 			SubscriberConstructor: func(params cqrs.EventProcessorSubscriberConstructorParams) (message.Subscriber, error) {
-				if params.HandlerName == "" {
-					return nil, fmt.Errorf("HandlerName is empty")
-				}
 				handlerName := strings.Split(params.HandlerName, "-")[0]
 				return redisstream.NewSubscriber(
 					redisstream.SubscriberConfig{
@@ -121,15 +115,9 @@ func main() {
 
 	eventProc9, err := cqrs.NewEventProcessorWithConfig(router, cqrs.EventProcessorConfig{
 		GenerateSubscribeTopic: func(params cqrs.EventProcessorGenerateSubscribeTopicParams) (string, error) {
-			if params.EventName == "" {
-				return "", fmt.Errorf("EventName is empty")
-			}
 			return fmt.Sprintf("%s-9", params.EventName), nil
 		},
 		SubscriberConstructor: func(params cqrs.EventProcessorSubscriberConstructorParams) (message.Subscriber, error) {
-			if params.HandlerName == "" {
-				return nil, fmt.Errorf("HandlerName is empty")
-			}
 			handlerName := strings.Split(params.HandlerName, "-")[0]
 			return redisstream.NewSubscriber(
 				redisstream.SubscriberConfig{
