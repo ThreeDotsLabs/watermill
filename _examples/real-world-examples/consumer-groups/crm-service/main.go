@@ -81,19 +81,18 @@ func main() {
 	}
 
 	if replica == "1" {
-		_, err = cqrs.NewFacade(cqrs.FacadeConfig{
-			GenerateEventsTopic: func(eventName string) string {
-				return fmt.Sprintf("%s-8", eventName)
-			},
-			EventsPublisher: publisher,
-			EventHandlers: func(commandBus *cqrs.CommandBus, eventBus *cqrs.EventBus) []cqrs.EventHandler {
-				return []cqrs.EventHandler{
-					cqrs.NewEventHandler("AddToCRM-8", AddToCRM8Handler{}.Handle),
-					cqrs.NewEventHandler("AddToSupport-8", AddToSupport8Handler{}.Handle),
+		eventProc8, err := cqrs.NewEventProcessorWithConfig(router, cqrs.EventProcessorConfig{
+			GenerateSubscribeTopic: func(params cqrs.EventProcessorGenerateSubscribeTopicParams) (string, error) {
+				if params.EventName == "" {
+					return "", fmt.Errorf("EventName is empty")
 				}
+				return fmt.Sprintf("%s-8", params.EventName), nil
 			},
-			EventsSubscriberConstructor: func(handlerName string) (message.Subscriber, error) {
-				handlerName = strings.Split(handlerName, "-")[0]
+			SubscriberConstructor: func(params cqrs.EventProcessorSubscriberConstructorParams) (message.Subscriber, error) {
+				if params.HandlerName == "" {
+					return nil, fmt.Errorf("HandlerName is empty")
+				}
+				handlerName := strings.Split(params.HandlerName, "-")[0]
 				return redisstream.NewSubscriber(
 					redisstream.SubscriberConfig{
 						Client:        subClient,
@@ -102,8 +101,7 @@ func main() {
 					logger,
 				)
 			},
-			Router: router,
-			CommandEventMarshaler: cqrs.JSONMarshaler{
+			Marshaler: cqrs.JSONMarshaler{
 				GenerateName: cqrs.StructName,
 			},
 			Logger: logger,
@@ -111,21 +109,23 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
+		eventProc8.AddHandlers(
+			cqrs.NewEventHandler("AddToCRM-8", AddToCRM8Handler{}.Handle),
+			cqrs.NewEventHandler("AddToSupport-8", AddToSupport8Handler{}.Handle),
+		)
 	}
-
-	_, err = cqrs.NewFacade(cqrs.FacadeConfig{
-		GenerateEventsTopic: func(eventName string) string {
-			return fmt.Sprintf("%s-9", eventName)
-		},
-		EventsPublisher: publisher,
-		EventHandlers: func(commandBus *cqrs.CommandBus, eventBus *cqrs.EventBus) []cqrs.EventHandler {
-			return []cqrs.EventHandler{
-				cqrs.NewEventHandler("AddToCRM-9", AddToCRM9Handler{}.Handle),
-				cqrs.NewEventHandler("AddToSupport-9", AddToSupport9Handler{}.Handle),
+	eventProc9, err := cqrs.NewEventProcessorWithConfig(router, cqrs.EventProcessorConfig{
+		GenerateSubscribeTopic: func(params cqrs.EventProcessorGenerateSubscribeTopicParams) (string, error) {
+			if params.EventName == "" {
+				return "", fmt.Errorf("EventName is empty")
 			}
+			return fmt.Sprintf("%s-9", params.EventName), nil
 		},
-		EventsSubscriberConstructor: func(handlerName string) (message.Subscriber, error) {
-			handlerName = strings.Split(handlerName, "-")[0]
+		SubscriberConstructor: func(params cqrs.EventProcessorSubscriberConstructorParams) (message.Subscriber, error) {
+			if params.HandlerName == "" {
+				return nil, fmt.Errorf("HandlerName is empty")
+			}
+			handlerName := strings.Split(params.HandlerName, "-")[0]
 			return redisstream.NewSubscriber(
 				redisstream.SubscriberConfig{
 					Client:        subClient,
@@ -134,8 +134,7 @@ func main() {
 				logger,
 			)
 		},
-		Router: router,
-		CommandEventMarshaler: cqrs.JSONMarshaler{
+		Marshaler: cqrs.JSONMarshaler{
 			GenerateName: cqrs.StructName,
 		},
 		Logger: logger,
@@ -143,6 +142,10 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	eventProc9.AddHandlers(
+		cqrs.NewEventHandler("AddToCRM-9", AddToCRM9Handler{}.Handle),
+		cqrs.NewEventHandler("AddToSupport-9", AddToSupport9Handler{}.Handle),
+	)
 
 	err = router.Run(context.Background())
 	if err != nil {

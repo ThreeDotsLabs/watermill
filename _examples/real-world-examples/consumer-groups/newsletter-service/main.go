@@ -306,19 +306,18 @@ func main() {
 	)
 
 	if replica == "1" {
-		_, err = cqrs.NewFacade(cqrs.FacadeConfig{
-			GenerateEventsTopic: func(eventName string) string {
-				return fmt.Sprintf("%s-8", eventName)
-			},
-			EventsPublisher: publisher,
-			EventHandlers: func(commandBus *cqrs.CommandBus, eventBus *cqrs.EventBus) []cqrs.EventHandler {
-				return []cqrs.EventHandler{
-					cqrs.NewEventHandler("AddToPromotionsList-8", AddToPromotionsList8Handler{}.Handle),
-					cqrs.NewEventHandler("AddToNewsList-8", AddToNewsList8Handler{}.Handle),
+		eventProc8, err := cqrs.NewEventProcessorWithConfig(router, cqrs.EventProcessorConfig{
+			GenerateSubscribeTopic: func(params cqrs.EventProcessorGenerateSubscribeTopicParams) (string, error) {
+				if params.EventName == "" {
+					return "", fmt.Errorf("EventName is empty")
 				}
+				return fmt.Sprintf("%s-8", params.EventName), nil
 			},
-			EventsSubscriberConstructor: func(handlerName string) (message.Subscriber, error) {
-				handlerName = strings.Split(handlerName, "-")[0]
+			SubscriberConstructor: func(params cqrs.EventProcessorSubscriberConstructorParams) (message.Subscriber, error) {
+				if params.HandlerName == "" {
+					return nil, fmt.Errorf("HandlerName is empty")
+				}
+				handlerName := strings.Split(params.HandlerName, "-")[0]
 				return redisstream.NewSubscriber(
 					redisstream.SubscriberConfig{
 						Client:        subClient,
@@ -327,8 +326,7 @@ func main() {
 					logger,
 				)
 			},
-			Router: router,
-			CommandEventMarshaler: cqrs.JSONMarshaler{
+			Marshaler: cqrs.JSONMarshaler{
 				GenerateName: cqrs.StructName,
 			},
 			Logger: logger,
@@ -336,21 +334,23 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
+		eventProc8.AddHandlers(
+			cqrs.NewEventHandler("AddToPromotionsList-8", AddToPromotionsList8Handler{}.Handle),
+			cqrs.NewEventHandler("AddToNewsList-8", AddToNewsList8Handler{}.Handle),
+		)
 	}
-
-	_, err = cqrs.NewFacade(cqrs.FacadeConfig{
-		GenerateEventsTopic: func(eventName string) string {
-			return fmt.Sprintf("%s-9", eventName)
-		},
-		EventsPublisher: publisher,
-		EventHandlers: func(commandBus *cqrs.CommandBus, eventBus *cqrs.EventBus) []cqrs.EventHandler {
-			return []cqrs.EventHandler{
-				cqrs.NewEventHandler("AddToPromotionsList-9", AddToPromotionsList9Handler{}.Handle),
-				cqrs.NewEventHandler("AddToNewsList-9", AddToNewsList9Handler{}.Handle),
+	eventProc9, err := cqrs.NewEventProcessorWithConfig(router, cqrs.EventProcessorConfig{
+		GenerateSubscribeTopic: func(params cqrs.EventProcessorGenerateSubscribeTopicParams) (string, error) {
+			if params.EventName == "" {
+				return "", fmt.Errorf("EventName is empty")
 			}
+			return fmt.Sprintf("%s-9", params.EventName), nil
 		},
-		EventsSubscriberConstructor: func(handlerName string) (message.Subscriber, error) {
-			handlerName = strings.Split(handlerName, "-")[0]
+		SubscriberConstructor: func(params cqrs.EventProcessorSubscriberConstructorParams) (message.Subscriber, error) {
+			if params.HandlerName == "" {
+				return nil, fmt.Errorf("HandlerName is empty")
+			}
+			handlerName := strings.Split(params.HandlerName, "-")[0]
 			return redisstream.NewSubscriber(
 				redisstream.SubscriberConfig{
 					Client:        subClient,
@@ -359,8 +359,7 @@ func main() {
 				logger,
 			)
 		},
-		Router: router,
-		CommandEventMarshaler: cqrs.JSONMarshaler{
+		Marshaler: cqrs.JSONMarshaler{
 			GenerateName: cqrs.StructName,
 		},
 		Logger: logger,
@@ -368,6 +367,10 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	eventProc9.AddHandlers(
+		cqrs.NewEventHandler("AddToPromotionsList-9", AddToPromotionsList9Handler{}.Handle),
+		cqrs.NewEventHandler("AddToNewsList-9", AddToNewsList9Handler{}.Handle),
+	)
 
 	err = router.Run(context.Background())
 	if err != nil {
@@ -376,10 +379,6 @@ func main() {
 }
 
 type AddToPromotionsList8Handler struct{}
-
-func (h AddToPromotionsList8Handler) HandlerName() string {
-	return "AddToPromotionsList-8"
-}
 
 func (h AddToPromotionsList8Handler) Handle(ctx context.Context, e *common.UserSignedUp) error {
 	if !e.Consents.Marketing {
@@ -397,6 +396,7 @@ func (h AddToNewsList8Handler) Handle(ctx context.Context, e *common.UserSignedU
 	if !e.Consents.News {
 		return nil
 	}
+
 	fmt.Println("Adding user", e.UserID, "to the news list")
 
 	return nil
