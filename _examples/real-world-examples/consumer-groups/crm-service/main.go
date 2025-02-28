@@ -81,19 +81,12 @@ func main() {
 	}
 
 	if replica == "1" {
-		_, err = cqrs.NewFacade(cqrs.FacadeConfig{
-			GenerateEventsTopic: func(eventName string) string {
-				return fmt.Sprintf("%s-8", eventName)
+		eventProc8, err := cqrs.NewEventProcessorWithConfig(router, cqrs.EventProcessorConfig{
+			GenerateSubscribeTopic: func(params cqrs.EventProcessorGenerateSubscribeTopicParams) (string, error) {
+				return fmt.Sprintf("%s-8", params.EventName), nil
 			},
-			EventsPublisher: publisher,
-			EventHandlers: func(commandBus *cqrs.CommandBus, eventBus *cqrs.EventBus) []cqrs.EventHandler {
-				return []cqrs.EventHandler{
-					cqrs.NewEventHandler("AddToCRM-8", AddToCRM8Handler{}.Handle),
-					cqrs.NewEventHandler("AddToSupport-8", AddToSupport8Handler{}.Handle),
-				}
-			},
-			EventsSubscriberConstructor: func(handlerName string) (message.Subscriber, error) {
-				handlerName = strings.Split(handlerName, "-")[0]
+			SubscriberConstructor: func(params cqrs.EventProcessorSubscriberConstructorParams) (message.Subscriber, error) {
+				handlerName := strings.Split(params.HandlerName, "-")[0]
 				return redisstream.NewSubscriber(
 					redisstream.SubscriberConfig{
 						Client:        subClient,
@@ -102,8 +95,7 @@ func main() {
 					logger,
 				)
 			},
-			Router: router,
-			CommandEventMarshaler: cqrs.JSONMarshaler{
+			Marshaler: cqrs.JSONMarshaler{
 				GenerateName: cqrs.StructName,
 			},
 			Logger: logger,
@@ -111,21 +103,22 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
+
+		err = eventProc8.AddHandlers(
+			cqrs.NewEventHandler("AddToCRM-8", HandleCRM),
+			cqrs.NewEventHandler("AddToSupport-8", HandleSupport),
+		)
+		if err != nil {
+			panic(err)
+		}
 	}
 
-	_, err = cqrs.NewFacade(cqrs.FacadeConfig{
-		GenerateEventsTopic: func(eventName string) string {
-			return fmt.Sprintf("%s-9", eventName)
+	eventProc9, err := cqrs.NewEventProcessorWithConfig(router, cqrs.EventProcessorConfig{
+		GenerateSubscribeTopic: func(params cqrs.EventProcessorGenerateSubscribeTopicParams) (string, error) {
+			return fmt.Sprintf("%s-9", params.EventName), nil
 		},
-		EventsPublisher: publisher,
-		EventHandlers: func(commandBus *cqrs.CommandBus, eventBus *cqrs.EventBus) []cqrs.EventHandler {
-			return []cqrs.EventHandler{
-				cqrs.NewEventHandler("AddToCRM-9", AddToCRM9Handler{}.Handle),
-				cqrs.NewEventHandler("AddToSupport-9", AddToSupport9Handler{}.Handle),
-			}
-		},
-		EventsSubscriberConstructor: func(handlerName string) (message.Subscriber, error) {
-			handlerName = strings.Split(handlerName, "-")[0]
+		SubscriberConstructor: func(params cqrs.EventProcessorSubscriberConstructorParams) (message.Subscriber, error) {
+			handlerName := strings.Split(params.HandlerName, "-")[0]
 			return redisstream.NewSubscriber(
 				redisstream.SubscriberConfig{
 					Client:        subClient,
@@ -134,12 +127,19 @@ func main() {
 				logger,
 			)
 		},
-		Router: router,
-		CommandEventMarshaler: cqrs.JSONMarshaler{
+		Marshaler: cqrs.JSONMarshaler{
 			GenerateName: cqrs.StructName,
 		},
 		Logger: logger,
 	})
+	if err != nil {
+		panic(err)
+	}
+
+	err = eventProc9.AddHandlers(
+		cqrs.NewEventHandler("AddToCRM-9", HandleCRM),
+		cqrs.NewEventHandler("AddToSupport-9", HandleSupport),
+	)
 	if err != nil {
 		panic(err)
 	}
@@ -150,33 +150,13 @@ func main() {
 	}
 }
 
-type AddToCRM8Handler struct{}
-
-func (h AddToCRM8Handler) Handle(ctx context.Context, e *common.UserSignedUp) error {
+func HandleCRM(ctx context.Context, e *common.UserSignedUp) error {
 	fmt.Println("Adding user", e.UserID, "to the CRM")
 
 	return nil
 }
 
-type AddToSupport8Handler struct{}
-
-func (h AddToSupport8Handler) Handle(ctx context.Context, e *common.UserSignedUp) error {
-	fmt.Println("Adding user", e.UserID, "to the support channel")
-
-	return nil
-}
-
-type AddToCRM9Handler struct{}
-
-func (h AddToCRM9Handler) Handle(ctx context.Context, e *common.UserSignedUp) error {
-	fmt.Println("Adding user", e.UserID, "to the CRM")
-
-	return nil
-}
-
-type AddToSupport9Handler struct{}
-
-func (h AddToSupport9Handler) Handle(ctx context.Context, e *common.UserSignedUp) error {
+func HandleSupport(ctx context.Context, e *common.UserSignedUp) error {
 	fmt.Println("Adding user", e.UserID, "to the support channel")
 
 	return nil
