@@ -91,6 +91,7 @@ type EventProcessorGenerateSubscribeTopicParams struct {
 type EventProcessorSubscriberConstructorFn func(EventProcessorSubscriberConstructorParams) (message.Subscriber, error)
 
 type EventProcessorSubscriberConstructorParams struct {
+	EventName    string
 	HandlerName  string
 	EventHandler EventHandler
 }
@@ -279,6 +280,7 @@ func (p EventProcessor) addHandlerToRouter(r *message.Router, handler EventHandl
 	}
 
 	subscriber, err := p.config.SubscriberConstructor(EventProcessorSubscriberConstructorParams{
+		EventName:    eventName,
 		HandlerName:  handlerName,
 		EventHandler: handler,
 	})

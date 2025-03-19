@@ -95,6 +95,7 @@ type CommandProcessorGenerateSubscribeTopicParams struct {
 type CommandProcessorSubscriberConstructorFn func(CommandProcessorSubscriberConstructorParams) (message.Subscriber, error)
 
 type CommandProcessorSubscriberConstructorParams struct {
+	CommandName string
 	HandlerName string
 	Handler     CommandHandler
 }
@@ -290,6 +291,7 @@ func (p CommandProcessor) addHandlerToRouter(r *message.Router, handler CommandH
 	logger.Debug("Adding CQRS command handler to router", nil)
 
 	subscriber, err := p.config.SubscriberConstructor(CommandProcessorSubscriberConstructorParams{
+		CommandName: commandName,
 		HandlerName: handlerName,
 		Handler:     handler,
 	})
