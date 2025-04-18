@@ -9,7 +9,7 @@ services:
     command: go run main.go
 
   localstack:
-    image: localstack/localstack:latest
+    image: localstack/localstack:3.8
     environment:
       - SERVICES=sqs,sns
       - AWS_DEFAULT_REGION=us-east-1

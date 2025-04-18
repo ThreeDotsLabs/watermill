@@ -1,0 +1,53 @@
+syntax = "proto3";
+package main;
+
+option go_package = "./main";
+
+import "google/protobuf/timestamp.proto";
+
+message MessageMetadata {
+  string partition_key = 1;
+  google.protobuf.Timestamp created_at = 2;
+}
+
+// Commands
+message Subscribe {
+  MessageMetadata metadata = 1;
+
+  string subscriber_id = 2;
+  string email = 3;
+}
+
+message Unsubscribe {
+  MessageMetadata metadata = 1;
+
+  string subscriber_id = 2;
+}
+
+message UpdateEmail {
+  MessageMetadata metadata = 1;
+
+  string subscriber_id = 2;
+  string new_email = 3;
+}
+
+// Events
+message SubscriberSubscribed {
+  MessageMetadata metadata = 1;
+
+  string subscriber_id = 2;
+  string email = 3;
+}
+
+message SubscriberUnsubscribed {
+  MessageMetadata metadata = 1;
+
+  string subscriber_id = 2;
+}
+
+message SubscriberEmailUpdated {
+  MessageMetadata metadata = 1;
+
+  string subscriber_id = 2;
+  string new_email = 3;
+}
