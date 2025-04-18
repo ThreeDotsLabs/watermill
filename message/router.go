@@ -802,8 +802,10 @@ func (h *handler) handleMessage(msg *Message, handler HandlerFunc) {
 	h.logger.Trace("Received message", msgFields)
 
 	producedMessages, err := handler(msg)
-	if err != nil && !errors.Is(err, context.Canceled) {
-		h.logger.Error("Handler returned error", err, msgFields)
+	if err != nil {
+		if errors.Is(err, context.Canceled) {
+			h.logger.Error("Handler returned error", err, msgFields)
+		}
 		msg.Nack()
 		return
 	}
