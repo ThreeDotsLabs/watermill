@@ -803,7 +803,7 @@ func (h *handler) handleMessage(msg *Message, handler HandlerFunc) {
 
 	producedMessages, err := handler(msg)
 	if err != nil {
-		if errors.Is(err, context.Canceled) {
+		if !errors.Is(err, context.Canceled) {
 			h.logger.Error("Handler returned error", err, msgFields)
 		}
 		msg.Nack()
