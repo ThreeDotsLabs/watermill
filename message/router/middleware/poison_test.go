@@ -9,8 +9,6 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message/subscriber"
 	"github.com/ThreeDotsLabs/watermill/pubsub/gochannel"
 
-	"github.com/hashicorp/go-multierror"
-
 	"github.com/ThreeDotsLabs/watermill/message"
 
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
@@ -191,11 +189,9 @@ func TestPoisonQueue_handler_failing_publisher_failing(t *testing.T) {
 				msg,
 			)
 
-			require.IsType(t, &multierror.Error{}, err)
-			multierr := err.(*multierror.Error)
-
 			// publisher failed, can't hide the error anymore
-			assert.Equal(t, errFailed, errors.Cause(multierr.WrappedErrors()[1]))
+			// Instead of checking the specific error, we check if the error.Is() is the same as the one we expect
+			assert.ErrorIs(t, err, errFailed)
 
 			// can't really expect any produced messages
 			assert.Empty(t, produced)

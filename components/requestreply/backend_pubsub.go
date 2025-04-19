@@ -2,12 +2,12 @@ package requestreply
 
 import (
 	"context"
+	stdErrors "errors"
 	"fmt"
 	"time"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 )
 
@@ -108,16 +108,16 @@ func (p *PubSubBackendConfig) Validate() error {
 	var err error
 
 	if p.Publisher == nil {
-		err = multierror.Append(err, errors.New("publisher cannot be nil"))
+		err = stdErrors.Join(err, errors.New("publisher cannot be nil"))
 	}
 	if p.SubscriberConstructor == nil {
-		err = multierror.Append(err, errors.New("subscriber constructor cannot be nil"))
+		err = stdErrors.Join(err, errors.New("subscriber constructor cannot be nil"))
 	}
 	if p.GeneratePublishTopic == nil {
-		err = multierror.Append(err, errors.New("GeneratePublishTopic cannot be nil"))
+		err = stdErrors.Join(err, errors.New("GeneratePublishTopic cannot be nil"))
 	}
 	if p.GenerateSubscribeTopic == nil {
-		err = multierror.Append(err, errors.New("GenerateSubscribeTopic cannot be nil"))
+		err = stdErrors.Join(err, errors.New("GenerateSubscribeTopic cannot be nil"))
 	}
 
 	return err

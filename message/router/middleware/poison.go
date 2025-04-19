@@ -1,8 +1,9 @@
 package middleware
 
 import (
+	stdErrors "errors"
+
 	"github.com/ThreeDotsLabs/watermill/message"
-	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 )
 
@@ -86,7 +87,7 @@ func (pq poisonQueue) Middleware(h message.HandlerFunc) message.HandlerFunc {
 				publishErr := pq.publishPoisonMessage(msg, err)
 				if publishErr != nil {
 					publishErr = errors.Wrap(publishErr, "cannot publish message to poison queue")
-					err = multierror.Append(err, publishErr)
+					err = stdErrors.Join(err, publishErr)
 					return
 				}
 
