@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"reflect"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -244,12 +245,7 @@ func (c *CaptureLoggerAdapter) Has(msg CapturedMessage) bool {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
-	for _, capturedMsg := range c.captured[msg.Level] {
-		if msg.ContentEquals(capturedMsg) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(c.captured[msg.Level], msg.ContentEquals)
 }
 
 func (c *CaptureLoggerAdapter) HasError(err error) bool {
