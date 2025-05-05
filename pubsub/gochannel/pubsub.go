@@ -260,6 +260,16 @@ func (g *GoChannel) removeSubscriber(topic string, toRemove *subscriber) {
 		if sub == toRemove {
 			g.subscribers[topic] = append(g.subscribers[topic][:i], g.subscribers[topic][i+1:]...)
 			removed = true
+
+			if len(g.subscribers[topic]) == 0 {
+				// Free up the memory taken by a topic which no longer has subscribers.
+				// This operation allows publishing and subscribing to narrowly
+				// focused topics that include random data like UUIDs in topic name.
+				//
+				// Without this operation, memory usage will grow indefinitely in a long-running service
+				// as the map grows larger and larger with keys pointing to empty slices.
+				delete(g.subscribers, topic)
+			}
 			break
 		}
 	}
