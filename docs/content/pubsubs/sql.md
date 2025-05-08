@@ -9,6 +9,8 @@ weight = 120
 SQL Pub/Sub executes queries on any SQL database, using it like a messaging system. At the moment, **MySQL** and **PostgreSQL** are supported.
 It be useful for projects that are not using any specialized message queue at the moment, but have access to a SQL database.
 
+If you are looking for SQLite Pub/Sub, check out the [SQLite Pub/Sub](/pubsubs/sqlite/) documentation.
+
 The SQL subscriber runs a `SELECT` query within short periods, remembering the position of the last record. If it finds
 any new records, they are returned. One handy use case is consuming events from a database table, that can be later published
 on some kind of message queue.
