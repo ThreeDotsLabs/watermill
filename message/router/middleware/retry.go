@@ -1,10 +1,9 @@
 package middleware
 
 import (
-	"context"
 	"time"
 
-	"github.com/cenkalti/backoff/v3"
+	"github.com/cenkalti/backoff/v5"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
@@ -43,55 +42,51 @@ func (r Retry) Middleware(h message.HandlerFunc) message.HandlerFunc {
 			return producedMessages, nil
 		}
 
+		retryNum := 1
+
+		notification := func(err error, delay time.Duration) {
+			if r.Logger != nil {
+				r.Logger.Error("Error occurred, retrying", err, watermill.LogFields{
+					"retry_no":    retryNum,
+					"max_retries": r.MaxRetries,
+					"wait_time":   delay,
+				})
+			}
+		}
+
 		expBackoff := backoff.NewExponentialBackOff()
 		expBackoff.InitialInterval = r.InitialInterval
 		expBackoff.MaxInterval = r.MaxInterval
 		expBackoff.Multiplier = r.Multiplier
-		expBackoff.MaxElapsedTime = r.MaxElapsedTime
 		expBackoff.RandomizationFactor = r.RandomizationFactor
 
-		ctx := msg.Context()
-		if r.MaxElapsedTime > 0 {
-			var cancel func()
-			ctx, cancel = context.WithTimeout(ctx, r.MaxElapsedTime)
-			defer cancel()
-		}
+		retryBackoff := backoff.WithMaxTries(uint(r.MaxRetries))
 
-		retryNum := 1
-		expBackoff.Reset()
-	retryLoop:
-		for {
-			waitTime := expBackoff.NextBackOff()
+		maxElapsedBackoff := backoff.WithMaxElapsedTime(r.MaxElapsedTime)
+
+		ctx := msg.Context()
+
+		operation := func() ([]*message.Message, error) {
 			select {
 			case <-ctx.Done():
 				return producedMessages, err
-			case <-time.After(waitTime):
-				// go on
-			}
-
-			producedMessages, err = h(msg)
-			if err == nil {
-				return producedMessages, nil
-			}
-
-			if r.Logger != nil {
-				r.Logger.Error("Error occurred, retrying", err, watermill.LogFields{
-					"retry_no":     retryNum,
-					"max_retries":  r.MaxRetries,
-					"wait_time":    waitTime,
-					"elapsed_time": expBackoff.GetElapsedTime(),
-				})
-			}
-			if r.OnRetryHook != nil {
-				r.OnRetryHook(retryNum, waitTime)
-			}
-
-			retryNum++
-			if retryNum > r.MaxRetries {
-				break retryLoop
+			default:
+				producedMessages, err = h(msg)
+				if err == nil {
+					return producedMessages, nil
+				}
+				if r.OnRetryHook != nil {
+					r.OnRetryHook(retryNum, expBackoff.NextBackOff())
+				}
+				retryNum++
+				return nil, err
 			}
 		}
 
-		return nil, err
+		producedMessages, retryErr := backoff.Retry(ctx, operation, backoff.WithBackOff(expBackoff), retryBackoff, maxElapsedBackoff, backoff.WithNotify(notification))
+		if retryErr != nil {
+			return producedMessages, retryErr
+		}
+		return producedMessages, nil
 	}
 }
