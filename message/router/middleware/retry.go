@@ -44,16 +44,6 @@ func (r Retry) Middleware(h message.HandlerFunc) message.HandlerFunc {
 
 		retryNum := 1
 
-		notification := func(err error, delay time.Duration) {
-			if r.Logger != nil {
-				r.Logger.Error("Error occurred, retrying", err, watermill.LogFields{
-					"retry_no":    retryNum,
-					"max_retries": r.MaxRetries,
-					"wait_time":   delay,
-				})
-			}
-		}
-
 		expBackoff := backoff.NewExponentialBackOff()
 		expBackoff.InitialInterval = r.InitialInterval
 		expBackoff.MaxInterval = r.MaxInterval
@@ -66,6 +56,18 @@ func (r Retry) Middleware(h message.HandlerFunc) message.HandlerFunc {
 
 		ctx := msg.Context()
 
+		// notification: called on a failed retry attempt.
+		notification := func(err error, delay time.Duration) {
+			if r.Logger != nil {
+				r.Logger.Error("Error occurred, retrying", err, watermill.LogFields{
+					"retry_no":    retryNum,
+					"max_retries": r.MaxRetries,
+					"wait_time":   delay,
+				})
+			}
+		}
+
+		// operation: the function that will be retried.
 		operation := func() ([]*message.Message, error) {
 			select {
 			case <-ctx.Done():
@@ -76,6 +78,7 @@ func (r Retry) Middleware(h message.HandlerFunc) message.HandlerFunc {
 					return producedMessages, nil
 				}
 				if r.OnRetryHook != nil {
+					// call RetryHook function on each retry attempt.
 					r.OnRetryHook(retryNum, expBackoff.NextBackOff())
 				}
 				retryNum++
@@ -83,7 +86,15 @@ func (r Retry) Middleware(h message.HandlerFunc) message.HandlerFunc {
 			}
 		}
 
-		producedMessages, retryErr := backoff.Retry(ctx, operation, backoff.WithBackOff(expBackoff), retryBackoff, maxElapsedBackoff, backoff.WithNotify(notification))
+		producedMessages, retryErr := backoff.Retry(
+			ctx,
+			operation,
+			backoff.WithBackOff(expBackoff),
+			retryBackoff,
+			maxElapsedBackoff,
+			backoff.WithNotify(notification),
+		)
+
 		if retryErr != nil {
 			return producedMessages, retryErr
 		}
