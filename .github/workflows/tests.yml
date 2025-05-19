@@ -27,24 +27,35 @@ jobs:
         with:
           go-version: '^1.21.1'
       - run: make build
-  lint:
+
+  detect-modules:
     runs-on: ubuntu-latest
+    outputs:
+      modules: ${{ steps.set-modules.outputs.modules }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '^1.21.1'
+      - id: set-modules
+        run: echo "modules=$(go list -m -json | jq -s '.' | jq -c '[.[].Dir]')" >> $GITHUB_OUTPUT
+
+  lint:
+    needs: detect-modules
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        modules: ${{ fromJSON(needs.detect-modules.outputs.modules) }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v4
         with:
           go-version: '^1.21.1'
-      - name: Install linter
+      - name: golangci-lint
         uses: golangci/golangci-lint-action@v6.5.2
         with:
-          verify: false
-      - name: Run linter
-        run: |
-          if [ -f Makefile ] && grep -q "lint:" Makefile; then
-            make lint
-          else
-            golangci-lint run
-          fi
+          working-directory: ${{ matrix.modules }}
+
   tests:
     needs: [build]
     runs-on: ${{ inputs.runs-on }}
