@@ -93,8 +93,12 @@ func (g *GoChannel) Publish(topic string, messages ...*message.Message) error {
 	g.subscribersLock.RLock()
 	defer g.subscribersLock.RUnlock()
 
-	subLock, _ := g.subscribersByTopicLock.LoadOrStore(topic, &sync.Mutex{})
+	subLock, loaded := g.subscribersByTopicLock.LoadOrStore(topic, &sync.Mutex{})
 	subLock.(*sync.Mutex).Lock()
+
+	if !loaded {
+		defer g.subscribersByTopicLock.Delete(topic)
+	}
 	defer subLock.(*sync.Mutex).Unlock()
 
 	if g.config.Persistent {
@@ -205,7 +209,14 @@ func (g *GoChannel) Subscribe(ctx context.Context, topic string) (<-chan *messag
 		s.Close()
 
 		g.subscribersLock.Lock()
-		defer g.subscribersLock.Unlock()
+		defer func() {
+			// if there are no subscribers, clean up any resources related to the topic
+			if len(g.subscribers[topic]) == 0 {
+				delete(g.subscribers, topic)
+				g.subscribersByTopicLock.Delete(topic)
+			}
+			g.subscribersLock.Unlock()
+		}()
 
 		subLock, _ := g.subscribersByTopicLock.Load(topic)
 		subLock.(*sync.Mutex).Lock()
