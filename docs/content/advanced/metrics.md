@@ -12,13 +12,13 @@ We provide a default implementation using Prometheus, based on the official [Pro
 
 The `components/metrics` package exports `PrometheusMetricsBuilder`, which provides convenience functions to wrap publishers, subscribers and handlers so that they update the relevant Prometheus registry:
 
-{{% load-snippet-partial file="src-link/components/metrics/builder.go" first_line_contains="// PrometheusMetricsBuilder" last_line_contains="func (b PrometheusMetricsBuilder)" %}}
+{{% load-snippet-partial file="src-link/components/metrics/prometheus_builder.go" first_line_contains="// PrometheusMetricsBuilder" last_line_contains="func (b PrometheusMetricsBuilder)" %}}
 
 ## Wrapping publishers, subscribers and handlers
 
 If you are using Watermill's [router](/docs/messages-router) (which is recommended in most cases), you can use a single convenience function `AddPrometheusRouterMetrics` to ensure that all the handlers added to this router are wrapped to update the Prometheus registry, together with their publishers and subscribers:
 
-{{% load-snippet-partial file="src-link/components/metrics/builder.go" first_line_contains="// AddPrometheusRouterMetrics" last_line_contains="AddMiddleware" padding_after="1" %}}
+{{% load-snippet-partial file="src-link/components/metrics/prometheus_builder.go" first_line_contains="// AddPrometheusRouterMetrics" last_line_contains="AddMiddleware" padding_after="1" %}}
 
 Example use of `AddPrometheusRouterMetrics`:
 
