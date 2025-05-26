@@ -14,6 +14,8 @@ require (
 	github.com/prometheus/client_golang v1.20.2
 	github.com/sony/gobreaker v1.0.0
 	github.com/stretchr/testify v1.9.0
+	go.opentelemetry.io/otel v1.29.0
+	go.opentelemetry.io/otel/metric v1.29.0
 	google.golang.org/protobuf v1.34.2
 )
 
