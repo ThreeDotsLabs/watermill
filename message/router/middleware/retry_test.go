@@ -198,3 +198,25 @@ func TestRetry_max_interval(t *testing.T) {
 		assert.True(t, delay <= maxInterval, "wait interval %d (%s) exceeds maxInterval (%s)", i, delay, maxInterval)
 	}
 }
+
+func TestRetry_should_retry(t *testing.T) {
+	retry := middleware.Retry{
+		MaxRetries: 5,
+		ShouldRetry: func(params middleware.RetryParams) bool {
+			return params.Err.Error() != "this should be skipped"
+		},
+	}
+
+	runCount := 0
+
+	h := retry.Middleware(func(msg *message.Message) (messages []*message.Message, e error) {
+		runCount++
+		return nil, errors.New("this should be skipped")
+	})
+
+	handlerMessages, handlerErr := h(message.NewMessage("1", nil))
+
+	assert.Equal(t, 1, runCount)
+	assert.Nil(t, handlerMessages)
+	assert.EqualError(t, handlerErr, "this should be skipped")
+}
