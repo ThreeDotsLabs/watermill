@@ -26,6 +26,10 @@ type Config struct {
 	// When true, Publish will block until subscriber Ack's the message.
 	// If there are no subscribers, Publish will not block (also when Persistent is true).
 	BlockPublishUntilSubscriberAck bool
+
+	// When true, disables the retry logic for nacked messages.
+	// If disabled, nacked messages will be discarded instead of retried.
+	DisableRetries bool
 }
 
 // GoChannel is the simplest Pub/Sub implementation.
@@ -192,6 +196,7 @@ func (g *GoChannel) Subscribe(ctx context.Context, topic string) (<-chan *messag
 		outputChannel: make(chan *message.Message, g.config.OutputChannelBuffer),
 		logger:        g.logger,
 		closing:       make(chan struct{}),
+		config:        g.config,
 	}
 
 	go func(s *subscriber, g *GoChannel) {
@@ -320,6 +325,7 @@ type subscriber struct {
 	logger  watermill.LoggerAdapter
 	closed  bool
 	closing chan struct{}
+	config  Config
 }
 
 func (s *subscriber) Close() {
@@ -374,6 +380,10 @@ SendToSubscriber:
 			s.logger.Trace("Message acked", logFields)
 			return
 		case <-msgToSend.Nacked():
+			if s.config.DisableRetries {
+				s.logger.Trace("Nack received, retries disabled, discarding message", logFields)
+				return
+			}
 			s.logger.Trace("Nack received, resending message", logFields)
 			continue SendToSubscriber
 		case <-s.closing:

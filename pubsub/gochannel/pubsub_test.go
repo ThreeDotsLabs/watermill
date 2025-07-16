@@ -107,6 +107,36 @@ func TestPublishSubscribe_block_until_ack(t *testing.T) {
 	}
 }
 
+func TestPublishSubscribe_disable_retries(t *testing.T) {
+	pubSub := gochannel.NewGoChannel(
+		gochannel.Config{
+			DisableRetries: true,
+		},
+		watermill.NewStdLogger(true, true),
+	)
+	topicName := "test_topic_" + watermill.NewUUID()
+
+	msgs, err := pubSub.Subscribe(context.Background(), topicName)
+	require.NoError(t, err)
+
+	err = pubSub.Publish(topicName, message.NewMessage("1", nil))
+	require.NoError(t, err)
+
+	msg1 := <-msgs
+	msg1.Nack()
+
+	// With retries disabled, the message should not be retried
+	// Wait a bit to ensure no retry happens
+	select {
+	case <-msgs:
+		t.Fatal("message should not be retried when DisableRetries is true")
+	case <-time.After(100 * time.Millisecond):
+		// ok, no retry happened
+	}
+
+	assert.NoError(t, pubSub.Close())
+}
+
 func TestPublishSubscribe_race_condition_on_subscribe(t *testing.T) {
 	testsCount := 15
 	if testing.Short() {
