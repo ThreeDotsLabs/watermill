@@ -171,7 +171,7 @@ func TestMapExpiringKeyRepositoryCleanup(t *testing.T) {
 	for i := 0; i < 6; i++ { // only one should go through
 		msg := message.NewMessage(
 			fmt.Sprintf("expiring%d", i),
-			[]byte(fmt.Sprintf("expiring%d", i)),
+			fmt.Appendf(nil, "expiring%d", i),
 		)
 		_, err := h(msg)
 		assert.NoError(t, err)
