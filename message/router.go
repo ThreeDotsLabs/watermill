@@ -786,7 +786,7 @@ func (h *handler) handleClose(ctx context.Context) {
 
 func (h *handler) handleMessage(msg *Message, handler HandlerFunc) {
 	defer h.runningHandlersWg.Done()
-	msgFields := watermill.LogFields{"message_uuid": msg.UUID}
+	msgFields := watermill.LogFields{"message_uuid": msg.UUID, "handler_name": h.name}
 
 	defer func() {
 		if recovered := recover(); recovered != nil {
