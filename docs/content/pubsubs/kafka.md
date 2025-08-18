@@ -81,3 +81,5 @@ marshaler := kafka.NewWithPartitioningMarshaler(func(topic string, msg *message.
     return msg.Metadata.Get("partition"), nil
 })
 ```
+
+Please note that in the example above, if the `partition` key is missing from the message metadata, an empty string `""` will be used as the partitioning key. This will cause all such messages to be routed to the same partition, which may not be the desired behavior and could lead to uneven load distribution.
