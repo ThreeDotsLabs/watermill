@@ -210,7 +210,7 @@ func (p *EventProcessor) AddHandlers(handlers ...EventHandler) error {
 	return nil
 }
 
-// AddHandlers adds a new EventHandler to the EventProcessor and adds it to the router.
+// AddHandler adds a new EventHandler to the EventProcessor and adds it to the router.
 func (p *EventProcessor) AddHandler(handler EventHandler) (*message.Handler, error) {
 	if p.config.disableRouterAutoAddHandlers {
 		p.handlers = append(p.handlers, handler)
