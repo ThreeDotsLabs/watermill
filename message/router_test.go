@@ -1121,7 +1121,7 @@ func createBenchSubscriber(b *testing.B) benchMockSubscriber {
 	for i := 0; i < b.N; i++ {
 		messagesToSend = append(
 			messagesToSend,
-			message.NewMessage(watermill.NewUUID(), []byte(fmt.Sprintf("%d", i))),
+			message.NewMessage(watermill.NewUUID(), fmt.Appendf(nil, "%d", i)),
 		)
 	}
 
@@ -1132,7 +1132,7 @@ func publishMessagesForHandler(t *testing.T, messagesCount int, pub message.Publ
 	var messagesToPublish []*message.Message
 
 	for i := 0; i < messagesCount; i++ {
-		msg := message.NewMessage(watermill.NewUUID(), []byte(fmt.Sprintf("%d", i)))
+		msg := message.NewMessage(watermill.NewUUID(), fmt.Appendf(nil, "%d", i))
 
 		messagesToPublish = append(messagesToPublish, msg)
 	}
