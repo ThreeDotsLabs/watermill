@@ -1121,7 +1121,7 @@ func createBenchSubscriber(b *testing.B) benchMockSubscriber {
 	for i := 0; i < b.N; i++ {
 		messagesToSend = append(
 			messagesToSend,
-			message.NewMessage(watermill.NewUUID(), []byte(fmt.Sprintf("%d", i))),
+			message.NewMessage(watermill.NewUUID(), fmt.Appendf(nil, "%d", i)),
 		)
 	}
 
@@ -1132,7 +1132,7 @@ func publishMessagesForHandler(t *testing.T, messagesCount int, pub message.Publ
 	var messagesToPublish []*message.Message
 
 	for i := 0; i < messagesCount; i++ {
-		msg := message.NewMessage(watermill.NewUUID(), []byte(fmt.Sprintf("%d", i)))
+		msg := message.NewMessage(watermill.NewUUID(), fmt.Appendf(nil, "%d", i))
 
 		messagesToPublish = append(messagesToPublish, msg)
 	}
@@ -1359,6 +1359,75 @@ func TestRouter_context_cancel_does_not_log_error(t *testing.T) {
 	}, 3*time.Second, 5*time.Millisecond, "Router should be closed after all handlers are stopped")
 
 	assert.Empty(t, logger.Captured()[watermill.ErrorLogLevel], "No error should be logged when context is canceled")
+}
+
+// TestRouter_nack_on_context_canceled checks that the message is Nacked
+// when the handler returns context.Canceled.
+func TestRouter_nack_on_context_canceled(t *testing.T) {
+	t.Parallel()
+
+	pubSub := gochannel.NewGoChannel(gochannel.Config{}, watermill.NopLogger{})
+	defer func() {
+		assert.NoError(t, pubSub.Close())
+	}()
+
+	logger := watermill.NewStdLogger(false, false) // Use StdLogger, logging check is in another test
+
+	r, err := message.NewRouter(message.RouterConfig{}, logger)
+	require.NoError(t, err)
+
+	handlerProcessed := make(chan struct{})
+	subscribeTopic := "test_nack_on_context_canceled_" + watermill.NewUUID()
+
+	r.AddNoPublisherHandler(
+		"test_handler",
+		subscribeTopic,
+		pubSub,
+		func(msg *message.Message) error {
+			defer func() {
+				handlerProcessed <- struct{}{}
+			}()
+			// Simulate handler returning context.Canceled
+			return context.Canceled
+		},
+	)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	runErrCh := make(chan error, 1)
+	go func() {
+		runErrCh <- r.Run(ctx)
+	}()
+	select {
+	case <-r.Running():
+		// proceed
+	case err := <-runErrCh:
+		t.Fatalf("Router failed to start: %v", err)
+	case <-time.After(5 * time.Second):
+		t.Fatal("Router did not start")
+	}
+
+	// Publish a message to trigger the handler
+	msg := message.NewMessage(watermill.NewUUID(), nil)
+	err = pubSub.Publish(subscribeTopic, msg)
+	require.NoError(t, err)
+
+	// Wait for the handler to process the message
+	select {
+	case <-handlerProcessed:
+		// ok
+	case <-time.After(5 * time.Second):
+		t.Fatal("Handler did not process message in time")
+	}
+
+	// Message should be re-sent when nacked
+	select {
+	case <-handlerProcessed:
+		// ok
+	case <-time.After(5 * time.Second):
+		t.Fatal("Handler did not process message in time")
+	}
 }
 
 func TestRouter_stopping_all_handlers_logs_error(t *testing.T) {

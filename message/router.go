@@ -265,7 +265,7 @@ func (d DuplicateHandlerNameError) Error() string {
 //
 // publishTopic is a topic to which router will produce messages returned by handlerFunc.
 // When handler needs to publish to multiple topics,
-// it is recommended to just inject Publisher to Handler or implement middleware
+// it is recommended to use AddNoPublisherHandler and inject a Publisher or implement middleware
 // which will catch messages and publish to topic based on metadata for example.
 //
 // If handler is added while router is already running, you need to explicitly call RunHandlers().
@@ -786,7 +786,7 @@ func (h *handler) handleClose(ctx context.Context) {
 
 func (h *handler) handleMessage(msg *Message, handler HandlerFunc) {
 	defer h.runningHandlersWg.Done()
-	msgFields := watermill.LogFields{"message_uuid": msg.UUID}
+	msgFields := watermill.LogFields{"message_uuid": msg.UUID, "handler_name": h.name}
 
 	defer func() {
 		if recovered := recover(); recovered != nil {
@@ -803,7 +803,9 @@ func (h *handler) handleMessage(msg *Message, handler HandlerFunc) {
 
 	producedMessages, err := handler(msg)
 	if err != nil {
-		h.logger.Error("Handler returned error", err, msgFields)
+		if !errors.Is(err, context.Canceled) {
+			h.logger.Error("Handler returned error", err, msgFields)
+		}
 		msg.Nack()
 		return
 	}

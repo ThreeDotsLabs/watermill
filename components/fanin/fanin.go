@@ -3,6 +3,7 @@ package fanin
 import (
 	"context"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/pkg/errors"
@@ -41,20 +42,16 @@ func (c *Config) Validate() error {
 		return errors.New("sourceTopics must not be empty")
 	}
 
-	for _, fromTopic := range c.SourceTopics {
-		if fromTopic == "" {
-			return errors.New("sourceTopics must not be empty")
-		}
+	if slices.Contains(c.SourceTopics, "") {
+		return errors.New("sourceTopics must not be empty")
 	}
 
 	if c.TargetTopic == "" {
 		return errors.New("targetTopic must not be empty")
 	}
 
-	for _, fromTopic := range c.SourceTopics {
-		if fromTopic == c.TargetTopic {
-			return errors.New("sourceTopics must not contain targetTopic")
-		}
+	if slices.Contains(c.SourceTopics, c.TargetTopic) {
+		return errors.New("sourceTopics must not contain targetTopic")
 	}
 
 	return nil
