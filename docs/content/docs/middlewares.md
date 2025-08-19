@@ -1,6 +1,6 @@
 +++
 title = "Middleware"
-description = "Add generic functionalities to your handlers in an inobtrusive way"
+description = "Add generic functionalities to your handlers in an unobtrusive way"
 date = 2019-06-01T19:00:00+01:00
 weight = -500
 draft = false 
@@ -20,7 +20,7 @@ Middleware wrap the handler function like this:
 ## Usage
 
 Middleware can be executed for all as well as for a specific handler in a router. When middleware is added directly 
-to a router it will be executed for all of handlers provided for a router. If a middleware should be executed only 
+to a router it will be executed for all handlers provided for a router. If a middleware should be executed only 
 for a specific handler, it needs to be added to handler in the router.
 
 Example usage is shown below:

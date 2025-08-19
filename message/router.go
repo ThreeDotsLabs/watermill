@@ -265,7 +265,7 @@ func (d DuplicateHandlerNameError) Error() string {
 //
 // publishTopic is a topic to which router will produce messages returned by handlerFunc.
 // When handler needs to publish to multiple topics,
-// it is recommended to just inject Publisher to Handler or implement middleware
+// it is recommended to use AddNoPublisherHandler and inject a Publisher or implement middleware
 // which will catch messages and publish to topic based on metadata for example.
 //
 // If handler is added while router is already running, you need to explicitly call RunHandlers().
@@ -320,7 +320,7 @@ func (r *Router) AddHandler(
 	select {
 	case r.handlerAdded <- struct{}{}:
 	default:
-		// closeWhenAllHandlersStopped is not always waiting for handlerAdded
+		// watchAllHandlersStopped is not always waiting for handlerAdded
 	}
 
 	return &Handler{
@@ -379,13 +379,13 @@ func (r *Router) Run(ctx context.Context) (err error) {
 		}
 	}
 
+	r.watchAllHandlersStopped(ctx)
+
 	if err := r.RunHandlers(ctx); err != nil {
 		return err
 	}
 
 	close(r.running)
-
-	go r.closeWhenAllHandlersStopped(ctx)
 
 	<-r.closingInProgressCh
 	cancel()
@@ -428,10 +428,12 @@ func (r *Router) RunHandlers(ctx context.Context) error {
 			return errors.Wrapf(err, "could not decorate subscriber of handler %s", name)
 		}
 
-		r.logger.Debug("Subscribing to topic", watermill.LogFields{
+		logger := r.logger.With(watermill.LogFields{
 			"subscriber_name": h.name,
 			"topic":           h.subscribeTopic,
 		})
+
+		logger.Debug("Subscribing to topic", nil)
 
 		ctx, cancel := context.WithCancel(ctx)
 
@@ -458,54 +460,59 @@ func (r *Router) RunHandlers(ctx context.Context) error {
 			h.run(ctx, middlewares)
 
 			r.handlersWg.Done()
-			r.logger.Info("Subscriber stopped", watermill.LogFields{
-				"subscriber_name": h.name,
-				"topic":           h.subscribeTopic,
-			})
+			logger.Info("Subscriber stopped", nil)
 
 			r.handlersLock.Lock()
 			delete(r.handlers, name)
 			r.handlersLock.Unlock()
+
+			logger.Trace("Removed subscriber from r.handlers", nil)
+
+			close(h.stopped)
 		}()
 	}
 	return nil
 }
 
-// closeWhenAllHandlersStopped closed router, when all handlers has stopped,
-// because for example all subscriptions are closed.
-func (r *Router) closeWhenAllHandlersStopped(ctx context.Context) {
+// watchAllHandlersStopped closes router when all handlers have stopped,
+// (for example, because for example all subscriptions are closed)
+func (r *Router) watchAllHandlersStopped(ctx context.Context) {
 	r.handlersLock.RLock()
-	hasHandlers := len(r.handlers) == 0
+	hasNoHandlersYet := len(r.handlers) == 0
 	r.handlersLock.RUnlock()
 
-	if hasHandlers {
-		// in that situation router will be closed immediately (even if they are no routers)
-		// let's wait for
-		select {
-		case <-r.handlerAdded:
-			// it should be some handler to track
-		case <-r.closedCh:
-			// let's avoid goroutine leak
+	go func() {
+		if hasNoHandlersYet {
+			// we can start router without any handlers,
+			// in that situation router would be closed immediately (even if they are no routers)
+			// let's wait for
+			select {
+			case <-r.handlerAdded:
+				// it should be some handler to track
+			case <-r.closedCh:
+				// let's avoid goroutine leak
+				return
+			}
+		}
+
+		r.handlersWg.Wait()
+		if r.IsClosed() {
+			r.logger.Trace("watchAllHandlersStopped: already closed", nil)
+			// already closed
 			return
 		}
-	}
 
-	r.handlersWg.Wait()
-	if r.IsClosed() {
-		// already closed
-		return
-	}
+		// Only log an error if the context was not canceled, but handlers were stopped.
+		select {
+		case <-ctx.Done():
+		default:
+			r.logger.Error("All handlers stopped, closing router", errors.New("all router handlers stopped"), nil)
+		}
 
-	// Only log an error if the context was not canceled, but handlers were stopped.
-	select {
-	case <-ctx.Done():
-	default:
-		r.logger.Error("All handlers stopped, closing router", errors.New("all router handlers stopped"), nil)
-	}
-
-	if err := r.Close(); err != nil {
-		r.logger.Error("Cannot close router", err, nil)
-	}
+		if err := r.Close(); err != nil {
+			r.logger.Error("Cannot close router", err, nil)
+		}
+	}()
 }
 
 // Running is closed when router is running.
@@ -543,8 +550,11 @@ func (r *Router) Close() error {
 	defer r.handlersLock.Unlock()
 
 	if r.closed {
+		r.logger.Debug("Already closed", nil)
 		return nil
 	}
+
+	r.logger.Debug("Running Close()", nil)
 	r.closed = true
 
 	r.logger.Info("Closing router", nil)
@@ -553,8 +563,8 @@ func (r *Router) Close() error {
 	close(r.closingInProgressCh)
 	defer close(r.closedCh)
 
-	timeouted := r.waitForHandlers()
-	if timeouted {
+	timedout := r.waitForHandlers()
+	if timedout {
 		return errors.New("router close timeout")
 	}
 
@@ -649,7 +659,6 @@ func (h *handler) run(ctx context.Context, middlewares []middleware) {
 	}
 
 	h.logger.Debug("Router handler stopped", nil)
-	close(h.stopped)
 }
 
 // Handler handles Messages.
@@ -777,7 +786,7 @@ func (h *handler) handleClose(ctx context.Context) {
 
 func (h *handler) handleMessage(msg *Message, handler HandlerFunc) {
 	defer h.runningHandlersWg.Done()
-	msgFields := watermill.LogFields{"message_uuid": msg.UUID}
+	msgFields := watermill.LogFields{"message_uuid": msg.UUID, "handler_name": h.name}
 
 	defer func() {
 		if recovered := recover(); recovered != nil {
@@ -794,7 +803,9 @@ func (h *handler) handleMessage(msg *Message, handler HandlerFunc) {
 
 	producedMessages, err := handler(msg)
 	if err != nil {
-		h.logger.Error("Handler returned error", err, msgFields)
+		if !errors.Is(err, context.Canceled) {
+			h.logger.Error("Handler returned error", err, msgFields)
+		}
 		msg.Nack()
 		return
 	}

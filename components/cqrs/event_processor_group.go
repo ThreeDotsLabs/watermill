@@ -20,7 +20,7 @@ type EventGroupProcessorConfig struct {
 	SubscriberConstructor EventGroupProcessorSubscriberConstructorFn
 
 	// OnHandle is called before handling event.
-	// OnHandle works in a similar way to middlewares: you can inject additional logic before and after handling a event.
+	// OnHandle works in a similar way to middlewares: you can inject additional logic before and after handling an event.
 	//
 	// Because of that, you need to explicitly call params.Handler.Handle() to handle the event.
 	//
@@ -196,9 +196,7 @@ func (p EventGroupProcessor) addHandlerToRouter(r *message.Router, groupName str
 		return errors.Wrap(err, "cannot create subscriber for event processor")
 	}
 
-	if err := addHandlerToRouter(p.config.Logger, r, groupName, topicName, handlerFunc, subscriber); err != nil {
-		return err
-	}
+	_ = addHandlerToRouter(p.config.Logger, r, groupName, topicName, handlerFunc, subscriber)
 
 	return nil
 }
