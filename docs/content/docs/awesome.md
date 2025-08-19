@@ -57,6 +57,7 @@ check out [Implementing custom Pub/Sub](/development/pub-sub-implementing).
 * OpenTelemetry
   * https://github.com/voi-oss/watermill-opentelemetry
   * https://github.com/dentech-floss/watermill-opentelemetry-go-extra
+  * https://github.com/nkonev/watermill-opentelemetry
   * AMQP https://github.com/hpcslag/otel-watermill-amqp
   * GoChannel https://github.com/hpcslag/watermill-otel-tracable-gochannel
 

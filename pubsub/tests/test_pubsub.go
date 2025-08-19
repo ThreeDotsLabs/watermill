@@ -239,7 +239,7 @@ func TestPublishSubscribe(
 		id := watermill.NewUUID()
 		testMetadata := watermill.NewUUID()
 
-		payload := []byte(fmt.Sprintf("%d", i))
+		payload := fmt.Appendf(nil, "%d", i)
 		msg := message.NewMessage(id, payload)
 
 		msg.Metadata.Set("test", testMetadata)

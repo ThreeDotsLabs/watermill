@@ -80,7 +80,7 @@ func TestRequeue(t *testing.T) {
 	time.Sleep(time.Second)
 
 	for i := 0; i < 10; i++ {
-		msg := message.NewMessage(watermill.NewUUID(), []byte(fmt.Sprint(i)))
+		msg := message.NewMessage(watermill.NewUUID(), fmt.Append(nil, i))
 		err := pubSub.Publish("test", msg)
 		require.NoError(t, err)
 	}
