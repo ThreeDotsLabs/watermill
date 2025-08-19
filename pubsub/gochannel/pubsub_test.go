@@ -205,6 +205,81 @@ func TestPublishSubscribe_do_not_block_other_subscribers(t *testing.T) {
 	}
 }
 
+func TestPublishSubscribe_flush_output_channel(t *testing.T) {
+	messagesCount := 300
+	logger := watermill.NewStdLogger(true, true)
+	ctx := context.Background()
+	config := gochannel.Config{
+		OutputChannelBuffer:            int64(messagesCount),
+		Persistent:                     false,
+		BlockPublishUntilSubscriberAck: false,
+	}
+	pubSub := gochannel.NewGoChannel(
+		config,
+		logger,
+	)
+
+	totalMessage := 0
+	artificialWorkload := time.Millisecond * 5 //keep it small but noticeable in logs
+	topicName := "test_topic"
+
+	messageChannel, err := pubSub.Subscribe(ctx, topicName)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// waitgroup for stopping the subscriber handler from processing/receiving messages until we are done filling the buffer of the pubSub
+	var wgStartSubscriber sync.WaitGroup
+	wgStartSubscriber.Add(1)
+	// waitgroup for expected buffer to be flushed
+	var wgFlushBuffer sync.WaitGroup
+	wgFlushBuffer.Add(messagesCount)
+
+	// start subscriber handler in a go routine
+	// reads out the messages, if all is ok it should be able to ("flush") read all messages from a 'closed' pubsub
+	go func(messageChannel <-chan *message.Message) {
+		wgStartSubscriber.Wait()
+		for msg := range messageChannel {
+			// artificial workload
+			time.Sleep(artificialWorkload)
+			msg.Ack()
+			logger.Trace("message acked", nil)
+			// would normally use atomic value here but concurrency shouldn't be an issue for this test
+			totalMessage++
+			wgFlushBuffer.Done()
+		}
+		logger.Trace("channel closed", nil)
+	}(messageChannel)
+
+	tests.PublishSimpleMessages(t, messagesCount, pubSub, topicName)
+	// wait for buffer to fill then start reading in subscriber handler
+	for {
+		if len(messageChannel) != int(config.OutputChannelBuffer) {
+			continue
+		} else {
+			wgStartSubscriber.Done()
+			break
+		}
+	}
+
+	err = pubSub.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Publishing new message should still error as expected
+	err = pubSub.Publish(topicName, message.NewMessage(watermill.NewUUID(), []byte("x")))
+	assert.ErrorContains(t, err, "Pub/Sub closed")
+
+	// And so should subscribe
+	_, err = pubSub.Subscribe(ctx, topicName)
+	assert.ErrorContains(t, err, "Pub/Sub closed")
+
+	wgFlushBuffer.Wait()
+	// But subscriber handler should still be able to read the remaining messages from output channel aka flushing
+	assert.Equal(t, messagesCount, totalMessage)
+}
+
 func testPublishSubscribeSubRace(t *testing.T) {
 	t.Helper()
 
