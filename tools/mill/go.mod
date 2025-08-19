@@ -1,6 +1,9 @@
 module github.com/ThreeDotsLabs/watermill/tools/mill
 
-go 1.21.0
+go 1.23.0
+
+toolchain go1.24.0
+
 require (
 	cloud.google.com/go/pubsub v1.42.0
 	github.com/IBM/sarama v1.43.3
