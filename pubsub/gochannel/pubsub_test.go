@@ -239,26 +239,16 @@ func TestPublishSubscribe_flush_output_channel(t *testing.T) {
 	// reads out the messages, if all is ok it should be able to ("flush") read all messages from a 'closed' pubsub
 	go func(messageChannel <-chan *message.Message) {
 		wgStartSubscriber.Wait()
-		for {
-			select {
-			case msg, ok := <-messageChannel:
-				if !ok && msg == nil {
-					logger.Trace("channel closed no messages return", nil)
-					return
-				}
-				if !ok && msg != nil {
-					logger.Trace("channel closed but still got messages", nil)
-					return
-				}
-				// artificial workload
-				time.Sleep(artificialWorkload)
-				msg.Ack()
-				logger.Trace("message acked", nil)
-				// would normally use atomic value here but concurrency shouldn't be an issue for this test
-				totalMessage++
-				wgFlushBuffer.Done()
-			}
+		for msg := range messageChannel {
+			// artificial workload
+			time.Sleep(artificialWorkload)
+			msg.Ack()
+			logger.Trace("message acked", nil)
+			// would normally use atomic value here but concurrency shouldn't be an issue for this test
+			totalMessage++
+			wgFlushBuffer.Done()
 		}
+		logger.Trace("channel closed", nil)
 	}(messageChannel)
 
 	tests.PublishSimpleMessages(t, messagesCount, pubSub, topicName)
