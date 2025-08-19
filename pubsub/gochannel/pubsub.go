@@ -269,6 +269,7 @@ func (g *GoChannel) removeSubscriber(topic string, toRemove *subscriber) {
 				// Without this operation, memory usage will grow indefinitely in a long-running service
 				// as the map grows larger and larger with keys pointing to empty slices.
 				delete(g.subscribers, topic)
+				g.subscribersByTopicLock.Delete(topic)
 			}
 			break
 		}
