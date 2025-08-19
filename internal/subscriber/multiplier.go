@@ -2,10 +2,10 @@ package subscriber
 
 import (
 	"context"
+	stdErrors "errors"
 	"sync"
 
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 )
 
@@ -31,7 +31,7 @@ func (s *multiplier) Subscribe(ctx context.Context, topic string) (msgs <-chan *
 	defer func() {
 		if err != nil {
 			if closeErr := s.Close(); closeErr != nil {
-				err = multierror.Append(err, closeErr)
+				err = stdErrors.Join(err, closeErr)
 			}
 		}
 	}()
@@ -75,7 +75,7 @@ func (s *multiplier) Close() error {
 
 	for _, sub := range s.subscribers {
 		if closeErr := sub.Close(); closeErr != nil {
-			err = multierror.Append(err, closeErr)
+			err = stdErrors.Join(err, closeErr)
 		}
 	}
 

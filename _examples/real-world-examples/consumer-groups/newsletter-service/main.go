@@ -306,19 +306,12 @@ func main() {
 	)
 
 	if replica == "1" {
-		_, err = cqrs.NewFacade(cqrs.FacadeConfig{
-			GenerateEventsTopic: func(eventName string) string {
-				return fmt.Sprintf("%s-8", eventName)
+		eventProc8, err := cqrs.NewEventProcessorWithConfig(router, cqrs.EventProcessorConfig{
+			GenerateSubscribeTopic: func(params cqrs.EventProcessorGenerateSubscribeTopicParams) (string, error) {
+				return fmt.Sprintf("%s-8", params.EventName), nil
 			},
-			EventsPublisher: publisher,
-			EventHandlers: func(commandBus *cqrs.CommandBus, eventBus *cqrs.EventBus) []cqrs.EventHandler {
-				return []cqrs.EventHandler{
-					AddToPromotionsList8Handler{},
-					AddToNewsList8Handler{},
-				}
-			},
-			EventsSubscriberConstructor: func(handlerName string) (message.Subscriber, error) {
-				handlerName = strings.Split(handlerName, "-")[0]
+			SubscriberConstructor: func(params cqrs.EventProcessorSubscriberConstructorParams) (message.Subscriber, error) {
+				handlerName := strings.Split(params.HandlerName, "-")[0]
 				return redisstream.NewSubscriber(
 					redisstream.SubscriberConfig{
 						Client:        subClient,
@@ -327,8 +320,7 @@ func main() {
 					logger,
 				)
 			},
-			Router: router,
-			CommandEventMarshaler: cqrs.JSONMarshaler{
+			Marshaler: cqrs.JSONMarshaler{
 				GenerateName: cqrs.StructName,
 			},
 			Logger: logger,
@@ -336,21 +328,21 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
+		err = eventProc8.AddHandlers(
+			cqrs.NewEventHandler("AddToPromotionsList-8", HandlePromotions),
+			cqrs.NewEventHandler("AddToNewsList-8", HandleNews),
+		)
+		if err != nil {
+			panic(err)
+		}
 	}
 
-	_, err = cqrs.NewFacade(cqrs.FacadeConfig{
-		GenerateEventsTopic: func(eventName string) string {
-			return fmt.Sprintf("%s-9", eventName)
+	eventProc9, err := cqrs.NewEventProcessorWithConfig(router, cqrs.EventProcessorConfig{
+		GenerateSubscribeTopic: func(params cqrs.EventProcessorGenerateSubscribeTopicParams) (string, error) {
+			return fmt.Sprintf("%s-9", params.EventName), nil
 		},
-		EventsPublisher: publisher,
-		EventHandlers: func(commandBus *cqrs.CommandBus, eventBus *cqrs.EventBus) []cqrs.EventHandler {
-			return []cqrs.EventHandler{
-				AddToPromotionsList9Handler{},
-				AddToNewsList9Handler{},
-			}
-		},
-		EventsSubscriberConstructor: func(handlerName string) (message.Subscriber, error) {
-			handlerName = strings.Split(handlerName, "-")[0]
+		SubscriberConstructor: func(params cqrs.EventProcessorSubscriberConstructorParams) (message.Subscriber, error) {
+			handlerName := strings.Split(params.HandlerName, "-")[0]
 			return redisstream.NewSubscriber(
 				redisstream.SubscriberConfig{
 					Client:        subClient,
@@ -359,12 +351,19 @@ func main() {
 				logger,
 			)
 		},
-		Router: router,
-		CommandEventMarshaler: cqrs.JSONMarshaler{
+		Marshaler: cqrs.JSONMarshaler{
 			GenerateName: cqrs.StructName,
 		},
 		Logger: logger,
 	})
+	if err != nil {
+		panic(err)
+	}
+
+	err = eventProc9.AddHandlers(
+		cqrs.NewEventHandler("AddToPromotionsList-9", HandlePromotions),
+		cqrs.NewEventHandler("AddToNewsList-9", HandleNews),
+	)
 	if err != nil {
 		panic(err)
 	}
@@ -375,89 +374,22 @@ func main() {
 	}
 }
 
-type AddToPromotionsList8Handler struct{}
-
-func (h AddToPromotionsList8Handler) HandlerName() string {
-	return "AddToPromotionsList-8"
-}
-
-func (h AddToPromotionsList8Handler) NewEvent() interface{} {
-	return &common.UserSignedUp{}
-}
-
-func (h AddToPromotionsList8Handler) Handle(ctx context.Context, event interface{}) error {
-	e := event.(*common.UserSignedUp)
-
-	if !e.Consents.Marketing {
-		return nil
-	}
-
-	fmt.Println("Adding user", e.UserID, "to the promotions list")
-
-	return nil
-}
-
-type AddToNewsList8Handler struct{}
-
-func (h AddToNewsList8Handler) HandlerName() string {
-	return "AddToNewsList-8"
-}
-
-func (h AddToNewsList8Handler) NewEvent() interface{} {
-	return &common.UserSignedUp{}
-}
-
-func (h AddToNewsList8Handler) Handle(ctx context.Context, event interface{}) error {
-	e := event.(*common.UserSignedUp)
-
-	if !e.Consents.News {
-		return nil
-	}
-	fmt.Println("Adding user", e.UserID, "to the news list")
-
-	return nil
-}
-
-type AddToPromotionsList9Handler struct{}
-
-func (h AddToPromotionsList9Handler) HandlerName() string {
-	return "AddToPromotionsList-9"
-}
-
-func (h AddToPromotionsList9Handler) NewEvent() interface{} {
-	return &common.UserSignedUp{}
-}
-
-func (h AddToPromotionsList9Handler) Handle(ctx context.Context, event interface{}) error {
-	e := event.(*common.UserSignedUp)
-
-	if !e.Consents.Marketing {
-		return nil
-	}
-
-	fmt.Println("Adding user", e.UserID, "to the promotions list")
-
-	return nil
-}
-
-type AddToNewsList9Handler struct{}
-
-func (h AddToNewsList9Handler) HandlerName() string {
-	return "AddToNewsList-9"
-}
-
-func (h AddToNewsList9Handler) NewEvent() interface{} {
-	return &common.UserSignedUp{}
-}
-
-func (h AddToNewsList9Handler) Handle(ctx context.Context, event interface{}) error {
-	e := event.(*common.UserSignedUp)
-
+func HandleNews(ctx context.Context, e *common.UserSignedUp) error {
 	if !e.Consents.News {
 		return nil
 	}
 
 	fmt.Println("Adding user", e.UserID, "to the news list")
+
+	return nil
+}
+
+func HandlePromotions(ctx context.Context, e *common.UserSignedUp) error {
+	if !e.Consents.Marketing {
+		return nil
+	}
+
+	fmt.Println("Adding user", e.UserID, "to the promotions list")
 
 	return nil
 }

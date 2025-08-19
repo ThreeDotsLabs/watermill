@@ -1,8 +1,8 @@
 module main.go
 
 require (
-	github.com/ThreeDotsLabs/watermill v1.3.5
-	github.com/ThreeDotsLabs/watermill-amqp/v2 v2.1.2
+	github.com/ThreeDotsLabs/watermill v1.4.4
+	github.com/ThreeDotsLabs/watermill-amqp/v3 v3.0.0
 )
 
 require (
@@ -16,4 +16,6 @@ require (
 	github.com/rabbitmq/amqp091-go v1.10.0 // indirect
 )
 
-go 1.21
+go 1.23
+
+toolchain go1.23.4

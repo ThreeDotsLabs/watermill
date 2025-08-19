@@ -1,7 +1,7 @@
 +++
 title = "Releases"
 description = "Watermill Releases"
-weight = 200
+weight = 300
 bref = "Watermill Releases"
 +++
 

@@ -1,10 +1,12 @@
 module main.go
 
-go 1.21
+go 1.23
+
+toolchain go1.23.4
 
 require (
-	github.com/ThreeDotsLabs/watermill v1.3.5
-	github.com/ThreeDotsLabs/watermill-sql/v3 v3.0.1
+	github.com/ThreeDotsLabs/watermill v1.4.4
+	github.com/ThreeDotsLabs/watermill-sql/v3 v3.1.0
 	github.com/brianvoe/gofakeit/v6 v6.28.0
 	github.com/go-sql-driver/mysql v1.8.1
 	github.com/lib/pq v1.10.9

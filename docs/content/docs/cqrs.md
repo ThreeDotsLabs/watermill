@@ -111,13 +111,13 @@ For the beginning, we need to simulate the guest's action.
 
 `BookRoomHandler` will handle our command.
 
-{{% load-snippet-partial file="src-link/_examples/basic/5-cqrs-protobuf/main.go" first_line_contains="// BookRoomHandler is a command handler" last_line_contains="// OrderBeerOnRoomBooked is a event handler" padding_after="0" %}}
+{{% load-snippet-partial file="src-link/_examples/basic/5-cqrs-protobuf/main.go" first_line_contains="// BookRoomHandler is a command handler" last_line_contains="// OrderBeerOnRoomBooked is an event handler" padding_after="0" %}}
 
 ### Event handler
 
 As mentioned before, we want to order a beer every time when a room is booked (*"Whenever a Room is booked"* post-it). We do it by using the `OrderBeer` command.
 
-{{% load-snippet-partial file="src-link/_examples/basic/5-cqrs-protobuf/main.go" first_line_contains="// OrderBeerOnRoomBooked is a event handler" last_line_contains="// OrderBeerHandler is a command handler" padding_after="0" %}}
+{{% load-snippet-partial file="src-link/_examples/basic/5-cqrs-protobuf/main.go" first_line_contains="// OrderBeerOnRoomBooked is an event handler" last_line_contains="// OrderBeerHandler is a command handler" padding_after="0" %}}
 
 `OrderBeerHandler` is very similar to `BookRoomHandler`. The only difference is, that it sometimes returns an error when there are not enough beers, which causes redelivery of the command.
 You can find the entire implementation in the [example source code](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/basic/5-cqrs-protobuf/?utm_source=cqrs_doc).
@@ -132,19 +132,63 @@ In the scenario, when we have multiple event types on one topic, you have two op
 1. You can set `EventConfig.AckOnUnknownEvent` to true - it will acknowledge all events that are not handled by handler,
 2. You can use Event Handler groups mechanism.
 
+**Key differences between `EventProcessor` and `EventGroupProcessor`:**
+
+1. `EventProcessor`:
+- Each handler has its own subscriber instance
+- One handler per event type
+- Simple one-to-one matching of events to handlers
+
+2. `EventGroupProcessor`:
+- Group of handlers share a single subscriber instance (and one consumer group, if such mechanism is supported -- allows to maintain order of events),
+- One handler group can support multiple event types,
+- When message arrives to the topic, Watermill will match it to the handler in the group based on event type
+
+```kroki {type=mermaid}
+graph TD
+    subgraph Individual Handlers
+        E[Event Bus] --> S1[Subscriber 1]
+        E --> S2[Subscriber 2]
+        E --> S3[Subscriber 3]
+        S1 --> H1[Handler 1]
+        S2 --> H2[Handler 2]
+        S3 --> H3[Handler 3]
+    end
+
+    subgraph Group Handlers
+        EB[Event Bus] --> SharedSub[Shared Subscriber]
+        SharedSub --> GH[Handler Group]
+        GH --> GH1[Handler 1]
+        GH --> GH2[Handler 2]
+        GH --> GH3[Handler 3]
+    end
+```
+
+**Event Handler groups are helpful when you have multiple event types on one topic and you want to maintain order of events.**
+Thanks to using one subscriber instance and consumer group, events will be processed in the order they were sent.
+
+{{< callout context="note" title="Note" icon="outline/info-circle" >}}
+It's supported to have multiple handlers for the same event type in one group, but we recommend to not do that.
+
+Please keep in mind that those handlers will be processed within the same message.
+If first handler succeeds and the second fails, the message will be re-delivered and the first will be re-executed.
+{{< /callout >}}
+
 To use event groups, you need to set `GenerateHandlerGroupSubscribeTopic` and `GroupSubscriberConstructor` options in [`EventConfig`](#event-config).
 
 After that, you can use `AddHandlersGroup` on [`EventProcessor`](#event-processor).
 
-{{% load-snippet-partial file="src-link/_examples/basic/5-cqrs-protobuf/main.go" first_line_contains="eventProcessor.AddHandlersGroup(" last_line_contains="if err != nil {" padding_after="0" %}}
+{{% load-snippet-partial file="src-link/_examples/basic/6-cqrs-ordered-events/main.go" first_line_contains="eventProcessor.AddHandlersGroup(" last_line_contains="if err != nil {" padding_after="0" %}}
 
 Both `GenerateHandlerGroupSubscribeTopic` and `GroupSubscriberConstructor` receives information about group name in function arguments.
+
+You can see a fully working example with event groups in our [examples](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/basic/6-cqrs-ordered-events/).
 
 ### Generic handlers
 
 Since Watermill v1.3 it's possible to use generic handlers for commands and events. It's useful when you have a lot of commands/events and you don't want to create a handler for each of them.
 
-{{% load-snippet-partial file="src-link/_examples/basic/5-cqrs-protobuf/main.go" first_line_contains="cqrs.NewGroupEventHandler" last_line_contains="})," padding_after="0" %}}
+{{% load-snippet-partial file="src-link/_examples/basic/6-cqrs-ordered-events/main.go" first_line_contains="cqrs.NewGroupEventHandler" last_line_contains=")," padding_after="0" %}}
 
 Under the hood, it creates EventHandler or CommandHandler implementation.
 It's available for all kind of handlers.
@@ -154,7 +198,6 @@ It's available for all kind of handlers.
 {{% load-snippet-partial file="src-link/components/cqrs/event_handler.go" first_line_contains="// NewEventHandler" last_line_contains="func NewEventHandler" padding_after="0" %}}
 
 {{% load-snippet-partial file="src-link/components/cqrs/event_handler.go" first_line_contains="// NewGroupEventHandler" last_line_contains="func NewGroupEventHandler" padding_after="0" %}}
-
 ### Building a read model with the event handler
 
 {{% load-snippet-partial file="src-link/_examples/basic/5-cqrs-protobuf/main.go" first_line_contains="// BookingsFinancialReport is a read model" last_line_contains="func main() {" padding_after="0" %}}
