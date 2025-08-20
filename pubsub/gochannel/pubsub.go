@@ -66,9 +66,11 @@ func NewGoChannel(config Config, logger watermill.LoggerAdapter) *GoChannel {
 
 		subscribers:            make(map[string][]*subscriber),
 		subscribersByTopicLock: sync.Map{},
-		logger: logger.With(watermill.LogFields{
-			"pubsub_uuid": shortuuid.New(),
-		}),
+		logger: logger.With(
+			watermill.LogFields{
+				"pubsub_uuid": shortuuid.New(),
+			},
+		),
 
 		closing: make(chan struct{}),
 
@@ -209,14 +211,7 @@ func (g *GoChannel) Subscribe(ctx context.Context, topic string) (<-chan *messag
 		s.Close()
 
 		g.subscribersLock.Lock()
-		defer func() {
-			// if there are no subscribers, clean up any resources related to the topic
-			if len(g.subscribers[topic]) == 0 {
-				delete(g.subscribers, topic)
-				g.subscribersByTopicLock.Delete(topic)
-			}
-			g.subscribersLock.Unlock()
-		}()
+		defer g.subscribersLock.Unlock()
 
 		subLock, _ := g.subscribersByTopicLock.Load(topic)
 		subLock.(*sync.Mutex).Lock()
