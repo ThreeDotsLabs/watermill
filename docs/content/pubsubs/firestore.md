@@ -3,12 +3,8 @@ title = "Firestore Pub/Sub"
 description = "A scalable document database from Google"
 date = 2021-07-29T15:30:00+02:00
 bref = "A scalable document database from Google"
-weight = -20
-type = "docs"
-toc = false
+weight = 30
 +++
-
-### Firestore Pub/Sub
 
 Cloud Firestore is a cloud-hosted, NoSQL database from Google.
 
@@ -29,11 +25,13 @@ Godoc: <https://pkg.go.dev/github.com/ThreeDotsLabs/watermill-firestore>
 
 Firestore documentation: <https://firebase.google.com/docs/firestore/>
 
-### Installation
+## Installation
 
-    go get github.com/ThreeDotsLabs/watermill-firestore
+```bash
+go get github.com/ThreeDotsLabs/watermill-firestore
+```
 
-#### Characteristics
+### Characteristics
 
 | Feature             | Implements | Note |
 | -------             | ---------- | ---- |
@@ -42,21 +40,17 @@ Firestore documentation: <https://firebase.google.com/docs/firestore/>
 | GuaranteedOrder     | no         |      |
 | Persistent          | yes        |      |
 
-#### Configuration
+### Configuration
 
-##### Publisher configuration
+#### Publisher configuration
 
-{{% render-md %}}
 {{% load-snippet-partial file="src-link/watermill-firestore/pkg/firestore/publisher.go" first_line_contains="type PublisherConfig struct {" last_line_equals="}" %}}
-{{% /render-md %}}
 
-##### Subscriber configuration
+#### Subscriber configuration
 
-{{% render-md %}}
 {{% load-snippet-partial file="src-link/watermill-firestore/pkg/firestore/subscriber.go" first_line_contains="type SubscriberConfig struct {" last_line_equals="}" %}}
-{{% /render-md %}}
 
-##### Subscription name
+#### Subscription name
 
 To receive messages published to a topic, you must create a subscription to
 that topic. Only messages published to the topic after the subscription is
@@ -74,15 +68,11 @@ If you want to consume messages from a topic with multiple subscribers
 processing the incoming messages in a different way, you should use a custom
 function to generate unique subscription names for each subscriber.
 
-#### Marshaler
+### Marshaler
 
 Watermill's messages cannot be stored directly in Firestore. The marshaler is
 responsible for converting them to a type which can be stored by Firestore.
 The default implementation should be enough for most applications so it is
 unlikely that you need to implement your own marshaler.
 
-{{% render-md %}}
 {{% load-snippet-partial file="src-link/watermill-firestore/pkg/firestore/marshaler.go" first_line_contains="// Marshaler" last_line_equals="}" padding_after="0" %}}
-{{% /render-md %}}
-
-

@@ -15,9 +15,9 @@ var (
 		labelSuccess,
 	}
 
-	// handlerExecutionTimeBuckets are one order of magnitude smaller than default buckets (5ms~10s),
+	// defaultHandlerExecutionTimeBuckets are one order of magnitude smaller than default buckets (5ms~10s),
 	// because the handler execution times are typically shorter (µs~ms range).
-	handlerExecutionTimeBuckets = []float64{
+	defaultHandlerExecutionTimeBuckets = []float64{
 		0.0005,
 		0.001,
 		0.0025,
@@ -64,13 +64,17 @@ func (b PrometheusMetricsBuilder) NewRouterMiddleware() HandlerPrometheusMetrics
 	var err error
 	m := HandlerPrometheusMetricsMiddleware{}
 
+	if b.HandlerBuckets == nil {
+		b.HandlerBuckets = defaultHandlerExecutionTimeBuckets
+	}
+
 	m.handlerExecutionTimeSeconds, err = b.registerHistogramVec(prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Namespace: b.Namespace,
 			Subsystem: b.Subsystem,
 			Name:      "handler_execution_time_seconds",
 			Help:      "The total time elapsed while executing the handler function in seconds",
-			Buckets:   handlerExecutionTimeBuckets,
+			Buckets:   b.HandlerBuckets,
 		},
 		handlerLabelKeys,
 	))

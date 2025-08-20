@@ -3,38 +3,37 @@ title = "Troubleshooting"
 description = "When something goes wrong"
 weight = -90
 draft = false
-toc = true
 bref = "When something goes wrong"
-type = "docs"
 +++
 
-### Logging
+## Logging
 
 In most cases, you will find the answer to your problem in the logs.
 Watermill offers a significant amount of logs on different severity levels.
 
 If you are using `StdLoggerAdapter`, just change `debug`, and `trace` options to true:
 
-{{< highlight >}}
+```bash
 logger := watermill.NewStdLogger(true, true)
-{{< /highlight >}}
+````
 
-### Debugging Pub/Sub tests
+## Debugging Pub/Sub tests
 
-#### Running single tests
+### Running a single test
 
-{{< highlight >}}
+```bash
 make up
 go test -v ./... -run TestPublishSubscribe/TestContinueAfterSubscribeClose
-{{< /highlight >}}
+```
 
-#### grep is your friend
+### grep is your friend
 
-Every test case that is executed, have a unique UUID of the test case. It is used in the topic name.
+Each executed test case has a unique UUID.
+It's used in the topic's name.
 Thanks to that, you can easily grep the output of the test.
-It gives you very detailed information about test execution.
+It gives you detailed information about the test execution.
 
-{{< highlight >}}
+```bash
 > go test -v ./... > test.out
 
 > less test.out
@@ -44,10 +43,10 @@ It gives you very detailed information about test execution.
 --- PASS: TestPublishSubscribe (0.00s)
     --- PASS: TestPublishSubscribe/TestPublishSubscribe (2.38s)
         --- PASS: TestPublishSubscribe/TestPublishSubscribe/81eeb56c-3336-4eb9-a0ac-13abda6f38ff (2.38s)
-{{< /highlight >}}
+```
 
 
-{{< highlight >}}
+```bash
 cat test.out | grep 81eeb56c-3336-4eb9-a0ac-13abda6f38ff | less
 
 [watermill] 2020/08/18 14:51:46.283366 subscriber.go:300:       level=TRACE msg="Msg acked" message_uuid=5c920330-5075-4870-8d86-9013771eee78 provider=google_cloud_pubsub subscription_name=topic_81eeb56c-3336-4eb9-a0ac-13abda6f38ff topic=topic_81eeb56c-3336-4eb9-a0ac-13abda6f38ff
@@ -56,9 +55,9 @@ cat test.out | grep 81eeb56c-3336-4eb9-a0ac-13abda6f38ff | less
 [watermill] 2020/08/18 14:51:46.284569 subscriber.go:186:       level=DEBUG msg="Closing message consumer" provider=google_cloud_pubsub subscription_name=topic_81eeb56c-3336-4eb9-a0ac-13abda6f38ff topic=topic_81eeb56c-3336-4eb9-a0ac-13abda6f38ff
 [watermill] 2020/08/18 14:51:46.284828 subscriber.go:300:       level=TRACE msg="Msg acked" message_uuid=2f409208-d4d2-46f6-b6b9-afb1aea0e59f provider=google_cloud_pubsub subscription_name=topic_81eeb56c-3336-4eb9-a0ac-13abda6f38ff topic=topic_81eeb56c-3336-4eb9-a0ac-13abda6f38ff
         --- PASS: TestPublishSubscribe/TestPublishSubscribe/81eeb56c-3336-4eb9-a0ac-13abda6f38ff (2.38s)
-{{< /highlight >}}
+```
 
-### I have a deadlock
+## I have a deadlock
 
 When running locally, you can send a `SIGQUIT` to the running process:
 
@@ -67,7 +66,7 @@ When running locally, you can send a `SIGQUIT` to the running process:
 
 This will kill the process and print all goroutines along with lines on which they have stopped.
 
-```
+```bash
 SIGQUIT: quit
 PC=0x45e7c3 m=0 sigcode=128
 
@@ -90,7 +89,7 @@ You can visit [http://localhost:6060/debug/pprof/goroutine?debug=1](http://local
 on your local machine to see all goroutines status.
 
 
-```
+```bash
 goroutine profile: total 5
 1 @ 0x41024c 0x6a8311 0x6a9bcb 0x6a948d 0x7028bc 0x70260a 0x42f187 0x45c971
 #	0x6a8310	github.com/ThreeDotsLabs/watermill.LogFields.Add+0xd0							/home/example/go/src/github.com/ThreeDotsLabs/watermill/log.go:15

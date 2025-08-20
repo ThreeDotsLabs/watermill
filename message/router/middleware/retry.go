@@ -10,6 +10,16 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
+// RetryParams holds the parameters for a retry attempt
+type RetryParams struct {
+	// Err is the error that caused the retry attempt.
+	Err error
+	// RetryNum is the number of the retry attempt, starting from 1.
+	RetryNum int
+	// Delay is the delay for the next retry attempt.
+	Delay time.Duration
+}
+
 // Retry provides a middleware that retries the handler if errors are returned.
 // The retry behaviour is configurable, with exponential backoff and maximum elapsed time.
 type Retry struct {
@@ -31,6 +41,10 @@ type Retry struct {
 	// OnRetryHook is an optional function that will be executed on each retry attempt.
 	// The number of the current retry is passed as retryNum,
 	OnRetryHook func(retryNum int, delay time.Duration)
+
+	// ShouldRetry is an optional function that will be executed before each retry attempt.
+	// If ShouldRetry returns false, the retry will not be attempted.
+	ShouldRetry func(params RetryParams) bool
 
 	Logger watermill.LoggerAdapter
 }
@@ -62,6 +76,11 @@ func (r Retry) Middleware(h message.HandlerFunc) message.HandlerFunc {
 	retryLoop:
 		for {
 			waitTime := expBackoff.NextBackOff()
+
+			if r.ShouldRetry != nil && !r.ShouldRetry(RetryParams{RetryNum: retryNum, Err: err, Delay: waitTime}) {
+				return producedMessages, err
+			}
+
 			select {
 			case <-ctx.Done():
 				return producedMessages, err

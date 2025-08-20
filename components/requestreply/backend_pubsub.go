@@ -2,12 +2,12 @@ package requestreply
 
 import (
 	"context"
+	stdErrors "errors"
 	"fmt"
 	"time"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 )
 
@@ -69,6 +69,8 @@ type PubSubBackendModifyNotificationMessageFn func(msg *message.Message, params 
 
 type PubSubBackendOnListenForReplyFinishedFn func(ctx context.Context, params PubSubBackendSubscribeParams)
 
+type ReplyPublishErrorHandler func(replyTopic string, notificationMsg *message.Message, err error) error
+
 type PubSubBackendConfig struct {
 	Publisher             message.Publisher
 	SubscriberConstructor PubSubBackendSubscriberConstructorFn
@@ -85,10 +87,15 @@ type PubSubBackendConfig struct {
 	OnListenForReplyFinished PubSubBackendOnListenForReplyFinishedFn
 
 	// AckCommandErrors determines if the command should be acked or nacked when handler returns an error.
-	// Command will be always nacked, when sending reply fails.
+	// Command will be nacked by default when sending reply fails, you can control this behaviour with the
+	// ReplyPublishErrorHandler config option.
 	// You should use this option instead of cqrs.CommandProcessorConfig.AckCommandHandlingErrors, as it's aware
 	// if error was returned by handler or sending reply failed.
 	AckCommandErrors bool
+
+	// ReplyPublishErrorHandler if not nil will be invoked when sending the reply fails. If it returns an error
+	// the command will be nacked.
+	ReplyPublishErrorHandler ReplyPublishErrorHandler
 }
 
 func (p *PubSubBackendConfig) setDefaults() {
@@ -101,16 +108,16 @@ func (p *PubSubBackendConfig) Validate() error {
 	var err error
 
 	if p.Publisher == nil {
-		err = multierror.Append(err, errors.New("publisher cannot be nil"))
+		err = stdErrors.Join(err, errors.New("publisher cannot be nil"))
 	}
 	if p.SubscriberConstructor == nil {
-		err = multierror.Append(err, errors.New("subscriber constructor cannot be nil"))
+		err = stdErrors.Join(err, errors.New("subscriber constructor cannot be nil"))
 	}
 	if p.GeneratePublishTopic == nil {
-		err = multierror.Append(err, errors.New("GeneratePublishTopic cannot be nil"))
+		err = stdErrors.Join(err, errors.New("GeneratePublishTopic cannot be nil"))
 	}
 	if p.GenerateSubscribeTopic == nil {
-		err = multierror.Append(err, errors.New("GenerateSubscribeTopic cannot be nil"))
+		err = stdErrors.Join(err, errors.New("GenerateSubscribeTopic cannot be nil"))
 	}
 
 	return err
@@ -245,7 +252,13 @@ func (p PubSubBackend[Result]) OnCommandProcessed(ctx context.Context, params Ba
 		return errors.Wrap(err, "cannot generate request/reply notify topic")
 	}
 
-	if err := p.config.Publisher.Publish(replyTopic, notificationMsg); err != nil {
+	err = p.config.Publisher.Publish(replyTopic, notificationMsg)
+	if err != nil {
+		if p.config.ReplyPublishErrorHandler != nil {
+			err = p.config.ReplyPublishErrorHandler(replyTopic, notificationMsg, err)
+		}
+	}
+	if err != nil {
 		return errors.Wrap(err, "cannot publish command executed message")
 	}
 

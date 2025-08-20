@@ -1,0 +1,31 @@
+{
+  "name": "watermill-docs",
+  "version": "0.0.0",
+  "description": "Doks theme",
+  "author": "Thulite",
+  "license": "MIT",
+  "scripts": {
+    "create": "hugo new",
+    "dev": "hugo server --disableFastRender --noHTTPCache",
+    "format": "prettier **/** -w -c",
+    "build": "hugo --minify --gc -b ${URL}",
+    "build:branch": "hugo --minify --gc -b ${DEPLOY_URL}",
+    "preview": "vite preview --outDir public"
+  },
+  "dependencies": {
+    "@tabler/icons": "^3.12.0",
+    "@thulite/doks-core": "^1.7.0",
+    "@thulite/images": "^3.3.0",
+    "@thulite/inline-svg": "^1.1.0",
+    "@thulite/seo": "^2.4.0",
+    "github-buttons": "^2.29.1",
+    "thulite": "^2.5.0"
+  },
+  "devDependencies": {
+    "prettier": "^3.3.3",
+    "vite": "^5.4.12"
+  },
+  "engines": {
+    "node": ">=20.11.0"
+  }
+}
