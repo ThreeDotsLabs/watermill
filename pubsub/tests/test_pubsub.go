@@ -15,10 +15,9 @@ import (
 	"testing"
 	"time"
 
-	internalSubscriber "github.com/ThreeDotsLabs/watermill/internal/subscriber"
-
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/internal"
+	internalSubscriber "github.com/ThreeDotsLabs/watermill/internal/subscriber"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/subscriber"
 
@@ -125,6 +124,9 @@ type Features struct {
 	// GenerateTopicFunc overrides standard topic name generation.
 	GenerateTopicFunc func(tctx TestContext) string
 
+	// GenerateIDFunc determines which function should be used for generating test IDs, NewTestID is used by default.
+	GenerateIDFunc func() TestID
+
 	// ForceShort forces running tests in short mode.
 	// It's useful for Pub/Subs that are slow or have some limitations.
 	ForceShort bool
@@ -157,9 +159,18 @@ func getTestName(testFunc interface{}) string {
 // TestID is a unique ID of a test.
 type TestID string
 
+func (t TestID) String() string {
+	return string(t)
+}
+
 // NewTestID returns a new unique TestID.
 func NewTestID() TestID {
 	return TestID(watermill.NewUUID())
+}
+
+// NewTestULID returns a new unique TestID using ULID.
+func NewTestULID() TestID {
+	return TestID(watermill.NewULID())
 }
 
 // TestContext is a collection of values that belong to a single test.
@@ -239,7 +250,7 @@ func TestPublishSubscribe(
 		id := watermill.NewUUID()
 		testMetadata := watermill.NewUUID()
 
-		payload := []byte(fmt.Sprintf("%d", i))
+		payload := fmt.Appendf(nil, "%d", i)
 		msg := message.NewMessage(id, payload)
 
 		msg.Metadata.Set("test", testMetadata)
@@ -817,8 +828,8 @@ func TestConsumerGroups(
 	}
 	totalMessagesCount := 50
 
-	group1 := generateConsumerGroup(t, pubSubConstructor, topicName)
-	group2 := generateConsumerGroup(t, pubSubConstructor, topicName)
+	group1 := generateConsumerGroup(t, pubSubConstructor, topicName, tCtx)
+	group2 := generateConsumerGroup(t, pubSubConstructor, topicName, tCtx)
 
 	messagesToPublish := PublishSimpleMessages(t, totalMessagesCount, publisherPub, topicName)
 
@@ -1226,12 +1237,20 @@ func assertConsumerGroupReceivedMessages(
 	AssertAllMessagesReceived(t, expectedMessages, receivedMessages)
 }
 
-func testTopicName(tctx TestContext) string {
-	if tctx.Features.GenerateTopicFunc != nil {
-		return tctx.Features.GenerateTopicFunc(tctx)
+func testTopicName(tCtx TestContext) string {
+	if tCtx.Features.GenerateTopicFunc != nil {
+		return tCtx.Features.GenerateTopicFunc(tCtx)
 	}
 
-	return "topic-" + string(tctx.TestID)
+	return "topic-" + string(tCtx.TestID)
+}
+
+func newTestID(tCtx TestContext) TestID {
+	if tCtx.Features.GenerateIDFunc != nil {
+		return tCtx.Features.GenerateIDFunc()
+	}
+
+	return NewTestID()
 }
 
 func closePubSub(t *testing.T, pub message.Publisher, sub message.Subscriber) {
@@ -1242,8 +1261,8 @@ func closePubSub(t *testing.T, pub message.Publisher, sub message.Subscriber) {
 	require.NoError(t, err)
 }
 
-func generateConsumerGroup(t *testing.T, pubSubConstructor ConsumerGroupPubSubConstructor, topicName string) string {
-	groupName := "cg_" + watermill.NewUUID()
+func generateConsumerGroup(t *testing.T, pubSubConstructor ConsumerGroupPubSubConstructor, topicName string, tCtx TestContext) string {
+	groupName := "cg_" + newTestID(tCtx).String()
 
 	// create a pubsub to ensure that the consumer group exists
 	// for those providers that require subscription before publishing messages (e.g. Google Cloud PubSub)

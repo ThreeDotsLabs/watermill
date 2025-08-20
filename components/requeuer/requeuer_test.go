@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"sync"
 	"testing"
 	"time"
 
@@ -48,6 +49,7 @@ func TestRequeue(t *testing.T) {
 
 	receivedMessages := make(chan int, 10)
 
+	lock := sync.Mutex{}
 	counter := 0
 
 	router.AddNoPublisherHandler(
@@ -60,6 +62,8 @@ func TestRequeue(t *testing.T) {
 				return err
 			}
 
+			lock.Lock()
+			defer lock.Unlock()
 			counter++
 
 			if counter < 10 && i%2 == 0 {
@@ -80,7 +84,7 @@ func TestRequeue(t *testing.T) {
 	time.Sleep(time.Second)
 
 	for i := 0; i < 10; i++ {
-		msg := message.NewMessage(watermill.NewUUID(), []byte(fmt.Sprint(i)))
+		msg := message.NewMessage(watermill.NewUUID(), fmt.Append(nil, i))
 		err := pubSub.Publish("test", msg)
 		require.NoError(t, err)
 	}

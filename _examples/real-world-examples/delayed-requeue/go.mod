@@ -10,7 +10,7 @@ require (
 	github.com/ThreeDotsLabs/watermill-sql/v4 v4.0.0-rc.2
 	github.com/brianvoe/gofakeit/v6 v6.28.0
 	github.com/lib/pq v1.10.9
-	github.com/redis/go-redis/v9 v9.7.0
+	github.com/redis/go-redis/v9 v9.7.3
 )
 
 require (
