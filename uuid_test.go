@@ -7,7 +7,7 @@ import (
 	"github.com/ThreeDotsLabs/watermill"
 )
 
-func testuUniqness(t *testing.T, genFunc func() string) {
+func testUniqueness(t *testing.T, genFunc func() string) {
 	producers := 100
 	uuidsPerProducer := 10000
 
@@ -45,13 +45,13 @@ func testuUniqness(t *testing.T, genFunc func() string) {
 }
 
 func TestUUID(t *testing.T) {
-	testuUniqness(t, watermill.NewUUID)
+	testUniqueness(t, watermill.NewUUID)
 }
 
 func TestShortUUID(t *testing.T) {
-	testuUniqness(t, watermill.NewShortUUID)
+	testUniqueness(t, watermill.NewShortUUID)
 }
 
 func TestULID(t *testing.T) {
-	testuUniqness(t, watermill.NewULID)
+	testUniqueness(t, watermill.NewULID)
 }

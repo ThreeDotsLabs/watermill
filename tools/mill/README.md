@@ -16,7 +16,7 @@ See Watermill's [Supported Pub/Subs](https://watermill.io/pubsubs) for more deta
 To install this tool, just execute:
 
 ```bash
-go get -u github.com/ThreeDotsLabs/watermill/tools/mill
+go install github.com/ThreeDotsLabs/watermill/tools/mill@latest
 ```
 
 This will install a `mill` binary in your system.
@@ -91,7 +91,7 @@ Additional flags are available for `subscription add` to regulate the newly crea
 
 #### Listing subscriptions
 
-You can use `mill` to list existings subscriptions:
+You can use `mill` to list existing subscriptions:
 
 ```bash
 mill googlecloud subscription ls [-t topic]

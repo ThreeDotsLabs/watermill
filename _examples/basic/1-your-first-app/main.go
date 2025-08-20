@@ -3,11 +3,11 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"log"
+	"fmt"
 	"time"
 
 	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill-kafka/v2/pkg/kafka"
+	"github.com/ThreeDotsLabs/watermill-kafka/v3/pkg/kafka"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
 	"github.com/ThreeDotsLabs/watermill/message/router/plugin"
@@ -67,7 +67,7 @@ func main() {
 				return nil, err
 			}
 
-			log.Printf("received event %+v", consumedPayload)
+			fmt.Printf("received event %+v\n", consumedPayload)
 
 			newPayload, err := json.Marshal(processedEvent{
 				ProcessedID: consumedPayload.ID,

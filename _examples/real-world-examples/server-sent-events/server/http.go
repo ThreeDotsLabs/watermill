@@ -14,7 +14,7 @@ import (
 	"github.com/go-chi/render"
 
 	"github.com/ThreeDotsLabs/watermill"
-	watermillHTTP "github.com/ThreeDotsLabs/watermill-http/pkg/http"
+	watermillHTTP "github.com/ThreeDotsLabs/watermill-http/v2/pkg/http"
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
@@ -88,11 +88,29 @@ type allFeedsStreamAdapter struct {
 	logger  watermill.LoggerAdapter
 }
 
-func (f allFeedsStreamAdapter) GetResponse(w http.ResponseWriter, r *http.Request) (interface{}, bool) {
-	feeds, err := f.storage.All(r.Context())
+func (f allFeedsStreamAdapter) InitialStreamResponse(w http.ResponseWriter, r *http.Request) (response interface{}, ok bool) {
+	resp, err := f.getResponse(r)
 	if err != nil {
 		logAndWriteError(f.logger, w, err)
-		return nil, false
+		return resp, false
+	}
+
+	return resp, true
+}
+
+func (f allFeedsStreamAdapter) NextStreamResponse(r *http.Request, msg *message.Message) (response interface{}, ok bool) {
+	resp, err := f.getResponse(r)
+	if err != nil {
+		return resp, false
+	}
+
+	return resp, true
+}
+
+func (f allFeedsStreamAdapter) getResponse(r *http.Request) (interface{}, error) {
+	feeds, err := f.storage.All(r.Context())
+	if err != nil {
+		return nil, err
 	}
 
 	response := AllFeedsResponse{
@@ -106,11 +124,7 @@ func (f allFeedsStreamAdapter) GetResponse(w http.ResponseWriter, r *http.Reques
 		})
 	}
 
-	return response, true
-}
-
-func (f allFeedsStreamAdapter) Validate(r *http.Request, msg *message.Message) (ok bool) {
-	return true
+	return response, nil
 }
 
 type CreatePostRequest struct {
@@ -241,29 +255,47 @@ type feedStreamAdapter struct {
 	logger  watermill.LoggerAdapter
 }
 
-func (f feedStreamAdapter) GetResponse(w http.ResponseWriter, r *http.Request) (response interface{}, ok bool) {
-	feedName := chi.URLParam(r, "name")
-
-	feed, err := f.storage.ByName(r.Context(), feedName)
+func (f feedStreamAdapter) InitialStreamResponse(w http.ResponseWriter, r *http.Request) (response interface{}, ok bool) {
+	resp, err := f.getResponse(r)
 	if err != nil {
 		logAndWriteError(f.logger, w, err)
 		return nil, false
 	}
 
-	return feed, true
+	return resp, true
 }
 
-func (f feedStreamAdapter) Validate(r *http.Request, msg *message.Message) (ok bool) {
+func (f feedStreamAdapter) NextStreamResponse(r *http.Request, msg *message.Message) (response interface{}, ok bool) {
 	feedUpdated := FeedUpdated{}
 
 	err := json.Unmarshal(msg.Payload, &feedUpdated)
 	if err != nil {
-		return false
+		return nil, false
 	}
 
 	feedName := chi.URLParam(r, "name")
 
-	return feedUpdated.Name == feedName
+	if feedUpdated.Name != feedName {
+		return nil, false
+	}
+
+	resp, err := f.getResponse(r)
+	if err != nil {
+		return nil, false
+	}
+
+	return resp, true
+}
+
+func (f feedStreamAdapter) getResponse(r *http.Request) (response interface{}, err error) {
+	feedName := chi.URLParam(r, "name")
+
+	feed, err := f.storage.ByName(r.Context(), feedName)
+	if err != nil {
+		return nil, err
+	}
+
+	return feed, nil
 }
 
 type postStreamAdapter struct {
@@ -271,29 +303,47 @@ type postStreamAdapter struct {
 	logger  watermill.LoggerAdapter
 }
 
-func (p postStreamAdapter) GetResponse(w http.ResponseWriter, r *http.Request) (response interface{}, ok bool) {
-	postID := chi.URLParam(r, "id")
-
-	post, err := p.storage.ByID(r.Context(), postID)
+func (p postStreamAdapter) InitialStreamResponse(w http.ResponseWriter, r *http.Request) (response interface{}, ok bool) {
+	resp, err := p.getResponse(r)
 	if err != nil {
 		logAndWriteError(p.logger, w, err)
 		return nil, false
 	}
 
-	return post, true
+	return resp, true
 }
 
-func (p postStreamAdapter) Validate(r *http.Request, msg *message.Message) (ok bool) {
+func (p postStreamAdapter) NextStreamResponse(r *http.Request, msg *message.Message) (response interface{}, ok bool) {
 	postUpdated := PostUpdated{}
 
 	err := json.Unmarshal(msg.Payload, &postUpdated)
 	if err != nil {
-		return false
+		return nil, false
 	}
 
 	postID := chi.URLParam(r, "id")
 
-	return postUpdated.OriginalPost.ID == postID
+	if postUpdated.OriginalPost.ID != postID {
+		return nil, false
+	}
+
+	resp, err := p.getResponse(r)
+	if err != nil {
+		return nil, false
+	}
+
+	return resp, true
+}
+
+func (p postStreamAdapter) getResponse(r *http.Request) (response interface{}, err error) {
+	postID := chi.URLParam(r, "id")
+
+	post, err := p.storage.ByID(r.Context(), postID)
+	if err != nil {
+		return nil, err
+	}
+
+	return post, nil
 }
 
 func FileServer(r chi.Router, path string, root http.FileSystem) {

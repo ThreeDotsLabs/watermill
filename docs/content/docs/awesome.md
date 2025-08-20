@@ -1,11 +1,9 @@
 +++
 title = "Awesome Watermill"
 description = "Selected unofficial libraries"
-weight = 0
+weight = 200
 draft = false
-toc = true
 bref = "Selected unofficial libraries"
-type = "docs"
 +++
 
 Below is a list of libraries that are not maintained by Three Dots Labs, but you may find them useful.
@@ -14,14 +12,15 @@ Below is a list of libraries that are not maintained by Three Dots Labs, but you
 
 If you know another library or are an author of one, please [add it to the list](https://github.com/ThreeDotsLabs/watermill/edit/master/docs/content/docs/awesome.md).
 
-### Examples
+## Examples
 
 * https://github.com/minghsu0107/golang-taipei-watermill-example
 * https://github.com/minghsu0107/Kafka-PubSub
 * https://github.com/pperaltaisern/go-example-financing
 
-### Pub/Subs
+## Pub/Subs
 
+* AMQP 1.0 https://github.com/kahowell/watermill-amqp10
 * Apache Pulsar https://github.com/AlexCuse/watermill-pulsar
 * Apache RocketMQ https://github.com/yflau/watermill-rocketmq
 * CockroachDB https://github.com/cockroachdb/watermill-crdb
@@ -34,9 +33,9 @@ If you know another library or are an author of one, please [add it to the list]
 * SQLite https://github.com/davidroman0O/watermill-comfymill
 
 If you want to find out how to implement your own Pub/Sub adapter, 
-check out [Implementing custom Pub/Sub](/docs/pub-sub-implementing).
+check out [Implementing custom Pub/Sub](/development/pub-sub-implementing).
 
-### Logging
+## Logging
 
 * logrus
   * https://github.com/ma-hartma/watermill-logrus-adapter
@@ -50,7 +49,7 @@ check out [Implementing custom Pub/Sub](/docs/pub-sub-implementing).
   * https://github.com/bogatyr285/watermillzlog
   * https://github.com/vsvp21/zerolog-watermill-adapter
 
-### Observability
+## Observability
 
 * OpenCensus
   * https://github.com/czeslavo/watermill-opencensus
@@ -58,10 +57,11 @@ check out [Implementing custom Pub/Sub](/docs/pub-sub-implementing).
 * OpenTelemetry
   * https://github.com/voi-oss/watermill-opentelemetry
   * https://github.com/dentech-floss/watermill-opentelemetry-go-extra
+  * https://github.com/nkonev/watermill-opentelemetry
   * AMQP https://github.com/hpcslag/otel-watermill-amqp
   * GoChannel https://github.com/hpcslag/watermill-otel-tracable-gochannel
 
-### Other
+## Other
 
 * https://github.com/asyncapi/go-watermill-template
 * https://github.com/goph/watermillx

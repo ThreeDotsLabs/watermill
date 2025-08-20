@@ -152,7 +152,9 @@ func NewMapExpiringKeyRepository(window time.Duration) (ExpiringKeyRepository, e
 		mu:     &sync.Mutex{},
 		tags:   make(map[string]time.Time),
 	}
-	go kr.cleanOutLoop(context.Background(), time.NewTicker(window/2))
+	ticker := time.NewTicker(window / 2)
+
+	go kr.cleanOutLoop(context.Background(), ticker)
 	return kr, nil
 }
 

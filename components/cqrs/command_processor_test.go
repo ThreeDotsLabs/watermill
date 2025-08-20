@@ -146,7 +146,7 @@ func TestCommandProcessor_non_pointer_command(t *testing.T) {
 	assert.IsType(t, cqrs.NonPointerError{}, errors.Cause(err))
 }
 
-// TestCommandProcessor_multiple_same_command_handlers checks, that we don't register multiple handlers for the same commend.
+// TestCommandProcessor_multiple_same_command_handlers checks, that we don't register multiple handlers for the same command.
 func TestCommandProcessor_multiple_same_command_handlers(t *testing.T) {
 	ts := NewTestServices()
 
@@ -178,8 +178,10 @@ func TestCommandProcessor_multiple_same_command_handlers(t *testing.T) {
 }
 
 type mockSubscriber struct {
-	MessagesToSend []*message.Message
-	out            chan *message.Message
+	MessagesToSend              []*message.Message
+	WaitForAckBeforeSendingNext bool
+
+	out chan *message.Message
 }
 
 func (m *mockSubscriber) Subscribe(ctx context.Context, topic string) (<-chan *message.Message, error) {
@@ -188,6 +190,10 @@ func (m *mockSubscriber) Subscribe(ctx context.Context, topic string) (<-chan *m
 	go func() {
 		for _, msg := range m.MessagesToSend {
 			m.out <- msg
+
+			if m.WaitForAckBeforeSendingNext {
+				<-msg.Acked()
+			}
 		}
 	}()
 

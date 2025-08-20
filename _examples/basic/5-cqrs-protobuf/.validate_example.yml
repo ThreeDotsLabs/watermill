@@ -1,4 +1,6 @@
-validation_cmd: "docker-compose up"
-teardown_cmd: "docker-compose down"
+validation_cmd: "docker compose up"
+teardown_cmd: "docker compose down"
 timeout: 120
-expected_output: "beers ordered to room 3"
+expected_outputs:
+  - "beers ordered to room \\d+"
+  - "Already booked rooms for \\$\\d{2,}"
