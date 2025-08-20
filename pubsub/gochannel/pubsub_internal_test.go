@@ -2,11 +2,8 @@ package gochannel
 
 import (
 	"context"
-	"log"
 	"strconv"
-	"sync"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -23,23 +20,15 @@ func TestSubscribe_clean_subscriber_data(t *testing.T) {
 	)
 	topicName := "test_topic"
 
-	allClosed := sync.WaitGroup{}
-
 	for i := 0; i < subCount; i++ {
 		ctx, cancel := context.WithCancel(context.Background())
 		_, err := pubSub.Subscribe(ctx, topicName+"_index_"+strconv.Itoa(i))
 		require.NoError(t, err)
-
-		allClosed.Add(1)
-		go func() {
-			cancel()
-			allClosed.Done()
-		}()
+		cancel()
 	}
 
-	log.Println("waiting for all closed")
-	allClosed.Wait()
-	time.Sleep(500 * time.Millisecond)
+	err := pubSub.Close()
+	require.NoError(t, err)
 
 	assert.Len(t, pubSub.subscribers, 0)
 	lockCount := 0
