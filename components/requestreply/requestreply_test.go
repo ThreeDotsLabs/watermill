@@ -443,7 +443,7 @@ func TestRequestReply_without_result_multiple_replies(t *testing.T) {
 	}
 }
 
-func TestRequestReply_timout(t *testing.T) {
+func TestRequestReply_timeout(t *testing.T) {
 	timeout := time.Millisecond * 10
 
 	ts := NewTestServices[requestreply.NoResult](t, TestServicesConfig{

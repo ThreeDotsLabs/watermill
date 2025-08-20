@@ -95,6 +95,7 @@ type CommandProcessorGenerateSubscribeTopicParams struct {
 type CommandProcessorSubscriberConstructorFn func(CommandProcessorSubscriberConstructorParams) (message.Subscriber, error)
 
 type CommandProcessorSubscriberConstructorParams struct {
+	CommandName string
 	HandlerName string
 	Handler     CommandHandler
 }
@@ -207,7 +208,7 @@ func (p *CommandProcessor) AddHandlers(handlers ...CommandHandler) error {
 	}
 
 	for _, handler := range handlers {
-		if err := p.addHandlerToRouter(p.router, handler); err != nil {
+		if _, err := p.addHandlerToRouter(p.router, handler); err != nil {
 			return err
 		}
 
@@ -215,6 +216,24 @@ func (p *CommandProcessor) AddHandlers(handlers ...CommandHandler) error {
 	}
 
 	return nil
+}
+
+// AddHandler adds a new CommandHandler to the CommandProcessor and adds it to the router.
+func (p *CommandProcessor) AddHandler(handler CommandHandler) (*message.Handler, error) {
+	if p.config.disableRouterAutoAddHandlers {
+		p.handlers = append(p.handlers, handler)
+
+		return nil, nil
+	}
+
+	h, err := p.addHandlerToRouter(p.router, handler)
+	if err != nil {
+		return nil, err
+	}
+
+	p.handlers = append(p.handlers, handler)
+
+	return h, nil
 }
 
 // DuplicateCommandHandlerError occurs when a handler with the same name already exists.
@@ -239,7 +258,7 @@ func (p CommandProcessor) AddHandlersToRouter(r *message.Router) error {
 	for i := range p.Handlers() {
 		handler := p.handlers[i]
 
-		if err := p.addHandlerToRouter(r, handler); err != nil {
+		if _, err := p.addHandlerToRouter(r, handler); err != nil {
 			return err
 		}
 	}
@@ -247,7 +266,7 @@ func (p CommandProcessor) AddHandlersToRouter(r *message.Router) error {
 	return nil
 }
 
-func (p CommandProcessor) addHandlerToRouter(r *message.Router, handler CommandHandler) error {
+func (p CommandProcessor) addHandlerToRouter(r *message.Router, handler CommandHandler) (*message.Handler, error) {
 	handlerName := handler.HandlerName()
 	commandName := p.config.Marshaler.Name(handler.NewCommand())
 
@@ -256,7 +275,7 @@ func (p CommandProcessor) addHandlerToRouter(r *message.Router, handler CommandH
 		CommandHandler: handler,
 	})
 	if err != nil {
-		return errors.Wrapf(err, "cannot generate topic for command handler %s", handlerName)
+		return nil, errors.Wrapf(err, "cannot generate topic for command handler %s", handlerName)
 	}
 
 	logger := p.config.Logger.With(watermill.LogFields{
@@ -266,27 +285,26 @@ func (p CommandProcessor) addHandlerToRouter(r *message.Router, handler CommandH
 
 	handlerFunc, err := p.routerHandlerFunc(handler, logger)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	logger.Debug("Adding CQRS command handler to router", nil)
 
 	subscriber, err := p.config.SubscriberConstructor(CommandProcessorSubscriberConstructorParams{
+		CommandName: commandName,
 		HandlerName: handlerName,
 		Handler:     handler,
 	})
 	if err != nil {
-		return errors.Wrap(err, "cannot create subscriber for command processor")
+		return nil, errors.Wrap(err, "cannot create subscriber for command processor")
 	}
 
-	r.AddNoPublisherHandler(
+	return r.AddNoPublisherHandler(
 		handlerName,
 		topicName,
 		subscriber,
 		handlerFunc,
-	)
-
-	return nil
+	), nil
 }
 
 // Handlers returns the CommandProcessor's handlers.

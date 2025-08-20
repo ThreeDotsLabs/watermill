@@ -3,12 +3,8 @@ title = "Bolt Pub/Sub"
 description = "A pure Go key/value store"
 date = 2021-11-19T00:00:00+02:00
 bref = "A pure Go key/value store"
-weight = -10
-type = "docs"
-toc = false
+weight = 20
 +++
-
-### Bolt Pub/Sub
 
 Bolt is a pure Go key/value store which provides a simple, fast, and reliable
 database for projects that don't require a full database server such as
@@ -20,11 +16,13 @@ want to publish messages in transaction when saving other data.
 
 Bolt documentation: https://github.com/etcd-io/bbolt
 
-### Installation
+## Installation
 
-    go get github.com/ThreeDotsLabs/watermill-bolt
+```bash
+go get github.com/ThreeDotsLabs/watermill-bolt
+```
 
-#### Characteristics
+### Characteristics
 
 | Feature             | Implements | Note |
 | ------------------- | ---------- | ---- |
@@ -33,21 +31,15 @@ Bolt documentation: https://github.com/etcd-io/bbolt
 | GuaranteedOrder     | no         |      |
 | Persistent          | yes        |      |
 
-#### Configuration
+### Configuration
 
-{{% render-md %}}
 {{% load-snippet-partial file="src-link/watermill-bolt/pkg/bolt/bolt.go" first_line_contains="type CommonConfig struct " last_line_equals="}" %}}
-{{% /render-md %}}
 
-{{% render-md %}}
 {{% load-snippet-partial file="src-link/watermill-bolt/pkg/bolt/bolt.go" first_line_contains="type PublisherConfig struct " last_line_equals="}" %}}
-{{% /render-md %}}
 
-{{% render-md %}}
 {{% load-snippet-partial file="src-link/watermill-bolt/pkg/bolt/bolt.go" first_line_contains="type SubscriberConfig struct " last_line_equals="}" %}}
-{{% /render-md %}}
 
-##### Subscription name
+#### Subscription name
 
 To receive messages published to a topic, you must create a subscription to
 that topic. Only messages published to the topic after the subscription is
@@ -61,7 +53,7 @@ In Watermill, the subscription is created automatically during calling
 `SubscriberConfig.GenerateSubscriptionName`.  By default, it is the topic name
 with the string `_sub` appended to it.
 
-##### Marshaler
+#### Marshaler
 
 Watermill's messages cannot be directly saved in Bolt which operates on byte
 slices. Marshaller converts the messages to and from byte slices. The default
@@ -70,8 +62,4 @@ for easier debugging. The performance should be enough for most applications
 unless a very large messages are used within your system. If that is the case
 you may want to consider implementing a more efficient marshaler.
 
-{{% render-md %}}
 {{% load-snippet-partial file="src-link/watermill-bolt/pkg/bolt/marshaler.go" first_line_contains="// Marshaler" last_line_equals="}" %}}
-{{% /render-md %}}
-
-

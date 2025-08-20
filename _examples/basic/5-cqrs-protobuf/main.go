@@ -3,50 +3,37 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"math/rand"
 	"sync"
 	"time"
 
-	"github.com/golang/protobuf/ptypes"
-
 	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill-amqp/v2/pkg/amqp"
+	"github.com/ThreeDotsLabs/watermill-amqp/v3/pkg/amqp"
 	"github.com/ThreeDotsLabs/watermill/components/cqrs"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // BookRoomHandler is a command handler, which handles BookRoom command and emits RoomBooked.
 //
 // In CQRS, one command must be handled by only one handler.
-// When another handler with this command is added to command processor, error will be retuerned.
+// When another handler with this command is added to command processor, error will be returned.
 type BookRoomHandler struct {
 	eventBus *cqrs.EventBus
 }
 
-func (b BookRoomHandler) HandlerName() string {
-	return "BookRoomHandler"
-}
-
-// NewCommand returns type of command which this handle should handle. It must be a pointer.
-func (b BookRoomHandler) NewCommand() interface{} {
-	return &BookRoom{}
-}
-
-func (b BookRoomHandler) Handle(ctx context.Context, c interface{}) error {
-	// c is always the type returned by `NewCommand`, so casting is always safe
-	cmd := c.(*BookRoom)
-
+func (b BookRoomHandler) Handle(ctx context.Context, cmd *BookRoom) error {
 	// some random price, in production you probably will calculate in wiser way
 	price := (rand.Int63n(40) + 1) * 10
 
-	log.Printf(
-		"Booked %s for %s from %s to %s",
-		cmd.RoomId,
-		cmd.GuestName,
-		time.Unix(cmd.StartDate.Seconds, int64(cmd.StartDate.Nanos)),
-		time.Unix(cmd.EndDate.Seconds, int64(cmd.EndDate.Nanos)),
+	slog.Info(
+		"Booked room",
+		"room_id", cmd.RoomId,
+		"guest_name", cmd.GuestName,
+		"start_date", time.Unix(cmd.StartDate.Seconds, int64(cmd.StartDate.Nanos)),
+		"end_date", time.Unix(cmd.EndDate.Seconds, int64(cmd.EndDate.Nanos)),
 	)
 
 	// RoomBooked will be handled by OrderBeerOnRoomBooked event handler,
@@ -65,23 +52,12 @@ func (b BookRoomHandler) Handle(ctx context.Context, c interface{}) error {
 	return nil
 }
 
-// OrderBeerOnRoomBooked is a event handler, which handles RoomBooked event and emits OrderBeer command.
+// OrderBeerOnRoomBooked is an event handler, which handles RoomBooked event and emits OrderBeer command.
 type OrderBeerOnRoomBooked struct {
 	commandBus *cqrs.CommandBus
 }
 
-func (o OrderBeerOnRoomBooked) HandlerName() string {
-	// this name is passed to EventsSubscriberConstructor and used to generate queue name
-	return "OrderBeerOnRoomBooked"
-}
-
-func (OrderBeerOnRoomBooked) NewEvent() interface{} {
-	return &RoomBooked{}
-}
-
-func (o OrderBeerOnRoomBooked) Handle(ctx context.Context, e interface{}) error {
-	event := e.(*RoomBooked)
-
+func (o OrderBeerOnRoomBooked) Handle(ctx context.Context, event *RoomBooked) error {
 	orderBeerCmd := &OrderBeer{
 		RoomId: event.RoomId,
 		Count:  rand.Int63n(10) + 1,
@@ -96,17 +72,7 @@ type OrderBeerHandler struct {
 	eventBus *cqrs.EventBus
 }
 
-func (o OrderBeerHandler) HandlerName() string {
-	return "OrderBeerHandler"
-}
-
-func (o OrderBeerHandler) NewCommand() interface{} {
-	return &OrderBeer{}
-}
-
-func (o OrderBeerHandler) Handle(ctx context.Context, c interface{}) error {
-	cmd := c.(*OrderBeer)
-
+func (o OrderBeerHandler) Handle(ctx context.Context, cmd *OrderBeer) error {
 	if rand.Int63n(10) == 0 {
 		// sometimes there is no beer left, command will be retried
 		return fmt.Errorf("no beer left for room %s, please try later", cmd.RoomId)
@@ -119,7 +85,7 @@ func (o OrderBeerHandler) Handle(ctx context.Context, c interface{}) error {
 		return err
 	}
 
-	log.Printf("%d beers ordered to room %s", cmd.Count, cmd.RoomId)
+	slog.Info(fmt.Sprintf("%d beers ordered to room %s", cmd.Count, cmd.RoomId))
 	return nil
 }
 
@@ -137,21 +103,10 @@ func NewBookingsFinancialReport() *BookingsFinancialReport {
 	return &BookingsFinancialReport{handledBookings: map[string]struct{}{}}
 }
 
-func (b BookingsFinancialReport) HandlerName() string {
-	// this name is passed to EventsSubscriberConstructor and used to generate queue name
-	return "BookingsFinancialReport"
-}
-
-func (BookingsFinancialReport) NewEvent() interface{} {
-	return &RoomBooked{}
-}
-
-func (b *BookingsFinancialReport) Handle(ctx context.Context, e interface{}) error {
+func (b *BookingsFinancialReport) Handle(ctx context.Context, event *RoomBooked) error {
 	// Handle may be called concurrently, so it need to be thread safe.
 	b.lock.Lock()
 	defer b.lock.Unlock()
-
-	event := e.(*RoomBooked)
 
 	// When we are using Pub/Sub which doesn't provide exactly-once delivery semantics, we need to deduplicate messages.
 	// GoChannel Pub/Sub provides exactly-once delivery,
@@ -163,19 +118,36 @@ func (b *BookingsFinancialReport) Handle(ctx context.Context, e interface{}) err
 
 	b.totalCharge += event.Price
 
-	fmt.Printf(">>> Already booked rooms for $%d\n", b.totalCharge)
+	slog.Info(fmt.Sprintf(">>> Already booked rooms for $%d\n", b.totalCharge))
 	return nil
 }
 
 var amqpAddress = "amqp://guest:guest@rabbitmq:5672/"
 
 func main() {
-	logger := watermill.NewStdLogger(false, false)
-	cqrsMarshaler := cqrs.ProtobufMarshaler{}
+	logger := watermill.NewSlogLoggerWithLevelMapping(nil, map[slog.Level]slog.Level{
+		slog.LevelInfo: slog.LevelDebug,
+	})
+
+	cqrsMarshaler := cqrs.ProtoMarshaler{
+		// It will generate topic names based on the event/command type.
+		// So for example, for "RoomBooked" name will be "RoomBooked".
+		//
+		// This value is used to generate topic names with "generateEventsTopic" and "generateCommandsTopic" functions.
+		GenerateName: cqrs.StructName,
+	}
+
+	generateEventsTopic := func(eventName string) string {
+		return "events." + eventName
+	}
+
+	generateCommandsTopic := func(commandName string) string {
+		return "commands." + commandName
+	}
 
 	// You can use any Pub/Sub implementation from here: https://watermill.io/pubsubs/
 	// Detailed RabbitMQ implementation: https://watermill.io/pubsubs/amqp/
-	// Commands will be send to queue, because they need to be consumed once.
+	// Commands will be sent to queue, because they need to be consumed once.
 	commandsAMQPConfig := amqp.NewDurableQueueConfig(amqpAddress)
 	commandsPublisher, err := amqp.NewPublisher(commandsAMQPConfig, logger)
 	if err != nil {
@@ -208,8 +180,7 @@ func main() {
 
 	commandBus, err := cqrs.NewCommandBusWithConfig(commandsPublisher, cqrs.CommandBusConfig{
 		GeneratePublishTopic: func(params cqrs.CommandBusGeneratePublishTopicParams) (string, error) {
-			// we are using queue RabbitMQ config, so we need to have topic per command type
-			return params.CommandName, nil
+			return generateCommandsTopic(params.CommandName), nil
 		},
 		OnSend: func(params cqrs.CommandBusOnSendParams) error {
 			logger.Info("Sending command", watermill.LogFields{
@@ -231,8 +202,7 @@ func main() {
 		router,
 		cqrs.CommandProcessorConfig{
 			GenerateSubscribeTopic: func(params cqrs.CommandProcessorGenerateSubscribeTopicParams) (string, error) {
-				// we are using queue RabbitMQ config, so we need to have topic per command type
-				return params.CommandName, nil
+				return generateCommandsTopic(params.CommandName), nil
 			},
 			SubscriberConstructor: func(params cqrs.CommandProcessorSubscriberConstructorParams) (message.Subscriber, error) {
 				// we can reuse subscriber, because all commands have separated topics
@@ -261,11 +231,7 @@ func main() {
 
 	eventBus, err := cqrs.NewEventBusWithConfig(eventsPublisher, cqrs.EventBusConfig{
 		GeneratePublishTopic: func(params cqrs.GenerateEventPublishTopicParams) (string, error) {
-			// because we are using PubSub RabbitMQ config, we can use one topic for all events
-			return "events", nil
-
-			// we can also use topic per event type
-			// return params.EventName, nil
+			return generateEventsTopic(params.EventName), nil
 		},
 
 		OnPublish: func(params cqrs.OnEventSendParams) error {
@@ -285,22 +251,22 @@ func main() {
 		panic(err)
 	}
 
-	eventProcessor, err := cqrs.NewEventGroupProcessorWithConfig(
+	eventProcessor, err := cqrs.NewEventProcessorWithConfig(
 		router,
-		cqrs.EventGroupProcessorConfig{
-			GenerateSubscribeTopic: func(params cqrs.EventGroupProcessorGenerateSubscribeTopicParams) (string, error) {
-				return "events", nil
+		cqrs.EventProcessorConfig{
+			GenerateSubscribeTopic: func(params cqrs.EventProcessorGenerateSubscribeTopicParams) (string, error) {
+				return generateEventsTopic(params.EventName), nil
 			},
-			SubscriberConstructor: func(params cqrs.EventGroupProcessorSubscriberConstructorParams) (message.Subscriber, error) {
+			SubscriberConstructor: func(params cqrs.EventProcessorSubscriberConstructorParams) (message.Subscriber, error) {
 				config := amqp.NewDurablePubSubConfig(
 					amqpAddress,
-					amqp.GenerateQueueNameTopicNameWithSuffix(params.EventGroupName),
+					amqp.GenerateQueueNameTopicNameWithSuffix(params.HandlerName),
 				)
 
 				return amqp.NewSubscriber(config, logger)
 			},
 
-			OnHandle: func(params cqrs.EventGroupProcessorOnHandleParams) error {
+			OnHandle: func(params cqrs.EventProcessorOnHandleParams) error {
 				start := time.Now()
 
 				err := params.Handler.Handle(params.Message.Context(), params.Event)
@@ -323,25 +289,31 @@ func main() {
 	}
 
 	err = commandProcessor.AddHandlers(
-		BookRoomHandler{eventBus},
-		OrderBeerHandler{eventBus},
+		cqrs.NewCommandHandler("BookRoomHandler", BookRoomHandler{eventBus}.Handle),
+		cqrs.NewCommandHandler("OrderBeerHandler", OrderBeerHandler{eventBus}.Handle),
 	)
 	if err != nil {
 		panic(err)
 	}
 
-	err = eventProcessor.AddHandlersGroup(
-		"events",
-		OrderBeerOnRoomBooked{commandBus},
-
-		NewBookingsFinancialReport(),
-
-		cqrs.NewGroupEventHandler(func(ctx context.Context, event *BeerOrdered) error {
-			logger.Info("Beer ordered", watermill.LogFields{
-				"room_id": event.RoomId,
-			})
-			return nil
-		}),
+	err = eventProcessor.AddHandlers(
+		cqrs.NewEventHandler(
+			"OrderBeerOnRoomBooked",
+			OrderBeerOnRoomBooked{commandBus}.Handle,
+		),
+		cqrs.NewEventHandler(
+			"LogBeerOrdered",
+			func(ctx context.Context, event *BeerOrdered) error {
+				logger.Info("Beer ordered", watermill.LogFields{
+					"room_id": event.RoomId,
+				})
+				return nil
+			},
+		),
+		cqrs.NewEventHandler(
+			"BookingsFinancialReport",
+			NewBookingsFinancialReport().Handle,
+		),
 	)
 	if err != nil {
 		panic(err)
@@ -361,15 +333,8 @@ func publishCommands(commandBus *cqrs.CommandBus) func() {
 	for {
 		i++
 
-		startDate, err := ptypes.TimestampProto(time.Now())
-		if err != nil {
-			panic(err)
-		}
-
-		endDate, err := ptypes.TimestampProto(time.Now().Add(time.Hour * 24 * 3))
-		if err != nil {
-			panic(err)
-		}
+		startDate := timestamppb.New(time.Now())
+		endDate := timestamppb.New(time.Now().Add(time.Hour * 24 * 3))
 
 		bookRoomCmd := &BookRoom{
 			RoomId:    fmt.Sprintf("%d", i),

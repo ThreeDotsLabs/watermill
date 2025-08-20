@@ -1,9 +1,38 @@
 syntax = "proto3";
 package cqrs_test;
+option go_package = "./cqrs_test";
 
 import "google/protobuf/timestamp.proto";
 
-message TestProtobufEvent {
+message TestProtobufLegacyEvent {
     string id = 1;
     google.protobuf.Timestamp when = 3;
+}
+
+enum Status {
+    STATUS_UNSPECIFIED = 0;
+    ACTIVE = 1;
+    DELETED = 2;
+}
+
+message SubEvent {
+    repeated string tags = 1;
+    map<string, bool> flags = 2;
+}
+
+message TestComplexProtobufEvent {
+    string id = 1;
+    bytes data = 2;
+    google.protobuf.Timestamp when = 3;
+
+    map<string, SubEvent> nested_map = 4;
+    repeated SubEvent events = 5;
+
+    oneof result {
+        SubEvent success = 6;
+        string error = 7;
+        Status fallback = 8;
+    }
+
+    reserved 23 to 30;
 }
