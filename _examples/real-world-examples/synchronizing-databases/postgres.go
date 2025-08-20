@@ -8,8 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ThreeDotsLabs/watermill-sql/v3/pkg/sql"
-	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ThreeDotsLabs/watermill-sql/v4/pkg/sql"
 )
 
 type postgresUser struct {
@@ -23,9 +22,9 @@ type postgresSchemaAdapter struct {
 	sql.DefaultPostgreSQLSchema
 }
 
-func (p postgresSchemaAdapter) SchemaInitializingQueries(topic string) []sql.Query {
+func (p postgresSchemaAdapter) SchemaInitializingQueries(params sql.SchemaInitializingQueriesParams) ([]sql.Query, error) {
 	createQuery := `
-		CREATE TABLE IF NOT EXISTS ` + topic + ` (
+		CREATE TABLE IF NOT EXISTS ` + params.Topic + ` (
 			id INT NOT NULL PRIMARY KEY,
 			username VARCHAR(36) NOT NULL,
 			full_name VARCHAR(36) NOT NULL,
@@ -33,18 +32,18 @@ func (p postgresSchemaAdapter) SchemaInitializingQueries(topic string) []sql.Que
 		);
 	`
 
-	return []sql.Query{{Query: createQuery}}
+	return []sql.Query{{Query: createQuery}}, nil
 }
 
-func (p postgresSchemaAdapter) InsertQuery(topic string, msgs message.Messages) (sql.Query, error) {
+func (p postgresSchemaAdapter) InsertQuery(params sql.InsertQueryParams) (sql.Query, error) {
 	insertQuery := fmt.Sprintf(
 		`INSERT INTO %s (id, username, full_name, created_at) VALUES %s`,
-		topic,
-		strings.TrimRight(strings.Repeat(`($1,$2,$3,$4),`, len(msgs)), ","),
+		params.Topic,
+		strings.TrimRight(strings.Repeat(`($1,$2,$3,$4),`, len(params.Msgs)), ","),
 	)
 
 	var args []interface{}
-	for _, msg := range msgs {
+	for _, msg := range params.Msgs {
 		user := postgresUser{}
 
 		decoder := gob.NewDecoder(bytes.NewBuffer(msg.Payload))
@@ -59,11 +58,11 @@ func (p postgresSchemaAdapter) InsertQuery(topic string, msgs message.Messages) 
 	return sql.Query{Query: insertQuery, Args: args}, nil
 }
 
-func (p postgresSchemaAdapter) SelectQuery(topic string, consumerGroup string, offsetsAdapter sql.OffsetsAdapter) sql.Query {
+func (p postgresSchemaAdapter) SelectQuery(params sql.SelectQueryParams) (sql.Query, error) {
 	// No need to implement this method, as PostgreSQL subscriber is not used in this example.
-	return sql.Query{}
+	return sql.Query{}, nil
 }
 
-func (p postgresSchemaAdapter) UnmarshalMessage(row sql.Scanner) (sql.Row, error) {
+func (p postgresSchemaAdapter) UnmarshalMessage(params sql.UnmarshalMessageParams) (sql.Row, error) {
 	return sql.Row{}, errors.New("not implemented")
 }
