@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill-sql/v3/pkg/sql"
+	"github.com/ThreeDotsLabs/watermill-sql/v4/pkg/sql"
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
@@ -24,9 +24,9 @@ type mysqlSchemaAdapter struct {
 	sql.DefaultMySQLSchema
 }
 
-func (m mysqlSchemaAdapter) SchemaInitializingQueries(topic string) []sql.Query {
+func (m mysqlSchemaAdapter) SchemaInitializingQueries(params sql.SchemaInitializingQueriesParams) ([]sql.Query, error) {
 	createQuery := `
-		CREATE TABLE IF NOT EXISTS ` + topic + ` (
+		CREATE TABLE IF NOT EXISTS ` + params.Topic + ` (
 			id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
 			user VARCHAR(36) NOT NULL,
 			first_name VARCHAR(36) NOT NULL,
@@ -35,18 +35,18 @@ func (m mysqlSchemaAdapter) SchemaInitializingQueries(topic string) []sql.Query 
 		);
 	`
 
-	return []sql.Query{{Query: createQuery}}
+	return []sql.Query{{Query: createQuery}}, nil
 }
 
-func (m mysqlSchemaAdapter) InsertQuery(topic string, msgs message.Messages) (sql.Query, error) {
+func (m mysqlSchemaAdapter) InsertQuery(params sql.InsertQueryParams) (sql.Query, error) {
 	insertQuery := fmt.Sprintf(
 		`INSERT INTO %s (user, first_name, last_name, created_at) VALUES %s`,
-		topic,
-		strings.TrimRight(strings.Repeat(`(?,?,?,?),`, len(msgs)), ","),
+		params.Topic,
+		strings.TrimRight(strings.Repeat(`(?,?,?,?),`, len(params.Msgs)), ","),
 	)
 
 	var args []interface{}
-	for _, msg := range msgs {
+	for _, msg := range params.Msgs {
 		user := mysqlUser{}
 
 		decoder := gob.NewDecoder(bytes.NewBuffer(msg.Payload))
@@ -61,22 +61,29 @@ func (m mysqlSchemaAdapter) InsertQuery(topic string, msgs message.Messages) (sq
 	return sql.Query{Query: insertQuery, Args: args}, nil
 }
 
-func (m mysqlSchemaAdapter) SelectQuery(topic string, consumerGroup string, offsetsAdapter sql.OffsetsAdapter) sql.Query {
-	nextOffsetQuery := offsetsAdapter.NextOffsetQuery(topic, consumerGroup)
+func (m mysqlSchemaAdapter) SelectQuery(params sql.SelectQueryParams) (sql.Query, error) {
+	nextOffsetQuery, err := params.OffsetsAdapter.NextOffsetQuery(sql.NextOffsetQueryParams{
+		Topic:         params.Topic,
+		ConsumerGroup: params.ConsumerGroup,
+	})
+	if err != nil {
+		return sql.Query{}, err
+	}
+
 	selectQuery := `
-		SELECT id, user, first_name, last_name, created_at FROM ` + topic + `
+		SELECT id, user, first_name, last_name, created_at FROM ` + params.Topic + `
 		WHERE
 			id > (` + nextOffsetQuery.Query + `)
 		ORDER BY
 			id ASC
 		LIMIT 1`
 
-	return sql.Query{Query: selectQuery, Args: nextOffsetQuery.Args}
+	return sql.Query{Query: selectQuery, Args: nextOffsetQuery.Args}, nil
 }
 
-func (m mysqlSchemaAdapter) UnmarshalMessage(row sql.Scanner) (_ sql.Row, err error) {
+func (m mysqlSchemaAdapter) UnmarshalMessage(params sql.UnmarshalMessageParams) (_ sql.Row, err error) {
 	user := mysqlUser{}
-	err = row.Scan(&user.ID, &user.User, &user.FirstName, &user.LastName, &user.CreatedAt)
+	err = params.Row.Scan(&user.ID, &user.User, &user.FirstName, &user.LastName, &user.CreatedAt)
 	if err != nil {
 		return sql.Row{}, err
 	}

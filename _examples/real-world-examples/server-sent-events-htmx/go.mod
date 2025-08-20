@@ -6,7 +6,7 @@ toolchain go1.23.4
 
 require (
 	cloud.google.com/go/pubsub v1.45.3
-	github.com/ThreeDotsLabs/watermill v1.4.4
+	github.com/ThreeDotsLabs/watermill v1.4.7
 	github.com/ThreeDotsLabs/watermill-googlecloud v1.2.2
 	github.com/ThreeDotsLabs/watermill-http/v2 v2.3.1
 	github.com/a-h/templ v0.3.819
