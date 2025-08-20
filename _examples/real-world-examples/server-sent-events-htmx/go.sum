@@ -16,8 +16,8 @@ cloud.google.com/go/longrunning v0.6.4/go.mod h1:ttZpLCe6e7EXvn9OxpBRx7kZEB0efv8
 cloud.google.com/go/pubsub v1.45.3 h1:prYj8EEAAAwkp6WNoGTE4ahe0DgHoyJd5Pbop931zow=
 cloud.google.com/go/pubsub v1.45.3/go.mod h1:cGyloK/hXC4at7smAtxFnXprKEFTqmMXNNd9w+bd94Q=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
-github.com/ThreeDotsLabs/watermill v1.4.4 h1:aLClMl6EYIOQy4BML9yb2VpTekbynDatvQbXGp7idCU=
-github.com/ThreeDotsLabs/watermill v1.4.4/go.mod h1:lBnrLbxOjeMRgcJbv+UiZr8Ylz8RkJ4m6i/VN/Nk+to=
+github.com/ThreeDotsLabs/watermill v1.4.7 h1:LiF4wMP400/psRTdHL/IcV1YIv9htHYFggbe2d6cLeI=
+github.com/ThreeDotsLabs/watermill v1.4.7/go.mod h1:Ks20MyglVnqjpha1qq0kjaQ+J9ay7bdnjszQ4cW9FMU=
 github.com/ThreeDotsLabs/watermill-googlecloud v1.2.2 h1:x194AUp/6h/thK6Tc2gITP0JhwV/g4JHpL91Y1dDeMA=
 github.com/ThreeDotsLabs/watermill-googlecloud v1.2.2/go.mod h1:sMU+5UoRRO1m/LBxju7tnwDCj7L/3IKwP9hjNSDYaOs=
 github.com/ThreeDotsLabs/watermill-http/v2 v2.3.1 h1:M0iYM5HsGcoxtiQqprRlYZNZnGk3w5LsE9RbC2R8myQ=
