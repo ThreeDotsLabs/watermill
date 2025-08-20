@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -38,6 +39,7 @@ func TestSubscribe_clean_subscriber_data(t *testing.T) {
 
 	log.Println("waiting for all closed")
 	allClosed.Wait()
+	time.Sleep(500 * time.Millisecond)
 
 	assert.Len(t, pubSub.subscribers, 0)
 	lockCount := 0
