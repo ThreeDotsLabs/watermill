@@ -73,6 +73,9 @@ jobs:
       - run: make test_race
       - run: make test_stress
         if: ${{ inputs.stress-tests }}
+      - name: Dump docker logs on failure
+        if: failure()
+        uses: jwalton/gh-docker-logs@a8cb5301950dd4d2b86619cd487b3b281526b178 # v2.2.0
   codecov:
     runs-on: ${{ inputs.runs-on }}
     if: ${{ inputs.codecov }}
@@ -90,6 +93,3 @@ jobs:
           fail_ci_if_error: true
           files: ./coverage.out
           token: ${{ secrets.codecov_token }}
-      - name: Dump docker logs on failure
-        if: failure()
-        uses: jwalton/gh-docker-logs@a8cb5301950dd4d2b86619cd487b3b281526b178 # v2.2.0
