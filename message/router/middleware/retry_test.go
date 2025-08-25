@@ -314,3 +314,49 @@ func TestRetry_backoff_backoff_permanent(t *testing.T) {
 	var backoffPermanentError *backoff.PermanentError
 	assert.False(t, errors.As(handlerErr, &backoffPermanentError))
 }
+
+// TestRetry_uncancel_context checks scenario when context is canceled,
+// and we want to retry. More context: https://github.com/ThreeDotsLabs/watermill/issues/467
+//
+// Message is passed as a pointer, so underlying middlewares or handlers can cancel its context.
+// In this scenario, retrying is pointless because context is already canceled, so any operation
+// that relies on context will fail immediately.
+func TestRetry_uncancel_context(t *testing.T) {
+	retry := middleware.Retry{
+		MaxRetries:          5,
+		ResetContextOnRetry: true,
+	}
+
+	num := 0
+
+	var ctxCancelMiddleware = func(h message.HandlerFunc) message.HandlerFunc {
+		return func(msg *message.Message) ([]*message.Message, error) {
+			num++
+
+			ctx, cancel := context.WithCancel(msg.Context())
+			defer func() {
+				cancel()
+			}()
+
+			if num == 1 {
+				t.Log("Run 1: canceling context")
+				cancel()
+			} else {
+				t.Logf("Run %d: context is not canceled", num)
+			}
+
+			msg.SetContext(ctx)
+			return h(msg)
+		}
+	}
+
+	h := func(msg *message.Message) (messages []*message.Message, e error) {
+		return nil, msg.Context().Err()
+	}
+
+	h = ctxCancelMiddleware(h)
+	h = retry.Middleware(h)
+
+	_, handlerErr := h(message.NewMessage("1", nil))
+	assert.NoError(t, handlerErr)
+}
