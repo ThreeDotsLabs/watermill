@@ -4,11 +4,10 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stretchr/testify/require"
+	"github.com/ThreeDotsLabs/watermill/message"
 
 	"github.com/stretchr/testify/assert"
-
-	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMessage_Equals(t *testing.T) {
@@ -117,18 +116,17 @@ func TestMessage_Copy(t *testing.T) {
 func TestMessage_CopyWithContext(t *testing.T) {
 	msg := message.NewMessage("1", []byte("foo"))
 	testCtx := context.Background()
-	testCtx = context.WithValue(testCtx, "foo", "bar")
+	testCtx = context.WithValue(testCtx, ctxKey("foo"), "bar")
 	msg.SetContext(testCtx)
 
 	msgCopy := msg.CopyWithContext()
-	testCtx = context.WithValue(testCtx, "foo", "baz")
-	testCtx = context.WithValue(testCtx, "abc", "def")
-
 	copyMsgCtx := msgCopy.Context()
-	assert.True(t, copyMsgCtx.Value("foo") == "bar", "expected context not being copied")
-	assert.False(t, copyMsgCtx.Value("abc") == "def", "non-expected context being copied")
+	assert.True(t, copyMsgCtx.Value(ctxKey("foo")) == "bar", "expected context not being copied")
+	assert.False(t, copyMsgCtx.Value(ctxKey("abc")) == "def", "non-expected context being copied")
 	assert.True(t, msg.Equals(msgCopy))
 }
+
+type ctxKey string
 
 func TestMessage_CopyWithContextAndMetadata(t *testing.T) {
 	msg := message.NewMessage("1", []byte("foo"))
