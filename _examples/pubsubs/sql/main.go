@@ -10,7 +10,7 @@ import (
 	driver "github.com/go-sql-driver/mysql"
 
 	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill-sql/v2/pkg/sql"
+	"github.com/ThreeDotsLabs/watermill-sql/v4/pkg/sql"
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
@@ -19,7 +19,7 @@ func main() {
 	logger := watermill.NewStdLogger(false, false)
 
 	subscriber, err := sql.NewSubscriber(
-		db,
+		sql.BeginnerFromStdSQL(db),
 		sql.SubscriberConfig{
 			SchemaAdapter:    sql.DefaultMySQLSchema{},
 			OffsetsAdapter:   sql.DefaultMySQLOffsetsAdapter{},
@@ -39,7 +39,7 @@ func main() {
 	go process(messages)
 
 	publisher, err := sql.NewPublisher(
-		db,
+		sql.BeginnerFromStdSQL(db),
 		sql.PublisherConfig{
 			SchemaAdapter: sql.DefaultMySQLSchema{},
 		},

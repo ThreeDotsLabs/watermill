@@ -7,39 +7,89 @@ on:
         required: false
         type: boolean
         default: false
+      codecov:
+        required: false
+        type: boolean
+        default: false
+      runs-on:
+        required: false
+        type: string
+        default: 'ubuntu-latest'
+    secrets:
+      codecov_token:
+        required: false
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-go@v2
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v4
         with:
-          go-version: '^1.19.1'
+          go-version: '^1.21.1'
       - run: make build
-  lint:
+
+  detect-modules:
     runs-on: ubuntu-latest
+    outputs:
+      modules: ${{ steps.set-modules.outputs.modules }}
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-go@v2
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
-          go-version: '^1.19.1'
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v3
+          go-version: '^1.21.1'
+      - id: set-modules
+        run: echo "modules=$(go list -m -json | jq -s '.' | jq -c '[.[].Dir]')" >> $GITHUB_OUTPUT
+
+  lint:
+    needs: detect-modules
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        modules: ${{ fromJSON(needs.detect-modules.outputs.modules) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '^1.21.1'
+      - name: golangci-lint ${{ matrix.modules }}
+        uses: golangci/golangci-lint-action@v6.5.2
+        with:
+          working-directory: ${{ matrix.modules }}
+
   tests:
     needs: [build]
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-go@v2
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v4
         with:
-          go-version: '^1.19.1'
+          go-version: '^1.21.1'
       - run: cat .env >> $GITHUB_ENV || true
       - run: make up
       - run: make wait
+      - run: make test_short
       - run: make test
         timeout-minutes: 30
-      - run: make test_short
       - run: make test_race
       - run: make test_stress
         if: ${{ inputs.stress-tests }}
-
+      - name: Dump docker logs on failure
+        if: failure()
+        uses: jwalton/gh-docker-logs@a8cb5301950dd4d2b86619cd487b3b281526b178 # v2.2.0
+  codecov:
+    runs-on: ${{ inputs.runs-on }}
+    if: ${{ inputs.codecov }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '^1.21.1'
+      - run: cat .env >> $GITHUB_ENV || true
+      - run: make up
+      - run: make wait
+      - run: make test_codecov
+      - uses: codecov/codecov-action@v4
+        with:
+          fail_ci_if_error: true
+          files: ./coverage.out
+          token: ${{ secrets.codecov_token }}

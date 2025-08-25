@@ -298,23 +298,30 @@ func TestEventProcessor_handler_group(t *testing.T) {
 			msg1,
 			msg2,
 		},
+		WaitForAckBeforeSendingNext: true,
 	}
 
-	handler1Calls := 0
-	handler2Calls := 0
+	var handlersCalls []int
 
 	handlers := []cqrs.GroupEventHandler{
 		cqrs.NewGroupEventHandler(func(ctx context.Context, event *TestEvent) error {
 			assert.EqualValues(t, event1, event)
 
-			handler1Calls++
+			handlersCalls = append(handlersCalls, 1)
 
 			return nil
 		}),
 		cqrs.NewGroupEventHandler(func(ctx context.Context, event *AnotherTestEvent) error {
 			assert.EqualValues(t, event2, event)
 
-			handler2Calls++
+			handlersCalls = append(handlersCalls, 2)
+
+			return nil
+		}),
+		cqrs.NewGroupEventHandler(func(ctx context.Context, event *AnotherTestEvent) error {
+			assert.EqualValues(t, event2, event)
+
+			handlersCalls = append(handlersCalls, 3)
 
 			return nil
 		}),
@@ -382,6 +389,69 @@ func TestEventProcessor_handler_group(t *testing.T) {
 		t.Fatal("message 2 not acked")
 	}
 
-	assert.Equal(t, 1, handler1Calls)
-	assert.Equal(t, 1, handler2Calls)
+	assert.Equal(t, []int{1, 2, 3}, handlersCalls)
+}
+
+func TestEventGroupProcessor_original_msg_set_to_ctx(t *testing.T) {
+	ts := NewTestServices()
+
+	msg, err := ts.Marshaler.Marshal(&TestEvent{})
+	require.NoError(t, err)
+
+	mockSub := &mockSubscriber{
+		MessagesToSend: []*message.Message{
+			msg,
+		},
+	}
+
+	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
+	require.NoError(t, err)
+
+	cp, err := cqrs.NewEventGroupProcessorWithConfig(
+		router,
+		cqrs.EventGroupProcessorConfig{
+			GenerateSubscribeTopic: func(params cqrs.EventGroupProcessorGenerateSubscribeTopicParams) (string, error) {
+				return "events", nil
+			},
+			SubscriberConstructor: func(params cqrs.EventGroupProcessorSubscriberConstructorParams) (message.Subscriber, error) {
+				return mockSub, nil
+			},
+			AckOnUnknownEvent: true,
+			Marshaler:         ts.Marshaler,
+			Logger:            ts.Logger,
+		},
+	)
+	require.NoError(t, err)
+
+	var msgFromCtx *message.Message
+
+	err = cp.AddHandlersGroup(
+		"some_group",
+		cqrs.NewGroupEventHandler(
+			func(ctx context.Context, cmd *TestEvent) error {
+				msgFromCtx = cqrs.OriginalMessageFromCtx(ctx)
+				return nil
+			}),
+	)
+	require.NoError(t, err)
+
+	go func() {
+		err := router.Run(context.Background())
+		assert.NoError(t, err)
+	}()
+
+	<-router.Running()
+
+	select {
+	case <-msg.Acked():
+		// ok
+	case <-msg.Nacked():
+		// nack received
+		t.Fatal("nack received, message should be acked")
+	case <-time.After(1 * time.Second):
+		t.Fatal("timeout waiting for ack")
+	}
+
+	require.NotNil(t, msgFromCtx)
+	assert.Equal(t, msg, msgFromCtx)
 }

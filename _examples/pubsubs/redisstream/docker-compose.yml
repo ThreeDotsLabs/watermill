@@ -1,7 +1,6 @@
-version: '3'
 services:
   server:
-    image: golang:1.19
+    image: golang:1.23
     restart: unless-stopped
     depends_on:
       - redis

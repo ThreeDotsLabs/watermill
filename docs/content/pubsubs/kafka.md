@@ -3,20 +3,20 @@ title = "Kafka"
 description = "A distributed streaming platform from Apache"
 date = 2019-07-06T22:30:00+02:00
 bref = "A distributed streaming platform from Apache"
-weight = -80
-type = "docs"
-toc = false
+weight = 80
 +++
 
-### Kafka
+Apache Kafka is one of the most popular Pub/Subs. We are providing Pub/Sub implementation based on [IBM Sarama](https://github.com/IBM/sarama).
 
-Apache Kafka is one of the most popular Pub/Subs. We are providing Pub/Sub implementation based on [Shopify's Sarama](https://github.com/Shopify/sarama).
+You can find a fully functional example with Kafka in the [Watermill examples](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/pubsubs/kafka).
 
-### Installation
+## Installation
 
-    go get github.com/ThreeDotsLabs/watermill-kafka/v2
+```bash
+go get github.com/ThreeDotsLabs/watermill-kafka/v3
+```
 
-#### Characteristics
+### Characteristics
 
 | Feature | Implements | Note |
 | ------- | ---------- | ---- |
@@ -25,76 +25,61 @@ Apache Kafka is one of the most popular Pub/Subs. We are providing Pub/Sub imple
 | GuaranteedOrder | yes | require [partition key usage](#partitioning)  |
 | Persistent | yes| |
 
-#### Configuration
+### Configuration
 
-{{% render-md %}}
 {{% load-snippet-partial file="src-link/watermill-kafka/pkg/kafka/subscriber.go" first_line_contains="type SubscriberConfig struct" last_line_contains="// Subscribe" %}}
-{{% /render-md %}}
 
-##### Passing custom `Sarama` config
+#### Passing custom `Sarama` config
 
 You can pass [custom config](https://github.com/Shopify/sarama/blob/master/config.go#L20) parameters via `overwriteSaramaConfig *sarama.Config` in `NewSubscriber` and `NewPublisher`.
 When `nil` is passed, default config is used (`DefaultSaramaSubscriberConfig`).
 
-{{% render-md %}}
 {{% load-snippet-partial file="src-link/watermill-kafka/pkg/kafka/subscriber.go" first_line_contains="// DefaultSaramaSubscriberConfig" last_line_contains="return config" padding_after="1" %}}
-{{% /render-md %}}
 
-#### Connecting
+### Connecting
 
-##### Publisher
-{{% render-md %}}
+#### Publisher
 {{% load-snippet-partial file="src-link/watermill-kafka/pkg/kafka/publisher.go" first_line_contains="// NewPublisher" last_line_contains="(*Publisher, error)" padding_after="0" %}}
+
+Example:
+{{% load-snippet-partial file="src-link/_examples/pubsubs/kafka/main.go" first_line_contains="publisher, err := kafka.NewPublisher" last_line_contains="panic(err)" padding_after="1" %}}
+
+
+#### Subscriber
+{{% load-snippet-partial file="src-link/watermill-kafka/pkg/kafka/subscriber.go" first_line_contains="// NewSubscriber" last_line_contains="(*Subscriber, error)" padding_after="0" %}}
 
 Example:
 {{% load-snippet-partial file="src-link/_examples/pubsubs/kafka/main.go" first_line_contains="saramaSubscriberConfig :=" last_line_contains="panic(err)" padding_after="1" %}}
 
-{{% /render-md %}}
+### Publishing
 
-##### Subscriber
-{{% render-md %}}
-{{% load-snippet-partial file="src-link/watermill-kafka/pkg/kafka/subscriber.go" first_line_contains="// NewSubscriber" last_line_contains="(*Subscriber, error)" padding_after="0" %}}
-
-Example:
-{{% load-snippet-partial file="src-link/_examples/pubsubs/kafka/main.go" first_line_contains="publisher, err := kafka.NewPublisher" last_line_contains="panic(err)" padding_after="1" %}}
-{{% /render-md %}}
-
-#### Publishing
-
-{{% render-md %}}
 {{% load-snippet-partial file="src-link/watermill-kafka/pkg/kafka/publisher.go" first_line_contains="// Publish" last_line_contains="func (p *Publisher) Publish" %}}
-{{% /render-md %}}
 
-#### Subscribing
+### Subscribing
 
-{{% render-md %}}
 {{% load-snippet-partial file="src-link/watermill-kafka/pkg/kafka/subscriber.go" first_line_contains="// Subscribe" last_line_contains="func (s *Subscriber) Subscribe" %}}
-{{% /render-md %}}
 
-#### Marshaler
+### Marshaler
 
 Watermill's messages cannot be directly sent to Kafka - they need to be marshaled. You can implement your marshaler or use default implementation.
 
-{{% render-md %}}
 {{% load-snippet-partial file="src-link/watermill-kafka/pkg/kafka/marshaler.go" first_line_contains="// Marshaler" last_line_contains="func (DefaultMarshaler)" padding_after="0" %}}
-{{% /render-md %}}
 
-#### Partitioning
+### Partitioning
 
 Our Publisher has support for the partitioning mechanism.
 
 It can be done with special Marshaler implementation:
 
-{{% render-md %}}
 {{% load-snippet-partial file="src-link/watermill-kafka/pkg/kafka/marshaler.go" first_line_contains="type kafkaJsonWithPartitioning" last_line_contains="func (j kafkaJsonWithPartitioning) Marshal" padding_after="0" %}}
-{{% /render-md %}}
 
 When using, you need to pass your function to generate partition key.
 It's a good idea to pass this partition key with metadata to not unmarshal entire message.
 
-{{< highlight >}}
+```go
 marshaler := kafka.NewWithPartitioningMarshaler(func(topic string, msg *message.Message) (string, error) {
     return msg.Metadata.Get("partition"), nil
 })
-{{< /highlight >}}
+```
 
+Please note that in the example above, if the `partition` key is missing from the message metadata, an empty string `""` will be used as the partitioning key. This will cause all such messages to be routed to the same partition, which may not be the desired behavior and could lead to uneven load distribution.

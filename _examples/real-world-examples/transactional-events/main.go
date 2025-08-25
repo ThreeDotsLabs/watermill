@@ -10,8 +10,8 @@ import (
 	driver "github.com/go-sql-driver/mysql"
 
 	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill-kafka/v2/pkg/kafka"
-	"github.com/ThreeDotsLabs/watermill-sql/v2/pkg/sql"
+	"github.com/ThreeDotsLabs/watermill-kafka/v3/pkg/kafka"
+	"github.com/ThreeDotsLabs/watermill-sql/v4/pkg/sql"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
 	"github.com/ThreeDotsLabs/watermill/message/router/plugin"
@@ -88,7 +88,7 @@ func createDB() *stdSQL.DB {
 
 func createSubscriber(db *stdSQL.DB) message.Subscriber {
 	pub, err := sql.NewSubscriber(
-		db,
+		sql.BeginnerFromStdSQL(db),
 		sql.SubscriberConfig{
 			SchemaAdapter:    sql.DefaultMySQLSchema{},
 			OffsetsAdapter:   sql.DefaultMySQLOffsetsAdapter{},
@@ -156,9 +156,11 @@ func simulateEvents(db *stdSQL.DB) {
 // To publish the event in a separate transaction, a new SQL Publisher
 // has to be created each time, passing the proper transaction handle.
 func publishEvent(tx *stdSQL.Tx) error {
-	pub, err := sql.NewPublisher(tx, sql.PublisherConfig{
-		SchemaAdapter: sql.DefaultMySQLSchema{},
-	}, logger)
+	pub, err := sql.NewPublisher(
+		sql.TxFromStdSQL(tx),
+		sql.PublisherConfig{
+			SchemaAdapter: sql.DefaultMySQLSchema{},
+		}, logger)
 	if err != nil {
 		return err
 	}

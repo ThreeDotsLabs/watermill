@@ -1,6 +1,7 @@
 package metrics
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -31,7 +32,7 @@ func ServeHTTP(addr string, registry *prometheus.Registry) (cancel func()) {
 
 	go func() {
 		err := server.ListenAndServe()
-		if err != http.ErrServerClosed {
+		if !errors.Is(err, http.ErrServerClosed) {
 			panic(err)
 		}
 	}()

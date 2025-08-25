@@ -3,15 +3,6 @@ set -e -x
 
 cd "$(dirname "$0")"
 
-if [[ ! -d themes/kube ]]; then
-    mkdir -p themes/kube && pushd themes/kube
-    git init
-    git remote add origin https://github.com/jeblister/kube
-    git fetch --depth 1 origin 1507abea527aecd896fdc306dfd28ee3e34f01ec
-    git checkout FETCH_HEAD
-    popd
-fi
-
 function cloneOrPull() {
     if [[ -d "$2" ]]
     then
@@ -24,12 +15,12 @@ function cloneOrPull() {
 }
 
 if [[ "$1" == "--copy" ]]; then
-    rm content/src-link -r || true
+    rm -rf content/src-link || true
     mkdir content/src-link/
-    cp ../message/ content/src-link/ -r
-    cp ../pubsub/ content/src-link/ -r
-    cp ../_examples/ content/src-link/ -r
-    cp ../components/ content/src-link/ -r
+    cp -r ../message content/src-link/
+    cp -r ../pubsub content/src-link/
+    cp -r ../_examples content/src-link/
+    cp -r ../components content/src-link/
 else
     declare -a files_to_link=(
         "_examples"
@@ -40,6 +31,7 @@ else
         "message/router.go"
         "message/router_context.go"
         "pubsub/gochannel/pubsub.go"
+        "pubsub/gochannel/fanout.go"
 
         "components/cqrs/command_bus.go"
         "components/cqrs/command_processor.go"
@@ -53,6 +45,11 @@ else
         "components/cqrs/marshaler.go"
         "components/cqrs/cqrs.go"
         "components/cqrs/marshaler.go"
+
+        "components/delay/delay.go"
+        "components/delay/publisher.go"
+
+        "components/requeuer/requeuer.go"
 
         "components/metrics/builder.go"
         "components/metrics/http.go"
@@ -82,7 +79,10 @@ cloneOrPull "https://github.com/ThreeDotsLabs/watermill-sql.git" content/src-lin
 cloneOrPull "https://github.com/ThreeDotsLabs/watermill-firestore.git" content/src-link/watermill-firestore
 cloneOrPull "https://github.com/ThreeDotsLabs/watermill-bolt.git" content/src-link/watermill-bolt
 cloneOrPull "https://github.com/ThreeDotsLabs/watermill-redisstream.git" content/src-link/watermill-redisstream
+cloneOrPull "https://github.com/ThreeDotsLabs/watermill-aws.git" content/src-link/watermill-aws
 
+find content/src-link -name '*.md' -delete
+find content/src-link -name '*.html' -delete
 
 python3 ./extract_middleware_godocs.py > content/src-link/middleware-defs.md
 

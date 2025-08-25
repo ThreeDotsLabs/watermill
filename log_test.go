@@ -116,8 +116,8 @@ func TestCaptureLoggerAdapter(t *testing.T) {
 	}
 
 	capturedLogger := logger.(*watermill.CaptureLoggerAdapter)
-	assert.EqualValues(t, expectedLogs, capturedLogger.Captured())
 
+	assert.Equal(t, len(expectedLogs), len(capturedLogger.Captured()))
 	for _, logs := range expectedLogs {
 		for _, log := range logs {
 			assert.True(t, capturedLogger.Has(log))

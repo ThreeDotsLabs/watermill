@@ -66,9 +66,11 @@ func NewGoChannel(config Config, logger watermill.LoggerAdapter) *GoChannel {
 
 		subscribers:            make(map[string][]*subscriber),
 		subscribersByTopicLock: sync.Map{},
-		logger: logger.With(watermill.LogFields{
-			"pubsub_uuid": shortuuid.New(),
-		}),
+		logger: logger.With(
+			watermill.LogFields{
+				"pubsub_uuid": shortuuid.New(),
+			},
+		),
 
 		closing: make(chan struct{}),
 
@@ -77,9 +79,9 @@ func NewGoChannel(config Config, logger watermill.LoggerAdapter) *GoChannel {
 }
 
 // Publish in GoChannel is NOT blocking until all consumers consume.
-// Messages will be send in background.
+// Messages will be sent in background.
 //
-// Messages may be persisted or not, depending of persistent attribute.
+// Messages may be persisted or not, depending on persistent attribute.
 func (g *GoChannel) Publish(topic string, messages ...*message.Message) error {
 	if g.isClosed() {
 		return errors.New("Pub/Sub closed")
@@ -93,8 +95,12 @@ func (g *GoChannel) Publish(topic string, messages ...*message.Message) error {
 	g.subscribersLock.RLock()
 	defer g.subscribersLock.RUnlock()
 
-	subLock, _ := g.subscribersByTopicLock.LoadOrStore(topic, &sync.Mutex{})
+	subLock, loaded := g.subscribersByTopicLock.LoadOrStore(topic, &sync.Mutex{})
 	subLock.(*sync.Mutex).Lock()
+
+	if !loaded {
+		defer g.subscribersByTopicLock.Delete(topic)
+	}
 	defer subLock.(*sync.Mutex).Unlock()
 
 	if g.config.Persistent {
@@ -260,6 +266,17 @@ func (g *GoChannel) removeSubscriber(topic string, toRemove *subscriber) {
 		if sub == toRemove {
 			g.subscribers[topic] = append(g.subscribers[topic][:i], g.subscribers[topic][i+1:]...)
 			removed = true
+
+			if len(g.subscribers[topic]) == 0 && !g.config.Persistent {
+				// Free up the memory taken by a topic which no longer has subscribers.
+				// This operation allows publishing and subscribing to narrowly
+				// focused topics that include random data like UUIDs in topic name.
+				//
+				// Without this operation, memory usage will grow indefinitely in a long-running service
+				// as the map grows larger and larger with keys pointing to empty slices.
+				delete(g.subscribers, topic)
+				g.subscribersByTopicLock.Delete(topic)
+			}
 			break
 		}
 	}
@@ -341,9 +358,6 @@ func (s *subscriber) Close() {
 }
 
 func (s *subscriber) sendMessageToSubscriber(msg *message.Message, logFields watermill.LogFields) {
-	s.sending.Lock()
-	defer s.sending.Unlock()
-
 	ctx, cancelCtx := context.WithCancel(s.ctx)
 	defer cancelCtx()
 
@@ -356,8 +370,10 @@ SendToSubscriber:
 
 		s.logger.Trace("Sending msg to subscriber", logFields)
 
+		s.sending.Lock()
 		if s.closed {
 			s.logger.Info("Pub/Sub closed, discarding msg", logFields)
+			s.sending.Unlock()
 			return
 		}
 
@@ -366,8 +382,10 @@ SendToSubscriber:
 			s.logger.Trace("Sent message to subscriber", logFields)
 		case <-s.closing:
 			s.logger.Trace("Closing, message discarded", logFields)
+			s.sending.Unlock()
 			return
 		}
+		s.sending.Unlock()
 
 		select {
 		case <-msgToSend.Acked():
