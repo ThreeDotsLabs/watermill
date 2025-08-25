@@ -1,10 +1,10 @@
 package middleware
 
 import (
-	"context"
 	"time"
 
-	"github.com/cenkalti/backoff/v3"
+	"github.com/cenkalti/backoff/v5"
+	"github.com/pkg/errors"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
@@ -52,65 +52,78 @@ type Retry struct {
 // Middleware returns the Retry middleware.
 func (r Retry) Middleware(h message.HandlerFunc) message.HandlerFunc {
 	return func(msg *message.Message) ([]*message.Message, error) {
-		producedMessages, err := h(msg)
-		if err == nil {
-			return producedMessages, nil
-		}
+		retryNum := 0
 
 		expBackoff := backoff.NewExponentialBackOff()
 		expBackoff.InitialInterval = r.InitialInterval
 		expBackoff.MaxInterval = r.MaxInterval
 		expBackoff.Multiplier = r.Multiplier
-		expBackoff.MaxElapsedTime = r.MaxElapsedTime
 		expBackoff.RandomizationFactor = r.RandomizationFactor
 
+		// MaxRetries + 1 because the first attempt is not a retry
+		retryBackoff := backoff.WithMaxTries(uint(r.MaxRetries + 1))
+
+		maxElapsedBackoff := backoff.WithMaxElapsedTime(r.MaxElapsedTime)
+
 		ctx := msg.Context()
-		if r.MaxElapsedTime > 0 {
-			var cancel func()
-			ctx, cancel = context.WithTimeout(ctx, r.MaxElapsedTime)
-			defer cancel()
-		}
 
-		retryNum := 1
-		expBackoff.Reset()
-	retryLoop:
-		for {
-			waitTime := expBackoff.NextBackOff()
-
-			if r.ShouldRetry != nil && !r.ShouldRetry(RetryParams{RetryNum: retryNum, Err: err, Delay: waitTime}) {
-				return producedMessages, err
-			}
-
-			select {
-			case <-ctx.Done():
-				return producedMessages, err
-			case <-time.After(waitTime):
-				// go on
-			}
-
-			producedMessages, err = h(msg)
-			if err == nil {
-				return producedMessages, nil
-			}
-
+		// notification: called on a failed retry attempt.
+		notification := func(err error, delay time.Duration) {
 			if r.Logger != nil {
 				r.Logger.Error("Error occurred, retrying", err, watermill.LogFields{
-					"retry_no":     retryNum,
-					"max_retries":  r.MaxRetries,
-					"wait_time":    waitTime,
-					"elapsed_time": expBackoff.GetElapsedTime(),
+					"retry_no":    retryNum,
+					"max_retries": r.MaxRetries,
+					"wait_time":   delay,
 				})
-			}
-			if r.OnRetryHook != nil {
-				r.OnRetryHook(retryNum, waitTime)
-			}
-
-			retryNum++
-			if retryNum > r.MaxRetries {
-				break retryLoop
 			}
 		}
 
-		return nil, err
+		// operation: the function that will be retried.
+		operation := func() ([]*message.Message, error) {
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			default:
+				producedMessages, err := h(msg)
+				if err == nil {
+					return producedMessages, nil
+				}
+
+				if r.ShouldRetry != nil && !r.ShouldRetry(RetryParams{
+					RetryNum: retryNum,
+					Err:      err,
+					Delay:    expBackoff.NextBackOff(),
+				}) {
+					// backoff.Permanent will stop the retry attempts
+					return producedMessages, backoff.Permanent(err)
+				}
+
+				if r.OnRetryHook != nil && retryNum > 0 {
+					// call RetryHook function on each retry attempt.
+					r.OnRetryHook(retryNum, expBackoff.NextBackOff())
+				}
+				retryNum++
+				return producedMessages, err
+			}
+		}
+
+		producedMessages, retryErr := backoff.Retry(
+			ctx,
+			operation,
+			backoff.WithBackOff(expBackoff),
+			retryBackoff,
+			maxElapsedBackoff,
+			backoff.WithNotify(notification),
+		)
+		var backoffPermanentError *backoff.PermanentError
+		if errors.As(retryErr, &backoffPermanentError) {
+			// just in case, we don't want to expose backoff.PermanentError to the outside world
+			return producedMessages, backoffPermanentError.Unwrap()
+		}
+		if retryErr != nil {
+			return producedMessages, retryErr
+		}
+
+		return producedMessages, nil
 	}
 }
