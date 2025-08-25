@@ -196,7 +196,7 @@ Additionally, if `sns.SubscriberConfig.DoNotSetQueueAccessPolicy` is not enabled
 
 {{% load-snippet-partial file="src-link/watermill-aws/sns/config.go" first_line_contains="type SubscriberConfig struct " last_line_contains="type GenerateSqsQueueNameFn" %}}
 
-Additionally, because SNS Subscriber uses SQS ques as "subscriptions", you need to pass [SQS configuration](#sqs-configuration) as well.
+Additionally, because SNS Subscriber uses SQS queues as "subscriptions", you need to pass [SQS configuration](#sqs-configuration) as well.
 
 ### Resolving Queue URL
 
