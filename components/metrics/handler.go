@@ -35,6 +35,7 @@ var (
 // HandlerPrometheusMetricsMiddleware is a middleware that captures Prometheus metrics.
 type HandlerPrometheusMetricsMiddleware struct {
 	handlerExecutionTimeSeconds *prometheus.HistogramVec
+	additionalLabels            []MetricLabel
 }
 
 // Middleware returns the middleware ready to be used with watermill's Router.
@@ -44,6 +45,9 @@ func (m HandlerPrometheusMetricsMiddleware) Middleware(h message.HandlerFunc) me
 		ctx := msg.Context()
 		labels := prometheus.Labels{
 			labelKeyHandlerName: message.HandlerNameFromCtx(ctx),
+		}
+		for _, lb := range m.additionalLabels {
+			labels[lb.Label] = lb.ComputeValueFn(ctx)
 		}
 
 		defer func() {
@@ -62,7 +66,9 @@ func (m HandlerPrometheusMetricsMiddleware) Middleware(h message.HandlerFunc) me
 // NewRouterMiddleware returns new middleware.
 func (b PrometheusMetricsBuilder) NewRouterMiddleware() HandlerPrometheusMetricsMiddleware {
 	var err error
-	m := HandlerPrometheusMetricsMiddleware{}
+	m := HandlerPrometheusMetricsMiddleware{
+		additionalLabels: b.additionalLabels,
+	}
 
 	if b.HandlerBuckets == nil {
 		b.HandlerBuckets = defaultHandlerExecutionTimeBuckets
@@ -76,7 +82,7 @@ func (b PrometheusMetricsBuilder) NewRouterMiddleware() HandlerPrometheusMetrics
 			Help:      "The total time elapsed while executing the handler function in seconds",
 			Buckets:   b.HandlerBuckets,
 		},
-		handlerLabelKeys,
+		toLabelsSlice(handlerLabelKeys, b.additionalLabels),
 	))
 	if err != nil {
 		panic(errors.Wrap(err, "could not register handler execution time metric"))

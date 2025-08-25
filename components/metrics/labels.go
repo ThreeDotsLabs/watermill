@@ -46,3 +46,30 @@ func labelsFromCtx(ctx context.Context, labels ...string) prometheus.Labels {
 
 	return ctxLabels
 }
+
+type LabelComputeValueFn func(msgCtx context.Context) string
+
+type MetricLabel struct {
+	Label          string
+	ComputeValueFn LabelComputeValueFn
+}
+
+func toLabelsSlice(baseLabels []string, customs []MetricLabel) []string {
+	labels := make([]string, len(baseLabels), len(baseLabels)+len(customs))
+	copy(labels, baseLabels)
+	for _, label := range customs {
+		//Check if the additional label is already in the base labels. We cannot have duplicate labels
+		//If it's in the base, just skip it as the compute function is going to overwrite the default value
+		contains := false
+		for _, baseLabel := range baseLabels {
+			if baseLabel == label.Label {
+				contains = true
+				break
+			}
+		}
+		if !contains {
+			labels = append(labels, label.Label)
+		}
+	}
+	return labels
+}

@@ -43,18 +43,19 @@ func AssertAllMessagesReceived(t *testing.T, sent message.Messages, received mes
 	sort.Strings(sentIDs)
 	sort.Strings(receivedIDs)
 
-	assert.Equal(
-		t,
-		len(sentIDs), len(receivedIDs),
-		"id's count is different: received: %d, sent: %d", len(receivedIDs), len(sentIDs),
-	)
+	if len(sentIDs) != len(receivedIDs) {
+		t.Errorf("id's count is different: received: %d, sent: %d", len(receivedIDs), len(sentIDs))
+	}
 
-	return assert.Equal(
-		t, sentIDs, receivedIDs,
-		"received different messages ID's, missing: %s, extra %s",
-		MissingMessages(sent, received),
-		MissingMessages(received, sent),
-	)
+	missing := MissingMessages(sent, received)
+	extra := MissingMessages(received, sent)
+
+	if len(missing) > 0 || len(extra) > 0 {
+		t.Errorf("received different messages ID's, missing: %s, extra %s", missing, extra)
+		return false
+	}
+
+	return true
 }
 
 // AssertMessagesPayloads check if received messages have the same payload as expected in expectedPayloads.

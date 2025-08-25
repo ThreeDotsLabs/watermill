@@ -62,6 +62,13 @@ func NewMessage(uuid string, payload Payload) *Message {
 	}
 }
 
+// NewMessageWithContext creates a new Message with given uuid, payload, and context.
+func NewMessageWithContext(ctx context.Context, uuid string, payload Payload) *Message {
+	msg := NewMessage(uuid, payload)
+	msg.SetContext(ctx)
+	return msg
+}
+
 type ackType int
 
 const (

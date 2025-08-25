@@ -15,10 +15,9 @@ import (
 	"testing"
 	"time"
 
-	internalSubscriber "github.com/ThreeDotsLabs/watermill/internal/subscriber"
-
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/internal"
+	internalSubscriber "github.com/ThreeDotsLabs/watermill/internal/subscriber"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/subscriber"
 
@@ -125,6 +124,9 @@ type Features struct {
 	// GenerateTopicFunc overrides standard topic name generation.
 	GenerateTopicFunc func(tctx TestContext) string
 
+	// GenerateIDFunc determines which function should be used for generating test IDs, NewTestID is used by default.
+	GenerateIDFunc func() TestID
+
 	// ForceShort forces running tests in short mode.
 	// It's useful for Pub/Subs that are slow or have some limitations.
 	ForceShort bool
@@ -161,9 +163,18 @@ func getTestName(testFunc interface{}) string {
 // TestID is a unique ID of a test.
 type TestID string
 
+func (t TestID) String() string {
+	return string(t)
+}
+
 // NewTestID returns a new unique TestID.
 func NewTestID() TestID {
 	return TestID(watermill.NewUUID())
+}
+
+// NewTestULID returns a new unique TestID using ULID.
+func NewTestULID() TestID {
+	return TestID(watermill.NewULID())
 }
 
 // TestContext is a collection of values that belong to a single test.
@@ -821,8 +832,8 @@ func TestConsumerGroups(
 	}
 	totalMessagesCount := 50
 
-	group1 := generateConsumerGroup(t, pubSubConstructor, topicName)
-	group2 := generateConsumerGroup(t, pubSubConstructor, topicName)
+	group1 := generateConsumerGroup(t, pubSubConstructor, topicName, tCtx)
+	group2 := generateConsumerGroup(t, pubSubConstructor, topicName, tCtx)
 
 	messagesToPublish := PublishSimpleMessages(t, totalMessagesCount, publisherPub, topicName)
 
@@ -905,13 +916,6 @@ func TestMessageCtx(
 	tCtx TestContext,
 	pubSubConstructor PubSubConstructor,
 ) {
-	if tCtx.Features.ExactlyOnceDelivery {
-		// with ExactlyOnce delivery (at least as implemented by NATS jetstream)
-		// the second message will never be received because the broker deduplicates
-		// by message ID.
-		t.Skip("ExactlyOnceDelivery test is not supported yet")
-	}
-
 	pub, sub := pubSubConstructor(t)
 	defer closePubSub(t, pub, sub)
 
@@ -920,35 +924,22 @@ func TestMessageCtx(
 		require.NoError(t, subscribeInitializer.SubscribeInitialize(topicName))
 	}
 
-	msg := message.NewMessage(watermill.NewUUID(), []byte("x"))
-
-	// ensuring that context is not propagated via pub/sub
-	ctx, ctxCancel := context.WithCancel(context.Background())
-	ctxCancel()
-	msg.SetContext(ctx)
-
-	require.NoError(t, publishWithRetry(pub, topicName, msg))
-	// this might actually be an error in some pubsubs (http), because we close the subscriber without ACK.
-	_ = pub.Publish(topicName, msg)
-
 	messages, err := sub.Subscribe(context.Background(), topicName)
 	require.NoError(t, err)
 
+	msg1 := message.NewMessage(watermill.NewUUID(), []byte("x"))
+	msg2 := message.NewMessage(watermill.NewUUID(), []byte("x"))
+
+	// this might actually be an error in some pubsubs (http), because we close the subscriber without ACK.
+	_ = pub.Publish(topicName, msg1)
+	_ = pub.Publish(topicName, msg2)
+
 	select {
 	case msg := <-messages:
-		ctx := msg.Context()
-
-		select {
-		case <-ctx.Done():
-			t.Fatal("context should not be canceled")
-		default:
-			// ok
-		}
-
 		require.True(t, msg.Ack())
 
 		select {
-		case <-ctx.Done():
+		case <-msg.Context().Done():
 			// ok
 		case <-time.After(defaultTimeout):
 			t.Fatal("context should be canceled after Ack")
@@ -959,19 +950,10 @@ func TestMessageCtx(
 
 	select {
 	case msg := <-messages:
-		ctx := msg.Context()
-
-		select {
-		case <-ctx.Done():
-			t.Fatal("context should not be canceled")
-		default:
-			// ok
-		}
-
 		go closePubSub(t, pub, sub)
 
 		select {
-		case <-ctx.Done():
+		case <-msg.Context().Done():
 			// ok
 		case <-time.After(defaultTimeout):
 			t.Fatal("context should be canceled after pubSub.Close()")
@@ -1026,7 +1008,6 @@ ClosedLoop:
 			msg.Nack()
 		case <-timeout:
 			t.Fatal("messages channel is not closed after ", defaultTimeout)
-			t.FailNow()
 		}
 		time.Sleep(time.Millisecond * 100)
 	}
@@ -1247,12 +1228,20 @@ func assertConsumerGroupReceivedMessages(
 	AssertAllMessagesReceived(t, expectedMessages, receivedMessages)
 }
 
-func testTopicName(tctx TestContext) string {
-	if tctx.Features.GenerateTopicFunc != nil {
-		return tctx.Features.GenerateTopicFunc(tctx)
+func testTopicName(tCtx TestContext) string {
+	if tCtx.Features.GenerateTopicFunc != nil {
+		return tCtx.Features.GenerateTopicFunc(tCtx)
 	}
 
-	return "topic-" + string(tctx.TestID)
+	return "topic-" + string(tCtx.TestID)
+}
+
+func newTestID(tCtx TestContext) TestID {
+	if tCtx.Features.GenerateIDFunc != nil {
+		return tCtx.Features.GenerateIDFunc()
+	}
+
+	return NewTestID()
 }
 
 func closePubSub(t *testing.T, pub message.Publisher, sub message.Subscriber) {
@@ -1263,8 +1252,8 @@ func closePubSub(t *testing.T, pub message.Publisher, sub message.Subscriber) {
 	require.NoError(t, err)
 }
 
-func generateConsumerGroup(t *testing.T, pubSubConstructor ConsumerGroupPubSubConstructor, topicName string) string {
-	groupName := "cg_" + watermill.NewUUID()
+func generateConsumerGroup(t *testing.T, pubSubConstructor ConsumerGroupPubSubConstructor, topicName string, tCtx TestContext) string {
+	groupName := "cg_" + newTestID(tCtx).String()
 
 	// create a pubsub to ensure that the consumer group exists
 	// for those providers that require subscription before publishing messages (e.g. Google Cloud PubSub)
