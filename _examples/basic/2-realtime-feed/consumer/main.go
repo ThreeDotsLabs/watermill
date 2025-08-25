@@ -7,10 +7,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/pkg/errors"
-
 	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill-kafka/v2/pkg/kafka"
+	"github.com/ThreeDotsLabs/watermill-kafka/v3/pkg/kafka"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
 	"github.com/ThreeDotsLabs/watermill/message/router/plugin"
@@ -150,7 +148,7 @@ func (p PostsCounter) Count(msg *message.Message) ([]*message.Message, error) {
 
 	newCount, err := p.countStorage.CountAdd()
 	if err != nil {
-		return nil, errors.Wrap(err, "cannot add count")
+		return nil, fmt.Errorf("cannot add count: %w", err)
 	}
 
 	producedMsg := postsCountUpdated{NewCount: newCount}
@@ -164,7 +162,7 @@ func (p PostsCounter) Count(msg *message.Message) ([]*message.Message, error) {
 
 // postAdded might look similar to the postAdded type from producer.
 // It's intentionally not imported here. We avoid coupling the services at the cost of duplication.
-// We don't need all of it's data either (content is not displayed on the feed).
+// We don't need all of its data either (content is not displayed on the feed).
 type postAdded struct {
 	OccurredOn time.Time `json:"occurred_on"`
 	Author     string    `json:"author"`
@@ -194,7 +192,7 @@ func (f FeedGenerator) UpdateFeed(message *message.Message) error {
 
 	err := f.feedStorage.AddToFeed(event.Title, event.Author, event.OccurredOn)
 	if err != nil {
-		return errors.Wrap(err, "cannot update feed")
+		return fmt.Errorf("cannot update feed: %w", err)
 	}
 
 	return nil

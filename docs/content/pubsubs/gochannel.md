@@ -1,20 +1,16 @@
 +++
-title = "Golang Channel"
+title = "Go Channel"
 description = "A Pub/Sub implemented on Golang goroutines and channels"
 date = 2019-07-06T22:30:00+02:00
 bref = "A Pub/Sub implemented on Golang goroutines and channels"
-weight = -100
-type = "docs"
-toc = false
+weight = 40
 +++
 
-### Golang Channel
-
-{{% render-md %}}
 {{% load-snippet-partial file="src-link/pubsub/gochannel/pubsub.go" first_line_contains="// GoChannel" last_line_contains="type GoChannel struct {" %}}
-{{% /render-md %}}
 
-#### Characteristics
+You can find a fully functional example with Go Channels in the [Watermill examples](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/pubsubs/go-channel).
+
+### Characteristics
 
 | Feature | Implements | Note |
 | ------- | ---------- | ---- |
@@ -23,27 +19,20 @@ toc = false
 | GuaranteedOrder | yes |  |
 | Persistent | no| |
 
-#### Configuration
+### Configuration
 
 You can inject configuration via the constructor.
 
-{{% render-md %}}
 {{% load-snippet-partial file="src-link/pubsub/gochannel/pubsub.go" first_line_contains="func NewGoChannel" last_line_contains="logger:" %}}
-{{% /render-md %}}
 
-#### Publishing
+### Publishing
 
-{{% render-md %}}
 {{% load-snippet-partial file="src-link/pubsub/gochannel/pubsub.go" first_line_contains="// Publish" last_line_contains="func (g *GoChannel) Publish" %}}
-{{% /render-md %}}
 
-#### Subscribing
+### Subscribing
 
-{{% render-md %}}
 {{% load-snippet-partial file="src-link/pubsub/gochannel/pubsub.go" first_line_contains="// Subscribe" last_line_contains="func (g *GoChannel) Subscribe" %}}
-{{% /render-md %}}
 
-#### Marshaler
+### Marshaler
 
 No marshaling is needed when sending messages within the process.
-

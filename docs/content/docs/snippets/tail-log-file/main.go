@@ -13,7 +13,7 @@ import (
 // this will `tail -f` a log file and publish an alert if a line fulfils some criterion
 
 func main() {
-	// if an alert is raised, the offending line will be publisher on this
+	// if an alert is raised, the offending line will be published on this
 	// this would be set to an actual publisher
 	var alertPublisher message.Publisher
 

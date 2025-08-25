@@ -1,0 +1,4 @@
+validation_cmd: "docker compose up"
+teardown_cmd: "docker compose down"
+timeout: 120
+expected_output: "A received message: [0-9a-f\\-]+, payload: Hello, world!"

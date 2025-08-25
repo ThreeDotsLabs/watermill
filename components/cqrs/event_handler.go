@@ -35,7 +35,10 @@ type genericEventHandler[T any] struct {
 
 // NewEventHandler creates a new EventHandler implementation based on provided function
 // and event type inferred from function argument.
-func NewEventHandler[T any](handlerName string, handleFunc func(ctx context.Context, event *T) error) EventHandler {
+func NewEventHandler[T any](
+	handlerName string,
+	handleFunc func(ctx context.Context, event *T) error,
+) EventHandler {
 	return &genericEventHandler[T]{
 		handleFunc:  handleFunc,
 		handlerName: handlerName,

@@ -7,7 +7,7 @@ import (
 	"net/http"
 
 	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill-sql/v2/pkg/sql"
+	"github.com/ThreeDotsLabs/watermill-sql/v4/pkg/sql"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -25,7 +25,7 @@ func main() {
 	r.Use(middleware.Logger)
 
 	publisher, err := sql.NewPublisher(
-		db,
+		sql.BeginnerFromStdSQL(db),
 		sql.PublisherConfig{
 			SchemaAdapter: sql.DefaultMySQLSchema{},
 		},
@@ -55,7 +55,10 @@ func main() {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	http.ListenAndServe(":8080", r)
+	err = http.ListenAndServe(":8080", r)
+	if err != nil {
+		panic(err)
+	}
 }
 
 type messagePayload struct {

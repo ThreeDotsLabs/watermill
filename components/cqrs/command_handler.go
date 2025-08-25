@@ -34,7 +34,10 @@ type genericCommandHandler[Command any] struct {
 
 // NewCommandHandler creates a new CommandHandler implementation based on provided function
 // and command type inferred from function argument.
-func NewCommandHandler[Command any](handlerName string, handleFunc func(ctx context.Context, cmd *Command) error) CommandHandler {
+func NewCommandHandler[Command any](
+	handlerName string,
+	handleFunc func(ctx context.Context, cmd *Command) error,
+) CommandHandler {
 	return &genericCommandHandler[Command]{
 		handleFunc:  handleFunc,
 		handlerName: handlerName,

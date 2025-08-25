@@ -6,6 +6,13 @@ import (
 )
 
 // FullyQualifiedStructName name returns object name in format [package].[type name].
+// For example, for the struct:
+//
+//	package events
+//	type UserCreated struct {}
+//
+// it will return "events.UserCreated".
+//
 // It ignores if the value is a pointer or not.
 func FullyQualifiedStructName(v interface{}) string {
 	s := fmt.Sprintf("%T", v)
@@ -15,6 +22,13 @@ func FullyQualifiedStructName(v interface{}) string {
 }
 
 // StructName name returns struct name in format [type name].
+// For example, for the struct:
+//
+//	package events
+//	type UserCreated struct {}
+//
+// it will return "UserCreated".
+//
 // It ignores if the value is a pointer or not.
 func StructName(v interface{}) string {
 	segments := strings.Split(fmt.Sprintf("%T", v), ".")

@@ -1,8 +1,11 @@
 .idea
 vendor
 docs/themes/
+docs/node_modules/
 docs/public/
 docs/content/src-link
+docs/content/middleware
+docs/hugo_stats.json
 *.out
 *.log
 .mod-cache

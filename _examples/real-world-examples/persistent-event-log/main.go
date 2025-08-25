@@ -11,7 +11,7 @@ import (
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill-googlecloud/pkg/googlecloud"
-	"github.com/ThreeDotsLabs/watermill-sql/v2/pkg/sql"
+	"github.com/ThreeDotsLabs/watermill-sql/v4/pkg/sql"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
 	"github.com/ThreeDotsLabs/watermill/message/router/plugin"
@@ -90,7 +90,9 @@ func createDB() *stdSQL.DB {
 
 func createSubscriber() message.Subscriber {
 	sub, err := googlecloud.NewSubscriber(
-		googlecloud.SubscriberConfig{},
+		googlecloud.SubscriberConfig{
+			ProjectID: "example",
+		},
 		logger,
 	)
 	if err != nil {
@@ -102,7 +104,7 @@ func createSubscriber() message.Subscriber {
 
 func createPublisher(db *stdSQL.DB) message.Publisher {
 	pub, err := sql.NewPublisher(
-		db,
+		sql.BeginnerFromStdSQL(db),
 		sql.PublisherConfig{
 			SchemaAdapter:        sql.DefaultMySQLSchema{},
 			AutoInitializeSchema: true,
@@ -117,7 +119,9 @@ func createPublisher(db *stdSQL.DB) message.Publisher {
 }
 
 func simulateEvents() {
-	pub, err := googlecloud.NewPublisher(googlecloud.PublisherConfig{}, logger)
+	pub, err := googlecloud.NewPublisher(googlecloud.PublisherConfig{
+		ProjectID: "example",
+	}, logger)
 	if err != nil {
 		panic(err)
 	}

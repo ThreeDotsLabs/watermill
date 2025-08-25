@@ -20,7 +20,7 @@ type EventGroupProcessorConfig struct {
 	SubscriberConstructor EventGroupProcessorSubscriberConstructorFn
 
 	// OnHandle is called before handling event.
-	// OnHandle works in a similar way to middlewares: you can inject additional logic before and after handling a event.
+	// OnHandle works in a similar way to middlewares: you can inject additional logic before and after handling an event.
 	//
 	// Because of that, you need to explicitly call params.Handler.Handle() to handle the event.
 	//
@@ -133,6 +133,10 @@ func NewEventGroupProcessorWithConfig(router *message.Router, config EventGroupP
 //
 // Compared to AddHandlers, AddHandlersGroup allows to have multiple handlers that share the same subscriber instance.
 //
+// It's allowed to have multiple handlers for the same event type in one group, but we recommend to not do that.
+// Please keep in mind that those handlers will be processed within the same message.
+// If first handler succeeds and the second fails, the message will be re-delivered and the first will be re-executed.
+//
 // Handlers group needs to be unique within the EventProcessor instance.
 //
 // Handler group name is used as handler's name in router.
@@ -192,9 +196,7 @@ func (p EventGroupProcessor) addHandlerToRouter(r *message.Router, groupName str
 		return errors.Wrap(err, "cannot create subscriber for event processor")
 	}
 
-	if err := addHandlerToRouter(p.config.Logger, r, groupName, topicName, handlerFunc, subscriber); err != nil {
-		return err
-	}
+	_ = addHandlerToRouter(p.config.Logger, r, groupName, topicName, handlerFunc, subscriber)
 
 	return nil
 }
@@ -202,6 +204,8 @@ func (p EventGroupProcessor) addHandlerToRouter(r *message.Router, groupName str
 func (p EventGroupProcessor) routerHandlerGroupFunc(handlers []GroupEventHandler, groupName string, logger watermill.LoggerAdapter) (message.NoPublishHandlerFunc, error) {
 	return func(msg *message.Message) error {
 		messageEventName := p.config.Marshaler.NameFromMessage(msg)
+
+		handledAnyEvent := false
 
 		for _, handler := range handlers {
 			initEvent := handler.NewEvent()
@@ -223,12 +227,15 @@ func (p EventGroupProcessor) routerHandlerGroupFunc(handlers []GroupEventHandler
 				"received_event_type": messageEventName,
 			})
 
+			ctx := CtxWithOriginalMessage(msg.Context(), msg)
+			msg.SetContext(ctx)
+
 			if err := p.config.Marshaler.Unmarshal(msg, event); err != nil {
 				return err
 			}
 
 			handle := func(params EventGroupProcessorOnHandleParams) error {
-				return params.Handler.Handle(params.Message.Context(), params.Event)
+				return params.Handler.Handle(ctx, params.Event)
 			}
 			if p.config.OnHandle != nil {
 				handle = p.config.OnHandle
@@ -246,6 +253,9 @@ func (p EventGroupProcessor) routerHandlerGroupFunc(handlers []GroupEventHandler
 				return err
 			}
 
+			handledAnyEvent = true
+		}
+		if handledAnyEvent {
 			return nil
 		}
 

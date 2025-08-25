@@ -13,7 +13,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill-sql/v2/pkg/sql"
+	"github.com/ThreeDotsLabs/watermill-sql/v4/pkg/sql"
 )
 
 const topic = "counter"
@@ -37,7 +37,7 @@ type messagePayload struct {
 
 func runWatermillRouter(db *stdSQL.DB, logger watermill.LoggerAdapter) {
 	subscriber, err := sql.NewSubscriber(
-		db,
+		sql.BeginnerFromStdSQL(db),
 		sql.SubscriberConfig{
 			SchemaAdapter:    sql.DefaultMySQLSchema{},
 			OffsetsAdapter:   sql.DefaultMySQLOffsetsAdapter{},
@@ -93,7 +93,7 @@ func processMessage(msg *message.Message) error {
 	return nil
 }
 
-func updateDbCounter(ctx context.Context, tx *stdSQL.Tx, counterUUD string, counterValue int) error {
+func updateDbCounter(ctx context.Context, tx sql.Tx, counterUUD string, counterValue int) error {
 	_, err := tx.ExecContext(
 		ctx,
 		"INSERT INTO counter (id, value) VALUES (?, ?) ON DUPLICATE KEY UPDATE value = ?",
@@ -108,17 +108,20 @@ func updateDbCounter(ctx context.Context, tx *stdSQL.Tx, counterUUD string, coun
 	return nil
 }
 
-func dbCounterValue(ctx context.Context, tx *stdSQL.Tx, counterUUID string) (int, error) {
+func dbCounterValue(ctx context.Context, tx sql.Tx, counterUUID string) (int, error) {
 	var counterValue int
-	row := tx.QueryRowContext(ctx, "SELECT value from counter WHERE id = ?", counterUUID)
+	rows, err := tx.QueryContext(ctx, "SELECT value from counter WHERE id = ?", counterUUID)
+	if err != nil {
+		return 0, errors.Wrap(err, "can't get counter value")
+	}
 
-	if err := row.Scan(&counterValue); err != nil {
-		switch err {
-		case stdSQL.ErrNoRows:
-			return 0, nil
-		default:
-			return 0, errors.Wrap(err, "can't get counter value")
-		}
+	if !rows.Next() {
+		return 0, nil
+	}
+
+	err = rows.Scan(&counterValue)
+	if err != nil {
+		return 0, errors.Wrap(err, "can't get counter value")
 	}
 
 	return counterValue, nil

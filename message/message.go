@@ -17,8 +17,13 @@ type Payload []byte
 
 // Message is the basic transfer unit.
 // Messages are emitted by Publishers and received by Subscribers.
+//
+// A publisher can modify the message during publishing, e.g. can alter the metadata.
+// Avoid modifying the message in parallel with publishing, as it can lead to data races.
+// In general, a message should be passed to a single Publish and then considered immutable.
+// If needed, use the Copy method to create a new message.
 type Message struct {
-	// UUID is a unique identifier of message.
+	// UUID is a unique identifier of the message.
 	//
 	// It is only used by Watermill for debugging.
 	// UUID can be empty.
@@ -35,9 +40,9 @@ type Message struct {
 	// Payload is the message's payload.
 	Payload Payload
 
-	// ack is closed, when acknowledge is received.
+	// ack is closed when acknowledge is received.
 	ack chan struct{}
-	// noACk is closed, when negative acknowledge is received.
+	// noAck is closed when negative acknowledge is received.
 	noAck chan struct{}
 
 	ackMutex    sync.Mutex
@@ -55,6 +60,13 @@ func NewMessage(uuid string, payload Payload) *Message {
 		ack:      make(chan struct{}),
 		noAck:    make(chan struct{}),
 	}
+}
+
+// NewMessageWithContext creates a new Message with given uuid, payload, and context.
+func NewMessageWithContext(ctx context.Context, uuid string, payload Payload) *Message {
+	msg := NewMessage(uuid, payload)
+	msg.SetContext(ctx)
+	return msg
 }
 
 type ackType int

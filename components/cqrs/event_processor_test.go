@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/pkg/errors"
 
@@ -473,4 +474,66 @@ func TestEventProcessor_AddHandlersToRouter_without_disableRouterAutoAddHandlers
 
 	err = cp.AddHandlersToRouter(router)
 	assert.ErrorContains(t, err, "AddHandlersToRouter should be called only when using deprecated NewEventProcessor")
+}
+
+func TestEventProcessor_original_msg_set_to_ctx(t *testing.T) {
+	ts := NewTestServices()
+
+	msg, err := ts.Marshaler.Marshal(&TestEvent{})
+	require.NoError(t, err)
+
+	mockSub := &mockSubscriber{
+		MessagesToSend: []*message.Message{
+			msg,
+		},
+	}
+
+	router, err := message.NewRouter(message.RouterConfig{}, ts.Logger)
+	require.NoError(t, err)
+
+	cp, err := cqrs.NewEventProcessorWithConfig(
+		router,
+		cqrs.EventProcessorConfig{
+			GenerateSubscribeTopic: func(params cqrs.EventProcessorGenerateSubscribeTopicParams) (string, error) {
+				return "events", nil
+			},
+			SubscriberConstructor: func(params cqrs.EventProcessorSubscriberConstructorParams) (message.Subscriber, error) {
+				return mockSub, nil
+			},
+			AckOnUnknownEvent: true,
+			Marshaler:         ts.Marshaler,
+			Logger:            ts.Logger,
+		},
+	)
+	require.NoError(t, err)
+
+	var msgFromCtx *message.Message
+
+	err = cp.AddHandlers(cqrs.NewEventHandler(
+		"handler", func(ctx context.Context, cmd *TestEvent) error {
+			msgFromCtx = cqrs.OriginalMessageFromCtx(ctx)
+			return nil
+		}),
+	)
+	require.NoError(t, err)
+
+	go func() {
+		err := router.Run(context.Background())
+		assert.NoError(t, err)
+	}()
+
+	<-router.Running()
+
+	select {
+	case <-msg.Acked():
+		// ok
+	case <-msg.Nacked():
+		// nack received
+		t.Fatal("nack received, message should be acked")
+	case <-time.After(1 * time.Second):
+		t.Fatal("timeout waiting for ack")
+	}
+
+	require.NotNil(t, msgFromCtx)
+	assert.Equal(t, msg, msgFromCtx)
 }
