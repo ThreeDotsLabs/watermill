@@ -47,11 +47,11 @@ func labelsFromCtx(ctx context.Context, labels ...string) prometheus.Labels {
 	return ctxLabels
 }
 
-type LabelComputeFn func(msgCtx context.Context) string
+type LabelComputeValueFn func(msgCtx context.Context) string
 
 type MetricLabel struct {
-	Label     string
-	ComputeFn LabelComputeFn
+	Label          string
+	ComputeValueFn LabelComputeValueFn
 }
 
 func toLabelsSlice(baseLabels []string, customs []MetricLabel) []string {

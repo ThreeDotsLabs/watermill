@@ -35,7 +35,7 @@ func (s SubscriberPrometheusMetricsDecorator) recordMetrics(msg *message.Message
 		labels[labelKeyHandlerName] = labelValueNoHandler
 	}
 	for _, lb := range s.additionalLabels {
-		labels[lb.Label] = lb.ComputeFn(ctx)
+		labels[lb.Label] = lb.ComputeValueFn(ctx)
 	}
 
 	go func() {

@@ -39,7 +39,7 @@ func (m PublisherPrometheusMetricsDecorator) Publish(topic string, messages ...*
 		labels[labelKeyHandlerName] = labelValueNoHandler
 	}
 	for _, lb := range m.additionalLabels {
-		labels[lb.Label] = lb.ComputeFn(ctx)
+		labels[lb.Label] = lb.ComputeValueFn(ctx)
 	}
 	start := time.Now()
 

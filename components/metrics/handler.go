@@ -47,7 +47,7 @@ func (m HandlerPrometheusMetricsMiddleware) Middleware(h message.HandlerFunc) me
 			labelKeyHandlerName: message.HandlerNameFromCtx(ctx),
 		}
 		for _, lb := range m.additionalLabels {
-			labels[lb.Label] = lb.ComputeFn(ctx)
+			labels[lb.Label] = lb.ComputeValueFn(ctx)
 		}
 
 		defer func() {
