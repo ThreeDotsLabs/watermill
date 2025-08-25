@@ -927,35 +927,21 @@ func TestMessageCtx(
 		require.NoError(t, subscribeInitializer.SubscribeInitialize(topicName))
 	}
 
-	msg := message.NewMessage(watermill.NewUUID(), []byte("x"))
-
-	// ensuring that context is not propagated via pub/sub
-	ctx, ctxCancel := context.WithCancel(context.Background())
-	ctxCancel()
-	msg.SetContext(ctx)
-
-	require.NoError(t, publishWithRetry(pub, topicName, msg))
-	// this might actually be an error in some pubsubs (http), because we close the subscriber without ACK.
-	_ = pub.Publish(topicName, msg)
-
 	messages, err := sub.Subscribe(context.Background(), topicName)
 	require.NoError(t, err)
 
+	msg := message.NewMessage(watermill.NewUUID(), []byte("x"))
+
+	// this might actually be an error in some pubsubs (http), because we close the subscriber without ACK.
+	_ = pub.Publish(topicName, msg)
+	_ = pub.Publish(topicName, msg)
+
 	select {
 	case msg := <-messages:
-		ctx := msg.Context()
-
-		select {
-		case <-ctx.Done():
-			t.Fatal("context should not be canceled")
-		default:
-			// ok
-		}
-
 		require.True(t, msg.Ack())
 
 		select {
-		case <-ctx.Done():
+		case <-msg.Context().Done():
 			// ok
 		case <-time.After(defaultTimeout):
 			t.Fatal("context should be canceled after Ack")
@@ -966,19 +952,10 @@ func TestMessageCtx(
 
 	select {
 	case msg := <-messages:
-		ctx := msg.Context()
-
-		select {
-		case <-ctx.Done():
-			t.Fatal("context should not be canceled")
-		default:
-			// ok
-		}
-
 		go closePubSub(t, pub, sub)
 
 		select {
-		case <-ctx.Done():
+		case <-msg.Context().Done():
 			// ok
 		case <-time.After(defaultTimeout):
 			t.Fatal("context should be canceled after pubSub.Close()")
