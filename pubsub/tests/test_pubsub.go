@@ -938,11 +938,13 @@ func TestMessageCtx(
 	case msg := <-messages:
 		require.True(t, msg.Ack())
 
-		select {
-		case <-msg.Context().Done():
-			// ok
-		case <-time.After(defaultTimeout):
-			t.Fatal("context should be canceled after Ack")
+		if !tCtx.Features.ContextPreserved {
+			select {
+			case <-msg.Context().Done():
+				// ok
+			case <-time.After(defaultTimeout):
+				t.Fatal("context should be canceled after Ack")
+			}
 		}
 	case <-time.After(defaultTimeout):
 		t.Fatal("no message received")
@@ -952,11 +954,13 @@ func TestMessageCtx(
 	case msg := <-messages:
 		go closePubSub(t, pub, sub)
 
-		select {
-		case <-msg.Context().Done():
-			// ok
-		case <-time.After(defaultTimeout):
-			t.Fatal("context should be canceled after pubSub.Close()")
+		if !tCtx.Features.ContextPreserved {
+			select {
+			case <-msg.Context().Done():
+				// ok
+			case <-time.After(defaultTimeout):
+				t.Fatal("context should be canceled after pubSub.Close()")
+			}
 		}
 	case <-time.After(defaultTimeout):
 		t.Fatal("no message received")
