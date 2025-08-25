@@ -34,4 +34,10 @@ When a message is processed, you should send an [`Ack()`]({{< ref "#ack" >}}) or
 
 Message contains the standard library context, just like an HTTP request.
 
+This context is used to propagate cancellation and deadlines when publishing and processing messages.
+
+You can set the context using the `SetContext` method or the `NewMessageWithContext` constructor.
+
+{{% load-snippet-partial file="src-link/message/message.go" first_line_contains="// NewMessageWithContext" last_line_contains="}" %}}
+
 {{% load-snippet-partial file="src-link/message/message.go" first_line_contains="// Context" last_line_contains="func (m *Message) SetContext" padding_after="2" %}}
