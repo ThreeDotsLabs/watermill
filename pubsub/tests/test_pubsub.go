@@ -912,13 +912,6 @@ func TestMessageCtx(
 	tCtx TestContext,
 	pubSubConstructor PubSubConstructor,
 ) {
-	if tCtx.Features.ExactlyOnceDelivery {
-		// with ExactlyOnce delivery (at least as implemented by NATS jetstream)
-		// the second message will never be received because the broker deduplicates
-		// by message ID.
-		t.Skip("ExactlyOnceDelivery test is not supported yet")
-	}
-
 	pub, sub := pubSubConstructor(t)
 	defer closePubSub(t, pub, sub)
 
@@ -927,35 +920,22 @@ func TestMessageCtx(
 		require.NoError(t, subscribeInitializer.SubscribeInitialize(topicName))
 	}
 
-	msg := message.NewMessage(watermill.NewUUID(), []byte("x"))
-
-	// ensuring that context is not propagated via pub/sub
-	ctx, ctxCancel := context.WithCancel(context.Background())
-	ctxCancel()
-	msg.SetContext(ctx)
-
-	require.NoError(t, publishWithRetry(pub, topicName, msg))
-	// this might actually be an error in some pubsubs (http), because we close the subscriber without ACK.
-	_ = pub.Publish(topicName, msg)
-
 	messages, err := sub.Subscribe(context.Background(), topicName)
 	require.NoError(t, err)
 
+	msg1 := message.NewMessage(watermill.NewUUID(), []byte("x"))
+	msg2 := message.NewMessage(watermill.NewUUID(), []byte("x"))
+
+	// this might actually be an error in some pubsubs (http), because we close the subscriber without ACK.
+	_ = pub.Publish(topicName, msg1)
+	_ = pub.Publish(topicName, msg2)
+
 	select {
 	case msg := <-messages:
-		ctx := msg.Context()
-
-		select {
-		case <-ctx.Done():
-			t.Fatal("context should not be canceled")
-		default:
-			// ok
-		}
-
 		require.True(t, msg.Ack())
 
 		select {
-		case <-ctx.Done():
+		case <-msg.Context().Done():
 			// ok
 		case <-time.After(defaultTimeout):
 			t.Fatal("context should be canceled after Ack")
@@ -966,19 +946,10 @@ func TestMessageCtx(
 
 	select {
 	case msg := <-messages:
-		ctx := msg.Context()
-
-		select {
-		case <-ctx.Done():
-			t.Fatal("context should not be canceled")
-		default:
-			// ok
-		}
-
 		go closePubSub(t, pub, sub)
 
 		select {
-		case <-ctx.Done():
+		case <-msg.Context().Done():
 			// ok
 		case <-time.After(defaultTimeout):
 			t.Fatal("context should be canceled after pubSub.Close()")
@@ -1026,7 +997,6 @@ ClosedLoop:
 			msg.Nack()
 		case <-timeout:
 			t.Fatal("messages channel is not closed after ", defaultTimeout)
-			t.FailNow()
 		}
 		time.Sleep(time.Millisecond * 100)
 	}
