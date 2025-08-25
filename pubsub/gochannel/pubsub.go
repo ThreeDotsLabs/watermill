@@ -366,7 +366,8 @@ func (s *subscriber) Close() {
 func (s *subscriber) sendMessageToSubscriber(msg *message.Message, logFields watermill.LogFields) {
 	ctx := msg.Context()
 
-	//This is getting the context from the message, not the subscriber
+	// By default, the subscriber uses the context from the message and it's canceled right after it's processed.
+	// If the message's context is preserved, the top-level client is responsible for canceling it.
 	if !s.preserveContext {
 		var cancelCtx context.CancelFunc
 		ctx, cancelCtx = context.WithCancel(s.ctx)
