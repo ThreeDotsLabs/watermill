@@ -4,8 +4,6 @@ import (
 	"context"
 
 	"github.com/ThreeDotsLabs/watermill/message"
-
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 const (
@@ -26,7 +24,7 @@ var (
 	}
 )
 
-func labelsFromCtx(ctx context.Context, labels ...string) prometheus.Labels {
+func labelsFromCtx(ctx context.Context, labels ...string) map[string]string {
 	ctxLabels := map[string]string{}
 
 	for _, l := range labels {
