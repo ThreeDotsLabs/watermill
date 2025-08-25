@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"context"
 	"sort"
 	"testing"
 
@@ -92,4 +93,14 @@ func AssertMessagesMetadata(t *testing.T, key string, expectedValues map[string]
 	}
 
 	return ok
+}
+
+// AssertAllMessagesHaveSameContext checks if context of all received messages is the same as in expectedValues, if PreserveContext is enabled.
+func AssertAllMessagesHaveSameContext(t *testing.T, contextKeyString string, expectedValues map[string]context.Context, received []*message.Message) {
+	assert.Len(t, received, len(expectedValues))
+	for _, msg := range received {
+		expectedValue := expectedValues[msg.UUID].Value(contextKey(contextKeyString)).(string)
+		actualValue := msg.Context().Value(contextKey(contextKeyString))
+		assert.Equal(t, expectedValue, actualValue)
+	}
 }

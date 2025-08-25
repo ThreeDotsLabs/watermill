@@ -130,6 +130,10 @@ type Features struct {
 	// ForceShort forces running tests in short mode.
 	// It's useful for Pub/Subs that are slow or have some limitations.
 	ForceShort bool
+
+	// ContextPreserved should be set to true if the Pub/Sub implementation preserves the context
+	// of the message when it's published and consumed.
+	ContextPreserved bool
 }
 
 // RunOnlyFastTests returns true if -short flag was provided -race was not provided.
@@ -934,11 +938,13 @@ func TestMessageCtx(
 	case msg := <-messages:
 		require.True(t, msg.Ack())
 
-		select {
-		case <-msg.Context().Done():
-			// ok
-		case <-time.After(defaultTimeout):
-			t.Fatal("context should be canceled after Ack")
+		if !tCtx.Features.ContextPreserved {
+			select {
+			case <-msg.Context().Done():
+				// ok
+			case <-time.After(defaultTimeout):
+				t.Fatal("context should be canceled after Ack")
+			}
 		}
 	case <-time.After(defaultTimeout):
 		t.Fatal("no message received")
@@ -948,11 +954,13 @@ func TestMessageCtx(
 	case msg := <-messages:
 		go closePubSub(t, pub, sub)
 
-		select {
-		case <-msg.Context().Done():
-			// ok
-		case <-time.After(defaultTimeout):
-			t.Fatal("context should be canceled after pubSub.Close()")
+		if !tCtx.Features.ContextPreserved {
+			select {
+			case <-msg.Context().Done():
+				// ok
+			case <-time.After(defaultTimeout):
+				t.Fatal("context should be canceled after pubSub.Close()")
+			}
 		}
 	case <-time.After(defaultTimeout):
 		t.Fatal("no message received")
@@ -979,7 +987,14 @@ func TestSubscribeCtx(
 	if subscribeInitializer, ok := sub.(message.SubscribeInitializer); ok {
 		require.NoError(t, subscribeInitializer.SubscribeInitialize(topicName))
 	}
-	publishedMessages := PublishSimpleMessages(t, messagesCount, pub, topicName)
+
+	var publishedMessages message.Messages
+	var contextKeyString = "abc"
+	if tCtx.Features.ContextPreserved {
+		publishedMessages = PublishSimpleMessagesWithContext(t, messagesCount, contextKeyString, pub, topicName)
+	} else {
+		publishedMessages = PublishSimpleMessages(t, messagesCount, pub, topicName)
+	}
 
 	msgsToCancel, err := sub.Subscribe(ctxWithCancel, topicName)
 	require.NoError(t, err)
@@ -1002,14 +1017,24 @@ ClosedLoop:
 	}
 
 	ctx := context.WithValue(context.Background(), contextKey("foo"), "bar")
+
+	// For mocking the output of pub-subs where context is preserved vs not preserved
+	expectedContexts := make(map[string]context.Context)
+	for _, msg := range publishedMessages {
+		if tCtx.Features.ContextPreserved {
+			expectedContexts[msg.UUID] = msg.Context()
+		} else {
+			expectedContexts[msg.UUID] = ctx
+		}
+	}
+
 	msgs, err := sub.Subscribe(ctx, topicName)
 	require.NoError(t, err)
 
 	receivedMessages, _ := bulkRead(tCtx, msgs, messagesCount, defaultTimeout)
 	AssertAllMessagesReceived(t, publishedMessages, receivedMessages)
-
-	for _, msg := range receivedMessages {
-		assert.EqualValues(t, "bar", msg.Context().Value(contextKey("foo")))
+	if tCtx.Features.ContextPreserved {
+		AssertAllMessagesHaveSameContext(t, contextKeyString, expectedContexts, receivedMessages)
 	}
 }
 
@@ -1255,6 +1280,24 @@ func PublishSimpleMessages(t *testing.T, messagesCount int, publisher message.Pu
 		id := watermill.NewUUID()
 
 		msg := message.NewMessage(id, []byte("x"))
+		messagesToPublish = append(messagesToPublish, msg)
+
+		err := publishWithRetry(publisher, topicName, msg)
+		require.NoError(t, err, "cannot publish messages")
+	}
+
+	return messagesToPublish
+}
+
+// PublishSimpleMessagesWithContext publishes provided number of simple messages without a payload, but custom context
+func PublishSimpleMessagesWithContext(t *testing.T, messagesCount int, contextKeyString string, publisher message.Publisher, topicName string) message.Messages {
+	var messagesToPublish []*message.Message
+
+	for i := 0; i < messagesCount; i++ {
+		id := watermill.NewUUID()
+
+		msg := message.NewMessage(id, nil)
+		msg.SetContext(context.WithValue(context.Background(), contextKey(contextKeyString), "bar"+strconv.Itoa(i)))
 		messagesToPublish = append(messagesToPublish, msg)
 
 		err := publishWithRetry(publisher, topicName, msg)

@@ -26,6 +26,11 @@ type Config struct {
 	// When true, Publish will block until subscriber Ack's the message.
 	// If there are no subscribers, Publish will not block (also when Persistent is true).
 	BlockPublishUntilSubscriberAck bool
+
+	// PreserveContext is a flag that determines if the context should be preserved when sending messages to subscribers.
+	// This behavior is different from other implementations of Publishers where data travels over the network,
+	// hence context can't be preserved in those cases
+	PreserveContext bool
 }
 
 // GoChannel is the simplest Pub/Sub implementation.
@@ -89,7 +94,11 @@ func (g *GoChannel) Publish(topic string, messages ...*message.Message) error {
 
 	messagesToPublish := make(message.Messages, len(messages))
 	for i, msg := range messages {
-		messagesToPublish[i] = msg.Copy()
+		if g.config.PreserveContext {
+			messagesToPublish[i] = msg.CopyWithContext()
+		} else {
+			messagesToPublish[i] = msg.Copy()
+		}
 	}
 
 	g.subscribersLock.RLock()
@@ -193,11 +202,12 @@ func (g *GoChannel) Subscribe(ctx context.Context, topic string) (<-chan *messag
 	subLock.(*sync.Mutex).Lock()
 
 	s := &subscriber{
-		ctx:           ctx,
-		uuid:          watermill.NewUUID(),
-		outputChannel: make(chan *message.Message, g.config.OutputChannelBuffer),
-		logger:        g.logger,
-		closing:       make(chan struct{}),
+		ctx:             ctx,
+		uuid:            watermill.NewUUID(),
+		outputChannel:   make(chan *message.Message, g.config.OutputChannelBuffer),
+		logger:          g.logger,
+		closing:         make(chan struct{}),
+		preserveContext: g.config.PreserveContext,
 	}
 
 	go func(s *subscriber, g *GoChannel) {
@@ -337,6 +347,8 @@ type subscriber struct {
 	logger  watermill.LoggerAdapter
 	closed  bool
 	closing chan struct{}
+
+	preserveContext bool
 }
 
 func (s *subscriber) Close() {
@@ -358,8 +370,15 @@ func (s *subscriber) Close() {
 }
 
 func (s *subscriber) sendMessageToSubscriber(msg *message.Message, logFields watermill.LogFields) {
-	ctx, cancelCtx := context.WithCancel(s.ctx)
-	defer cancelCtx()
+	ctx := msg.Context()
+
+	// By default, the subscriber uses the context from the message and it's canceled right after it's processed.
+	// If the message's context is preserved, the top-level client is responsible for canceling it.
+	if !s.preserveContext {
+		var cancelCtx context.CancelFunc
+		ctx, cancelCtx = context.WithCancel(s.ctx)
+		defer cancelCtx()
+	}
 
 SendToSubscriber:
 	for {
