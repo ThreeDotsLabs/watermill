@@ -46,12 +46,20 @@ type Retry struct {
 	// If ShouldRetry returns false, the retry will not be attempted.
 	ShouldRetry func(params RetryParams) bool
 
+	// ResetContextOnRetry indicates whether the message context should be reset on each retry attempt.
+	// See more: https://github.com/ThreeDotsLabs/watermill/issues/467
+	//
+	// This is not enabled by default to keep backward compatibility
+	// (in theory, someone may want to preserve context values between retries).
+	ResetContextOnRetry bool
+
 	Logger watermill.LoggerAdapter
 }
 
 // Middleware returns the Retry middleware.
 func (r Retry) Middleware(h message.HandlerFunc) message.HandlerFunc {
 	return func(msg *message.Message) ([]*message.Message, error) {
+		originalCtx := msg.Context()
 		retryNum := 0
 
 		expBackoff := backoff.NewExponentialBackOff()
@@ -64,8 +72,6 @@ func (r Retry) Middleware(h message.HandlerFunc) message.HandlerFunc {
 		retryBackoff := backoff.WithMaxTries(uint(r.MaxRetries + 1))
 
 		maxElapsedBackoff := backoff.WithMaxElapsedTime(r.MaxElapsedTime)
-
-		ctx := msg.Context()
 
 		// notification: called on a failed retry attempt.
 		notification := func(err error, delay time.Duration) {
@@ -81,9 +87,20 @@ func (r Retry) Middleware(h message.HandlerFunc) message.HandlerFunc {
 		// operation: the function that will be retried.
 		operation := func() ([]*message.Message, error) {
 			select {
-			case <-ctx.Done():
-				return nil, ctx.Err()
+			case <-originalCtx.Done():
+				return nil, originalCtx.Err()
 			default:
+				if r.ResetContextOnRetry {
+					// message is passed as a pointer, so it's context can be canceled
+					// by the previous attempts -> it will break retries, because any
+					// underlying logic that relies on the context will fail.
+					// see more: https://github.com/ThreeDotsLabs/watermill/issues/467
+					//
+					// to avoid this, we need to reset the original context on each attempt
+					// we may lose context value that was set by the previous attempt
+					msg.SetContext(originalCtx)
+				}
+
 				producedMessages, err := h(msg)
 				if err == nil {
 					return producedMessages, nil
@@ -108,7 +125,7 @@ func (r Retry) Middleware(h message.HandlerFunc) message.HandlerFunc {
 		}
 
 		producedMessages, retryErr := backoff.Retry(
-			ctx,
+			originalCtx,
 			operation,
 			backoff.WithBackOff(expBackoff),
 			retryBackoff,
