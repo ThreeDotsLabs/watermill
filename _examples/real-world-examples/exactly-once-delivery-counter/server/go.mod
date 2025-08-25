@@ -1,6 +1,6 @@
 module exactly-once-delivery
 
-go 1.23
+go 1.23.0
 
 toolchain go1.23.4
 
@@ -23,6 +23,6 @@ require (
 	github.com/oklog/ulid v1.3.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/sony/gobreaker v1.0.0 // indirect
-	golang.org/x/crypto v0.31.0 // indirect
-	golang.org/x/text v0.21.0 // indirect
+	golang.org/x/crypto v0.35.0 // indirect
+	golang.org/x/text v0.22.0 // indirect
 )
