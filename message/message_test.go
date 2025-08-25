@@ -113,6 +113,8 @@ func TestMessage_Copy(t *testing.T) {
 	assert.True(t, msg.Equals(msgCopy))
 }
 
+type ctxKey string
+
 func TestMessage_CopyWithContext(t *testing.T) {
 	msg := message.NewMessage("1", []byte("foo"))
 	testCtx := context.Background()
@@ -126,12 +128,10 @@ func TestMessage_CopyWithContext(t *testing.T) {
 	assert.True(t, msg.Equals(msgCopy))
 }
 
-type ctxKey string
-
 func TestMessage_CopyWithContextAndMetadata(t *testing.T) {
 	msg := message.NewMessage("1", []byte("foo"))
 	testCtx := context.Background()
-	testCtx = context.WithValue(testCtx, "foo", "bar")
+	testCtx = context.WithValue(testCtx, ctxKey("foo"), "bar")
 	msg.SetContext(testCtx)
 	msg.Metadata.Set("foo", "bar")
 	msgCopy := msg.CopyWithContext()
@@ -139,7 +139,7 @@ func TestMessage_CopyWithContextAndMetadata(t *testing.T) {
 	msg.Metadata.Set("foo", "baz")
 
 	copyMsgCtx := msgCopy.Context()
-	assert.True(t, copyMsgCtx.Value("foo") == "bar", "expected context not being copied")
+	assert.True(t, copyMsgCtx.Value(ctxKey("foo")) == "bar", "expected context not being copied")
 	assert.Equal(t, msgCopy.Metadata.Get("foo"), "bar", "did not expect changing source message's metadata to alter copy's metadata")
 }
 
