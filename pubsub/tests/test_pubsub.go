@@ -912,13 +912,6 @@ func TestMessageCtx(
 	tCtx TestContext,
 	pubSubConstructor PubSubConstructor,
 ) {
-	if tCtx.Features.ExactlyOnceDelivery {
-		// with ExactlyOnce delivery (at least as implemented by NATS jetstream)
-		// the second message will never be received because the broker deduplicates
-		// by message ID.
-		t.Skip("ExactlyOnceDelivery test is not supported yet")
-	}
-
 	pub, sub := pubSubConstructor(t)
 	defer closePubSub(t, pub, sub)
 
@@ -930,11 +923,12 @@ func TestMessageCtx(
 	messages, err := sub.Subscribe(context.Background(), topicName)
 	require.NoError(t, err)
 
-	msg := message.NewMessage(watermill.NewUUID(), []byte("x"))
+	msg1 := message.NewMessage(watermill.NewUUID(), []byte("x"))
+	msg2 := message.NewMessage(watermill.NewUUID(), []byte("x"))
 
 	// this might actually be an error in some pubsubs (http), because we close the subscriber without ACK.
-	_ = pub.Publish(topicName, msg)
-	_ = pub.Publish(topicName, msg)
+	_ = pub.Publish(topicName, msg1)
+	_ = pub.Publish(topicName, msg2)
 
 	select {
 	case msg := <-messages:
@@ -1003,7 +997,6 @@ ClosedLoop:
 			msg.Nack()
 		case <-timeout:
 			t.Fatal("messages channel is not closed after ", defaultTimeout)
-			t.FailNow()
 		}
 		time.Sleep(time.Millisecond * 100)
 	}
