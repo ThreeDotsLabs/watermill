@@ -1,14 +1,14 @@
 module main.go
 
 require (
-	github.com/ThreeDotsLabs/watermill v1.4.4
-	github.com/ThreeDotsLabs/watermill-amqp/v3 v3.0.0
-	github.com/golang/protobuf v1.5.4
-	google.golang.org/protobuf v1.36.3
+	github.com/ThreeDotsLabs/watermill v1.5.0
+	github.com/ThreeDotsLabs/watermill-amqp/v3 v3.0.1
+	google.golang.org/protobuf v1.36.8
 )
 
 require (
 	github.com/cenkalti/backoff/v3 v3.2.2 // indirect
+	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
@@ -20,6 +20,4 @@ require (
 	github.com/sony/gobreaker v1.0.0 // indirect
 )
 
-go 1.23
-
-toolchain go1.23.4
+go 1.25

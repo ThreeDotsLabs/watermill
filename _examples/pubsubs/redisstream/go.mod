@@ -1,13 +1,11 @@
 module main.go
 
-go 1.23
-
-toolchain go1.23.4
+go 1.25
 
 require (
-	github.com/ThreeDotsLabs/watermill v1.4.4
-	github.com/ThreeDotsLabs/watermill-redisstream v1.4.2
-	github.com/redis/go-redis/v9 v9.7.0
+	github.com/ThreeDotsLabs/watermill v1.5.0
+	github.com/ThreeDotsLabs/watermill-redisstream v1.4.3
+	github.com/redis/go-redis/v9 v9.12.1
 )
 
 require (
@@ -21,6 +19,6 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/vmihailenco/msgpack v4.0.4+incompatible // indirect
 	google.golang.org/appengine v1.6.8 // indirect
-	google.golang.org/protobuf v1.36.3 // indirect
+	google.golang.org/protobuf v1.36.8 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 )

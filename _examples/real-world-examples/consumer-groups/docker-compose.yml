@@ -1,6 +1,6 @@
 services:
   api:
-    image: golang:1.23
+    image: golang:1.25
     restart: unless-stopped
     depends_on:
       - redis
@@ -12,7 +12,7 @@ services:
     command: go run .
 
   newsletter-1:
-    image: golang:1.23
+    image: golang:1.25
     restart: unless-stopped
     depends_on:
       - redis
@@ -24,7 +24,7 @@ services:
       REPLICA: 1
 
   newsletter-2:
-    image: golang:1.23
+    image: golang:1.25
     restart: unless-stopped
     depends_on:
       - redis
@@ -36,7 +36,7 @@ services:
       REPLICA: 2
 
   crm-1:
-    image: golang:1.23
+    image: golang:1.25
     restart: unless-stopped
     depends_on:
       - redis
@@ -48,7 +48,7 @@ services:
       REPLICA: 1
 
   crm-2:
-    image: golang:1.23
+    image: golang:1.25
     restart: unless-stopped
     depends_on:
       - redis

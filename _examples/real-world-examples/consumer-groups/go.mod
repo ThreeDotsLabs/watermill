@@ -1,28 +1,24 @@
 module github.com/ThreeDotsLabs/watermill-routing-example/server
 
-go 1.23
-
-toolchain go1.23.4
+go 1.25
 
 require (
-	github.com/ThreeDotsLabs/watermill v1.4.4
+	github.com/ThreeDotsLabs/watermill v1.5.0
 	github.com/ThreeDotsLabs/watermill-http v1.1.4
-	github.com/cenkalti/backoff/v3 v3.2.2 // indirect
-	github.com/go-chi/chi/v5 v5.2.0
+	github.com/go-chi/chi/v5 v5.2.2
 	github.com/go-chi/render v1.0.3 // indirect
 	github.com/google/uuid v1.6.0 // indirect
-	github.com/hashicorp/errwrap v1.1.0 // indirect
-	github.com/hashicorp/go-multierror v1.1.1 // indirect
 )
 
 require (
-	github.com/ThreeDotsLabs/watermill-redisstream v1.4.2
-	github.com/redis/go-redis/v9 v9.7.0
+	github.com/ThreeDotsLabs/watermill-redisstream v1.4.3
+	github.com/redis/go-redis/v9 v9.12.1
 )
 
 require (
 	github.com/Rican7/retry v0.3.1 // indirect
 	github.com/ajg/form v1.5.1 // indirect
+	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/go-chi/chi v4.1.2+incompatible // indirect
@@ -34,6 +30,6 @@ require (
 	github.com/sony/gobreaker v1.0.0 // indirect
 	github.com/vmihailenco/msgpack v4.0.4+incompatible // indirect
 	google.golang.org/appengine v1.6.8 // indirect
-	google.golang.org/protobuf v1.36.3 // indirect
+	google.golang.org/protobuf v1.36.8 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 )
