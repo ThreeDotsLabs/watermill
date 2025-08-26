@@ -1,6 +1,6 @@
 services:
   server:
-    image: golang:1.23
+    image: golang:1.25
     restart: unless-stopped
     ports:
       - 8080:8080

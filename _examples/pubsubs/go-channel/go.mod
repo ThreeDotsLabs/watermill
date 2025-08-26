@@ -1,6 +1,6 @@
 module main.go
 
-require github.com/ThreeDotsLabs/watermill v1.4.4
+require github.com/ThreeDotsLabs/watermill v1.5.0
 
 require (
 	github.com/google/uuid v1.6.0 // indirect
@@ -9,6 +9,4 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 )
 
-go 1.23
-
-toolchain go1.23.4
+go 1.25
