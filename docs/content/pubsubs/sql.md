@@ -23,7 +23,7 @@ See also the [SQL example](https://github.com/ThreeDotsLabs/watermill/tree/maste
 ## Installation
 
 ```bash
-go get github.com/ThreeDotsLabs/watermill-sql/v3
+go get github.com/ThreeDotsLabs/watermill-sql/v4
 ```
 
 ### Characteristics
@@ -31,7 +31,7 @@ go get github.com/ThreeDotsLabs/watermill-sql/v3
 | Feature             | Implements | Note                                                                          |
 |---------------------|------------|-------------------------------------------------------------------------------|
 | ConsumerGroups      | yes        | See `ConsumerGroup` in `SubscriberConfig` (not supported by the queue schema) |
-| ExactlyOnceDelivery | yes*       | Just for MySQL implementation                                                 |
+| ExactlyOnceDelivery | yes        |
 | GuaranteedOrder     | yes        |                                                                               |
 | Persistent          | yes        |                                                                               |
 
