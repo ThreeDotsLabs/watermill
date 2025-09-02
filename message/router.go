@@ -265,7 +265,7 @@ func (d DuplicateHandlerNameError) Error() string {
 //
 // publishTopic is a topic to which router will produce messages returned by handlerFunc.
 // When handler needs to publish to multiple topics,
-// it is recommended to use AddNoPublisherHandler and inject a Publisher or implement middleware
+// it is recommended to use AddConsumerHandler and inject a Publisher or implement middleware
 // which will catch messages and publish to topic based on metadata for example.
 //
 // If handler is added while router is already running, you need to explicitly call RunHandlers().
@@ -329,9 +329,8 @@ func (r *Router) AddHandler(
 	}
 }
 
-// AddNoPublisherHandler adds a new handler.
-// This handler cannot return messages.
-// When message is returned it will occur an error and Nack will be sent.
+// AddConsumerHandler adds a new handler that does not return any messages.
+// It can publish messages by directly using a Publisher.
 //
 // handlerName must be unique. For now, it is used only for debugging.
 //
@@ -340,7 +339,7 @@ func (r *Router) AddHandler(
 // subscriber is Subscriber from which messages will be consumed.
 //
 // If handler is added while router is already running, you need to explicitly call RunHandlers().
-func (r *Router) AddNoPublisherHandler(
+func (r *Router) AddConsumerHandler(
 	handlerName string,
 	subscribeTopic string,
 	subscriber Subscriber,
@@ -351,6 +350,27 @@ func (r *Router) AddNoPublisherHandler(
 	}
 
 	return r.AddHandler(handlerName, subscribeTopic, subscriber, "", disabledPublisher{}, handlerFuncAdapter)
+}
+
+// AddNoPublisherHandler adds a new handler.
+// This handler cannot return messages.
+//
+// handlerName must be unique. For now, it is used only for debugging.
+//
+// subscribeTopic is a topic from which handler will receive messages.
+//
+// subscriber is Subscriber from which messages will be consumed.
+//
+// If handler is added while router is already running, you need to explicitly call RunHandlers().
+//
+// Deprecated: use AddConsumerHandler instead.
+func (r *Router) AddNoPublisherHandler(
+	handlerName string,
+	subscribeTopic string,
+	subscriber Subscriber,
+	handlerFunc NoPublishHandlerFunc,
+) *Handler {
+	return r.AddConsumerHandler(handlerName, subscribeTopic, subscriber, handlerFunc)
 }
 
 // Run runs all plugins and handlers and starts subscribing to provided topics.
