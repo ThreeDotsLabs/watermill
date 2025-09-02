@@ -1,6 +1,7 @@
 package cqrs
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/ThreeDotsLabs/watermill/message"
@@ -40,6 +41,10 @@ func (c CommandEventMarshalerDecorator) Marshal(v any) (*message.Message, error)
 	msg, err := c.CommandEventMarshaler.Marshal(v)
 	if err != nil {
 		return nil, err
+	}
+
+	if c.DecorateFunc == nil {
+		return nil, errors.New("DecorateFunc is nil")
 	}
 
 	if err := c.DecorateFunc(v, msg); err != nil {
