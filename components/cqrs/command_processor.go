@@ -299,7 +299,7 @@ func (p CommandProcessor) addHandlerToRouter(r *message.Router, handler CommandH
 		return nil, errors.Wrap(err, "cannot create subscriber for command processor")
 	}
 
-	return r.AddNoPublisherHandler(
+	return r.AddConsumerHandler(
 		handlerName,
 		topicName,
 		subscriber,

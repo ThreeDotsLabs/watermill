@@ -34,9 +34,9 @@ Next, you have to add a new handler with `Router.AddHandler`:
 See an example usage from [Getting Started]({{< ref "/docs/getting-started#using-messages-router" >}}):
 {{% load-snippet-partial file="src-link/_examples/basic/3-router/main.go" first_line_contains="// AddHandler returns a handler" last_line_contains="return h(message)" padding_after="3" %}}
 
-## No publisher handler
+## Consumer handler
 
-Not every handler will produce new messages. You can add this kind of handler by using `Router.AddNoPublisherHandler`:
+Not every handler will produce new messages. You can add this kind of handler by using `Router.AddConsumerHandler`:
 
 {{% load-snippet-partial file="src-link/message/router.go" first_line_contains="// AddNoPublisherHandler" last_line_contains=") {" padding_after="0" %}}
 
@@ -81,7 +81,7 @@ If the timeout is reached, `Close()` will return an error.
 ## Adding handler after the router has started
 
 You can add a new handler while the router is already running.
-To do that, you need to call `AddNoPublisherHandler` or `AddHandler` and call `RunHandlers`.
+To do that, you need to call `AddConsumerHandler` or `AddHandler` and call `RunHandlers`.
 
 {{% load-snippet-partial file="src-link/message/router.go" first_line_contains="// RunHandlers" last_line_contains="func (r *Router) RunHandlers" padding_after="0" %}}
 

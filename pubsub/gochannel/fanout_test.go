@@ -39,7 +39,7 @@ func TestFanOut(t *testing.T) {
 	receivedMessages := make(chan struct{}, expectedNumberOfMessages)
 
 	for i := 0; i < workersCount; i++ {
-		router.AddNoPublisherHandler(
+		router.AddConsumerHandler(
 			fmt.Sprintf("worker-%v", i),
 			upstreamTopic,
 			fanout,
