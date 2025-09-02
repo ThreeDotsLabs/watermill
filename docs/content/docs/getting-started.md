@@ -322,7 +322,7 @@ Any messages returned from the handler function will be published to the given p
 *Note: the example above uses one `pubSub` argument for both the subscriber and publisher.
 It's because we use the `GoChannel` implementation, which is a simple in-memory Pub/Sub.*
 
-Alternatively, if you don't plan to publish messages from within the handler, you can use the simpler `AddNoPublisherHandler` method.
+Alternatively, if you don't plan to publish messages from within the handler, you can use the simpler `AddConsumerHandler` method.
 
 {{% load-snippet-partial file="src-link/_examples/basic/3-router/main.go" first_line_contains="AddNoPublisherHandler" last_line_contains=")" padding_after="0" %}}
 
