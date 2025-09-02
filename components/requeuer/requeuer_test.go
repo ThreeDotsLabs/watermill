@@ -52,7 +52,7 @@ func TestRequeue(t *testing.T) {
 	lock := sync.Mutex{}
 	counter := 0
 
-	router.AddNoPublisherHandler(
+	router.AddConsumerHandler(
 		"test",
 		"test",
 		pubSub,

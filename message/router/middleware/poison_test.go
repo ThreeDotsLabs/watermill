@@ -125,7 +125,7 @@ func TestPoisonQueue_context_values(t *testing.T) {
 	require.NoError(t, err)
 	router.AddMiddleware(pq)
 
-	router.AddNoPublisherHandler("handler_name", "test", pubSub, func(msg *message.Message) error {
+	router.AddConsumerHandler("handler_name", "test", pubSub, func(msg *message.Message) error {
 		return errors.New("error")
 	})
 

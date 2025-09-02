@@ -110,7 +110,7 @@ func NewRequeuer(
 		config: config,
 	}
 
-	config.Router.AddNoPublisherHandler(
+	config.Router.AddConsumerHandler(
 		"requeuer",
 		config.SubscribeTopic,
 		config.Subscriber,

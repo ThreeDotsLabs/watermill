@@ -303,7 +303,7 @@ func addHandlerToRouter(logger watermill.LoggerAdapter, r *message.Router, handl
 
 	logger.Debug("Adding CQRS event handler to router", nil)
 
-	return r.AddNoPublisherHandler(
+	return r.AddConsumerHandler(
 		handlerName,
 		topicName,
 		subscriber,
