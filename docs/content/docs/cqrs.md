@@ -81,7 +81,7 @@ Sometimes it's useful to add extra metadata to each command or event after marsh
 
 You can use `CommandEventMarshalerDecorator` to extend a marshaler with an extra step.
 
-{{% load-snippet-partial file="src-link/components/cqrs/marshaler_decor.go" first_line_contains="// CommandEventMarshalerDecorator" last_line_contains="}" padding_after="0" %}}
+{{% load-snippet-partial file="src-link/components/cqrs/marshaler.go" first_line_contains="// CommandEventMarshalerDecorator" last_line_contains="}" padding_after="0" %}}
 
 ```go
 type Event interface {
