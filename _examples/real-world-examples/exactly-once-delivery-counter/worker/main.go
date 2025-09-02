@@ -54,7 +54,7 @@ func runWatermillRouter(db *stdSQL.DB, logger watermill.LoggerAdapter) {
 		panic(err)
 	}
 
-	router.AddNoPublisherHandler(
+	router.AddConsumerHandler(
 		"counter",
 		topic,
 		subscriber,

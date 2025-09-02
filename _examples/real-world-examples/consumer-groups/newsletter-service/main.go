@@ -94,7 +94,7 @@ func main() {
 	}
 
 	if replica == "1" {
-		router.AddNoPublisherHandler(
+		router.AddConsumerHandler(
 			"OnUserSignedUp-1",
 			"UserSignedUp-1",
 			subscriber,
@@ -115,7 +115,7 @@ func main() {
 			},
 		)
 
-		router.AddNoPublisherHandler(
+		router.AddConsumerHandler(
 			"OnUserSignedUp-2",
 			"UserSignedUp-2",
 			subscriber,
@@ -136,7 +136,7 @@ func main() {
 			},
 		)
 
-		router.AddNoPublisherHandler(
+		router.AddConsumerHandler(
 			"AddToPromotionsList-5",
 			"UserSignedUp-5",
 			newsletterServiceGroupSubscriber,
@@ -157,7 +157,7 @@ func main() {
 			},
 		)
 
-		router.AddNoPublisherHandler(
+		router.AddConsumerHandler(
 			"AddToNewsList-5",
 			"UserSignedUp-5",
 			newsletterServiceGroupSubscriber,
@@ -178,7 +178,7 @@ func main() {
 			},
 		)
 
-		router.AddNoPublisherHandler(
+		router.AddConsumerHandler(
 			"AddToPromotionsList-6",
 			"UserSignedUp-6",
 			addToPromotionsListGroupSubscriber,
@@ -199,7 +199,7 @@ func main() {
 			},
 		)
 
-		router.AddNoPublisherHandler(
+		router.AddConsumerHandler(
 			"AddToNewsList-6",
 			"UserSignedUp-6",
 			addToNewsListGroupSubscriber,
@@ -221,7 +221,7 @@ func main() {
 		)
 	}
 
-	router.AddNoPublisherHandler(
+	router.AddConsumerHandler(
 		"OnUserSignedUp-3",
 		"UserSignedUp-3",
 		subscriber,
@@ -242,7 +242,7 @@ func main() {
 		},
 	)
 
-	router.AddNoPublisherHandler(
+	router.AddConsumerHandler(
 		"OnUserSignedUp-4",
 		"UserSignedUp-4",
 		newsletterServiceGroupSubscriber,
@@ -263,7 +263,7 @@ func main() {
 		},
 	)
 
-	router.AddNoPublisherHandler(
+	router.AddConsumerHandler(
 		"AddToPromotionsList-7",
 		"UserSignedUp-7",
 		addToPromotionsListGroupSubscriber,
@@ -284,7 +284,7 @@ func main() {
 		},
 	)
 
-	router.AddNoPublisherHandler(
+	router.AddConsumerHandler(
 		"AddToNewsList-7",
 		"UserSignedUp-7",
 		addToNewsListGroupSubscriber,

@@ -75,6 +75,40 @@ The command is a simple data structure, representing the request for executing s
 
 {{% load-snippet-partial file="src-link/components/cqrs/marshaler.go" first_line_contains="// CommandEventMarshaler" last_line_contains="NameFromMessage(" padding_after="1" %}}
 
+#### Command and Event Marshaler Decorator
+
+Sometimes it's useful to add extra metadata to each command or event after marshaling it to a message. For example, you may want to add a partition key to each message using Kafka.
+
+You can use `CommandEventMarshalerDecorator` to extend a marshaler with an extra step.
+
+{{% load-snippet-partial file="src-link/components/cqrs/marshaler.go" first_line_contains="// CommandEventMarshalerDecorator" last_line_contains="}" padding_after="0" %}}
+
+```go
+type Event interface {
+	PartitionKey() string
+}
+
+// ...
+
+cqrsMarshaler := CommandEventMarshalerDecorator{
+	CommandEventMarshaler: cqrs.JSONMarshaler{},
+	DecorateFunc: func(v any, msg *message.Message) error {
+		pm, ok := v.(Event)
+		if !ok {
+			return fmt.Errorf("%T does not implement Event and can't be marshaled", v)
+		}
+
+		partitionKey := pm.PartitionKey()
+		if partitionKey == "" {
+			return fmt.Errorf("PartitionKey is empty")
+		}
+
+		msg.Metadata.Set(PartitionKeyMetadataField, partitionKey)
+		return nil
+	},
+}
+```
+
 ## Usage
 
 ### Example domain

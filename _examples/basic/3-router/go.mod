@@ -2,7 +2,7 @@ module main.go
 
 go 1.25
 
-require github.com/ThreeDotsLabs/watermill v1.5.0
+require github.com/ThreeDotsLabs/watermill v1.5.1
 
 require (
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect

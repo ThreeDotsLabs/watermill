@@ -89,7 +89,7 @@ func main() {
 	//
 	// This implementation just prints the posts on stdout,
 	// but production ready implementation would save posts to some persistent storage.
-	r.AddNoPublisherHandler(
+	r.AddConsumerHandler(
 		"feed_generator",
 		"posts_published",
 		createSubscriber("feed_generator", logger),
