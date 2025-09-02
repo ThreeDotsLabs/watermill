@@ -1,6 +1,8 @@
 package cqrs
 
 import (
+	"fmt"
+
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
@@ -22,4 +24,27 @@ type CommandEventMarshaler interface {
 	// When we have Command or Event marshaled to Watermill's message,
 	// we should use NameFromMessage instead of Name to avoid unnecessary unmarshaling.
 	NameFromMessage(msg *message.Message) string
+}
+
+// CommandEventMarshalerDecorator decorates CommandEventMarshaler with additional functionality.
+// It can be used to add additional metadata to the message.
+type CommandEventMarshalerDecorator struct {
+	CommandEventMarshaler
+
+	// DecorateFunc is called after marshaling the message.
+	DecorateFunc func(v any, msg *message.Message) error
+}
+
+// Marshal marshals Command or Event to Watermill's message and decorates it.
+func (c CommandEventMarshalerDecorator) Marshal(v any) (*message.Message, error) {
+	msg, err := c.CommandEventMarshaler.Marshal(v)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := c.DecorateFunc(v, msg); err != nil {
+		return nil, fmt.Errorf("cannot decorate message: %w", err)
+	}
+
+	return msg, nil
 }
