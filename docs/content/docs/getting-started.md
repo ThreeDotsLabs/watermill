@@ -324,7 +324,7 @@ It's because we use the `GoChannel` implementation, which is a simple in-memory 
 
 Alternatively, if you don't plan to publish messages from within the handler, you can use the simpler `AddConsumerHandler` method.
 
-{{% load-snippet-partial file="src-link/_examples/basic/3-router/main.go" first_line_contains="AddNoPublisherHandler" last_line_contains=")" padding_after="0" %}}
+{{% load-snippet-partial file="src-link/_examples/basic/3-router/main.go" first_line_contains="AddConsumerHandler" last_line_contains=")" padding_after="0" %}}
 
 You can use two types of *handler functions*:
 

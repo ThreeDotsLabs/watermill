@@ -62,7 +62,7 @@ func main() {
 	}
 
 	if replica == "1" {
-		router.AddNoPublisherHandler(
+		router.AddConsumerHandler(
 			"OnUserSignedUp-2",
 			"UserSignedUp-2",
 			subscriber,

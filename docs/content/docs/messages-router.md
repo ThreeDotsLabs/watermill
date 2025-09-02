@@ -38,7 +38,7 @@ See an example usage from [Getting Started]({{< ref "/docs/getting-started#using
 
 Not every handler will produce new messages. You can add this kind of handler by using `Router.AddConsumerHandler`:
 
-{{% load-snippet-partial file="src-link/message/router.go" first_line_contains="// AddNoPublisherHandler" last_line_contains=") {" padding_after="0" %}}
+{{% load-snippet-partial file="src-link/message/router.go" first_line_contains="// AddConsumerHandler" last_line_contains=") {" padding_after="0" %}}
 
 ## Ack
 

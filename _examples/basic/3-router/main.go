@@ -77,7 +77,7 @@ func main() {
 	})
 
 	// just for debug, we are printing all messages received on `incoming_messages_topic`
-	router.AddNoPublisherHandler(
+	router.AddConsumerHandler(
 		"print_incoming_messages",
 		"incoming_messages_topic",
 		pubSub,
@@ -85,7 +85,7 @@ func main() {
 	)
 
 	// just for debug, we are printing all events sent to `outgoing_messages_topic`
-	router.AddNoPublisherHandler(
+	router.AddConsumerHandler(
 		"print_outgoing_messages",
 		"outgoing_messages_topic",
 		pubSub,

@@ -3,8 +3,8 @@ module delayed-messages
 go 1.25
 
 require (
-	github.com/ThreeDotsLabs/watermill v1.5.0
-	github.com/ThreeDotsLabs/watermill-redisstream v1.4.3
+	github.com/ThreeDotsLabs/watermill v1.5.1
+	github.com/ThreeDotsLabs/watermill-redisstream v1.4.4
 	github.com/ThreeDotsLabs/watermill-sql/v4 v4.0.0
 	github.com/brianvoe/gofakeit/v6 v6.28.0
 	github.com/google/uuid v1.6.0
