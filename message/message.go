@@ -62,6 +62,13 @@ func NewMessage(uuid string, payload Payload) *Message {
 	}
 }
 
+// NewMessageWithContext creates a new Message with given uuid, payload, and context.
+func NewMessageWithContext(ctx context.Context, uuid string, payload Payload) *Message {
+	msg := NewMessage(uuid, payload)
+	msg.SetContext(ctx)
+	return msg
+}
+
 type ackType int
 
 const (
@@ -191,5 +198,13 @@ func (m *Message) Copy() *Message {
 	for k, v := range m.Metadata {
 		msg.Metadata.Set(k, v)
 	}
+	return msg
+}
+
+// CopyWithContext copies all message without Acks/Nacks.
+// The context is also propagated to the copy.
+func (m *Message) CopyWithContext() *Message {
+	msg := m.Copy()
+	msg.ctx = m.ctx
 	return msg
 }

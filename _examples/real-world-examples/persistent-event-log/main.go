@@ -10,8 +10,8 @@ import (
 	driver "github.com/go-sql-driver/mysql"
 
 	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill-googlecloud/pkg/googlecloud"
-	"github.com/ThreeDotsLabs/watermill-sql/v3/pkg/sql"
+	"github.com/ThreeDotsLabs/watermill-googlecloud/v2/pkg/googlecloud"
+	"github.com/ThreeDotsLabs/watermill-sql/v4/pkg/sql"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
 	"github.com/ThreeDotsLabs/watermill/message/router/plugin"
@@ -104,7 +104,7 @@ func createSubscriber() message.Subscriber {
 
 func createPublisher(db *stdSQL.DB) message.Publisher {
 	pub, err := sql.NewPublisher(
-		db,
+		sql.BeginnerFromStdSQL(db),
 		sql.PublisherConfig{
 			SchemaAdapter:        sql.DefaultMySQLSchema{},
 			AutoInitializeSchema: true,

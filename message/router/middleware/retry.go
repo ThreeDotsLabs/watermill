@@ -1,14 +1,24 @@
 package middleware
 
 import (
-	"context"
 	"time"
 
-	"github.com/cenkalti/backoff/v3"
+	"github.com/cenkalti/backoff/v5"
+	"github.com/pkg/errors"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
 )
+
+// RetryParams holds the parameters for a retry attempt
+type RetryParams struct {
+	// Err is the error that caused the retry attempt.
+	Err error
+	// RetryNum is the number of the retry attempt, starting from 1.
+	RetryNum int
+	// Delay is the delay for the next retry attempt.
+	Delay time.Duration
+}
 
 // Retry provides a middleware that retries the handler if errors are returned.
 // The retry behaviour is configurable, with exponential backoff and maximum elapsed time.
@@ -32,66 +42,105 @@ type Retry struct {
 	// The number of the current retry is passed as retryNum,
 	OnRetryHook func(retryNum int, delay time.Duration)
 
+	// ShouldRetry is an optional function that will be executed before each retry attempt.
+	// If ShouldRetry returns false, the retry will not be attempted.
+	ShouldRetry func(params RetryParams) bool
+
+	// ResetContextOnRetry indicates whether the message context should be reset on each retry attempt.
+	// See more: https://github.com/ThreeDotsLabs/watermill/issues/467
+	//
+	// This is not enabled by default to keep backward compatibility
+	// (in theory, someone may want to preserve context values between retries).
+	ResetContextOnRetry bool
+
 	Logger watermill.LoggerAdapter
 }
 
 // Middleware returns the Retry middleware.
 func (r Retry) Middleware(h message.HandlerFunc) message.HandlerFunc {
 	return func(msg *message.Message) ([]*message.Message, error) {
-		producedMessages, err := h(msg)
-		if err == nil {
-			return producedMessages, nil
-		}
+		originalCtx := msg.Context()
+		retryNum := 0
 
 		expBackoff := backoff.NewExponentialBackOff()
 		expBackoff.InitialInterval = r.InitialInterval
 		expBackoff.MaxInterval = r.MaxInterval
 		expBackoff.Multiplier = r.Multiplier
-		expBackoff.MaxElapsedTime = r.MaxElapsedTime
 		expBackoff.RandomizationFactor = r.RandomizationFactor
 
-		ctx := msg.Context()
-		if r.MaxElapsedTime > 0 {
-			var cancel func()
-			ctx, cancel = context.WithTimeout(ctx, r.MaxElapsedTime)
-			defer cancel()
-		}
+		// MaxRetries + 1 because the first attempt is not a retry
+		retryBackoff := backoff.WithMaxTries(uint(r.MaxRetries + 1))
 
-		retryNum := 1
-		expBackoff.Reset()
-	retryLoop:
-		for {
-			waitTime := expBackoff.NextBackOff()
-			select {
-			case <-ctx.Done():
-				return producedMessages, err
-			case <-time.After(waitTime):
-				// go on
-			}
+		maxElapsedBackoff := backoff.WithMaxElapsedTime(r.MaxElapsedTime)
 
-			producedMessages, err = h(msg)
-			if err == nil {
-				return producedMessages, nil
-			}
-
+		// notification: called on a failed retry attempt.
+		notification := func(err error, delay time.Duration) {
 			if r.Logger != nil {
 				r.Logger.Error("Error occurred, retrying", err, watermill.LogFields{
-					"retry_no":     retryNum,
-					"max_retries":  r.MaxRetries,
-					"wait_time":    waitTime,
-					"elapsed_time": expBackoff.GetElapsedTime(),
+					"retry_no":    retryNum,
+					"max_retries": r.MaxRetries,
+					"wait_time":   delay,
 				})
-			}
-			if r.OnRetryHook != nil {
-				r.OnRetryHook(retryNum, waitTime)
-			}
-
-			retryNum++
-			if retryNum > r.MaxRetries {
-				break retryLoop
 			}
 		}
 
-		return nil, err
+		// operation: the function that will be retried.
+		operation := func() ([]*message.Message, error) {
+			select {
+			case <-originalCtx.Done():
+				return nil, originalCtx.Err()
+			default:
+				if r.ResetContextOnRetry {
+					// message is passed as a pointer, so it's context can be canceled
+					// by the previous attempts -> it will break retries, because any
+					// underlying logic that relies on the context will fail.
+					// see more: https://github.com/ThreeDotsLabs/watermill/issues/467
+					//
+					// to avoid this, we need to reset the original context on each attempt
+					// we may lose context value that was set by the previous attempt
+					msg.SetContext(originalCtx)
+				}
+
+				producedMessages, err := h(msg)
+				if err == nil {
+					return producedMessages, nil
+				}
+
+				if r.ShouldRetry != nil && !r.ShouldRetry(RetryParams{
+					RetryNum: retryNum,
+					Err:      err,
+					Delay:    expBackoff.NextBackOff(),
+				}) {
+					// backoff.Permanent will stop the retry attempts
+					return producedMessages, backoff.Permanent(err)
+				}
+
+				if r.OnRetryHook != nil && retryNum > 0 {
+					// call RetryHook function on each retry attempt.
+					r.OnRetryHook(retryNum, expBackoff.NextBackOff())
+				}
+				retryNum++
+				return producedMessages, err
+			}
+		}
+
+		producedMessages, retryErr := backoff.Retry(
+			originalCtx,
+			operation,
+			backoff.WithBackOff(expBackoff),
+			retryBackoff,
+			maxElapsedBackoff,
+			backoff.WithNotify(notification),
+		)
+		var backoffPermanentError *backoff.PermanentError
+		if errors.As(retryErr, &backoffPermanentError) {
+			// just in case, we don't want to expose backoff.PermanentError to the outside world
+			return producedMessages, backoffPermanentError.Unwrap()
+		}
+		if retryErr != nil {
+			return producedMessages, retryErr
+		}
+
+		return producedMessages, nil
 	}
 }

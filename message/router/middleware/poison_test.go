@@ -2,21 +2,19 @@ package middleware_test
 
 import (
 	"context"
+	stdErrors "errors"
 	"testing"
 	"time"
 
-	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill/message/subscriber"
-	"github.com/ThreeDotsLabs/watermill/pubsub/gochannel"
-
-	"github.com/hashicorp/go-multierror"
-
-	"github.com/ThreeDotsLabs/watermill/message"
-
-	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/ThreeDotsLabs/watermill"
+	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
+	"github.com/ThreeDotsLabs/watermill/message/subscriber"
+	"github.com/ThreeDotsLabs/watermill/pubsub/gochannel"
 )
 
 const topic = "testing_poison_queue_topic"
@@ -127,7 +125,7 @@ func TestPoisonQueue_context_values(t *testing.T) {
 	require.NoError(t, err)
 	router.AddMiddleware(pq)
 
-	router.AddNoPublisherHandler("handler_name", "test", pubSub, func(msg *message.Message) error {
+	router.AddConsumerHandler("handler_name", "test", pubSub, func(msg *message.Message) error {
 		return errors.New("error")
 	})
 
@@ -191,11 +189,9 @@ func TestPoisonQueue_handler_failing_publisher_failing(t *testing.T) {
 				msg,
 			)
 
-			require.IsType(t, &multierror.Error{}, err)
-			multierr := err.(*multierror.Error)
-
 			// publisher failed, can't hide the error anymore
-			assert.Equal(t, errFailed, errors.Cause(multierr.WrappedErrors()[1]))
+			// Instead of checking the specific error, we check if the error.Is() is the same as the one we expect
+			assert.ErrorIs(t, err, errFailed)
 
 			// can't really expect any produced messages
 			assert.Empty(t, produced)
@@ -213,7 +209,7 @@ func TestPoisonQueueWithFilter_poison_queue(t *testing.T) {
 	msg := message.NewMessage("uuid", []byte("payload"))
 
 	poisonQueue, err := middleware.PoisonQueueWithFilter(&poisonPublisher, topic, func(err error) bool {
-		return err == poisonQueueErr
+		return stdErrors.Is(err, poisonQueueErr)
 	})
 	require.NoError(t, err)
 
@@ -232,7 +228,7 @@ func TestPoisonQueueWithFilter_non_poison_queue(t *testing.T) {
 	msg := message.NewMessage("uuid", []byte("payload"))
 
 	poisonQueue, err := middleware.PoisonQueueWithFilter(&poisonPublisher, topic, func(err error) bool {
-		return err != nonPoisonQueueErr
+		return !stdErrors.Is(err, nonPoisonQueueErr)
 	})
 	require.NoError(t, err)
 

@@ -24,7 +24,7 @@ You can find a fully functional example with Google Cloud Pub/Sub in the [Waterm
 ## Installation
 
 ```bash
-go get github.com/ThreeDotsLabs/watermill-googlecloud
+go get github.com/ThreeDotsLabs/watermill-googlecloud/v2
 ```
 
 ### Characteristics

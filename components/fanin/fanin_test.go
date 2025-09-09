@@ -56,7 +56,7 @@ func TestFanIn(t *testing.T) {
 	receivedMessages := make(chan string, expectedNumberOfMessages)
 
 	for i := 0; i < workersCount; i++ {
-		router.AddNoPublisherHandler(
+		router.AddConsumerHandler(
 			fmt.Sprintf("worker-%v", i),
 			downstreamTopic,
 			pubsub,

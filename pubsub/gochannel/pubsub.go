@@ -26,6 +26,11 @@ type Config struct {
 	// When true, Publish will block until subscriber Ack's the message.
 	// If there are no subscribers, Publish will not block (also when Persistent is true).
 	BlockPublishUntilSubscriberAck bool
+
+	// PreserveContext is a flag that determines if the context should be preserved when sending messages to subscribers.
+	// This behavior is different from other implementations of Publishers where data travels over the network,
+	// hence context can't be preserved in those cases
+	PreserveContext bool
 }
 
 // GoChannel is the simplest Pub/Sub implementation.
@@ -66,9 +71,11 @@ func NewGoChannel(config Config, logger watermill.LoggerAdapter) *GoChannel {
 
 		subscribers:            make(map[string][]*subscriber),
 		subscribersByTopicLock: sync.Map{},
-		logger: logger.With(watermill.LogFields{
-			"pubsub_uuid": shortuuid.New(),
-		}),
+		logger: logger.With(
+			watermill.LogFields{
+				"pubsub_uuid": shortuuid.New(),
+			},
+		),
 
 		closing: make(chan struct{}),
 
@@ -87,14 +94,22 @@ func (g *GoChannel) Publish(topic string, messages ...*message.Message) error {
 
 	messagesToPublish := make(message.Messages, len(messages))
 	for i, msg := range messages {
-		messagesToPublish[i] = msg.Copy()
+		if g.config.PreserveContext {
+			messagesToPublish[i] = msg.CopyWithContext()
+		} else {
+			messagesToPublish[i] = msg.Copy()
+		}
 	}
 
 	g.subscribersLock.RLock()
 	defer g.subscribersLock.RUnlock()
 
-	subLock, _ := g.subscribersByTopicLock.LoadOrStore(topic, &sync.Mutex{})
+	subLock, loaded := g.subscribersByTopicLock.LoadOrStore(topic, &sync.Mutex{})
 	subLock.(*sync.Mutex).Lock()
+
+	if !loaded {
+		defer g.subscribersByTopicLock.Delete(topic)
+	}
 	defer subLock.(*sync.Mutex).Unlock()
 
 	if g.config.Persistent {
@@ -187,11 +202,12 @@ func (g *GoChannel) Subscribe(ctx context.Context, topic string) (<-chan *messag
 	subLock.(*sync.Mutex).Lock()
 
 	s := &subscriber{
-		ctx:           ctx,
-		uuid:          watermill.NewUUID(),
-		outputChannel: make(chan *message.Message, g.config.OutputChannelBuffer),
-		logger:        g.logger,
-		closing:       make(chan struct{}),
+		ctx:             ctx,
+		uuid:            watermill.NewUUID(),
+		outputChannel:   make(chan *message.Message, g.config.OutputChannelBuffer),
+		logger:          g.logger,
+		closing:         make(chan struct{}),
+		preserveContext: g.config.PreserveContext,
 	}
 
 	go func(s *subscriber, g *GoChannel) {
@@ -260,6 +276,17 @@ func (g *GoChannel) removeSubscriber(topic string, toRemove *subscriber) {
 		if sub == toRemove {
 			g.subscribers[topic] = append(g.subscribers[topic][:i], g.subscribers[topic][i+1:]...)
 			removed = true
+
+			if len(g.subscribers[topic]) == 0 && !g.config.Persistent {
+				// Free up the memory taken by a topic which no longer has subscribers.
+				// This operation allows publishing and subscribing to narrowly
+				// focused topics that include random data like UUIDs in topic name.
+				//
+				// Without this operation, memory usage will grow indefinitely in a long-running service
+				// as the map grows larger and larger with keys pointing to empty slices.
+				delete(g.subscribers, topic)
+				g.subscribersByTopicLock.Delete(topic)
+			}
 			break
 		}
 	}
@@ -320,6 +347,8 @@ type subscriber struct {
 	logger  watermill.LoggerAdapter
 	closed  bool
 	closing chan struct{}
+
+	preserveContext bool
 }
 
 func (s *subscriber) Close() {
@@ -341,11 +370,15 @@ func (s *subscriber) Close() {
 }
 
 func (s *subscriber) sendMessageToSubscriber(msg *message.Message, logFields watermill.LogFields) {
-	s.sending.Lock()
-	defer s.sending.Unlock()
+	ctx := msg.Context()
 
-	ctx, cancelCtx := context.WithCancel(s.ctx)
-	defer cancelCtx()
+	// By default, the subscriber uses the context from the message and it's canceled right after it's processed.
+	// If the message's context is preserved, the top-level client is responsible for canceling it.
+	if !s.preserveContext {
+		var cancelCtx context.CancelFunc
+		ctx, cancelCtx = context.WithCancel(s.ctx)
+		defer cancelCtx()
+	}
 
 SendToSubscriber:
 	for {
@@ -356,8 +389,10 @@ SendToSubscriber:
 
 		s.logger.Trace("Sending msg to subscriber", logFields)
 
+		s.sending.Lock()
 		if s.closed {
 			s.logger.Info("Pub/Sub closed, discarding msg", logFields)
+			s.sending.Unlock()
 			return
 		}
 
@@ -366,8 +401,10 @@ SendToSubscriber:
 			s.logger.Trace("Sent message to subscriber", logFields)
 		case <-s.closing:
 			s.logger.Trace("Closing, message discarded", logFields)
+			s.sending.Unlock()
 			return
 		}
+		s.sending.Unlock()
 
 		select {
 		case <-msgToSend.Acked():

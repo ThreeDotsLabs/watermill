@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"context"
 	"sort"
 	"testing"
 
@@ -42,18 +43,19 @@ func AssertAllMessagesReceived(t *testing.T, sent message.Messages, received mes
 	sort.Strings(sentIDs)
 	sort.Strings(receivedIDs)
 
-	assert.Equal(
-		t,
-		len(sentIDs), len(receivedIDs),
-		"id's count is different: received: %d, sent: %d", len(receivedIDs), len(sentIDs),
-	)
+	if len(sentIDs) != len(receivedIDs) {
+		t.Errorf("id's count is different: received: %d, sent: %d", len(receivedIDs), len(sentIDs))
+	}
 
-	return assert.Equal(
-		t, sentIDs, receivedIDs,
-		"received different messages ID's, missing: %s, extra %s",
-		MissingMessages(sent, received),
-		MissingMessages(received, sent),
-	)
+	missing := MissingMessages(sent, received)
+	extra := MissingMessages(received, sent)
+
+	if len(missing) > 0 || len(extra) > 0 {
+		t.Errorf("received different messages ID's, missing: %s, extra %s", missing, extra)
+		return false
+	}
+
+	return true
 }
 
 // AssertMessagesPayloads check if received messages have the same payload as expected in expectedPayloads.
@@ -91,4 +93,14 @@ func AssertMessagesMetadata(t *testing.T, key string, expectedValues map[string]
 	}
 
 	return ok
+}
+
+// AssertAllMessagesHaveSameContext checks if context of all received messages is the same as in expectedValues, if PreserveContext is enabled.
+func AssertAllMessagesHaveSameContext(t *testing.T, contextKeyString string, expectedValues map[string]context.Context, received []*message.Message) {
+	assert.Len(t, received, len(expectedValues))
+	for _, msg := range received {
+		expectedValue := expectedValues[msg.UUID].Value(contextKey(contextKeyString)).(string)
+		actualValue := msg.Context().Value(contextKey(contextKeyString))
+		assert.Equal(t, expectedValue, actualValue)
+	}
 }

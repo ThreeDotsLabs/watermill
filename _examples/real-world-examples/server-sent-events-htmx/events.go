@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"time"
 
-	"cloud.google.com/go/pubsub"
+	"cloud.google.com/go/pubsub/v2/apiv1/pubsubpb"
 	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill-googlecloud/pkg/googlecloud"
+	"github.com/ThreeDotsLabs/watermill-googlecloud/v2/pkg/googlecloud"
 	"github.com/ThreeDotsLabs/watermill-http/v2/pkg/http"
 	"github.com/ThreeDotsLabs/watermill/components/cqrs"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/router/middleware"
+	"google.golang.org/protobuf/types/known/durationpb"
 )
 
 type PostViewed struct {
@@ -156,8 +157,12 @@ func NewRouters(cfg config, repo *Repository) (Routers, error) {
 			GenerateSubscriptionName: func(topic string) string {
 				return fmt.Sprintf("%v_%v", topic, watermill.NewShortUUID())
 			},
-			SubscriptionConfig: pubsub.SubscriptionConfig{
-				ExpirationPolicy: time.Hour * 24,
+			GenerateSubscription: func(params googlecloud.GenerateSubscriptionParams) *pubsubpb.Subscription {
+				return &pubsubpb.Subscription{
+					ExpirationPolicy: &pubsubpb.ExpirationPolicy{
+						Ttl: durationpb.New(time.Hour * 24),
+					},
+				}
 			},
 		},
 		logger,

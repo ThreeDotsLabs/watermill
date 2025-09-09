@@ -27,15 +27,35 @@ jobs:
         with:
           go-version: '^1.21.1'
       - run: make build
-  lint:
+
+  detect-modules:
     runs-on: ubuntu-latest
+    outputs:
+      modules: ${{ steps.set-modules.outputs.modules }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '^1.21.1'
+      - id: set-modules
+        run: echo "modules=$(go list -m -json | jq -s '.' | jq -c '[.[].Dir]')" >> $GITHUB_OUTPUT
+
+  lint:
+    needs: detect-modules
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        modules: ${{ fromJSON(needs.detect-modules.outputs.modules) }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v4
         with:
           go-version: '^1.21.1'
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v3
+      - name: golangci-lint ${{ matrix.modules }}
+        uses: golangci/golangci-lint-action@v6.5.2
+        with:
+          working-directory: ${{ matrix.modules }}
+
   tests:
     needs: [build]
     runs-on: ${{ inputs.runs-on }}
@@ -53,6 +73,9 @@ jobs:
       - run: make test_race
       - run: make test_stress
         if: ${{ inputs.stress-tests }}
+      - name: Dump docker logs on failure
+        if: failure()
+        uses: jwalton/gh-docker-logs@a8cb5301950dd4d2b86619cd487b3b281526b178 # v2.2.0
   codecov:
     runs-on: ${{ inputs.runs-on }}
     if: ${{ inputs.codecov }}

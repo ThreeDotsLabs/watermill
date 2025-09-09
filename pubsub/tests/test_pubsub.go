@@ -15,10 +15,9 @@ import (
 	"testing"
 	"time"
 
-	internalSubscriber "github.com/ThreeDotsLabs/watermill/internal/subscriber"
-
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/internal"
+	internalSubscriber "github.com/ThreeDotsLabs/watermill/internal/subscriber"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/subscriber"
 
@@ -125,9 +124,16 @@ type Features struct {
 	// GenerateTopicFunc overrides standard topic name generation.
 	GenerateTopicFunc func(tctx TestContext) string
 
+	// GenerateIDFunc determines which function should be used for generating test IDs, NewTestID is used by default.
+	GenerateIDFunc func() TestID
+
 	// ForceShort forces running tests in short mode.
 	// It's useful for Pub/Subs that are slow or have some limitations.
 	ForceShort bool
+
+	// ContextPreserved should be set to true if the Pub/Sub implementation preserves the context
+	// of the message when it's published and consumed.
+	ContextPreserved bool
 }
 
 // RunOnlyFastTests returns true if -short flag was provided -race was not provided.
@@ -157,9 +163,18 @@ func getTestName(testFunc interface{}) string {
 // TestID is a unique ID of a test.
 type TestID string
 
+func (t TestID) String() string {
+	return string(t)
+}
+
 // NewTestID returns a new unique TestID.
 func NewTestID() TestID {
 	return TestID(watermill.NewUUID())
+}
+
+// NewTestULID returns a new unique TestID using ULID.
+func NewTestULID() TestID {
+	return TestID(watermill.NewULID())
 }
 
 // TestContext is a collection of values that belong to a single test.
@@ -239,7 +254,7 @@ func TestPublishSubscribe(
 		id := watermill.NewUUID()
 		testMetadata := watermill.NewUUID()
 
-		payload := []byte(fmt.Sprintf("%d", i))
+		payload := fmt.Appendf(nil, "%d", i)
 		msg := message.NewMessage(id, payload)
 
 		msg.Metadata.Set("test", testMetadata)
@@ -817,8 +832,8 @@ func TestConsumerGroups(
 	}
 	totalMessagesCount := 50
 
-	group1 := generateConsumerGroup(t, pubSubConstructor, topicName)
-	group2 := generateConsumerGroup(t, pubSubConstructor, topicName)
+	group1 := generateConsumerGroup(t, pubSubConstructor, topicName, tCtx)
+	group2 := generateConsumerGroup(t, pubSubConstructor, topicName, tCtx)
 
 	messagesToPublish := PublishSimpleMessages(t, totalMessagesCount, publisherPub, topicName)
 
@@ -901,13 +916,6 @@ func TestMessageCtx(
 	tCtx TestContext,
 	pubSubConstructor PubSubConstructor,
 ) {
-	if tCtx.Features.ExactlyOnceDelivery {
-		// with ExactlyOnce delivery (at least as implemented by NATS jetstream)
-		// the second message will never be received because the broker deduplicates
-		// by message ID.
-		t.Skip("ExactlyOnceDelivery test is not supported yet")
-	}
-
 	pub, sub := pubSubConstructor(t)
 	defer closePubSub(t, pub, sub)
 
@@ -916,38 +924,27 @@ func TestMessageCtx(
 		require.NoError(t, subscribeInitializer.SubscribeInitialize(topicName))
 	}
 
-	msg := message.NewMessage(watermill.NewUUID(), []byte("x"))
-
-	// ensuring that context is not propagated via pub/sub
-	ctx, ctxCancel := context.WithCancel(context.Background())
-	ctxCancel()
-	msg.SetContext(ctx)
-
-	require.NoError(t, publishWithRetry(pub, topicName, msg))
-	// this might actually be an error in some pubsubs (http), because we close the subscriber without ACK.
-	_ = pub.Publish(topicName, msg)
-
 	messages, err := sub.Subscribe(context.Background(), topicName)
 	require.NoError(t, err)
 
+	msg1 := message.NewMessage(watermill.NewUUID(), []byte("x"))
+	msg2 := message.NewMessage(watermill.NewUUID(), []byte("x"))
+
+	// this might actually be an error in some pubsubs (http), because we close the subscriber without ACK.
+	_ = pub.Publish(topicName, msg1)
+	_ = pub.Publish(topicName, msg2)
+
 	select {
 	case msg := <-messages:
-		ctx := msg.Context()
-
-		select {
-		case <-ctx.Done():
-			t.Fatal("context should not be canceled")
-		default:
-			// ok
-		}
-
 		require.True(t, msg.Ack())
 
-		select {
-		case <-ctx.Done():
-			// ok
-		case <-time.After(defaultTimeout):
-			t.Fatal("context should be canceled after Ack")
+		if !tCtx.Features.ContextPreserved {
+			select {
+			case <-msg.Context().Done():
+				// ok
+			case <-time.After(defaultTimeout):
+				t.Fatal("context should be canceled after Ack")
+			}
 		}
 	case <-time.After(defaultTimeout):
 		t.Fatal("no message received")
@@ -955,22 +952,15 @@ func TestMessageCtx(
 
 	select {
 	case msg := <-messages:
-		ctx := msg.Context()
-
-		select {
-		case <-ctx.Done():
-			t.Fatal("context should not be canceled")
-		default:
-			// ok
-		}
-
 		go closePubSub(t, pub, sub)
 
-		select {
-		case <-ctx.Done():
-			// ok
-		case <-time.After(defaultTimeout):
-			t.Fatal("context should be canceled after pubSub.Close()")
+		if !tCtx.Features.ContextPreserved {
+			select {
+			case <-msg.Context().Done():
+				// ok
+			case <-time.After(defaultTimeout):
+				t.Fatal("context should be canceled after pubSub.Close()")
+			}
 		}
 	case <-time.After(defaultTimeout):
 		t.Fatal("no message received")
@@ -997,7 +987,14 @@ func TestSubscribeCtx(
 	if subscribeInitializer, ok := sub.(message.SubscribeInitializer); ok {
 		require.NoError(t, subscribeInitializer.SubscribeInitialize(topicName))
 	}
-	publishedMessages := PublishSimpleMessages(t, messagesCount, pub, topicName)
+
+	var publishedMessages message.Messages
+	var contextKeyString = "abc"
+	if tCtx.Features.ContextPreserved {
+		publishedMessages = PublishSimpleMessagesWithContext(t, messagesCount, contextKeyString, pub, topicName)
+	} else {
+		publishedMessages = PublishSimpleMessages(t, messagesCount, pub, topicName)
+	}
 
 	msgsToCancel, err := sub.Subscribe(ctxWithCancel, topicName)
 	require.NoError(t, err)
@@ -1015,20 +1012,29 @@ ClosedLoop:
 			msg.Nack()
 		case <-timeout:
 			t.Fatal("messages channel is not closed after ", defaultTimeout)
-			t.FailNow()
 		}
 		time.Sleep(time.Millisecond * 100)
 	}
 
 	ctx := context.WithValue(context.Background(), contextKey("foo"), "bar")
+
+	// For mocking the output of pub-subs where context is preserved vs not preserved
+	expectedContexts := make(map[string]context.Context)
+	for _, msg := range publishedMessages {
+		if tCtx.Features.ContextPreserved {
+			expectedContexts[msg.UUID] = msg.Context()
+		} else {
+			expectedContexts[msg.UUID] = ctx
+		}
+	}
+
 	msgs, err := sub.Subscribe(ctx, topicName)
 	require.NoError(t, err)
 
 	receivedMessages, _ := bulkRead(tCtx, msgs, messagesCount, defaultTimeout)
 	AssertAllMessagesReceived(t, publishedMessages, receivedMessages)
-
-	for _, msg := range receivedMessages {
-		assert.EqualValues(t, "bar", msg.Context().Value(contextKey("foo")))
+	if tCtx.Features.ContextPreserved {
+		AssertAllMessagesHaveSameContext(t, contextKeyString, expectedContexts, receivedMessages)
 	}
 }
 
@@ -1226,12 +1232,20 @@ func assertConsumerGroupReceivedMessages(
 	AssertAllMessagesReceived(t, expectedMessages, receivedMessages)
 }
 
-func testTopicName(tctx TestContext) string {
-	if tctx.Features.GenerateTopicFunc != nil {
-		return tctx.Features.GenerateTopicFunc(tctx)
+func testTopicName(tCtx TestContext) string {
+	if tCtx.Features.GenerateTopicFunc != nil {
+		return tCtx.Features.GenerateTopicFunc(tCtx)
 	}
 
-	return "topic-" + string(tctx.TestID)
+	return "topic-" + string(tCtx.TestID)
+}
+
+func newTestID(tCtx TestContext) TestID {
+	if tCtx.Features.GenerateIDFunc != nil {
+		return tCtx.Features.GenerateIDFunc()
+	}
+
+	return NewTestID()
 }
 
 func closePubSub(t *testing.T, pub message.Publisher, sub message.Subscriber) {
@@ -1242,8 +1256,8 @@ func closePubSub(t *testing.T, pub message.Publisher, sub message.Subscriber) {
 	require.NoError(t, err)
 }
 
-func generateConsumerGroup(t *testing.T, pubSubConstructor ConsumerGroupPubSubConstructor, topicName string) string {
-	groupName := "cg_" + watermill.NewUUID()
+func generateConsumerGroup(t *testing.T, pubSubConstructor ConsumerGroupPubSubConstructor, topicName string, tCtx TestContext) string {
+	groupName := "cg_" + newTestID(tCtx).String()
 
 	// create a pubsub to ensure that the consumer group exists
 	// for those providers that require subscription before publishing messages (e.g. Google Cloud PubSub)
@@ -1266,6 +1280,24 @@ func PublishSimpleMessages(t *testing.T, messagesCount int, publisher message.Pu
 		id := watermill.NewUUID()
 
 		msg := message.NewMessage(id, []byte("x"))
+		messagesToPublish = append(messagesToPublish, msg)
+
+		err := publishWithRetry(publisher, topicName, msg)
+		require.NoError(t, err, "cannot publish messages")
+	}
+
+	return messagesToPublish
+}
+
+// PublishSimpleMessagesWithContext publishes provided number of simple messages without a payload, but custom context
+func PublishSimpleMessagesWithContext(t *testing.T, messagesCount int, contextKeyString string, publisher message.Publisher, topicName string) message.Messages {
+	var messagesToPublish []*message.Message
+
+	for i := 0; i < messagesCount; i++ {
+		id := watermill.NewUUID()
+
+		msg := message.NewMessage(id, nil)
+		msg.SetContext(context.WithValue(context.Background(), contextKey(contextKeyString), "bar"+strconv.Itoa(i)))
 		messagesToPublish = append(messagesToPublish, msg)
 
 		err := publishWithRetry(publisher, topicName, msg)

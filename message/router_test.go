@@ -79,7 +79,7 @@ func TestRouter_functional(t *testing.T) {
 		},
 	)
 
-	r.AddNoPublisherHandler(
+	r.AddConsumerHandler(
 		"test_subscriber_2",
 		subscribeTopic,
 		sub,
@@ -135,7 +135,7 @@ func TestRouter_functional_nack(t *testing.T) {
 	nackSend := make(chan struct{})
 	messageReceived := make(chan *message.Message, 2)
 
-	r.AddNoPublisherHandler(
+	r.AddConsumerHandler(
 		"test_subscriber_1",
 		"subscribe_topic",
 		sub,
@@ -646,7 +646,7 @@ func TestRouter_RunHandlers(t *testing.T) {
 
 	receivedMessagesCh := make(chan *message.Message, messagesCount)
 
-	handler := r.AddNoPublisherHandler(
+	handler := r.AddConsumerHandler(
 		"test_subscriber_1",
 		subscribeTopic,
 		pubsub,
@@ -696,7 +696,7 @@ func TestRouter_close_handler(t *testing.T) {
 	var expectedReceivedMessages message.Messages
 	receivedMessagesCh1 := make(chan *message.Message, messagesCount)
 
-	handler := r.AddNoPublisherHandler(
+	handler := r.AddConsumerHandler(
 		"test_subscriber_1",
 		subscribeTopic1,
 		sub,
@@ -707,7 +707,7 @@ func TestRouter_close_handler(t *testing.T) {
 	)
 
 	// to keep at least one running handler to prevent router from closing
-	r.AddNoPublisherHandler(
+	r.AddConsumerHandler(
 		"noop_handler",
 		watermill.NewUUID(),
 		sub,
@@ -741,7 +741,7 @@ func TestRouter_close_handler(t *testing.T) {
 	receivedMessagesCh2 := make(chan *message.Message, messagesCount)
 
 	// we are adding the same handler again, with the same name
-	r.AddNoPublisherHandler(
+	r.AddConsumerHandler(
 		"test_subscriber_1",
 		subscribeTopic2,
 		sub,
@@ -806,7 +806,7 @@ func TestRouter_stop_when_all_handlers_stopped(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	r.AddNoPublisherHandler(
+	r.AddConsumerHandler(
 		"handler_1",
 		"foo",
 		sub1,
@@ -815,7 +815,7 @@ func TestRouter_stop_when_all_handlers_stopped(t *testing.T) {
 		},
 	)
 
-	r.AddNoPublisherHandler(
+	r.AddConsumerHandler(
 		"handler_2",
 		"foo",
 		sub2,
@@ -931,7 +931,7 @@ func TestRouterNoPublisherHandler(t *testing.T) {
 
 	wait := make(chan struct{})
 
-	r.AddNoPublisherHandler(
+	r.AddConsumerHandler(
 		"test_no_publisher_handler",
 		"subscribe_topic",
 		sub,
@@ -976,7 +976,7 @@ func BenchmarkRouterNoPublisherHandler(b *testing.B) {
 
 	sub := createBenchSubscriber(b)
 
-	router.AddNoPublisherHandler(
+	router.AddConsumerHandler(
 		"handler",
 		"benchmark_topic",
 		sub,
@@ -1091,7 +1091,7 @@ func TestRouter_concurrent_close_on_handlers_closed(t *testing.T) {
 
 	_, sub := createPubSub()
 
-	router.AddNoPublisherHandler(
+	router.AddConsumerHandler(
 		"handler",
 		"subTopic",
 		sub,
@@ -1121,7 +1121,7 @@ func createBenchSubscriber(b *testing.B) benchMockSubscriber {
 	for i := 0; i < b.N; i++ {
 		messagesToSend = append(
 			messagesToSend,
-			message.NewMessage(watermill.NewUUID(), []byte(fmt.Sprintf("%d", i))),
+			message.NewMessage(watermill.NewUUID(), fmt.Appendf(nil, "%d", i)),
 		)
 	}
 
@@ -1132,7 +1132,7 @@ func publishMessagesForHandler(t *testing.T, messagesCount int, pub message.Publ
 	var messagesToPublish []*message.Message
 
 	for i := 0; i < messagesCount; i++ {
-		msg := message.NewMessage(watermill.NewUUID(), []byte(fmt.Sprintf("%d", i)))
+		msg := message.NewMessage(watermill.NewUUID(), fmt.Appendf(nil, "%d", i))
 
 		messagesToPublish = append(messagesToPublish, msg)
 	}
@@ -1196,7 +1196,7 @@ func TestRouter_Handlers(t *testing.T) {
 
 	handlerName := "test_get_handler"
 
-	r.AddNoPublisherHandler(
+	r.AddConsumerHandler(
 		handlerName,
 		"subscribe_topic",
 		sub,
@@ -1241,7 +1241,7 @@ func TestRouter_wait_for_handlers_before_shutdown(t *testing.T) {
 	handlerStarted := make(chan struct{})
 	routerClosed := make(chan struct{})
 
-	r.AddNoPublisherHandler(
+	r.AddConsumerHandler(
 		"foo",
 		"subscribe_topic",
 		sub,
@@ -1296,7 +1296,7 @@ func TestRouter_wait_for_handlers_before_shutdown_timeout(t *testing.T) {
 
 	handlerStarted := make(chan struct{})
 
-	r.AddNoPublisherHandler(
+	r.AddConsumerHandler(
 		"foo",
 		"subscribe_topic",
 		sub,
@@ -1334,7 +1334,7 @@ func TestRouter_context_cancel_does_not_log_error(t *testing.T) {
 	r, err := message.NewRouter(message.RouterConfig{}, logger)
 	require.NoError(t, err)
 
-	r.AddNoPublisherHandler(
+	r.AddConsumerHandler(
 		"foo",
 		"subscribe_topic",
 		sub,
@@ -1361,6 +1361,75 @@ func TestRouter_context_cancel_does_not_log_error(t *testing.T) {
 	assert.Empty(t, logger.Captured()[watermill.ErrorLogLevel], "No error should be logged when context is canceled")
 }
 
+// TestRouter_nack_on_context_canceled checks that the message is Nacked
+// when the handler returns context.Canceled.
+func TestRouter_nack_on_context_canceled(t *testing.T) {
+	t.Parallel()
+
+	pubSub := gochannel.NewGoChannel(gochannel.Config{}, watermill.NopLogger{})
+	defer func() {
+		assert.NoError(t, pubSub.Close())
+	}()
+
+	logger := watermill.NewStdLogger(false, false) // Use StdLogger, logging check is in another test
+
+	r, err := message.NewRouter(message.RouterConfig{}, logger)
+	require.NoError(t, err)
+
+	handlerProcessed := make(chan struct{})
+	subscribeTopic := "test_nack_on_context_canceled_" + watermill.NewUUID()
+
+	r.AddConsumerHandler(
+		"test_handler",
+		subscribeTopic,
+		pubSub,
+		func(msg *message.Message) error {
+			defer func() {
+				handlerProcessed <- struct{}{}
+			}()
+			// Simulate handler returning context.Canceled
+			return context.Canceled
+		},
+	)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	runErrCh := make(chan error, 1)
+	go func() {
+		runErrCh <- r.Run(ctx)
+	}()
+	select {
+	case <-r.Running():
+		// proceed
+	case err := <-runErrCh:
+		t.Fatalf("Router failed to start: %v", err)
+	case <-time.After(5 * time.Second):
+		t.Fatal("Router did not start")
+	}
+
+	// Publish a message to trigger the handler
+	msg := message.NewMessage(watermill.NewUUID(), nil)
+	err = pubSub.Publish(subscribeTopic, msg)
+	require.NoError(t, err)
+
+	// Wait for the handler to process the message
+	select {
+	case <-handlerProcessed:
+		// ok
+	case <-time.After(5 * time.Second):
+		t.Fatal("Handler did not process message in time")
+	}
+
+	// Message should be re-sent when nacked
+	select {
+	case <-handlerProcessed:
+		// ok
+	case <-time.After(5 * time.Second):
+		t.Fatal("Handler did not process message in time")
+	}
+}
+
 func TestRouter_stopping_all_handlers_logs_error(t *testing.T) {
 	t.Parallel()
 
@@ -1377,7 +1446,7 @@ func TestRouter_stopping_all_handlers_logs_error(t *testing.T) {
 	r, err := message.NewRouter(message.RouterConfig{}, logger)
 	require.NoError(t, err)
 
-	r.AddNoPublisherHandler(
+	r.AddConsumerHandler(
 		"foo",
 		"subscribe_topic",
 		sub,

@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill-googlecloud/pkg/googlecloud"
-	"github.com/ThreeDotsLabs/watermill-sql/v3/pkg/sql"
+	"github.com/ThreeDotsLabs/watermill-googlecloud/v2/pkg/googlecloud"
+	"github.com/ThreeDotsLabs/watermill-sql/v4/pkg/sql"
 	"github.com/ThreeDotsLabs/watermill/components/forwarder"
 	"github.com/ThreeDotsLabs/watermill/message"
 	driver "github.com/go-sql-driver/mysql"
@@ -37,7 +37,7 @@ type LotteryConcludedEvent struct {
 func main() {
 	// Setup the Forwarder component so it takes messages from MySQL subscription and pushes them to Google Pub/Sub.
 	sqlSubscriber, err := sql.NewSubscriber(
-		db,
+		sql.BeginnerFromStdSQL(db),
 		sql.SubscriberConfig{
 			SchemaAdapter:    sql.DefaultMySQLSchema{},
 			OffsetsAdapter:   sql.DefaultMySQLOffsetsAdapter{},
@@ -201,7 +201,7 @@ func persistDataAndPublishEventInTransaction(lotteryID int, pickedUser string, l
 
 	var publisher message.Publisher
 	publisher, err = sql.NewPublisher(
-		tx,
+		sql.TxFromStdSQL(tx),
 		sql.PublisherConfig{
 			SchemaAdapter: sql.DefaultMySQLSchema{},
 		},
