@@ -1,18 +1,22 @@
 +++
 title = "SQLite"
-description = "Pub/Sub based on SQLite."
+description = "A lightweight, file-based SQL database engine"
 date = 2025-05-08T11:30:00+02:00
-bref = "Pub/Sub based on SQLite."
+bref = "A lightweight, file-based SQL database engine"
 weight = 121
 +++
 
-[todo - some description]
+SQLite is a C-language library that implements a small, fast, self-contained, high-reliability, full-featured SQL database engine. Our SQLite Pub/Sub implementation provides two **CGO-free** driver variants optimized for different use cases.
+
+Both drivers use pure Go implementations of SQLite, enabling cross-compilation and avoiding CGO dependencies while maintaining full SQLite functionality.
+
+You can find a fully functional example with SQLite in the [Watermill examples](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/pubsubs/sqlite).
 
 ## Vanilla ModernC Driver vs Advanced ZombieZen Driver
 
-The ModernC driver is compatible with the Golang standard library SQL package. It works without CGO. Has fewer dependencies than the ZombieZen variant.
+The **ModernC driver** is compatible with the Golang standard library SQL package and works without CGO. It has fewer dependencies than the ZombieZen variant and uses the `modernc.org/sqlite` pure Go SQLite implementation.
 
-The ZombieZen driver abandons the standard Golang library SQL conventions in favor of [the more orthogonal API and higher performance potential](https://crawshaw.io/blog/go-and-sqlite). Under the hood, it uses ModernC SQLite3 implementation and does not need CGO. Advanced SQLite users might prefer this driver.
+The **ZombieZen driver** abandons the standard Golang library SQL conventions in favor of [the more orthogonal API and higher performance potential](https://crawshaw.io/blog/go-and-sqlite). Under the hood, it also uses the ModernC SQLite3 implementation and does not need CGO. Advanced SQLite users might prefer this driver for its performance benefits.
 It is about **6 times faster** than the ModernC variant. It is currently more stable due to lower level control. It is faster than even the CGO SQLite variants on standard library interfaces, and with some tuning should become the absolute speed champion of persistent message brokers over time. Tuned SQLite is [~35% faster](https://sqlite.org/fasterthanfs.html) than the Linux file system.
 
 ### Characteristics
@@ -20,7 +24,7 @@ It is about **6 times faster** than the ModernC variant. It is currently more st
 | Feature             | Implements | Note                                              |
 |---------------------|------------|---------------------------------------------------|
 | ConsumerGroups      | yes        | See `ConsumerGroupMatcher` in `SubscriberOptions` |
-| ExactlyOnceDelivery | false      |                                                   |
+| ExactlyOnceDelivery | no         |                                                   |
 | GuaranteedOrder     | yes        |                                                   |
 | Persistent          | yes        |                                                   |
 
@@ -28,42 +32,15 @@ It is about **6 times faster** than the ModernC variant. It is currently more st
 
 ### Installation
 
-```sh
-go get -u github.com/dkotik/watermillsqlite/wmsqlitemodernc
+```bash
+go get github.com/ThreeDotsLabs/watermill-sqlite
 ```
 
 ### Usage 
 
-```go
-import (
-	"database/sql"
-	"github.com/dkotik/watermillsqlite/wmsqlitemodernc"
-	_ "modernc.org/sqlite"
-)
+{{% load-snippet-partial file="src-link/_examples/pubsubs/sqlite/main.go" first_line_contains="import (" last_line_contains="_ \"modernc.org/sqlite\"" padding_after="1" %}}
 
-db, err := sql.Open("sqlite", ":memory:?journal_mode=WAL&busy_timeout=1000&cache=shared")
-if err != nil {
-	panic(err)
-}
-// limit the number of concurrent connections to one
-// this is a limitation of `modernc.org/sqlite` driver
-db.SetMaxOpenConns(1)
-defer db.Close()
-
-pub, err := wmsqlitemodernc.NewPublisher(db, wmsqlitemodernc.PublisherOptions{
-	InitializeSchema: true, // create tables for used topics
-})
-if err != nil {
-	panic(err)
-}
-sub, err := wmsqlitemodernc.NewSubscriber(db, wmsqlitemodernc.SubscriberOptions{
-	InitializeSchema: true, // create tables for used topics
-})
-if err != nil {
-	panic(err)
-}
-// ... follow guides on <https://watermill.io>
-```
+{{% load-snippet-partial file="src-link/_examples/pubsubs/sqlite/main.go" first_line_contains="func createDB()" last_line_contains="return db" padding_after="1" %}}
 
 ### Configuration
 
@@ -73,62 +50,42 @@ if err != nil {
 
 ### Publishing
 
-{{% load-snippet-partial file="src-link/watermill-sqlite/wmsqlitemodernc/publisher.go" first_line_contains="func NewPublisher" last_line_contains="func NewPublisher" %}}
-
-Example:
-{{% load-snippet-partial file="src-link/_examples/pubsubs/sql/main.go" first_line_contains="publisher, err :=" last_line_contains="panic(err)" padding_after="1" %}}
+{{% load-snippet-partial file="src-link/watermill-sqlite/wmsqlitemodernc/publisher.go" first_line_contains="// NewPublisher" last_line_contains="func NewPublisher" %}}
 
 {{% load-snippet-partial file="src-link/watermill-sqlite/wmsqlitemodernc/publisher.go" first_line_contains="// Publish " last_line_contains="func (p *publisher) Publish" %}}
 
+
+Example:
+{{% load-snippet-partial file="src-link/_examples/pubsubs/sqlite/main.go" first_line_contains="publisher, err := wmsqlitemodernc.NewPublisher(" last_line_contains="panic(err)" padding_after="1" %}}
+
+{{% load-snippet-partial file="src-link/_examples/pubsubs/sqlite/main.go" first_line_contains="func publishMessages(" last_line_contains="panic(err)" padding_after="1" %}}
+
 #### Publishing in transaction
 
-[todo]
+[TODO]
 
 ### Subscribing
 
-[todo]
-
-{{% load-snippet-partial file="src-link/watermill-sqlite/wmsqlitemodernc/subscriber.go" first_line_contains="func NewSubscriber" last_line_contains="func NewSubscriber" %}}
+{{% load-snippet-partial file="src-link/watermill-sqlite/wmsqlitemodernc/subscriber.go" first_line_contains="// NewSubscriber" last_line_contains="func NewSubscriber" %}}
 
 Example:
+{{% load-snippet-partial file="src-link/_examples/pubsubs/sqlite/main.go" first_line_contains="subscriber, err := wmsqlitemodernc.NewSubscriber(" last_line_contains="panic(err)" padding_after="1" %}}
 
-[todo]
+{{% load-snippet-partial file="src-link/watermill-sqlite/wmsqlitemodernc/subscriber.go" first_line_contains="// Subscribe " last_line_contains="func (s *subscriber) Subscribe" %}}
 
 ## Advanced ZombieZen Driver
 
 ### Installation
 
-```sh
-go get -u github.com/dkotik/watermillsqlite/wmsqlitezombiezen
+```bash
+go get github.com/ThreeDotsLabs/watermill-sqlite
 ```
 
 ### Usage
 
-```go
-import "github.com/dkotik/watermillsqlite/wmsqlitezombiezen"
+{{% load-snippet-partial file="src-link/_examples/pubsubs/sqlite-zombiezen/main.go" first_line_contains="import (" last_line_contains="\"zombiezen.com/go/sqlite\"" padding_after="1" %}}
 
-// &cache=shared is critical, see: https://github.com/zombiezen/go-sqlite/issues/92#issuecomment-2052330643
-connectionDSN := ":memory:?journal_mode=WAL&busy_timeout=1000&cache=shared")
-conn, err := sqlite.OpenConn(connectionDSN)
-if err != nil {
-	panic(err)
-}
-defer conn.Close()
-
-pub, err := wmsqlitezombiezen.NewPublisher(conn, wmsqlitezombiezen.PublisherOptions{
-	InitializeSchema: true, // create tables for used topics
-})
-if err != nil {
-	panic(err)
-}
-sub, err := wmsqlitezombiezen.NewSubscriber(connectionDSN, wmsqlitezombiezen.SubscriberOptions{
-	InitializeSchema: true, // create tables for used topics
-})
-if err != nil {
-	panic(err)
-}
-// ... follow guides on <https://watermill.io>
-```
+{{% load-snippet-partial file="src-link/_examples/pubsubs/sqlite-zombiezen/main.go" first_line_contains="// &cache=shared is critical" last_line_contains="defer conn.Close()" padding_after="1" %}}
 
 ### Configuration
 
@@ -138,26 +95,40 @@ if err != nil {
 
 ### Publishing
 
-{{% load-snippet-partial file="src-link/watermill-sqlite/wmsqlitezombiezen/publisher.go" first_line_contains="func NewPublisher" last_line_contains="func NewPublisher" %}}
-
-Example:
-{{% load-snippet-partial file="src-link/_examples/pubsubs/sql/main.go" first_line_contains="publisher, err :=" last_line_contains="panic(err)" padding_after="1" %}}
+{{% load-snippet-partial file="src-link/watermill-sqlite/wmsqlitezombiezen/publisher.go" first_line_contains="// NewPublisher" last_line_contains="func NewPublisher" %}}
 
 {{% load-snippet-partial file="src-link/watermill-sqlite/wmsqlitezombiezen/publisher.go" first_line_contains="// Publish " last_line_contains="func (p *publisher) Publish" %}}
 
+
+Example:
+{{% load-snippet-partial file="src-link/_examples/pubsubs/sqlite-zombiezen/main.go" first_line_contains="publisher, err := wmsqlitezombiezen.NewPublisher(" last_line_contains="panic(err)" padding_after="1" %}}
+
+{{% load-snippet-partial file="src-link/_examples/pubsubs/sqlite-zombiezen/main.go" first_line_contains="func publishMessages(" last_line_contains="panic(err)" padding_after="1" %}}
+
 #### Publishing in transaction
 
-[todo]
+[TODO]
 
 ### Subscribing
 
-[todo]
-
-{{% load-snippet-partial file="src-link/watermill-sqlite/wmsqlitezombiezen/subscriber.go" first_line_contains="func NewSubscriber" last_line_contains="func NewSubscriber" %}}
+{{% load-snippet-partial file="src-link/watermill-sqlite/wmsqlitezombiezen/subscriber.go" first_line_contains="// NewSubscriber" last_line_contains="func NewSubscriber" %}}
 
 Example:
+{{% load-snippet-partial file="src-link/_examples/pubsubs/sqlite-zombiezen/main.go" first_line_contains="subscriber, err := wmsqlitezombiezen.NewSubscriber(" last_line_contains="panic(err)" padding_after="1" %}}
 
-[todo]
+{{% load-snippet-partial file="src-link/watermill-sqlite/wmsqlitezombiezen/subscriber.go" first_line_contains="// Subscribe " last_line_contains="func (s *subscriber) Subscribe" %}}
+
+## Marshaler
+
+Watermill's messages are stored in SQLite using JSON serialization. Both drivers use the same marshaling approach - messages are automatically marshaled to and from JSON format when publishing and subscribing.
+
+The default marshaler handles:
+- Message payload (stored as JSON blob)
+- Message metadata (stored as JSON object)
+- Message UUID (stored as TEXT)
+- Timestamps for ordering and consumer group management
+
+Both drivers automatically handle message marshaling and unmarshaling, so no custom marshaler configuration is typically required.
 
 ## Similar Projects
 

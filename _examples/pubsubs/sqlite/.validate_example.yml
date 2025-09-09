@@ -1,0 +1,4 @@
+validation_cmd: "go run main.go"
+timeout: 30
+expected_stdout:
+  - "received message:"
