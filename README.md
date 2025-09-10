@@ -30,9 +30,9 @@ Pick what you like the best or see in order:
 
 ## Our online hands-on training
 
-Go Event-Driven goes beyond Watermill Quickstart. You'll learn universal concepts and patterns like:
+Go Event-Driven goes beyond Watermill Quickstart. You'll learn industry standard concepts and patterns like:
 
-* Handling at-least once delivery
+* Handling at-least-once delivery
 * Asynchronous read models
 * Events & Commands
 * Observability
@@ -44,7 +44,7 @@ Go Event-Driven goes beyond Watermill Quickstart. You'll learn universal concept
 ## Examples
 
 * Basic
-    * [Your first app](_examples/basic/1-your-first-app) — **start here!**
+    * [Your first app](_examples/basic/1-your-first-app) - **start here!**
     * [Realtime feed](_examples/basic/2-realtime-feed)
     * [Router](_examples/basic/3-router)
     * [Metrics](_examples/basic/4-metrics)

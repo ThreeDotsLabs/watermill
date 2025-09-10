@@ -22,4 +22,6 @@ You'll learn the basics of Watermill and a few more advanced concepts:
 
 [➡️ Start the Watermill Quickstart](https://academy.threedots.tech/)
 
+<a href="https://academy.threedots.tech/" target="_blank">
 <img src="https://threedots.tech/watermill-io/quickstart.png" alt="Watermill Quickstart" style="width:100%; margin-bottom: 3rem; padding: 2rem;" />
+</a>
