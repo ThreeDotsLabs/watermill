@@ -1,5 +1,5 @@
 +++
-title = "Watermill Quickstart"
+title = "Quickstart"
 description = "Learn how to use Watermill in your project with a hands-on training."
 weight = 50
 draft = false
