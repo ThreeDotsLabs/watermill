@@ -36,6 +36,14 @@ It's a lightweight library that's easy to plug in or remove from your project.
 go get -u github.com/ThreeDotsLabs/watermill
 ```
 
+## Learn with quickstart
+
+Docs too boring? Prefer learning by coding?
+
+We have [a free hands-on training]({{< ref "/docs/quickstart/" >}}) where you'll solve exercises to learn how to use Watermill in your projects.
+
+It'll guide you through the basics and a few advanced concepts like message ordering and the Outbox pattern.
+
 ## One-Minute Background
 
 The idea behind event-driven applications is always the same: listen to and react to incoming messages.
