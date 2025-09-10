@@ -31,18 +31,11 @@ Pick what you like the best or see in order:
 
 <a href="https://threedots.tech/event-driven/?utm_source=watermill-readme"><img align="center" width="400" src="https://threedots.tech/event-driven-banner.png"></a>
 
-## Quickstart
-
-Prefer learning by coding?
-
-See [Watermill Quickstart](https://watermill.io/docs/quickstart/) — a free training where you'll solve exercises to learn how to use Watermill in your projects.
-
-It'll guide you through the basics and a few advanced concepts like message ordering and the Outbox pattern.
-
 ## Examples
 
+* [Watermill Quickstart](https://watermill.io/docs/quickstart/) — **learn by coding!**
 * Basic
-    * [Your first app](_examples/basic/1-your-first-app) - **start here!**
+    * [Your first app](_examples/basic/1-your-first-app)
     * [Realtime feed](_examples/basic/2-realtime-feed)
     * [Router](_examples/basic/3-router)
     * [Metrics](_examples/basic/4-metrics)

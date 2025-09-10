@@ -38,7 +38,7 @@ go get -u github.com/ThreeDotsLabs/watermill
 
 ## Learn with quickstart
 
-Docs too boring? Prefer learning by coding?
+Docs too boring? Prefer learning by doing?
 
 We have [a free hands-on training]({{< ref "/docs/quickstart/" >}}) where you'll solve exercises to learn how to use Watermill in your projects.
 

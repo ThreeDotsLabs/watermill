@@ -7,8 +7,6 @@ bref = "Learn how to use Watermill in your project with a hands-on training."
 +++
 
 Watermill Quickstart is a hands-on training that will teach you how to use Watermill, a Go library for building event-driven applications, in your project.
-
-It takes about 1–2 hours to complete.
 Basic Go knowledge is all you need to get started.
 
 It's available on [Three Dots Labs Academy](https://academy.threedots.tech/) and completely free.
@@ -23,3 +21,5 @@ You'll learn the basics of Watermill and a few more advanced concepts:
 * The Outbox pattern (with Postgres).
 
 [➡️ Start the Watermill Quickstart](https://academy.threedots.tech/)
+
+<img src="https://threedots.tech/watermill-io/quickstart.png" alt="Watermill Quickstart" style="width:100%; margin-bottom: 3rem; padding: 2rem;" />
