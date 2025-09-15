@@ -6,9 +6,11 @@ bref = "A lightweight, file-based SQL database engine"
 weight = 121
 +++
 
-SQLite is a C-language library that implements a small, fast, self-contained, high-reliability, full-featured SQL database engine. Our SQLite Pub/Sub implementation provides two **CGO-free** driver variants optimized for different use cases.
+**Beta Version Warning: this Pub/Sub is stable, but it has not been widely tested in production environments. It may be sensitive to certain edge cases and combinations of configuration parameters.**
 
-Both drivers use pure Go implementations of SQLite, enabling cross-compilation and avoiding CGO dependencies while maintaining full SQLite functionality.
+SQLite is a C-language library that implements a small, fast, self-contained, high-reliability, full-featured SQL database engine. Our SQLite Pub/Sub implementation provides two **CGO-free** driver variants optimized for different use cases. Both drivers use pure Go implementations of SQLite, enabling cross-compilation and avoiding CGO dependencies while maintaining full SQLite functionality.
+
+SQLite Pub/Subs provide the easiest way to publish and process events durably, since you do not have to set up or manage a separate database. The database is just a file on disk. Some cloud compute providers offer distributed SQLite clusters, which can provide both durability and unmatched read performance. Tuned SQLite is [~35% faster](https://sqlite.org/fasterthanfs.html) than the Linux file system.
 
 You can find a fully functional example with SQLite in the [Watermill examples](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/pubsubs/sqlite).
 
@@ -17,7 +19,7 @@ You can find a fully functional example with SQLite in the [Watermill examples](
 The **ModernC driver** is compatible with the Golang standard library SQL package and works without CGO. It has fewer dependencies than the ZombieZen variant and uses the `modernc.org/sqlite` pure Go SQLite implementation.
 
 The **ZombieZen driver** abandons the standard Golang library SQL conventions in favor of [the more orthogonal API and higher performance potential](https://crawshaw.io/blog/go-and-sqlite). Under the hood, it also uses the ModernC SQLite3 implementation and does not need CGO. Advanced SQLite users might prefer this driver for its performance benefits.
-It is about **6 times faster** than the ModernC variant. It is currently more stable due to lower level control. It is faster than even the CGO SQLite variants on standard library interfaces, and with some tuning should become the absolute speed champion of persistent message brokers over time. Tuned SQLite is [~35% faster](https://sqlite.org/fasterthanfs.html) than the Linux file system.
+It is about **6 times faster** than the ModernC variant. It is currently more stable due to lower level control. It is faster than even the CGO SQLite variants on standard library interfaces, and with some tuning should become the absolute speed champion of persistent message brokers over time.
 
 ### Characteristics
 
@@ -51,7 +53,6 @@ go get github.com/ThreeDotsLabs/watermill-sqlite/wmsqlitemodernc@latest
 {{% load-snippet-partial file="src-link/watermill-sqlite/wmsqlitemodernc/publisher.go" first_line_contains="// NewPublisher" last_line_contains="func NewPublisher" %}}
 
 {{% load-snippet-partial file="src-link/watermill-sqlite/wmsqlitemodernc/publisher.go" first_line_contains="// Publish " last_line_contains="func (p *publisher) Publish" %}}
-
 
 Example:
 {{% load-snippet-partial file="src-link/_examples/pubsubs/sqlite/main.go" first_line_contains="publisher, err := wmsqlitemodernc.NewPublisher(" last_line_contains="panic(err)" padding_after="1" %}}
@@ -95,7 +96,6 @@ go get -u github.com/ThreeDotsLabs/watermill-sqlite/wmsqlitezombiezen@latest
 
 {{% load-snippet-partial file="src-link/watermill-sqlite/wmsqlitezombiezen/publisher.go" first_line_contains="// Publish " last_line_contains="func (p *publisher) Publish" %}}
 
-
 Example:
 {{% load-snippet-partial file="src-link/_examples/pubsubs/sqlite-zombiezen/main.go" first_line_contains="publisher, err := wmsqlitezombiezen.NewPublisher(" last_line_contains="panic(err)" padding_after="1" %}}
 
@@ -134,6 +134,6 @@ Both drivers automatically handle message marshaling and unmarshaling, so no cus
 
 ## Caveats
 
-### SQLite limitations
-
 SQLite3 does not support querying `FOR UPDATE`, which is used for row locking when subscribers in the same consumer group read an event batch in official Watermill SQL PubSub implementations. Current architectural decision is to lock a consumer group offset using `unixepoch()+lockTimeout` time stamp. While one consumed message is processing per group, the offset lock time is extended by `lockTimeout` periodically by `time.Ticker`. If the subscriber is unable to finish the consumer group batch, other subscribers will take over the lock as soon as the grace period runs out. A time lock fulfills the role of a traditional database network timeout that terminates transactions when its client disconnects.
+
+All the normal SQLite limitations apply to Watermill. The connections are file handles. Create new connections for concurrent processing. If you must share a connection, protect it with a mutual exclusion lock. If you are writing within a transaction, create a connection for that transaction only.
