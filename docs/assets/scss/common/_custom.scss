@@ -15,3 +15,502 @@ h1, h2, h3, h4, h5, .navbar-brand {
 [data-bs-theme="light"] .only-dark {
     display: none;
 }
+
+// Homepage feature sections styling
+.code-container {
+    border-radius: 0.5rem !important;
+    overflow: hidden;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+// Make Hugo highlight work well in our containers
+.code-container .highlight {
+    margin: 0;
+}
+
+.code-container .highlight pre {
+    margin: 0;
+    padding: 1.5rem;
+    border-radius: 0;
+}
+
+.code-container .highlight code {
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+// Style copy-to-clipboard buttons in code containers
+.code-container .highlight {
+    position: relative;
+}
+
+// Target the actual copy button classes used by Doks theme
+.code-container .copy {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    z-index: 10;
+}
+
+.code-container .copy .btn-copy {
+    background: rgba(255, 255, 255, 0.95) !important;
+    border: 1px solid rgba(0, 0, 0, 0.1) !important;
+    border-radius: 0.375rem !important;
+    width: 2.25rem !important;
+    height: 2.25rem !important;
+    padding: 0 !important;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    backdrop-filter: blur(8px);
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.8;
+}
+
+.code-container .copy .btn-copy:hover {
+    background: rgba(255, 255, 255, 1) !important;
+    border-color: rgba(0, 0, 0, 0.2) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    opacity: 1;
+}
+
+.code-container .copy .btn-copy:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    opacity: 1;
+}
+
+.code-container .copy .btn-copy div {
+    width: 1.25rem !important;
+    height: 1.25rem !important;
+    background-color: #4b5563 !important;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'%3E%3Cpath d='M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2'/%3E%3Crect x='8' y='2' width='8' height='4' rx='1' ry='1'/%3E%3C/svg%3E") no-repeat center;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'%3E%3Cpath d='M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2'/%3E%3Crect x='8' y='2' width='8' height='4' rx='1' ry='1'/%3E%3C/svg%3E") no-repeat center;
+    mask-size: contain;
+    -webkit-mask-size: contain;
+}
+
+// Dark theme support for copy buttons
+[data-bs-theme="dark"] .code-container .copy .btn-copy {
+    background: rgba(31, 41, 55, 0.95) !important;
+    border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+[data-bs-theme="dark"] .code-container .copy .btn-copy:hover {
+    background: rgba(31, 41, 55, 1) !important;
+    border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+[data-bs-theme="dark"] .code-container .copy .btn-copy div {
+    background-color: #e5e7eb !important;
+}
+
+.homepage-features {
+    .row {
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+}
+
+// Improved text alignment and spacing
+.text-center.text-lg-start {
+    @media (min-width: 992px) {
+        padding-right: 2rem;
+    }
+}
+
+// Better code block styling
+.code-container {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+// Learn page styling
+.learn-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 3rem 1rem;
+}
+
+.learn-header {
+    text-align: center;
+    margin-bottom: 4rem;
+}
+
+.learn-main-title {
+    font-size: 3rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    color: var(--bs-body-color);
+}
+
+.learn-subtitle {
+    font-size: 1.25rem;
+    color: var(--bs-body-color-secondary);
+    max-width: 600px;
+    margin: 0 auto;
+    line-height: 1.6;
+}
+
+.learn-section {
+    margin-bottom: 4rem;
+}
+
+.learn-section:last-child {
+    margin-bottom: 0;
+}
+
+.learn-section-title {
+    text-align: center;
+    font-size: 2rem;
+    font-weight: 600;
+    margin-bottom: 3rem;
+    color: var(--bs-body-color);
+}
+
+.learn-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2rem;
+    justify-items: center;
+}
+
+.learn-card {
+    display: flex;
+    flex-direction: column;
+    padding: 2rem;
+    border-radius: 0.75rem;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    background: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    min-height: 280px;
+    width: 100%;
+    max-width: 350px;
+    text-align: center;
+    color: inherit;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+
+.learn-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    text-decoration: none;
+    color: inherit;
+    border-color: var(--bs-primary);
+}
+
+.learn-card:focus {
+    outline: 2px solid var(--bs-primary);
+    outline-offset: 2px;
+}
+
+.learn-card-icon {
+    margin: 0 auto 1.5rem;
+    color: var(--bs-primary);
+    display: flex;
+    justify-content: center;
+}
+
+.learn-card h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--bs-body-color);
+}
+
+.learn-card-secondary {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--bs-gray-600);
+    margin-bottom: 1rem;
+}
+
+.learn-card-badge {
+    position: absolute;
+    top: 1rem;
+    left: -2rem;
+    background: var(--bs-primary);
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 0.5rem 5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    transform: rotate(-45deg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 10rem;
+}
+
+.learn-card p {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    margin-bottom: 2rem;
+    flex-grow: 1;
+    color: var(--bs-body-color-secondary);
+}
+
+
+// Dark theme support for learn cards
+[data-bs-theme="dark"] .learn-card {
+    background: var(--bs-body-bg);
+    border-color: var(--bs-border-color);
+}
+
+[data-bs-theme="dark"] .learn-card:hover {
+    border-color: var(--bs-primary);
+}
+
+
+// Responsive grid for learn page
+@media (max-width: 767.98px) {
+    .learn-container {
+        padding: 2rem 1rem;
+    }
+
+    .learn-header {
+        margin-bottom: 3rem;
+    }
+
+    .learn-main-title {
+        font-size: 2.5rem;
+    }
+
+    .learn-subtitle {
+        font-size: 1.1rem;
+    }
+
+    .learn-section-title {
+        font-size: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .learn-row {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+
+    .learn-card {
+        padding: 1.5rem;
+        min-height: 240px;
+        max-width: none;
+    }
+}
+
+@media (min-width: 768px) and (max-width: 1199.98px) {
+    .learn-row {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .learn-section:first-child .learn-row {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .learn-section:first-child .learn-row .learn-card:nth-child(3) {
+        grid-column: 1 / -1;
+        justify-self: center;
+    }
+}
+
+// Hide footer banner on learn page
+body.learn .event-driven-banner {
+    display: none;
+}
+
+// Quickstart page styling
+.quickstart-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 3rem 1rem;
+}
+
+.quickstart-header {
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+.quickstart-main-title {
+    font-size: 3rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    color: var(--bs-body-color);
+}
+
+.quickstart-subtitle {
+    font-size: 1.25rem;
+    color: var(--bs-body-color-secondary);
+    max-width: 600px;
+    margin: 0 auto;
+    line-height: 1.6;
+}
+
+.quickstart-content {
+    font-size: 1.1rem;
+    line-height: 1.8;
+}
+
+// Hide footer banner on quickstart page too
+body.quickstart .event-driven-banner {
+    display: none;
+}
+
+// Responsive styling for quickstart
+@media (max-width: 767.98px) {
+    .quickstart-container {
+        padding: 2rem 1rem;
+    }
+
+    .quickstart-header {
+        margin-bottom: 2rem;
+    }
+
+    .quickstart-main-title {
+        font-size: 2.5rem;
+    }
+
+    .quickstart-subtitle {
+        font-size: 1.1rem;
+    }
+}
+
+// Responsive improvements
+@media (max-width: 991.98px) {
+    .code-container {
+        margin-top: 2rem;
+    }
+
+    .display-5 {
+        font-size: 2rem;
+    }
+
+    .text-center.text-lg-start {
+        text-align: center !important;
+        padding-right: 0;
+    }
+}
+
+// Pub/Sub Logos Collage Styling
+.pubsub-logos-container {
+    padding: 2rem 0;
+}
+
+.pubsub-logos-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 2rem;
+    max-width: 900px;
+    margin: 0 auto;
+    align-items: center;
+    justify-items: center;
+}
+
+.pubsub-logo-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    transition: all 0.3s ease;
+    padding: 1rem;
+    border-radius: 0.75rem;
+    text-decoration: none;
+    color: inherit;
+
+    img {
+        width: 60px;
+        height: 60px;
+        margin-bottom: 0.75rem;
+        transition: all 0.3s ease;
+        filter: grayscale(0.2) brightness(0.95);
+        opacity: 0.9;
+    }
+
+    span {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--bs-body-color-secondary);
+        transition: all 0.3s ease;
+    }
+
+    &:hover {
+        transform: translateY(-4px);
+        background: rgba(var(--bs-primary-rgb), 0.05);
+        text-decoration: none;
+        color: inherit;
+
+        img {
+            filter: none;
+            opacity: 1;
+            transform: scale(1.1);
+        }
+
+        span {
+            color: var(--bs-primary);
+        }
+    }
+
+    &:focus {
+        outline: 2px solid var(--bs-primary);
+        outline-offset: 2px;
+        text-decoration: none;
+        color: inherit;
+    }
+}
+
+// Dark theme support for pub/sub logos
+[data-bs-theme="dark"] .pubsub-logo-item {
+    &:hover {
+        background: rgba(var(--bs-primary-rgb), 0.1);
+    }
+}
+
+// Responsive adjustments for pub/sub logos
+@media (max-width: 767.98px) {
+    .pubsub-logos-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.5rem;
+        max-width: 100%;
+    }
+
+    .pubsub-logo-item {
+        padding: 0.75rem;
+
+        img {
+            width: 50px;
+            height: 50px;
+            margin-bottom: 0.5rem;
+        }
+
+        span {
+            font-size: 0.8rem;
+        }
+    }
+}
+
+@media (max-width: 575.98px) {
+    .pubsub-logos-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+    }
+
+    .pubsub-logo-item {
+        img {
+            width: 45px;
+            height: 45px;
+        }
+
+        span {
+            font-size: 0.75rem;
+        }
+    }
+}

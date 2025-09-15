@@ -1,0 +1,41 @@
+{{ define "main" }}
+<div class="learn-container">
+  <div class="learn-header">
+    <h1 class="learn-main-title">Learn Watermill</h1>
+  </div>
+
+  <div class="learn-section">
+    <h2 class="learn-section-title">How do you like to learn?</h2>
+    <div class="learn-row">
+      {{ range $index, $option := .Params.learning_options }}
+      <a href="{{ .link }}" class="learn-card">
+        {{ if .new }}
+        <span class="learn-card-badge">New</span>
+        {{ end }}
+        <div class="learn-card-icon">
+          {{ .icon | safeHTML }}
+        </div>
+        <h3>{{ .title }}</h3>
+        <span class="learn-card-secondary">{{ .subtitle }}</span>
+        <p>{{ .description }}</p>
+      </a>
+      {{ end }}
+    </div>
+  </div>
+
+  <div class="learn-section">
+    <h2 class="learn-section-title">Dive Deeper</h2>
+    <div class="learn-row">
+      {{ range .Params.deeper_options }}
+      <a href="{{ .link }}" class="learn-card" {{ if .external }}target="_blank" rel="noopener"{{ end }}>
+        <div class="learn-card-icon">
+          {{ .icon | safeHTML }}
+        </div>
+        <h3>{{ .title }}</h3>
+        <p>{{ .description }}</p>
+      </a>
+      {{ end }}
+    </div>
+  </div>
+</div>
+{{ end }}

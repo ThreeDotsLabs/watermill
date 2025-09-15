@@ -40,7 +40,7 @@ go get -u github.com/ThreeDotsLabs/watermill
 
 Docs too boring? Prefer learning by doing?
 
-We have [a free hands-on training]({{< ref "/docs/quickstart/" >}}) where you'll solve exercises to learn how to use Watermill in your projects.
+We have [a free hands-on training]({{< ref "/quickstart/" >}}) where you'll solve exercises to learn how to use Watermill in your projects.
 
 It'll guide you through the basics and a few advanced concepts like message ordering and the Outbox pattern.
 

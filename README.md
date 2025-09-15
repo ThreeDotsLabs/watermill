@@ -23,7 +23,7 @@ implementations like Kafka or RabbitMQ, but also HTTP or Postgres if that fits y
 
 Pick what you like the best or see in order:
 
-1. [Quickstart](https://watermill.io/docs/quickstart/) — learn by coding!
+1. [Quickstart](https://watermill.io/quickstart/) — learn by coding!
 2. Follow the [Getting Started guide](https://watermill.io/docs/getting-started/).
 3. See examples below.
 4. Read the full documentation: https://watermill.io/

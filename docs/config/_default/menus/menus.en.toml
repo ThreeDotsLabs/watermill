@@ -1,13 +1,12 @@
 [[main]]
+  name = "Learn"
+  url = "/learn/"
+  weight = 5
+
+[[main]]
   name = "Docs"
   url = "/docs/getting-started/"
   weight = 10
-
-[[main]]
-  name = "Examples"
-  post = '<svg class="ms-1 mb-1 icon icon-tabler icon-tabler-external-link" width="20" height="20" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentcolor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><path d="M12 6H6A2 2 0 004 8v10a2 2 0 002 2h10a2 2 0 002-2v-6"></path><path d="M11 13l9-9"></path><path d="M15 4h5v5"></path></svg>'
-  url = "https://github.com/ThreeDotsLabs/watermill/tree/master/_examples"
-  weight = 20
 
 [[main]]
   name = "Support"

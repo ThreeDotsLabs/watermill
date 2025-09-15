@@ -1,0 +1,9 @@
+<svg width="60" height="60" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="60" height="60" rx="8" fill="#00ADD8"/>
+  <path d="M20 20L40 20C42 20 44 22 44 24V36C44 38 42 40 40 40L20 40C18 40 16 38 16 36V24C16 22 18 20 20 20Z" fill="#FFFFFF"/>
+  <path d="M25 26L35 30L25 34V26Z" fill="#00ADD8"/>
+  <circle cx="42" cy="24" r="2" fill="#FFFFFF"/>
+  <circle cx="42" cy="30" r="2" fill="#FFFFFF"/>
+  <circle cx="42" cy="36" r="2" fill="#FFFFFF"/>
+  <text x="30" y="50" text-anchor="middle" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="5" font-weight="bold">Go</text>
+</svg>
