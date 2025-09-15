@@ -26,16 +26,21 @@
     <div class="row justify-content-center mb-5 pb-5">
       <div class="col-lg-11 col-xl-10 text-center">
         <h2 class="display-4 fw-bold mb-4">Publish Events</h2>
-        <p class="lead text-muted mb-5">Send events across your application with simple, type-safe publishing. EventBus handles routing, serialization, and delivery to all subscribers.</p>
-        <div class="code-container">
+        <p class="lead text-muted mb-5">Work with Go structs.<br/>
+            Decouple your services with asynchronous processing.
+        </p>
+
+          <div class="expressive-code homepage-code-block">
+              <figure class="frame not-content">
 {{ highlight `event := UserRegistered{
-    UserID:       "123",
-    Email:        "user@example.com",
-    RegisteredAt: time.Now(),
+    UserID:   id,
+    Email:    email,
+    JoinedAt: time.Now(),
 }
 
 err := eventBus.Publish(ctx, event)` "go" "" }}
-        </div>
+              </figure>
+          </div>
       </div>
     </div>
 
@@ -43,104 +48,106 @@ err := eventBus.Publish(ctx, event)` "go" "" }}
     <div class="row justify-content-center mb-5 pb-5">
       <div class="col-lg-11 col-xl-10 text-center">
         <h2 class="display-4 fw-bold mb-4">Handle Events</h2>
-        <p class="lead text-muted mb-5">Process events with automatic retries, dead letter queues, and middleware. EventProcessor ensures reliable message handling at scale.</p>
-        <div class="code-container">
+        <p class="lead text-muted mb-5">Focus on the business logic.<br/>
+            Watermill handles routing, serialization and low-level details.
+        </p>
+
+          <div class="expressive-code homepage-code-block">
+              <figure class="frame not-content">
 {{ highlight `eventProcessor.AddHandlers(
     cqrs.NewEventHandler("SendWelcomeEmail", sendWelcomeEmail),
-    cqrs.NewEventHandler("CreateProfile", createUserProfile),
 )
 
 func sendWelcomeEmail(ctx context.Context, event *UserRegistered) error {
-    return emailService.SendWelcome(event.Email)
+    return emailService.Send(event.Email, "Welcome!")
 }` "go" "" }}
-        </div>
+              </figure>
+          </div>
       </div>
     </div>
 
     <!-- Router Middleware Section -->
     <div class="row justify-content-center mb-5 pb-5">
       <div class="col-lg-11 col-xl-10 text-center">
-        <h2 class="display-4 fw-bold mb-4">As Simple as HTTP</h2>
-        <p class="lead text-muted mb-5">Use familiar middleware patterns for cross-cutting concerns like logging, metrics, and retries. Chain middleware just like HTTP handlers.</p>
-        <div class="code-container">
+        <h2 class="display-4 fw-bold mb-4">Simple API you already know</h2>
+        <p class="lead text-muted mb-5">Use the familiar concepts, similar to an HTTP Router with support for middleware.</p>
+          <div class="expressive-code homepage-code-block">
+              <figure class="frame not-content">
 {{ highlight `router.AddMiddleware(
-    middleware.CorrelationID,
-    middleware.Retry{
-        MaxRetries: 3,
-        InitialInterval: time.Second,
-    }.Middleware,
     middleware.Recoverer,
+    middleware.CorrelationID,
     middleware.Timeout(30 * time.Second),
 )` "go" "" }}
-        </div>
+              </figure>
+          </div>
       </div>
     </div>
 
     <!-- Pub/Sub Support Section -->
     <div class="row justify-content-center mb-5 pb-5">
       <div class="col-lg-11 col-xl-10 text-center">
-        <h2 class="display-4 fw-bold mb-4">Supports your favorite Pub/Sub</h2>
-        <p class="lead text-muted mb-5">Connect to Kafka, RabbitMQ, PostgreSQL, Redis, and more with the same API. Switch providers without changing your application code.</p>
+        <h2 class="display-4 fw-bold mb-4">Use your favorite Pub/Sub</h2>
+        <p class="lead text-muted mb-5">Work with Kafka, RabbitMQ, PostgreSQL, Redis, and more Pub/Subs with the same API. Switch providers without changing your application code.</p>
 
         <!-- Pub/Sub Logos Collage -->
         <div class="pubsub-logos-container mb-5">
           <div class="pubsub-logos-grid">
-            <a href="/pubsubs/kafka/" class="pubsub-logo-item">
-              <img src="/img/pubsub-logos/kafka.svg" alt="Apache Kafka" />
-              <span>Kafka</span>
-            </a>
-            <a href="/pubsubs/amqp/" class="pubsub-logo-item">
-              <img src="/img/pubsub-logos/rabbitmq.svg" alt="RabbitMQ" />
-              <span>RabbitMQ</span>
-            </a>
-            <a href="/pubsubs/sql/" class="pubsub-logo-item">
-              <img src="/img/pubsub-logos/postgresql.svg" alt="PostgreSQL" />
-              <span>PostgreSQL</span>
-            </a>
-            <a href="/pubsubs/redisstream/" class="pubsub-logo-item">
-              <img src="/img/pubsub-logos/redis.svg" alt="Redis" />
-              <span>Redis</span>
-            </a>
-            <a href="/pubsubs/nats/" class="pubsub-logo-item">
-              <img src="/img/pubsub-logos/nats.svg" alt="NATS" />
-              <span>NATS</span>
-            </a>
-            <a href="/pubsubs/aws/" class="pubsub-logo-item">
-              <img src="/img/pubsub-logos/aws.svg" alt="AWS SQS/SNS" />
-              <span>AWS</span>
-            </a>
-            <a href="/pubsubs/googlecloud/" class="pubsub-logo-item">
-              <img src="/img/pubsub-logos/gcp.svg" alt="Google Cloud Pub/Sub" />
-              <span>Google Cloud</span>
-            </a>
-            <a href="/pubsubs/http/" class="pubsub-logo-item">
-              <img src="/img/pubsub-logos/http.svg" alt="HTTP" />
-              <span>HTTP</span>
-            </a>
-            <a href="/pubsubs/firestore/" class="pubsub-logo-item">
-              <img src="/img/pubsub-logos/firestore.svg" alt="Google Firestore" />
-              <span>Firestore</span>
-            </a>
-            <a href="/pubsubs/sql/" class="pubsub-logo-item">
-              <img src="/img/pubsub-logos/mysql.svg" alt="MySQL" />
-              <span>MySQL</span>
-            </a>
-            <a href="/pubsubs/sql/" class="pubsub-logo-item">
-              <img src="/img/pubsub-logos/sqlite.svg" alt="SQLite" />
-              <span>SQLite</span>
-            </a>
-            <a href="/pubsubs/bolt/" class="pubsub-logo-item">
-              <img src="/img/pubsub-logos/bolt.svg" alt="BoltDB" />
-              <span>BoltDB</span>
-            </a>
-            <a href="/pubsubs/io/" class="pubsub-logo-item">
-              <img src="/img/pubsub-logos/io.svg" alt="I/O" />
-              <span>I/O</span>
-            </a>
-            <a href="/pubsubs/gochannel/" class="pubsub-logo-item">
-              <img src="/img/pubsub-logos/gochannel.svg" alt="Go Channel" />
-              <span>GoChannel</span>
-            </a>
+              <a href="/pubsubs/aws/" class="pubsub-logo-item">
+                  <img src="/img/pubsub-logos/aws.png" alt="AWS SQS/SNS" />
+                  <span>AWS SNS/SQS</span>
+              </a>
+              <a href="/pubsubs/bolt/" class="pubsub-logo-item">
+                  <img src="/img/pubsub-logos/bolt.png" alt="BoltDB" />
+                  <span>BoltDB</span>
+              </a>
+              <a href="/pubsubs/firestore/" class="pubsub-logo-item">
+                  <img src="/img/pubsub-logos/firestore.png" alt="Google Firestore" />
+                  <span>Firestore</span>
+              </a>
+              <a href="/pubsubs/gochannel/" class="pubsub-logo-item">
+                  <img src="/img/pubsub-logos/gochannel.png" alt="Go Channel" />
+                  <span>Go Channel</span>
+              </a>
+              <a href="/pubsubs/googlecloud/" class="pubsub-logo-item">
+                  <img src="/img/pubsub-logos/gcp.png" alt="Google Cloud Pub/Sub" />
+                  <span>Google Cloud Pub/Sub</span>
+              </a>
+              <a href="/pubsubs/http/" class="pubsub-logo-item">
+                  <img src="/img/pubsub-logos/http.png" alt="HTTP" />
+                  <span>HTTP</span>
+              </a>
+              <a href="/pubsubs/io/" class="pubsub-logo-item">
+                  <img src="/img/pubsub-logos/io.png" alt="I/O" />
+                  <span>I/O</span>
+              </a>
+              <a href="/pubsubs/kafka/" class="pubsub-logo-item">
+                  <img src="/img/pubsub-logos/kafka.png" alt="Apache Kafka" />
+                  <span>Kafka</span>
+              </a>
+              <a href="/pubsubs/sql/" class="pubsub-logo-item">
+                  <img src="/img/pubsub-logos/mysql.png" alt="MySQL" />
+                  <span>MySQL</span>
+              </a>
+              <a href="/pubsubs/nats/" class="pubsub-logo-item">
+                  <img src="/img/pubsub-logos/nats.png" alt="NATS" />
+                  <span>NATS</span>
+              </a>
+              <a href="/pubsubs/sql/" class="pubsub-logo-item">
+                  <img src="/img/pubsub-logos/postgresql.png" alt="PostgreSQL" />
+                  <span>PostgreSQL</span>
+              </a>
+              <a href="/pubsubs/amqp/" class="pubsub-logo-item">
+                  <img src="/img/pubsub-logos/rabbitmq.png" alt="RabbitMQ" />
+                  <span>RabbitMQ</span>
+              </a>
+              <a href="/pubsubs/redisstream/" class="pubsub-logo-item">
+                  <img src="/img/pubsub-logos/redis.png" alt="Redis" />
+                  <span>Redis</span>
+              </a>
+              <a href="/pubsubs/sql/" class="pubsub-logo-item">
+                  <img src="/img/pubsub-logos/sqlite.png" alt="SQLite" />
+                  <span>SQLite</span>
+              </a>
           </div>
         </div>
       </div>
@@ -150,22 +157,37 @@ func sendWelcomeEmail(ctx context.Context, event *UserRegistered) error {
       <!-- Library vs Framework Section -->
       <div class="row justify-content-center mb-5 pb-5">
           <div class="col-lg-11 col-xl-10 text-center">
-              <h2 class="display-4 fw-bold mb-4">Library, Not Framework</h2>
-              <p class="lead text-muted mb-5">Integrate Watermill into existing applications without architectural changes. Use only the components you need.</p>
-              <div class="code-container">
-                  {{ highlight `// Add to existing HTTP server
-                  func (h *Handler) RegisterUser(w http.ResponseWriter, r *http.Request) {
-                  user := createUser(r)
+              <h2 class="display-4 fw-bold mb-4">Library ≠ Framework</h2>
+              <p class="lead text-muted mb-5">Use any architecture you want. Watermill is lightweight and can be easily replaced.</p>
+              <div class="expressive-code homepage-code-block">
+                  <figure class="frame not-content">
+{{ highlight `func (h *Handler) RegisterUser(w http.ResponseWriter, r *http.Request) {
+    user := createUser(r)
 
-                  // Your existing business logic
-                  if err := h.userRepo.Save(user); err != nil {
-                  http.Error(w, err.Error(), 500)
-                  return
-                  }
+    // Your existing business logic
+    err := h.userRepo.Save(user)
+    if err != nil {
+        // ...
+    }
 
-                  // Optional: Publish event for decoupled features
-                  h.eventBus.Publish(r.Context(), &UserRegistered{...})
-                  }` "go" "" }}
+    // Publish an event using Watermill
+    err := h.eventBus.Publish(r.Context(), &UserRegistered{...})
+    // ...
+}` "go" "" }}
+                  </figure>
+              </div>
+          </div>
+      </div>
+
+      <!-- Get Started Section -->
+      <div class="row justify-content-center text-center pt-5 mt-5">
+          <div class="col-lg-11 col-xl-10">
+              <img src="/img/gopher.svg" alt="Watermill Logo" style="width: 160px;" class="mb-2" />
+              <h2 class="display-5 fw-bold mb-4">Start building</h2>
+              <div class="mt-3">
+                  <a class="btn btn-primary btn-cta rounded-pill btn-lg" href="/learn/" role="button">
+                      Get Started
+                  </a>
               </div>
           </div>
       </div>

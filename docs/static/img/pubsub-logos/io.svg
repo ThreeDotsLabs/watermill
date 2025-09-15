@@ -1,8 +1,0 @@
-<svg width="60" height="60" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="60" height="60" rx="8" fill="#6B7280"/>
-  <rect x="15" y="20" width="30" height="20" rx="3" fill="#FFFFFF"/>
-  <path d="M20 25L25 30L20 35" stroke="#6B7280" stroke-width="2" fill="none"/>
-  <path d="M35 25L40 30L35 35" stroke="#6B7280" stroke-width="2" fill="none"/>
-  <circle cx="30" cy="30" r="2" fill="#6B7280"/>
-  <text x="30" y="50" text-anchor="middle" fill="#FFFFFF" font-family="Arial, sans-serif" font-size="6" font-weight="bold">I/O</text>
-</svg>

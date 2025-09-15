@@ -9,9 +9,6 @@
     <div class="learn-row">
       {{ range $index, $option := .Params.learning_options }}
       <a href="{{ .link }}" class="learn-card">
-        {{ if .new }}
-        <span class="learn-card-badge">New</span>
-        {{ end }}
         <div class="learn-card-icon">
           {{ .icon | safeHTML }}
         </div>
