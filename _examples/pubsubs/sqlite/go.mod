@@ -1,10 +1,10 @@
 module sqlite
 
-go 1.21.0
+go 1.23.0
 
 require (
 	github.com/ThreeDotsLabs/watermill v1.4.6
-	github.com/ThreeDotsLabs/watermill-sqlite/wmsqlitemodernc v0.0.0
+	github.com/ThreeDotsLabs/watermill-sqlite/wmsqlitemodernc v0.0.7
 	modernc.org/sqlite v1.36.1
 )
 
@@ -27,7 +27,3 @@ require (
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.8.2 // indirect
 )
-
-replace github.com/ThreeDotsLabs/watermill-sqlite/wmsqlitemodernc => /Users/robert/src/watermill-sqlite/wmsqlitemodernc
-
-replace github.com/ThreeDotsLabs/watermill-sqlite/wmsqlitezombiezen => /Users/robert/src/watermill-sqlite/wmsqlitezombiezen

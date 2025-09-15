@@ -83,9 +83,7 @@ go get -u github.com/ThreeDotsLabs/watermill-sqlite/wmsqlitezombiezen@latest
 
 ### Usage
 
-{{% load-snippet-partial file="src-link/_examples/pubsubs/sqlite-zombiezen/main.go" first_line_contains="import (" last_line_contains="\"zombiezen.com/go/sqlite\"" padding_after="1" %}}
-
-{{% load-snippet-partial file="src-link/_examples/pubsubs/sqlite-zombiezen/main.go" first_line_contains="// &cache=shared is critical" last_line_contains="defer conn.Close()" padding_after="1" %}}
+{{% load-snippet-partial file="src-link/_examples/pubsubs/sqlite-zombiezen/main.go" first_line_contains="import (" last_line_contains="}" padding_after="1" %}}
 
 ### Configuration
 
@@ -107,7 +105,7 @@ Example:
 
 #### Publishing in transaction
 
-[TODO]
+{{% load-snippet-partial file="src-link/_examples/pubsubs/sqlite-zombiezen/transaction.go" first_line_contains="import (" last_line_contains="}" padding_after="1" %}}
 
 ### Subscribing
 
