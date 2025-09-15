@@ -33,10 +33,10 @@ It is about **6 times faster** than the ModernC variant. It is currently more st
 ### Installation
 
 ```bash
-go get github.com/ThreeDotsLabs/watermill-sqlite
+go get github.com/ThreeDotsLabs/watermill-sqlite/wmsqlitemodernc@latest
 ```
 
-### Usage 
+### Usage
 
 {{% load-snippet-partial file="src-link/_examples/pubsubs/sqlite/main.go" first_line_contains="import (" last_line_contains="_ \"modernc.org/sqlite\"" padding_after="1" %}}
 
@@ -78,7 +78,7 @@ Example:
 ### Installation
 
 ```bash
-go get github.com/ThreeDotsLabs/watermill-sqlite
+go get -u github.com/ThreeDotsLabs/watermill-sqlite/wmsqlitezombiezen@latest
 ```
 
 ### Usage
@@ -123,6 +123,7 @@ Example:
 Watermill's messages are stored in SQLite using JSON serialization. Both drivers use the same marshaling approach - messages are automatically marshaled to and from JSON format when publishing and subscribing.
 
 The default marshaler handles:
+
 - Message payload (stored as JSON blob)
 - Message metadata (stored as JSON object)
 - Message UUID (stored as TEXT)
