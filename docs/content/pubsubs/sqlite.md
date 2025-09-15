@@ -38,9 +38,7 @@ go get github.com/ThreeDotsLabs/watermill-sqlite/wmsqlitemodernc@latest
 
 ### Usage
 
-{{% load-snippet-partial file="src-link/_examples/pubsubs/sqlite/main.go" first_line_contains="import (" last_line_contains="_ \"modernc.org/sqlite\"" padding_after="1" %}}
-
-{{% load-snippet-partial file="src-link/_examples/pubsubs/sqlite/main.go" first_line_contains="func createDB()" last_line_contains="return db" padding_after="1" %}}
+{{% load-snippet-partial file="src-link/_examples/pubsubs/sqlite/main.go" first_line_contains="import (" last_line_contains="}" padding_after="1" %}}
 
 ### Configuration
 
@@ -62,7 +60,7 @@ Example:
 
 #### Publishing in transaction
 
-[TODO]
+{{% load-snippet-partial file="src-link/_examples/pubsubs/sqlite/transaction.go" first_line_contains="import (" last_line_contains="}" padding_after="1" %}}
 
 ### Subscribing
 
