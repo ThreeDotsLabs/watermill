@@ -23,7 +23,7 @@
 <section class="section py-5 homepage-features">
   <div class="container">
     <!-- EventBus Section -->
-    <div class="row justify-content-center mb-5 pb-5">
+    <div class="row justify-content-center mb-5 pb-5 homepage-section-gradient">
       <div class="col-lg-11 col-xl-10 text-center">
         <h2 class="display-4 fw-bold mb-4">Publish Events</h2>
         <p class="lead text-muted mb-5">Work with Go structs.<br/>
@@ -45,7 +45,7 @@ err := eventBus.Publish(ctx, event)` "go" "" }}
     </div>
 
     <!-- EventProcessor Section -->
-    <div class="row justify-content-center mb-5 pb-5">
+    <div class="row justify-content-center mb-5 pb-5 homepage-section-gradient">
       <div class="col-lg-11 col-xl-10 text-center">
         <h2 class="display-4 fw-bold mb-4">Handle Events</h2>
         <p class="lead text-muted mb-5">Focus on the business logic.<br/>
@@ -67,7 +67,7 @@ func sendWelcomeEmail(ctx context.Context, event *UserRegistered) error {
     </div>
 
     <!-- Router Middleware Section -->
-    <div class="row justify-content-center mb-5 pb-5">
+    <div class="row justify-content-center mb-5 pb-5 homepage-section-gradient">
       <div class="col-lg-11 col-xl-10 text-center">
         <h2 class="display-4 fw-bold mb-4">Simple API you already know</h2>
         <p class="lead text-muted mb-5">Use the familiar concepts, similar to an HTTP Router with support for middleware.</p>
@@ -84,7 +84,7 @@ func sendWelcomeEmail(ctx context.Context, event *UserRegistered) error {
     </div>
 
     <!-- Pub/Sub Support Section -->
-    <div class="row justify-content-center mb-5 pb-5">
+    <div class="row justify-content-center pb-5 homepage-section-gradient">
       <div class="col-lg-11 col-xl-10 text-center">
         <h2 class="display-4 fw-bold mb-4">Use your favorite Pub/Sub</h2>
         <p class="lead text-muted mb-5">Work with Kafka, RabbitMQ, PostgreSQL, Redis, and more Pub/Subs with the same API. Switch providers without changing your application code.</p>
@@ -144,7 +144,7 @@ func sendWelcomeEmail(ctx context.Context, event *UserRegistered) error {
                   <img src="/img/pubsub-logos/redis.png" alt="Redis" />
                   <span>Redis</span>
               </a>
-              <a href="/pubsubs/sql/" class="pubsub-logo-item">
+              <a href="/pubsubs/sqlite/" class="pubsub-logo-item">
                   <img src="/img/pubsub-logos/sqlite.png" alt="SQLite" />
                   <span>SQLite</span>
               </a>
@@ -155,10 +155,10 @@ func sendWelcomeEmail(ctx context.Context, event *UserRegistered) error {
 
 
       <!-- Library vs Framework Section -->
-      <div class="row justify-content-center mb-5 pb-5">
+      <div class="row justify-content-center mb-5 pb-5 homepage-section-gradient">
           <div class="col-lg-11 col-xl-10 text-center">
               <h2 class="display-4 fw-bold mb-4">Library ≠ Framework</h2>
-              <p class="lead text-muted mb-5">Use any architecture you want. Watermill is lightweight and can be easily replaced.</p>
+              <p class="lead text-muted mb-5">Use any architecture you want. No vendor lock-in.</p>
               <div class="expressive-code homepage-code-block">
                   <figure class="frame not-content">
 {{ highlight `func (h *Handler) RegisterUser(w http.ResponseWriter, r *http.Request) {
@@ -180,7 +180,7 @@ func sendWelcomeEmail(ctx context.Context, event *UserRegistered) error {
       </div>
 
       <!-- Get Started Section -->
-      <div class="row justify-content-center text-center pt-5 mt-5">
+      <div class="row justify-content-center text-center pt-5 mt-5 homepage-section-gradient">
           <div class="col-lg-11 col-xl-10">
               <img src="/img/gopher.svg" alt="Watermill Logo" style="width: 160px;" class="mb-2" />
               <h2 class="display-5 fw-bold mb-4">Start building</h2>

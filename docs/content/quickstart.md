@@ -2,8 +2,8 @@
 title: "Watermill Quickstart"
 description: "Learn how to use Watermill in your project with a hands-on training."
 draft: false
-weight: -9999
 toc: false
+sidebar: true
 seo:
   title: "Watermill Quickstart - Hands-on Training"
   description: "Learn how to use Watermill in your project with a hands-on training covering Publisher/Subscriber, Router, CQRS, Kafka, and more."

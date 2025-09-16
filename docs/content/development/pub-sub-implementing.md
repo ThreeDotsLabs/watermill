@@ -33,7 +33,7 @@ Here are a few things you shouldn't forget about:
 5. Redelivery on `Nack()` for a consumed message.
 6. Use [Universal Pub/Sub tests]({{< ref "/docs/pub-sub#universal-tests" >}}). For debugging tips, you should check [tests troubleshooting guide](/docs/troubleshooting/#debugging-pubsub-tests).
 7. Performance optimizations.
-8. GoDocs, [Markdown docs]({{< ref "/pubsubs" >}}) and [Getting Started examples](/docs/getting-started).
+8. GoDocs, [Markdown docs]({{< ref "/pubsubs" >}}) and [Getting Started examples](/getting-started).
 
 We will also be thankful for submitting a [pull requests](https://github.com/ThreeDotsLabs/watermill/pulls) with the new Pub/Sub implementation.
 

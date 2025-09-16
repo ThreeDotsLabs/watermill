@@ -5,7 +5,7 @@
 
 [[main]]
   name = "Docs"
-  url = "/docs/getting-started/"
+  url = "/getting-started/"
   weight = 10
 
 [[main]]
@@ -20,82 +20,32 @@
   post = "v0.1.0"
   weight = 30
 
-[[sidebar_docs]]
+[[sidebar]]
+  name = "Quickstart"
+  pageRef = "/quickstart/"
+  weight = 5
+
+[[sidebar]]
+  name = "Getting Started"
+  pageRef = "/getting-started/"
+  weight = 6
+
+[[sidebar]]
   name = "Basics"
   pageRef = "/docs"
   weight = 10
 
-[[sidebar_docs]]
+[[sidebar]]
   name = "Advanced Topics"
   pageRef = "/advanced"
   weight = 20
 
-[[sidebar_docs]]
+[[sidebar]]
   name = "Supported Pub/Subs"
   pageRef = "/pubsubs"
   weight = 30
 
-[[sidebar_docs]]
-  name = "Development"
-  pageRef = "/development"
-  weight = 40
-
-[[sidebar_advanced]]
-  name = "Basics"
-  pageRef = "/docs"
-  weight = 10
-
-[[sidebar_advanced]]
-  name = "Advanced Topics"
-  pageRef = "/advanced"
-  weight = 20
-
-[[sidebar_advanced]]
-  name = "Supported Pub/Subs"
-  pageRef = "/pubsubs"
-  weight = 30
-
-[[sidebar_advanced]]
-  name = "Development"
-  pageRef = "/development"
-  weight = 40
-
-[[sidebar_pubsubs]]
-  name = "Basics"
-  pageRef = "/docs"
-  weight = 10
-
-[[sidebar_pubsubs]]
-  name = "Advanced Topics"
-  pageRef = "/advanced"
-  weight = 20
-
-[[sidebar_pubsubs]]
-  name = "Supported Pub/Subs"
-  pageRef = "/pubsubs"
-  weight = 30
-
-[[sidebar_pubsubs]]
-  name = "Development"
-  pageRef = "/development"
-  weight = 40
-
-[[sidebar_development]]
-  name = "Basics"
-  pageRef = "/docs"
-  weight = 10
-
-[[sidebar_development]]
-  name = "Advanced Topics"
-  pageRef = "/advanced"
-  weight = 20
-
-[[sidebar_development]]
-  name = "Supported Pub/Subs"
-  pageRef = "/pubsubs"
-  weight = 30
-
-[[sidebar_development]]
+[[sidebar]]
   name = "Development"
   pageRef = "/development"
   weight = 40
