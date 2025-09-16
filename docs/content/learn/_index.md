@@ -5,6 +5,7 @@ date: 2024-09-15T10:00:00+00:00
 lastmod: 2024-09-15T10:00:00+00:00
 draft: false
 layout: learn
+hideBanner: true
 seo:
   title: "Learn Watermill - Go Event-Driven Applications"
   description: "Complete learning resources for Watermill - guides, examples, and community resources for building event-driven applications in Go."

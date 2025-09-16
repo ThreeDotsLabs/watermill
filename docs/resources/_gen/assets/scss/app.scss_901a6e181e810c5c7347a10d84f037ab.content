@@ -14621,12 +14621,6 @@ h1, .h1, h2, .h2, h3, .h3, h4, .h4, h5, .h5, .navbar-brand {
     grid-column: 1 / -1;
     justify-self: center; } }
 
-body.learn .event-driven-banner {
-  display: none; }
-
-body.home .event-driven-banner {
-  display: none; }
-
 .quickstart-container {
   max-width: 800px;
   margin: 0 auto;

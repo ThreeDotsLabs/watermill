@@ -218,15 +218,6 @@ h1, h2, h3, h4, h5, .navbar-brand {
     }
 }
 
-// Hide footer banner on learn page
-body.learn .event-driven-banner {
-    display: none;
-}
-
-// Hide footer banner on main page
-body.home .event-driven-banner {
-    display: none;
-}
 // Quickstart page styling
 .quickstart-container {
     max-width: 800px;
