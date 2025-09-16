@@ -61,7 +61,7 @@ Example:
 
 #### Publishing in transaction
 
-{{% load-snippet-partial file="src-link/_examples/pubsubs/sqlite/transaction.go" first_line_contains="import (" last_line_contains="}" padding_after="1" %}}
+{{% load-snippet-partial file="src-link/_examples/pubsubs/sqlite/transaction.go" first_line_contains="import (" padding_after="1" %}}
 
 ### Subscribing
 
@@ -103,7 +103,7 @@ Example:
 
 #### Publishing in transaction
 
-{{% load-snippet-partial file="src-link/_examples/pubsubs/sqlite-zombiezen/transaction.go" first_line_contains="import (" last_line_contains="}" padding_after="1" %}}
+{{% load-snippet-partial file="src-link/_examples/pubsubs/sqlite-zombiezen/transaction.go" first_line_contains="import (" padding_after="1" %}}
 
 ### Subscribing
 
