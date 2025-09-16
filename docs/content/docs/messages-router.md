@@ -31,7 +31,7 @@ Next, you have to add a new handler with `Router.AddHandler`:
 
 {{% load-snippet-partial file="src-link/message/router.go" first_line_contains="// AddHandler" last_line_contains=") {" padding_after="0" %}}
 
-See an example usage from [Getting Started]({{< ref "/getting-started#using-messages-router" >}}):
+See an example usage from [Getting Started]({{< ref "/learn/getting-started#using-messages-router" >}}):
 {{% load-snippet-partial file="src-link/_examples/basic/3-router/main.go" first_line_contains="// AddHandler returns a handler" last_line_contains="return h(message)" padding_after="3" %}}
 
 ## Consumer handler

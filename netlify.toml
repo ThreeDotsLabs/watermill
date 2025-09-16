@@ -47,5 +47,5 @@
 
 [[redirects]]
   from = "/docs/getting-started"
-  to = "/getting-started/"
+  to = "/learn/getting-started/"
   status = 301

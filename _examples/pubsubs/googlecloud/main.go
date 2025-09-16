@@ -1,4 +1,4 @@
-// Sources for https://watermill.io/getting-started/
+// Sources for https://watermill.io/learn/getting-started/
 package main
 
 import (

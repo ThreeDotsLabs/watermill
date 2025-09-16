@@ -5,7 +5,7 @@ topic, modifying them and publishing to another topic.
 
 There's a docker-compose file included, so you can run the example and see it in action.
 
-To understand the background and internals, see [getting started guide](https://watermill.io/getting-started/).
+To understand the background and internals, see [getting started guide](https://watermill.io/learn/getting-started/).
 
 ## Files
 

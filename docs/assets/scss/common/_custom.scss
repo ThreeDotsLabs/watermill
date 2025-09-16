@@ -443,7 +443,6 @@ body.quickstart .event-driven-banner {
 // Homepage gradient section backgrounds
 .homepage-section-gradient {
     position: relative;
-    border-top: 1px solid rgba(0, 0, 0, 0.08);
     
     &::before {
         content: '';
@@ -453,6 +452,7 @@ body.quickstart .event-driven-banner {
         transform: translateX(-50%);
         width: 100vw;
         height: 100%;
+        border-top: 1px solid rgba(0, 0, 0, 0.08);
         pointer-events: none;
         z-index: -1;
     }
@@ -470,14 +470,11 @@ body.quickstart .event-driven-banner {
 
 // Dark theme adjustments for gradients
 [data-bs-theme="dark"] {
-    .homepage-section-gradient {
+    .homepage-section-gradient::before {
+        background: linear-gradient(180deg, 
+            rgba(79, 70, 229, 0.06) 0%, 
+            transparent 100%
+        );
         border-top: 1px solid rgba(255, 255, 255, 0.08);
-        
-        &::before {
-            background: linear-gradient(180deg, 
-                rgba(79, 70, 229, 0.06) 0%, 
-                transparent 100%
-            );
-        }
     }
 }

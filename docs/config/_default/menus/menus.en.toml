@@ -5,7 +5,7 @@
 
 [[main]]
   name = "Docs"
-  url = "/getting-started/"
+  url = "/learn/getting-started/"
   weight = 10
 
 [[main]]
@@ -21,14 +21,9 @@
   weight = 30
 
 [[sidebar]]
-  name = "Quickstart"
-  pageRef = "/quickstart/"
+  name = "Learn"
+  pageRef = "/learn"
   weight = 5
-
-[[sidebar]]
-  name = "Getting Started"
-  pageRef = "/getting-started/"
-  weight = 6
 
 [[sidebar]]
   name = "Basics"
