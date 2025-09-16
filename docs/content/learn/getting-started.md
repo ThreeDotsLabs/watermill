@@ -3,6 +3,7 @@ title = "Getting started"
 description = "Watermill up and running"
 draft = false
 bref = "Watermill up and running"
+weight = 10
 +++
 
 ## What is Watermill?
