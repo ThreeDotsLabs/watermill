@@ -44,3 +44,8 @@
   from = "/pubsubs/amazonsqs/"
   to = "/pubsubs/aws/"
   status = 301
+
+[[redirects]]
+  from = "/docs/getting-started"
+  to = "/learn/getting-started/"
+  status = 301

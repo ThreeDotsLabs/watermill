@@ -9,5 +9,5 @@
 //
 // Website with detailed documentation: https://watermill.io/
 //
-// Getting started guide: https://watermill.io/docs/getting-started/
+// Getting started guide: https://watermill.io/learn/getting-started/
 package watermill

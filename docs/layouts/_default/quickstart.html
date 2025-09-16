@@ -1,0 +1,12 @@
+{{ define "main" }}
+<div class="quickstart-container">
+  <div class="quickstart-header">
+    <h1 class="quickstart-main-title">{{ .Title }}</h1>
+    <p class="quickstart-subtitle">{{ .Params.description }}</p>
+  </div>
+
+  <div class="quickstart-content">
+    {{ .Content }}
+  </div>
+</div>
+{{ end }}

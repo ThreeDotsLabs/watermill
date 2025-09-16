@@ -15,3 +15,457 @@ h1, h2, h3, h4, h5, .navbar-brand {
 [data-bs-theme="light"] .only-dark {
     display: none;
 }
+
+
+.homepage-features {
+    .row {
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+}
+
+// Improved text alignment and spacing
+.text-center.text-lg-start {
+    @media (min-width: 992px) {
+        padding-right: 2rem;
+    }
+}
+
+
+// Learn page styling
+.learn-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 3rem 1rem;
+}
+
+.learn-header {
+    text-align: center;
+    margin-bottom: 4rem;
+}
+
+.learn-main-title {
+    font-size: 3rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    color: var(--bs-body-color);
+}
+
+.learn-subtitle {
+    font-size: 1.25rem;
+    color: var(--bs-body-color-secondary);
+    max-width: 600px;
+    margin: 0 auto;
+    line-height: 1.6;
+}
+
+.learn-section {
+    margin-bottom: 4rem;
+}
+
+.learn-section:last-child {
+    margin-bottom: 0;
+}
+
+.learn-section-title {
+    text-align: center;
+    font-size: 2rem;
+    font-weight: 600;
+    margin-bottom: 3rem;
+    color: var(--bs-body-color);
+}
+
+.learn-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2rem;
+    justify-items: center;
+}
+
+.learn-card {
+    display: flex;
+    flex-direction: column;
+    padding: 2rem;
+    border-radius: 0.75rem;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    background: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    min-height: 280px;
+    width: 100%;
+    max-width: 350px;
+    text-align: center;
+    color: inherit;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+
+.learn-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    text-decoration: none;
+    color: inherit;
+    border-color: var(--bs-primary);
+}
+
+.learn-card:focus {
+    outline: 2px solid var(--bs-primary);
+    outline-offset: 2px;
+}
+
+.learn-card-icon {
+    margin: 0 auto 1.5rem;
+    color: var(--bs-primary);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 76px;
+    height: 76px;
+    
+    svg {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+    }
+}
+
+.learn-card h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--bs-body-color);
+}
+
+.learn-card-secondary {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--bs-gray-600);
+    margin-bottom: 1rem;
+}
+
+
+
+.learn-card p {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    margin-bottom: 2rem;
+    flex-grow: 1;
+    color: var(--bs-body-color-secondary);
+}
+
+
+// Dark theme support for learn cards
+[data-bs-theme="dark"] .learn-card {
+    background: var(--bs-body-bg);
+    border-color: var(--bs-border-color);
+}
+
+[data-bs-theme="dark"] .learn-card:hover {
+    border-color: var(--bs-primary);
+}
+
+
+// Responsive grid for learn page
+@media (max-width: 767.98px) {
+    .learn-container {
+        padding: 2rem 1rem;
+    }
+
+    .learn-header {
+        margin-bottom: 3rem;
+    }
+
+    .learn-main-title {
+        font-size: 2.5rem;
+    }
+
+    .learn-subtitle {
+        font-size: 1.1rem;
+    }
+
+    .learn-section-title {
+        font-size: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .learn-row {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+
+    .learn-card {
+        padding: 1.5rem;
+        min-height: 240px;
+        max-width: none;
+    }
+}
+
+@media (min-width: 768px) and (max-width: 1199.98px) {
+    .learn-row {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .learn-section:first-child .learn-row {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .learn-section:first-child .learn-row .learn-card:nth-child(3) {
+        grid-column: 1 / -1;
+        justify-self: center;
+    }
+}
+
+// Quickstart page styling
+.quickstart-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 3rem 1rem;
+}
+
+.quickstart-header {
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+.quickstart-main-title {
+    font-size: 3rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    color: var(--bs-body-color);
+}
+
+.quickstart-subtitle {
+    font-size: 1.25rem;
+    color: var(--bs-body-color-secondary);
+    max-width: 600px;
+    margin: 0 auto;
+    line-height: 1.6;
+}
+
+.quickstart-content {
+    font-size: 1.1rem;
+    line-height: 1.8;
+}
+
+// Hide footer banner on quickstart page too
+body.quickstart .event-driven-banner {
+    display: none;
+}
+
+// Responsive styling for quickstart
+@media (max-width: 767.98px) {
+    .quickstart-container {
+        padding: 2rem 1rem;
+    }
+
+    .quickstart-header {
+        margin-bottom: 2rem;
+    }
+
+    .quickstart-main-title {
+        font-size: 2.5rem;
+    }
+
+    .quickstart-subtitle {
+        font-size: 1.1rem;
+    }
+}
+
+// Responsive improvements
+@media (max-width: 991.98px) {
+    .display-5 {
+        font-size: 2rem;
+    }
+
+    .text-center.text-lg-start {
+        text-align: center !important;
+        padding-right: 0;
+    }
+}
+
+// Pub/Sub Logos Collage Styling
+.pubsub-logos-container {
+    padding: 2rem 0;
+}
+
+.pubsub-logos-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2rem;
+    max-width: 900px;
+    margin: 0 auto;
+    align-items: center;
+    justify-content: center;
+}
+
+.pubsub-logo-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    transition: all 0.3s ease;
+    padding: 1rem;
+    border-radius: 0.75rem;
+    text-decoration: none;
+    color: inherit;
+    flex: 0 0 120px;
+
+    img {
+        width: 60px;
+        height: 60px;
+        margin-bottom: 0.75rem;
+        transition: all 0.3s ease;
+    }
+
+    span {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--bs-body-color-secondary);
+        transition: all 0.3s ease;
+    }
+
+    &:hover {
+        background: rgba(var(--bs-primary-rgb), 0.05);
+        text-decoration: none;
+        color: inherit;
+
+        img {
+        }
+
+        span {
+            color: var(--bs-primary);
+        }
+    }
+
+    &:focus {
+        outline: 2px solid var(--bs-primary);
+        outline-offset: 2px;
+        text-decoration: none;
+        color: inherit;
+    }
+}
+
+// Dark theme support for pub/sub logos
+[data-bs-theme="dark"] .pubsub-logo-item {
+    &:hover {
+        background: rgba(var(--bs-primary-rgb), 0.1);
+    }
+}
+
+// Responsive adjustments for pub/sub logos
+@media (max-width: 767.98px) {
+    .pubsub-logos-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.5rem;
+        max-width: 100%;
+    }
+
+    .pubsub-logo-item {
+        padding: 0.75rem;
+
+        img {
+            width: 50px;
+            height: 50px;
+            margin-bottom: 0.5rem;
+        }
+
+        span {
+            font-size: 0.8rem;
+        }
+    }
+}
+
+@media (max-width: 575.98px) {
+    .pubsub-logos-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+    }
+
+    .pubsub-logo-item {
+        img {
+            width: 45px;
+            height: 45px;
+        }
+
+        span {
+            font-size: 0.75rem;
+        }
+    }
+}
+
+// Homepage code blocks styling
+.homepage-code-block {
+    .frame {
+        border-radius: 12px !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06) !important;
+        border: 1px solid var(--bs-border-color) !important;
+        overflow: hidden;
+
+        // Ensure child elements respect the border radius
+        * {
+            border-radius: inherit !important;
+        }
+
+        // Target the actual code container
+        pre, code, .expressive-code-block {
+            border-radius: 12px !important;
+            border: none !important;
+        }
+
+        // Target any highlighted code elements
+        .highlight {
+            border-radius: 12px !important;
+            border: none !important;
+        }
+    }
+}
+
+// Dark theme support for homepage code blocks
+[data-bs-theme="dark"] .homepage-code-block {
+    .frame {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+        border: 1px solid var(--bs-border-color) !important;
+    }
+}
+
+// Homepage gradient section backgrounds
+.homepage-section-gradient {
+    position: relative;
+    
+    &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 100vw;
+        height: 100%;
+        border-top: 1px solid rgba(0, 0, 0, 0.08);
+        pointer-events: none;
+        z-index: -1;
+    }
+}
+
+// Single gradient class for all sections
+.homepage-section-gradient {
+    &::before {
+        background: linear-gradient(180deg, 
+            rgba(79, 70, 229, 0.03) 0%, 
+            transparent 100%
+        );
+    }
+}
+
+// Dark theme adjustments for gradients
+[data-bs-theme="dark"] {
+    .homepage-section-gradient::before {
+        background: linear-gradient(180deg, 
+            rgba(79, 70, 229, 0.06) 0%, 
+            transparent 100%
+        );
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+}
