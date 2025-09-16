@@ -4,7 +4,7 @@ go 1.24.0
 
 require (
 	github.com/ThreeDotsLabs/watermill v1.5.1
-	github.com/ThreeDotsLabs/watermill-sqlite/wmsqlitezombiezen v0.0.8
+	github.com/ThreeDotsLabs/watermill-sqlite/wmsqlitezombiezen v0.1.1
 	modernc.org/sqlite v1.39.0
 	zombiezen.com/go/sqlite v1.4.2
 )

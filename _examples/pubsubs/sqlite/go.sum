@@ -5,6 +5,8 @@ github.com/ThreeDotsLabs/watermill-sqlite/wmsqlitemodernc v0.0.7/go.mod h1:+sg/s
 github.com/ThreeDotsLabs/watermill-sqlite/wmsqlitemodernc v0.0.8/go.mod h1:Os8F1QAkBJFoWNABp6iql3lJaKzG3b70mesQV5Iu+oU=
 github.com/ThreeDotsLabs/watermill-sqlite/wmsqlitemodernc v0.1.0 h1:NNgUlhjuG5oAcXlXcB9HHYBcqwG12VcJz1DaVBaUwQg=
 github.com/ThreeDotsLabs/watermill-sqlite/wmsqlitemodernc v0.1.0/go.mod h1:Os8F1QAkBJFoWNABp6iql3lJaKzG3b70mesQV5Iu+oU=
+github.com/ThreeDotsLabs/watermill-sqlite/wmsqlitemodernc v0.1.1 h1:t4f8bPmZfGv8+/VO3prla5rklVbex4OpmsK6+SkPR+c=
+github.com/ThreeDotsLabs/watermill-sqlite/wmsqlitemodernc v0.1.1/go.mod h1:Os8F1QAkBJFoWNABp6iql3lJaKzG3b70mesQV5Iu+oU=
 github.com/cenkalti/backoff/v5 v5.0.3 h1:ZN+IMa753KfX5hd8vVaMixjnqRZ3y8CuJKRKj1xcsSM=
 github.com/cenkalti/backoff/v5 v5.0.3/go.mod h1:rkhZdG3JZukswDf7f0cwqPNk4K0sa+F97BxZthm/crw=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
