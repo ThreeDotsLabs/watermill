@@ -103,6 +103,7 @@ Supported Pub/Subs:
 - NATS Pub/Sub [(`github.com/ThreeDotsLabs/watermill-nats`)](https://github.com/ThreeDotsLabs/watermill-nats/)
 - Redis Stream Pub/Sub [(`github.com/ThreeDotsLabs/watermill-redisstream`)](https://github.com/ThreeDotsLabs/watermill-redisstream/)
 - SQL Pub/Sub [(`github.com/ThreeDotsLabs/watermill-sql/v2`)](https://github.com/ThreeDotsLabs/watermill-sql/)
+- SQLite Pub/Sub (Beta) [(`github.com/ThreeDotsLabs/watermill-sqlite/`)](https://github.com/ThreeDotsLabs/watermill-sqlite/)
 
 All Pub/Subs implementation documentation can be found in the [documentation](https://watermill.io/pubsubs/).
 

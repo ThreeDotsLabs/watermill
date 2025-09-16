@@ -15,6 +15,7 @@ import (
 
 func main() {
 	db := createDB()
+	defer db.Close()
 	logger := watermill.NewStdLogger(false, false)
 
 	subscriber, err := wmsqlitemodernc.NewSubscriber(
@@ -45,12 +46,12 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
 	publishMessages(publisher)
 }
 
 func createDB() *sql.DB {
-	db, err := sql.Open("sqlite", "db.sqlite3?journal_mode=WAL&busy_timeout=1000&cache=shared")
+	connectionDSN := ":memory:" // or "db.sqlite3?journal_mode=WAL&busy_timeout=1000&cache=shared"
+	db, err := sql.Open("sqlite", connectionDSN)
 	if err != nil {
 		panic(err)
 	}

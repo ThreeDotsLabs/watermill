@@ -17,8 +17,8 @@ func main() {
 	logger := watermill.NewStdLogger(false, false)
 
 	// &cache=shared is critical, see: https://github.com/zombiezen/go-sqlite/issues/92#issuecomment-2052330643
-	connectionDSN := "file:db.sqlite3?journal_mode=WAL&busy_timeout=1000&secure_delete=true&foreign_keys=true&cache=shared"
-
+	// connectionDSN := "file:db.sqlite3?journal_mode=WAL&busy_timeout=1000&secure_delete=true&foreign_keys=true&cache=shared"
+	connectionDSN := "file:ephemeral?mode=memory&cache=shared"
 	conn, err := sqlite.OpenConn(connectionDSN)
 	if err != nil {
 		panic(err)
