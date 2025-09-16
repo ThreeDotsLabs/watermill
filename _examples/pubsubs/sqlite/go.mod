@@ -4,7 +4,7 @@ go 1.24.0
 
 require (
 	github.com/ThreeDotsLabs/watermill v1.5.1
-	github.com/ThreeDotsLabs/watermill-sqlite/wmsqlitemodernc v0.0.7
+	github.com/ThreeDotsLabs/watermill-sqlite/wmsqlitemodernc v0.1.0
 	modernc.org/sqlite v1.39.0
 )
 
