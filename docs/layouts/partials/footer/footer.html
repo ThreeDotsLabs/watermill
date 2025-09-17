@@ -1,10 +1,12 @@
-<div class="text-center mb-5">
+{{- if not (or .IsHome .Params.HideBanner) -}}
+<div class="text-center mb-5 event-driven-banner">
   <a href="https://threedots.tech/event-driven/?utm_source=watermill-docs">
     <img width="400" src="https://threedots.tech/event-driven-banner.png">
     <br>
     Check our online hands-on training
   </a>
 </div>
+{{- end -}}
 
 <footer class="footer text-muted">
   <div class="container-{{ site.Params.doks.containerBreakpoint | default "lg" }}">

@@ -8,7 +8,7 @@ displays each post on the standard output.
 
 The consumer has a throttling middleware enabled, so you have a chance to actually read the posts.
 
-To understand the background and internals, see [getting started guide](https://watermill.io/docs/getting-started/).
+To understand the background and internals, see [getting started guide](https://watermill.io/learn/getting-started/).
 
 ## Requirements
 

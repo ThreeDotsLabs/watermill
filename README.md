@@ -9,7 +9,7 @@
 Watermill is a Go library for working efficiently with message streams. It is intended
 for building event driven applications, enabling event sourcing, RPC over messages,
 sagas and basically whatever else comes to your mind. You can use conventional pub/sub
-implementations like Kafka or RabbitMQ, but also HTTP or MySQL binlog if that fits your use case.
+implementations like Kafka or RabbitMQ, but also HTTP or PostgreSQL if that fits your use case.
 
 ## Goals
 
@@ -23,11 +23,21 @@ implementations like Kafka or RabbitMQ, but also HTTP or MySQL binlog if that fi
 
 Pick what you like the best or see in order:
 
-1. Follow the [Getting Started guide](https://watermill.io/docs/getting-started/).
-2. See examples below.
-3. Read the full documentation: https://watermill.io/
+1. [Quickstart](https://watermill.io/learn/quickstart/) — learn by coding!
+2. Follow the [Getting Started guide](https://watermill.io/learn/getting-started/).
+3. See examples below.
+4. Read the full documentation: https://watermill.io/
 
 ## Our online hands-on training
+
+Go Event-Driven goes beyond Watermill Quickstart. You'll learn industry standard concepts and patterns like:
+
+* Handling at-least-once delivery
+* Asynchronous read models
+* Events & Commands
+* Observability
+* Message ordering
+* Sagas
 
 <a href="https://threedots.tech/event-driven/?utm_source=watermill-readme"><img align="center" width="400" src="https://threedots.tech/event-driven-banner.png"></a>
 
@@ -40,7 +50,7 @@ Pick what you like the best or see in order:
     * [Metrics](_examples/basic/4-metrics)
     * [CQRS with protobuf](_examples/basic/5-cqrs-protobuf)
 * [Pub/Subs usage](_examples/pubsubs)
-    * These examples are part of the [Getting started guide](https://watermill.io/docs/getting-started/) and show usage of a single Pub/Sub at a time.
+    * These examples are part of the [Getting started guide](https://watermill.io/learn/getting-started/) and show usage of a single Pub/Sub at a time.
 * Real-world examples
     * [Exactly-once delivery counter](_examples/real-world-examples/exactly-once-delivery-counter)
     * [Receiving webhooks](_examples/real-world-examples/receiving-webhooks)
@@ -93,16 +103,17 @@ type Subscriber interface {
 
 Supported Pub/Subs:
 
-- AMQP Pub/Sub [(`github.com/ThreeDotsLabs/watermill-amqp/v2`)](https://github.com/ThreeDotsLabs/watermill-amqp/)
+- AMQP (RabbitMQ) Pub/Sub [(`github.com/ThreeDotsLabs/watermill-amqp/v3`)](https://github.com/ThreeDotsLabs/watermill-amqp/)
+- AWS SNS/SQS Pub/Sub [(`github.com/ThreeDotsLabs/watermill-aws`)](https://github.com/ThreeDotsLabs/watermill-aws/)
 - Bolt Pub/Sub [(`github.com/ThreeDotsLabs/watermill-bolt`)](https://github.com/ThreeDotsLabs/watermill-bolt/)
 - Firestore Pub/Sub [(`github.com/ThreeDotsLabs/watermill-firestore`)](https://github.com/ThreeDotsLabs/watermill-firestore/)
-- Google Cloud Pub/Sub [(`github.com/ThreeDotsLabs/watermill-googlecloud`)](https://github.com/ThreeDotsLabs/watermill-googlecloud/)
-- HTTP Pub/Sub [(`github.com/ThreeDotsLabs/watermill-http`)](https://github.com/ThreeDotsLabs/watermill-http/)
+- Google Cloud Pub/Sub [(`github.com/ThreeDotsLabs/watermill-googlecloud/v2`)](https://github.com/ThreeDotsLabs/watermill-googlecloud/)
+- HTTP Pub/Sub [(`github.com/ThreeDotsLabs/watermill-http/v2`)](https://github.com/ThreeDotsLabs/watermill-http/)
 - io.Reader/io.Writer Pub/Sub [(`github.com/ThreeDotsLabs/watermill-io`)](https://github.com/ThreeDotsLabs/watermill-io/)
-- Kafka Pub/Sub [(`github.com/ThreeDotsLabs/watermill-kafka/v2`)](https://github.com/ThreeDotsLabs/watermill-kafka/)
-- NATS Pub/Sub [(`github.com/ThreeDotsLabs/watermill-nats`)](https://github.com/ThreeDotsLabs/watermill-nats/)
+- Kafka Pub/Sub [(`github.com/ThreeDotsLabs/watermill-kafka/v3`)](https://github.com/ThreeDotsLabs/watermill-kafka/)
+- NATS Jetstream Pub/Sub [(`github.com/ThreeDotsLabs/watermill-nats/v2`)](https://github.com/ThreeDotsLabs/watermill-nats/)
 - Redis Stream Pub/Sub [(`github.com/ThreeDotsLabs/watermill-redisstream`)](https://github.com/ThreeDotsLabs/watermill-redisstream/)
-- SQL Pub/Sub [(`github.com/ThreeDotsLabs/watermill-sql/v2`)](https://github.com/ThreeDotsLabs/watermill-sql/)
+- SQL (MySQL / PostgreSQL) Pub/Sub [(`github.com/ThreeDotsLabs/watermill-sql/v4`)](https://github.com/ThreeDotsLabs/watermill-sql/)
 - SQLite Pub/Sub (Beta) [(`github.com/ThreeDotsLabs/watermill-sqlite/`)](https://github.com/ThreeDotsLabs/watermill-sqlite/)
 
 All Pub/Subs implementation documentation can be found in the [documentation](https://watermill.io/pubsubs/).

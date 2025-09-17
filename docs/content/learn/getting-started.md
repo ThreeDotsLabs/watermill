@@ -1,9 +1,9 @@
 +++
 title = "Getting started"
 description = "Watermill up and running"
-weight = -9999
 draft = false
 bref = "Watermill up and running"
+weight = 10
 +++
 
 ## What is Watermill?
@@ -35,6 +35,14 @@ It's a lightweight library that's easy to plug in or remove from your project.
 ```bash
 go get -u github.com/ThreeDotsLabs/watermill
 ```
+
+## Learn with quickstart
+
+Docs too boring? Prefer learning by doing?
+
+We have [a free hands-on training]({{< ref "/learn/quickstart/" >}}) where you'll solve exercises to learn how to use Watermill in your projects.
+
+It'll guide you through the basics and a few advanced concepts like message ordering and the Outbox pattern.
 
 ## One-Minute Background
 

@@ -9,7 +9,7 @@
     </div>
     <div class="col-lg-9 col-xl-8 text-center">
       <p class="lead">{{ .Params.lead | safeHTML }}</p>
-      <a class="btn btn-primary btn-cta rounded-pill btn-lg m-3" href="/docs/getting-started/" role="button">
+      <a class="btn btn-primary btn-cta rounded-pill btn-lg m-3" href="/learn/" role="button">
         Get Started
       </a>
       <a class="btn btn-outline-primary btn-cta rounded-pill btn-lg my-3" href="https://github.com/ThreeDotsLabs/watermill" role="button">
@@ -17,6 +17,180 @@
       </a>
       {{ .Content }}
     </div>
+  </div>
+</section>
+
+<section class="section py-5 homepage-features">
+  <div class="container">
+    <!-- EventBus Section -->
+    <div class="row justify-content-center mb-5 pb-5 homepage-section-gradient">
+      <div class="col-lg-11 col-xl-10 text-center">
+        <h2 class="display-4 fw-bold mb-4 gradient-text-1">Publish Events</h2>
+        <p class="lead text-muted mb-5">Work with Go structs.<br/>
+            Decouple your services with asynchronous processing.
+        </p>
+
+          <div class="expressive-code homepage-code-block">
+              <figure class="frame not-content">
+{{ highlight `event := UserRegistered{
+    UserID:   id,
+    Email:    email,
+    JoinedAt: time.Now(),
+}
+
+err := eventBus.Publish(ctx, event)` "go" "" }}
+              </figure>
+          </div>
+      </div>
+    </div>
+
+    <!-- EventProcessor Section -->
+    <div class="row justify-content-center mb-5 pb-5 homepage-section-gradient">
+      <div class="col-lg-11 col-xl-10 text-center">
+        <h2 class="display-4 fw-bold mb-4 gradient-text-1">Handle Events</h2>
+        <p class="lead text-muted mb-5">Focus on the business logic.<br/>
+            Watermill handles routing, serialization and low-level details.
+        </p>
+
+          <div class="expressive-code homepage-code-block">
+              <figure class="frame not-content">
+{{ highlight `eventProcessor.AddHandlers(
+    cqrs.NewEventHandler("SendWelcomeEmail", sendWelcomeEmail),
+)
+
+func sendWelcomeEmail(ctx context.Context, event *UserRegistered) error {
+    return emailService.Send(event.Email, "Welcome!")
+}` "go" "" }}
+              </figure>
+          </div>
+      </div>
+    </div>
+
+    <!-- Router Middleware Section -->
+    <div class="row justify-content-center mb-5 pb-5 homepage-section-gradient">
+      <div class="col-lg-11 col-xl-10 text-center">
+        <h2 class="display-4 fw-bold mb-4 gradient-text-1">Simple API you already know</h2>
+        <p class="lead text-muted mb-5">Use the familiar concepts, similar to an HTTP Router with support for middleware.</p>
+          <div class="expressive-code homepage-code-block">
+              <figure class="frame not-content">
+{{ highlight `router.AddMiddleware(
+    middleware.Recoverer,
+    middleware.CorrelationID,
+    middleware.Timeout(30 * time.Second),
+)` "go" "" }}
+              </figure>
+          </div>
+      </div>
+    </div>
+
+    <!-- Pub/Sub Support Section -->
+    <div class="row justify-content-center pb-5 homepage-section-gradient">
+      <div class="col-lg-11 col-xl-10 text-center">
+        <h2 class="display-4 fw-bold mb-4 gradient-text-1">Use your favorite Pub/Sub</h2>
+        <p class="lead text-muted mb-5">Work with Kafka, RabbitMQ, PostgreSQL, Redis, and more Pub/Subs with the same API. Switch providers without changing your application code.</p>
+
+        <!-- Pub/Sub Logos Collage -->
+        <div class="pubsub-logos-container mb-5">
+          <div class="pubsub-logos-grid">
+              <a href="/pubsubs/aws/" class="pubsub-logo-item">
+                  <img src="/img/pubsub-logos/aws.png" alt="AWS SQS/SNS" />
+                  <span>AWS SNS/SQS</span>
+              </a>
+              <a href="/pubsubs/bolt/" class="pubsub-logo-item">
+                  <img src="/img/pubsub-logos/bolt.png" alt="BoltDB" />
+                  <span>BoltDB</span>
+              </a>
+              <a href="/pubsubs/firestore/" class="pubsub-logo-item">
+                  <img src="/img/pubsub-logos/firestore.png" alt="Google Firestore" />
+                  <span>Firestore</span>
+              </a>
+              <a href="/pubsubs/gochannel/" class="pubsub-logo-item">
+                  <img src="/img/pubsub-logos/gochannel.png" alt="Go Channel" />
+                  <span>Go Channel</span>
+              </a>
+              <a href="/pubsubs/googlecloud/" class="pubsub-logo-item">
+                  <img src="/img/pubsub-logos/gcp.png" alt="Google Cloud Pub/Sub" />
+                  <span>Google Cloud Pub/Sub</span>
+              </a>
+              <a href="/pubsubs/http/" class="pubsub-logo-item">
+                  <img src="/img/pubsub-logos/http.png" alt="HTTP" />
+                  <span>HTTP</span>
+              </a>
+              <a href="/pubsubs/io/" class="pubsub-logo-item">
+                  <img src="/img/pubsub-logos/io.png" alt="I/O" />
+                  <span>I/O</span>
+              </a>
+              <a href="/pubsubs/kafka/" class="pubsub-logo-item">
+                  <img src="/img/pubsub-logos/kafka.png" alt="Apache Kafka" />
+                  <span>Kafka</span>
+              </a>
+              <a href="/pubsubs/sql/" class="pubsub-logo-item">
+                  <img src="/img/pubsub-logos/mysql.png" alt="MySQL" />
+                  <span>MySQL</span>
+              </a>
+              <a href="/pubsubs/nats/" class="pubsub-logo-item">
+                  <img src="/img/pubsub-logos/nats.png" alt="NATS" />
+                  <span>NATS</span>
+              </a>
+              <a href="/pubsubs/sql/" class="pubsub-logo-item">
+                  <img src="/img/pubsub-logos/postgresql.png" alt="PostgreSQL" />
+                  <span>PostgreSQL</span>
+              </a>
+              <a href="/pubsubs/amqp/" class="pubsub-logo-item">
+                  <img src="/img/pubsub-logos/rabbitmq.png" alt="RabbitMQ" />
+                  <span>RabbitMQ</span>
+              </a>
+              <a href="/pubsubs/redisstream/" class="pubsub-logo-item">
+                  <img src="/img/pubsub-logos/redis.png" alt="Redis" />
+                  <span>Redis</span>
+              </a>
+              <a href="/pubsubs/sqlite/" class="pubsub-logo-item">
+                  <img src="/img/pubsub-logos/sqlite.png" alt="SQLite" />
+                  <span>SQLite</span>
+              </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+      <!-- Library vs Framework Section -->
+      <div class="row justify-content-center mb-5 pb-5 homepage-section-gradient">
+          <div class="col-md-12 col-lg-11 col-xl-10 text-center">
+              <h2 class="display-4 fw-bold mb-4 gradient-text-1">Library ≠ Framework</h2>
+              <p class="lead text-muted mb-5">Use any architecture you want. No vendor lock-in.</p>
+              <div class="expressive-code homepage-code-block">
+                  <figure class="frame not-content">
+{{ highlight `func (h *Handler) RegisterUser(w http.ResponseWriter, r *http.Request) {
+    user := createUser(r)
+
+    // Your existing business logic
+    err := h.userRepo.Save(user)
+    if err != nil {
+        // ...
+    }
+
+    // Publish an event using Watermill
+    err := h.eventBus.Publish(r.Context(), &UserRegistered{...})
+    // ...
+}` "go" "" }}
+                  </figure>
+              </div>
+          </div>
+      </div>
+
+      <!-- Get Started Section -->
+      <div class="row justify-content-center text-center pt-5 mt-5 homepage-section-gradient">
+          <div class="col-lg-11 col-xl-10">
+              <img src="/img/gopher.svg" alt="Watermill Logo" style="width: 160px;" class="mb-2" />
+              <h2 class="display-5 fw-bold mb-4">Start building</h2>
+              <div class="mt-3">
+                  <a class="btn btn-primary btn-cta rounded-pill btn-lg" href="/learn/" role="button">
+                      Get Started
+                  </a>
+              </div>
+          </div>
+      </div>
   </div>
 </section>
 {{ end }}
@@ -27,61 +201,6 @@
     <div class="bg-dots"></div>
   </div>
   {{ end -}}
-  {{ if eq $.Site.Language.LanguageName "English" }}
-  <section class="section section-md section-features">
-    <div class="container">
-      <div class="row justify-content-center text-center">
-        <div class="col-lg-5 mb-5">
-          <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="currentColor" class="bi bi-rocket" viewBox="0 0 16 16">
-            <path d="M8 8c.828 0 1.5-.895 1.5-2S8.828 4 8 4s-1.5.895-1.5 2S7.172 8 8 8"/>
-            <path d="M11.953 8.81c-.195-3.388-.968-5.507-1.777-6.819C9.707 1.233 9.23.751 8.857.454a3.5 3.5 0 0 0-.463-.315A2 2 0 0 0 8.25.064.55.55 0 0 0 8 0a.55.55 0 0 0-.266.073 2 2 0 0 0-.142.08 4 4 0 0 0-.459.33c-.37.308-.844.803-1.31 1.57-.805 1.322-1.577 3.433-1.774 6.756l-1.497 1.826-.004.005A2.5 2.5 0 0 0 2 12.202V15.5a.5.5 0 0 0 .9.3l1.125-1.5c.166-.222.42-.4.752-.57.214-.108.414-.192.625-.281l.198-.084c.7.428 1.55.635 2.4.635s1.7-.207 2.4-.635q.1.044.196.083c.213.09.413.174.627.282.332.17.586.348.752.57l1.125 1.5a.5.5 0 0 0 .9-.3v-3.298a2.5 2.5 0 0 0-.548-1.562zM12 10.445v.055c0 .866-.284 1.585-.75 2.14.146.064.292.13.425.199.39.197.8.46 1.1.86L13 14v-1.798a1.5 1.5 0 0 0-.327-.935zM4.75 12.64C4.284 12.085 4 11.366 4 10.5v-.054l-.673.82a1.5 1.5 0 0 0-.327.936V14l.225-.3c.3-.4.71-.664 1.1-.861.133-.068.279-.135.425-.199M8.009 1.073q.096.06.226.163c.284.226.683.621 1.09 1.28C10.137 3.836 11 6.237 11 10.5c0 .858-.374 1.48-.943 1.893C9.517 12.786 8.781 13 8 13s-1.517-.214-2.057-.607C5.373 11.979 5 11.358 5 10.5c0-4.182.86-6.586 1.677-7.928.409-.67.81-1.082 1.096-1.32q.136-.113.236-.18Z"/>
-            <path d="M9.479 14.361c-.48.093-.98.139-1.479.139s-.999-.046-1.479-.139L7.6 15.8a.5.5 0 0 0 .8 0z"/>
-          </svg>
-          <h2 class="h4 mt-3">Easy to Use</h2>
-          <p>
-            Watermill is easy to grasp, even for junior developers.
-          </p>
-        </div>
-        <div class="col-lg-5 mb-5">
-          <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="currentColor" class="bi bi-globe-americas" viewBox="0 0 16 16">
-            <path d="M8 0a8 8 0 1 0 0 16A8 8 0 0 0 8 0M2.04 4.326c.325 1.329 2.532 2.54 3.717 3.19.48.263.793.434.743.484q-.121.12-.242.234c-.416.396-.787.749-.758 1.266.035.634.618.824 1.214 1.017.577.188 1.168.38 1.286.983.082.417-.075.988-.22 1.52-.215.782-.406 1.48.22 1.48 1.5-.5 3.798-3.186 4-5 .138-1.243-2-2-3.5-2.5-.478-.16-.755.081-.99.284-.172.15-.322.279-.51.216-.445-.148-2.5-2-1.5-2.5.78-.39.952-.171 1.227.182.078.099.163.208.273.318.609.304.662-.132.723-.633.039-.322.081-.671.277-.867.434-.434 1.265-.791 2.028-1.12.712-.306 1.365-.587 1.579-.88A7 7 0 1 1 2.04 4.327Z"/>
-          </svg>
-          <h2 class="h4 mt-3">Universal</h2>
-          <p>
-            Build event-driven architecture, CQRS, Event Sourcing or just stream Postgres to Kafka.
-          </p>
-        </div>
-        <div class="col-lg-5 mb-5">
-          <svg xmlns="http://www.w3.org/2000/svg" width="65" height="64" fill="currentColor" class="bi bi-airplane-fill" viewBox="0 0 16 16">
-            <path d="M6.428 1.151C6.708.591 7.213 0 8 0s1.292.592 1.572 1.151C9.861 1.73 10 2.431 10 3v3.691l5.17 2.585a1.5 1.5 0 0 1 .83 1.342V12a.5.5 0 0 1-.582.493l-5.507-.918-.375 2.253 1.318 1.318A.5.5 0 0 1 10.5 16h-5a.5.5 0 0 1-.354-.854l1.319-1.318-.376-2.253-5.507.918A.5.5 0 0 1 0 12v-1.382a1.5 1.5 0 0 1 .83-1.342L6 6.691V3c0-.568.14-1.271.428-1.849"/>
-          </svg>
-          <h2 class="h4 mt-3">Fast</h2>
-          <p>
-            Watermill was designed to process hundreds of thousands of messages per second.
-          </p>
-        </div>
-        <div class="col-lg-5 mb-5">
-          <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="currentColor" class="bi bi-puzzle-fill" viewBox="0 0 16 16">
-            <path d="M3.112 3.645A1.5 1.5 0 0 1 4.605 2H7a.5.5 0 0 1 .5.5v.382c0 .696-.497 1.182-.872 1.469a.5.5 0 0 0-.115.118l-.012.025L6.5 4.5v.003l.003.01q.005.015.036.053a.9.9 0 0 0 .27.194C7.09 4.9 7.51 5 8 5c.492 0 .912-.1 1.19-.24a.9.9 0 0 0 .271-.194.2.2 0 0 0 .036-.054l.003-.01v-.008l-.012-.025a.5.5 0 0 0-.115-.118c-.375-.287-.872-.773-.872-1.469V2.5A.5.5 0 0 1 9 2h2.395a1.5 1.5 0 0 1 1.493 1.645L12.645 6.5h.237c.195 0 .42-.147.675-.48.21-.274.528-.52.943-.52.568 0 .947.447 1.154.862C15.877 6.807 16 7.387 16 8s-.123 1.193-.346 1.638c-.207.415-.586.862-1.154.862-.415 0-.733-.246-.943-.52-.255-.333-.48-.48-.675-.48h-.237l.243 2.855A1.5 1.5 0 0 1 11.395 14H9a.5.5 0 0 1-.5-.5v-.382c0-.696.497-1.182.872-1.469a.5.5 0 0 0 .115-.118l.012-.025.001-.006v-.003l-.003-.01a.2.2 0 0 0-.036-.053.9.9 0 0 0-.27-.194C8.91 11.1 8.49 11 8 11s-.912.1-1.19.24a.9.9 0 0 0-.271.194.2.2 0 0 0-.036.054l-.003.01v.002l.001.006.012.025c.016.027.05.068.115.118.375.287.872.773.872 1.469v.382a.5.5 0 0 1-.5.5H4.605a1.5 1.5 0 0 1-1.493-1.645L3.356 9.5h-.238c-.195 0-.42.147-.675.48-.21.274-.528.52-.943.52-.568 0-.947-.447-1.154-.862C.123 9.193 0 8.613 0 8s.123-1.193.346-1.638C.553 5.947.932 5.5 1.5 5.5c.415 0 .733.246.943.52.255.333.48.48.675.48h.238z"/>
-          </svg>
-          <h2 class="h4 mt-3">Flexible</h2>
-          <p>
-            You can configure every component for your needs. You can also implement your own middleware and Pub/Subs.
-          </p>
-        </div>
-        <div class="col-lg-5 mb-5">
-          <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="currentColor" class="bi bi-shield-fill-check" viewBox="0 0 16 16">
-            <path fill-rule="evenodd" d="M8 0c-.69 0-1.843.265-2.928.56-1.11.3-2.229.655-2.887.87a1.54 1.54 0 0 0-1.044 1.262c-.596 4.477.787 7.795 2.465 9.99a11.8 11.8 0 0 0 2.517 2.453c.386.273.744.482 1.048.625.28.132.581.24.829.24s.548-.108.829-.24a7 7 0 0 0 1.048-.625 11.8 11.8 0 0 0 2.517-2.453c1.678-2.195 3.061-5.513 2.465-9.99a1.54 1.54 0 0 0-1.044-1.263 63 63 0 0 0-2.887-.87C9.843.266 8.69 0 8 0m2.146 5.146a.5.5 0 0 1 .708.708l-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 1 1 .708-.708L7.5 7.793z"/>
-          </svg>
-          <h2 class="h4 mt-3">Resilient</h2>
-          <p>
-            Watermill uses proven technologies and has a strong unit and integration tests coverage for the critical areas.
-          </p>
-        </div>
-      </div>
-    </div>
-  </section>
-  {{ end }}
 {{ end }}
 
 {{ define "sidebar-footer" }}

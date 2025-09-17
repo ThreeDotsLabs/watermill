@@ -1,13 +1,12 @@
 [[main]]
-  name = "Docs"
-  url = "/docs/getting-started/"
-  weight = 10
+  name = "Learn"
+  url = "/learn/"
+  weight = 5
 
 [[main]]
-  name = "Examples"
-  post = '<svg class="ms-1 mb-1 icon icon-tabler icon-tabler-external-link" width="20" height="20" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentcolor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"></path><path d="M12 6H6A2 2 0 004 8v10a2 2 0 002 2h10a2 2 0 002-2v-6"></path><path d="M11 13l9-9"></path><path d="M15 4h5v5"></path></svg>'
-  url = "https://github.com/ThreeDotsLabs/watermill/tree/master/_examples"
-  weight = 20
+  name = "Docs"
+  url = "/learn/getting-started/"
+  weight = 10
 
 [[main]]
   name = "Support"
@@ -21,82 +20,27 @@
   post = "v0.1.0"
   weight = 30
 
-[[sidebar_docs]]
+[[sidebar]]
+  name = "Learn"
+  pageRef = "/learn"
+  weight = 5
+
+[[sidebar]]
   name = "Basics"
   pageRef = "/docs"
   weight = 10
 
-[[sidebar_docs]]
+[[sidebar]]
   name = "Advanced Topics"
   pageRef = "/advanced"
   weight = 20
 
-[[sidebar_docs]]
+[[sidebar]]
   name = "Supported Pub/Subs"
   pageRef = "/pubsubs"
   weight = 30
 
-[[sidebar_docs]]
-  name = "Development"
-  pageRef = "/development"
-  weight = 40
-
-[[sidebar_advanced]]
-  name = "Basics"
-  pageRef = "/docs"
-  weight = 10
-
-[[sidebar_advanced]]
-  name = "Advanced Topics"
-  pageRef = "/advanced"
-  weight = 20
-
-[[sidebar_advanced]]
-  name = "Supported Pub/Subs"
-  pageRef = "/pubsubs"
-  weight = 30
-
-[[sidebar_advanced]]
-  name = "Development"
-  pageRef = "/development"
-  weight = 40
-
-[[sidebar_pubsubs]]
-  name = "Basics"
-  pageRef = "/docs"
-  weight = 10
-
-[[sidebar_pubsubs]]
-  name = "Advanced Topics"
-  pageRef = "/advanced"
-  weight = 20
-
-[[sidebar_pubsubs]]
-  name = "Supported Pub/Subs"
-  pageRef = "/pubsubs"
-  weight = 30
-
-[[sidebar_pubsubs]]
-  name = "Development"
-  pageRef = "/development"
-  weight = 40
-
-[[sidebar_development]]
-  name = "Basics"
-  pageRef = "/docs"
-  weight = 10
-
-[[sidebar_development]]
-  name = "Advanced Topics"
-  pageRef = "/advanced"
-  weight = 20
-
-[[sidebar_development]]
-  name = "Supported Pub/Subs"
-  pageRef = "/pubsubs"
-  weight = 30
-
-[[sidebar_development]]
+[[sidebar]]
   name = "Development"
   pageRef = "/development"
   weight = 40
