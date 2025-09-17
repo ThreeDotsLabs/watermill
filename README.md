@@ -103,16 +103,17 @@ type Subscriber interface {
 
 Supported Pub/Subs:
 
-- AMQP Pub/Sub [(`github.com/ThreeDotsLabs/watermill-amqp/v2`)](https://github.com/ThreeDotsLabs/watermill-amqp/)
+- AMQP (RabbitMQ) Pub/Sub [(`github.com/ThreeDotsLabs/watermill-amqp/v3`)](https://github.com/ThreeDotsLabs/watermill-amqp/)
+- AWS SNS/SQS Pub/Sub [(`github.com/ThreeDotsLabs/watermill-aws`)](https://github.com/ThreeDotsLabs/watermill-aws/)
 - Bolt Pub/Sub [(`github.com/ThreeDotsLabs/watermill-bolt`)](https://github.com/ThreeDotsLabs/watermill-bolt/)
 - Firestore Pub/Sub [(`github.com/ThreeDotsLabs/watermill-firestore`)](https://github.com/ThreeDotsLabs/watermill-firestore/)
-- Google Cloud Pub/Sub [(`github.com/ThreeDotsLabs/watermill-googlecloud`)](https://github.com/ThreeDotsLabs/watermill-googlecloud/)
-- HTTP Pub/Sub [(`github.com/ThreeDotsLabs/watermill-http`)](https://github.com/ThreeDotsLabs/watermill-http/)
+- Google Cloud Pub/Sub [(`github.com/ThreeDotsLabs/watermill-googlecloud/v2`)](https://github.com/ThreeDotsLabs/watermill-googlecloud/)
+- HTTP Pub/Sub [(`github.com/ThreeDotsLabs/watermill-http/v2`)](https://github.com/ThreeDotsLabs/watermill-http/)
 - io.Reader/io.Writer Pub/Sub [(`github.com/ThreeDotsLabs/watermill-io`)](https://github.com/ThreeDotsLabs/watermill-io/)
-- Kafka Pub/Sub [(`github.com/ThreeDotsLabs/watermill-kafka/v2`)](https://github.com/ThreeDotsLabs/watermill-kafka/)
-- NATS Pub/Sub [(`github.com/ThreeDotsLabs/watermill-nats`)](https://github.com/ThreeDotsLabs/watermill-nats/)
+- Kafka Pub/Sub [(`github.com/ThreeDotsLabs/watermill-kafka/v3`)](https://github.com/ThreeDotsLabs/watermill-kafka/)
+- NATS Jetstream Pub/Sub [(`github.com/ThreeDotsLabs/watermill-nats/v2`)](https://github.com/ThreeDotsLabs/watermill-nats/)
 - Redis Stream Pub/Sub [(`github.com/ThreeDotsLabs/watermill-redisstream`)](https://github.com/ThreeDotsLabs/watermill-redisstream/)
-- SQL Pub/Sub [(`github.com/ThreeDotsLabs/watermill-sql/v2`)](https://github.com/ThreeDotsLabs/watermill-sql/)
+- SQL (MySQL / PostgreSQL) Pub/Sub [(`github.com/ThreeDotsLabs/watermill-sql/v4`)](https://github.com/ThreeDotsLabs/watermill-sql/)
 
 All Pub/Subs implementation documentation can be found in the [documentation](https://watermill.io/pubsubs/).
 
