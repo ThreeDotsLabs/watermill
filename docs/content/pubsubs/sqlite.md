@@ -14,12 +14,11 @@ SQLite Pub/Subs provide the easiest way to publish and process events durably, s
 
 You can find a fully functional example with SQLite in the [Watermill examples](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/pubsubs/sqlite).
 
-## Vanilla ModernC Driver vs Advanced ZombieZen Driver
+## ModernC vs ZombieZen Driver
 
-The **ModernC driver** is compatible with the Golang standard library SQL package and works without CGO. It has fewer dependencies than the ZombieZen variant and uses the `modernc.org/sqlite` pure Go SQLite implementation.
+The vanilla **ModernC driver** is compatible with the Golang standard library SQL package and works without CGO. It has fewer dependencies than the ZombieZen variant and uses the `modernc.org/sqlite` pure Go SQLite implementation. Most users should pick this driver for full compatibility with the standard library.
 
-The **ZombieZen driver** abandons the standard Golang library SQL conventions in favor of [the more orthogonal API and higher performance potential](https://crawshaw.io/blog/go-and-sqlite). Under the hood, it also uses the ModernC SQLite3 implementation and does not need CGO. Advanced SQLite users might prefer this driver for its performance benefits.
-It is about **6 times faster** than the ModernC variant. It is currently more stable due to lower level control. It is faster than even the CGO SQLite variants on standard library interfaces, and with some tuning should become the absolute speed champion of persistent message brokers over time.
+The advanced **ZombieZen driver** abandons the standard Golang library SQL conventions in favor of [the more orthogonal API and higher performance potential](https://crawshaw.io/blog/go-and-sqlite). Under the hood, it also uses the ModernC SQLite3 implementation and does not need CGO. Advanced SQLite users might prefer this driver for its performance benefits. It is about **6 times faster** than the ModernC variant. It is currently more stable due to lower level control. It is faster than even the CGO SQLite variants on standard library interfaces, and with some tuning should become the absolute speed champion of persistent message brokers over time.
 
 ### Characteristics
 
@@ -29,6 +28,8 @@ It is about **6 times faster** than the ModernC variant. It is currently more st
 | ExactlyOnceDelivery | no         |                                                   |
 | GuaranteedOrder     | yes        |                                                   |
 | Persistent          | yes        |                                                   |
+
+Like the [BoltDB](../bolt/) implementation, the SQLite drivers are imbeddable into your application. They do not require any additional infrastructure other than a mounted persistent disk. Their advantage over the BoltDB Pub/Sub is supporting consumer groups and guaranteed order.
 
 ## Vanilla ModernC Driver
 
@@ -126,11 +127,6 @@ The default marshaler handles:
 - Timestamps for ordering and consumer group management
 
 Both drivers automatically handle message marshaling and unmarshaling, so no custom marshaler configuration is typically required.
-
-## Similar Projects
-
-- <https://github.com/davidroman0O/watermill-comfymill>
-- <https://github.com/walterwanderley/watermill-sqlite>
 
 ## Caveats
 

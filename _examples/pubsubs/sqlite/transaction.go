@@ -10,16 +10,18 @@ import (
 )
 
 func publishWithInTransaction(db *sql.DB) {
-	tx, err := db.BeginTx(context.Background(), &sql.TxOptions{Isolation: sql.LevelReadCommitted})
+	tx, err := db.BeginTx(context.Background(), &sql.TxOptions{
+		Isolation: sql.LevelReadCommitted,
+	})
 	if err != nil {
 		panic(err)
 	}
 	defer func() {
-		_ = tx.Rollback()
+		_ = tx.Commit()
 	}()
 
 	publisher, err := wmsqlitemodernc.NewPublisher(
-		tx,
+		tx, // transaction presented as database
 		wmsqlitemodernc.PublisherOptions{
 			// schema must be initialized elsewhere before using
 			// the publisher within the transaction
