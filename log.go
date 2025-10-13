@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"maps"
 	"os"
 	"reflect"
 	"slices"
@@ -21,12 +22,8 @@ type LogFields map[string]interface{}
 func (l LogFields) Add(newFields LogFields) LogFields {
 	resultFields := make(LogFields, len(l)+len(newFields))
 
-	for field, value := range l {
-		resultFields[field] = value
-	}
-	for field, value := range newFields {
-		resultFields[field] = value
-	}
+	maps.Copy(resultFields, l)
+	maps.Copy(resultFields, newFields)
 
 	return resultFields
 }
@@ -34,9 +31,7 @@ func (l LogFields) Add(newFields LogFields) LogFields {
 // Copy copies the LogFields.
 func (l LogFields) Copy() LogFields {
 	cpy := make(LogFields, len(l))
-	for k, v := range l {
-		cpy[k] = v
-	}
+	maps.Copy(cpy, l)
 
 	return cpy
 }
