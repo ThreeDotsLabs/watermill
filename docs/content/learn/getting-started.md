@@ -8,23 +8,22 @@ weight = 10
 
 ## What is Watermill?
 
-Watermill is a Go library for working with messages.
+Watermill is a Go library for working with messages the easy way.
 
-You can use it to build event-driven systems with Pub/Subs like Kafka, RabbitMQ, PostgreSQL, and many more.
+You can use it to build message-driven and event-driven applications with Pub/Subs like Kafka, RabbitMQ, PostgreSQL, and many more.
 
 Watermill comes with batteries included. It gives you tools used by every message-driven application.
 
 ## Why use Watermill?
 
-Except for trivial applications, synchronous communication (like HTTP) isn't enough.
+When you run an HTTP server, you don't deal directly with TCP sockets, parsing HTTP requests, or managing connections.
+Instead, you use a high-level library like `net/http` that handles all that complexity for you.
 
-Using messages for asynchronous communication simplifies many problems, like scaling, reliability, and decoupling services.
-
-While there are tons of libraries for working with HTTP, correctly setting up a message-oriented project can be challenging.
-There are many different message queues, each with different features, client libraries, and APIs.
-
-**Watermill aims to be the standard messaging library for Go**, hiding all that complexity behind an API that is easy to use and understand.
+**It's what Watermill aims to be for messages**.
 It provides all you need to build an application based on events or other asynchronous patterns.
+
+There are many different message queues, each with different features, client libraries, and APIs.
+Watermill hides all that complexity behind an API that is easy to use and understand.
 
 **Watermill is NOT a framework**.
 It's a lightweight library that's easy to plug in or remove from your project.
@@ -51,9 +50,17 @@ The idea behind event-driven applications is always the same: one part publishes
 
 Watermill supports this behavior for multiple [publishers and subscribers]({{< ref "/pubsubs" >}}).
 
-The core part of Watermill is the [*Message*]({{< ref "/docs/message" >}}).
-It is what `http.Request` is for the `net/http` package.
-Most Watermill features work with this struct.
+### Three APIs
+
+Watermill comes with three APIs for working with messages.
+They build on top of each other, each step providing a higher-level API.
+
+In this guide, we're going to start from the bottom and move up.
+It's good to know the fundamentals, even if you're going to use the high-level APIs.
+
+<div class="text-center">
+    <img src="/img/pyramid.png" alt="Watermill components pyramid" style="width:35rem;" />
+</div>
 
 ## Publisher & Subscriber
 
@@ -74,6 +81,10 @@ type Subscriber interface {
 ```
 
 ### Creating Messages
+
+**The core part of Watermill is the [Message]({{< ref "/docs/message" >}}).**
+It is what `http.Request` is for the `net/http` package.
+Most Watermill features work with this struct.
 
 Watermill doesn't enforce any message format. `NewMessage` expects a slice of bytes as the payload.
 You can use strings, JSON, protobuf, Avro, gob, or anything else that serializes to `[]byte`.
@@ -298,19 +309,6 @@ A more detailed explanation of how it is working (and how to add live code reloa
 
 {{< /tabs >}}
 
-## Three APIs
-
-Watermill comes with three APIs for working with messages.
-They build on top of each other, each step providing a higher-level API:
-
-* At the bottom, the `Publisher` and `Subscriber` interfaces. It's the "raw" way of working with messages. You get full control, but also need to handle everything yourself.
-* The `Router` is similar to HTTP routers you probably know. It introduces message handlers, saving you some boilerplate.
-* The `CQRS` component adds generic handlers without needing to marshal and unmarshal messages yourself.
-
-<div class="text-center">
-    <img src="/img/pyramid.png" alt="Watermill components pyramid" style="width:35rem;" />
-</div>
-
 ## Router
 
 [*Publishers and subscribers*]({{< ref "/docs/pub-sub" >}}) are the low-level parts of Watermill.
@@ -372,6 +370,8 @@ You can also map Watermill's log levels to `slog` levels with [`watermill.NewSlo
 See the [CQRS component](/docs/cqrs) for the generic high-level API.
 
 For more details, see [documentation topics]({{< ref "/docs" >}}).
+
+[The Outbox Pattern](/advanced/forwarder/) is a key pattern to know in event-driven applications.
 
 We recommend checking the examples below to see how Watermill works in practice.
 You can also try the [free hands-on training]({{< ref "/learn/quickstart/" >}}) to learn how to use Watermill in practice.
