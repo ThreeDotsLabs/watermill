@@ -202,25 +202,8 @@ In the scenario, when we have multiple event types on one topic, you have two op
 - One handler group can support multiple event types,
 - When message arrives to the topic, Watermill will match it to the handler in the group based on event type
 
-```kroki {type=mermaid}
-graph TD
-    subgraph Individual Handlers
-        E[Event Bus] --> S1[Subscriber 1]
-        E --> S2[Subscriber 2]
-        E --> S3[Subscriber 3]
-        S1 --> H1[Handler 1]
-        S2 --> H2[Handler 2]
-        S3 --> H3[Handler 3]
-    end
 
-    subgraph Group Handlers
-        EB[Event Bus] --> SharedSub[Shared Subscriber]
-        SharedSub --> GH[Handler Group]
-        GH --> GH1[Handler 1]
-        GH --> GH2[Handler 2]
-        GH --> GH3[Handler 3]
-    end
-```
+<img src="/img/group-handlers.svg" alt="Group Handlers" style="width:100%; background-color: white; padding: ;">
 
 **Event Handler groups are helpful when you have multiple event types on one topic and you want to maintain order of events.**
 Thanks to using one subscriber instance and consumer group, events will be processed in the order they were sent.
