@@ -67,9 +67,39 @@
     {{ end }}
 {{ end }}
 
+{{/* Calculate minimum indentation (common whitespace) */}}
+{{ $min_indent := 999999 }}
+{{ range $lines }}
+    {{ if and (ne . "// ...") (ne (trim . " \t") "") }}
+        {{ $leading := 0 }}
+        {{ range $i, $char := split . "" }}
+            {{ if or (eq $char " ") (eq $char "\t") }}
+                {{ $leading = add $leading 1 }}
+            {{ else }}
+                {{ break }}
+            {{ end }}
+        {{ end }}
+        {{ if lt $leading $min_indent }}
+            {{ $min_indent = $leading }}
+        {{ end }}
+    {{ end }}
+{{ end }}
+
+{{/* Remove common leading whitespace from all lines */}}
+{{ $normalized_lines := slice }}
+{{ range $lines }}
+    {{ if or (eq . "// ...") (eq (trim . " \t") "") }}
+        {{ $normalized_lines = $normalized_lines | append . }}
+    {{ else if gt $min_indent 0 }}
+        {{ $normalized_lines = $normalized_lines | append (substr . $min_indent) }}
+    {{ else }}
+        {{ $normalized_lines = $normalized_lines | append . }}
+    {{ end }}
+{{ end }}
+
 <div class="expressive-code">
     <figure class="frame not-content">
-        {{ transform.Highlight (delimit $lines "\n" | safeHTML) (.Get "type" | default "go") }}
+        {{ transform.Highlight (delimit $normalized_lines "\n" | safeHTML) (.Get "type" | default "go") }}
     </figure>
 </div>
 

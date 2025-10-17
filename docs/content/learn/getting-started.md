@@ -8,23 +8,22 @@ weight = 10
 
 ## What is Watermill?
 
-Watermill is a Go library for working with message streams.
-You can use it to build event-driven systems with popular Pub/Sub implementations like Kafka or RabbitMQ, as well as HTTP or Postgres if that fits your use case.
-It comes with a set of Pub/Sub implementations and can be easily extended.
+Watermill is a Go library for working with messages.
 
-Watermill also ships with standard middlewares like instrumentation, poison queue, throttling, correlation,
-and other tools used by every message-driven application.
+You can use it to build event-driven systems with Pub/Subs like Kafka, RabbitMQ, PostgreSQL, and many more.
+
+Watermill comes with batteries included. It gives you tools used by every message-driven application.
 
 ## Why use Watermill?
 
-When using microservices, synchronous communication is not always the right choice.
-Asynchronous methods became a new standard way to communicate.
+Except for trivial applications, synchronous communication (like HTTP) isn't enough.
 
-While there are many tools and libraries for synchronous communication, like HTTP, correctly setting up
-a message-oriented project can be challenging. There are many different message queues and streaming systems,
-each with different features, client libraries, and APIs.
+Using messages for asynchronous communication simplifies many problems, like scaling, reliability, and decoupling services.
 
-Watermill aims to be the standard messaging library for Go, hiding all that complexity behind an API that is easy to understand.
+While there are tons of libraries for working with HTTP, correctly setting up a message-oriented project can be challenging.
+There are many different message queues, each with different features, client libraries, and APIs.
+
+**Watermill aims to be the standard messaging library for Go**, hiding all that complexity behind an API that is easy to use and understand.
 It provides all you need to build an application based on events or other asynchronous patterns.
 
 **Watermill is NOT a framework**.
@@ -36,38 +35,31 @@ It's a lightweight library that's easy to plug in or remove from your project.
 go get -u github.com/ThreeDotsLabs/watermill
 ```
 
-## Learn with quickstart
+{{< callout context="note" title="Learn in practice" icon="outline/info-circle" >}}
 
 Docs too boring? Prefer learning by doing?
 
-We have [a free hands-on training]({{< ref "/learn/quickstart/" >}}) where you'll solve exercises to learn how to use Watermill in your projects.
+[**Try the free hands-on training**]({{< ref "/learn/quickstart/" >}}) where you'll solve exercises to learn how to use Watermill in your projects.
 
 It'll guide you through the basics and a few advanced concepts like message ordering and the Outbox pattern.
 
+{{< /callout >}}
+
 ## One-Minute Background
 
-The idea behind event-driven applications is always the same: listen to and react to incoming messages.
+The idea behind event-driven applications is always the same: one part publishes messages, and another part subscribes to them.
+
 Watermill supports this behavior for multiple [publishers and subscribers]({{< ref "/pubsubs" >}}).
 
 The core part of Watermill is the [*Message*]({{< ref "/docs/message" >}}).
 It is what `http.Request` is for the `net/http` package.
 Most Watermill features work with this struct.
 
-Watermill provides a few APIs for working with messages.
-They build on top of each other, each step providing a higher-level API:
-
-* At the bottom, the `Publisher` and `Subscriber` interfaces. It's the "raw" way of working with messages. You get full control, but also need to handle everything yourself.
-* The `Router` is similar to HTTP routers you probably know. It introduces message handlers.
-* The `CQRS` component adds generic handlers without needing to marshal and unmarshal messages yourself.
-
-<div class="text-center">
-    <img src="/img/pyramid.png" alt="Watermill components pyramid" style="width:35rem;" />
-</div>
-
 ## Publisher & Subscriber
 
-Most Pub/Sub libraries come with complex features. For Watermill, it's enough to implement two interfaces to start
-working with them: the `Publisher` and `Subscriber`.
+Most Pub/Sub libraries come with complex features.
+
+Watermill hides this complexity behind two interfaces: the `Publisher` and `Subscriber`.
 
 ```go
 type Publisher interface {
@@ -81,11 +73,73 @@ type Subscriber interface {
 }
 ```
 
+### Creating Messages
+
+Watermill doesn't enforce any message format. `NewMessage` expects a slice of bytes as the payload.
+You can use strings, JSON, protobuf, Avro, gob, or anything else that serializes to `[]byte`.
+
+The message UUID is optional but recommended for debugging.
+
+```go
+msg := message.NewMessage(watermill.NewUUID(), []byte("Hello, world!"))
+```
+
+### Publishing Messages
+
+`Publish` expects a topic and one or more `Message`s to be published.
+
+```go
+err := publisher.Publish("example.topic", msg)
+if err != nil {
+    panic(err)
+}
+```
+
+{{< tabs "publishing" >}}
+
+{{< tab "Go Channel" "go-channel" >}}
+{{% load-snippet-partial file="src-link/_examples/pubsubs/go-channel/main.go" first_line_contains="message.NewMessage" last_line_contains="publisher.Publish" padding_after="2" %}}
+{{< /tab >}}
+
+{{< tab "Kafka" "kafka" >}}
+{{% load-snippet-partial file="src-link/_examples/pubsubs/kafka/main.go" first_line_contains="message.NewMessage" last_line_contains="publisher.Publish" padding_after="2" %}}
+{{< /tab >}}
+
+{{< tab "NATS Streaming" "nats" >}}
+{{% load-snippet-partial file="src-link/_examples/pubsubs/nats-streaming/main.go" first_line_contains="message.NewMessage" last_line_contains="publisher.Publish" padding_after="2" %}}
+{{< /tab >}}
+
+{{< tab "Google Cloud Pub/Sub" "gcp" >}}
+{{% load-snippet-partial file="src-link/_examples/pubsubs/googlecloud/main.go" first_line_contains="message.NewMessage" last_line_contains="publisher.Publish" padding_after="2" %}}
+{{< /tab >}}
+
+{{< tab "RabbitMQ (AMQP)" "amqp" >}}
+{{% load-snippet-partial file="src-link/_examples/pubsubs/amqp/main.go" first_line_contains="message.NewMessage" last_line_contains="publisher.Publish" padding_after="2" %}}
+{{< /tab >}}
+
+{{< tab "SQL" "sql" >}}
+{{% load-snippet-partial file="src-link/_examples/pubsubs/sql/main.go" first_line_contains="message.NewMessage" last_line_contains="publisher.Publish" padding_after="2" %}}
+{{< /tab >}}
+
+{{< tab "AWS SQS" "aws-sqs" >}}
+{{% load-snippet-partial file="src-link/_examples/pubsubs/aws-sqs/main.go" first_line_contains="message.NewMessage" last_line_contains="publisher.Publish" padding_after="2" %}}
+{{< /tab >}}
+
+{{< tab "AWS SNS" "aws-sns" >}}
+{{% load-snippet-partial file="src-link/_examples/pubsubs/aws-sns/main.go" first_line_contains="message.NewMessage" last_line_contains="publisher.Publish" padding_after="2" %}}
+{{< /tab >}}
+
+{{< /tabs >}}
+
+
 ### Subscribing for Messages
 
 `Subscribe` expects a topic name and returns a channel of incoming messages.
+
 What _topic_ exactly means depends on the Pub/Sub implementation.
 Usually, it needs to match the topic name used by the publisher.
+
+Messages need to be acknowledged after processing by calling the `Ack()` method.
 
 ```go
 messages, err := subscriber.Subscribe(ctx, "example.topic")
@@ -244,68 +298,23 @@ A more detailed explanation of how it is working (and how to add live code reloa
 
 {{< /tabs >}}
 
-### Creating Messages
+## Three APIs
 
-Watermill doesn't enforce any message format. `NewMessage` expects a slice of bytes as the payload.
-You can use strings, JSON, protobuf, Avro, gob, or anything else that serializes to `[]byte`.
+Watermill comes with three APIs for working with messages.
+They build on top of each other, each step providing a higher-level API:
 
-The message UUID is optional but recommended for debugging.
+* At the bottom, the `Publisher` and `Subscriber` interfaces. It's the "raw" way of working with messages. You get full control, but also need to handle everything yourself.
+* The `Router` is similar to HTTP routers you probably know. It introduces message handlers, saving you some boilerplate.
+* The `CQRS` component adds generic handlers without needing to marshal and unmarshal messages yourself.
 
-```go
-msg := message.NewMessage(watermill.NewUUID(), []byte("Hello, world!"))
-```
-
-### Publishing Messages
-
-`Publish` expects a topic and one or more `Message`s to be published.
-
-```go
-err := publisher.Publish("example.topic", msg)
-if err != nil {
-    panic(err)
-}
-```
-
-{{< tabs "publishing" >}}
-
-{{< tab "Go Channel" "go-channel" >}}
-{{% load-snippet-partial file="src-link/_examples/pubsubs/go-channel/main.go" first_line_contains="message.NewMessage" last_line_contains="publisher.Publish" padding_after="2" %}}
-{{< /tab >}}
-
-{{< tab "Kafka" "kafka" >}}
-{{% load-snippet-partial file="src-link/_examples/pubsubs/kafka/main.go" first_line_contains="message.NewMessage" last_line_contains="publisher.Publish" padding_after="2" %}}
-{{< /tab >}}
-
-{{< tab "NATS Streaming" "nats" >}}
-{{% load-snippet-partial file="src-link/_examples/pubsubs/nats-streaming/main.go" first_line_contains="message.NewMessage" last_line_contains="publisher.Publish" padding_after="2" %}}
-{{< /tab >}}
-
-{{< tab "Google Cloud Pub/Sub" "gcp" >}}
-{{% load-snippet-partial file="src-link/_examples/pubsubs/googlecloud/main.go" first_line_contains="message.NewMessage" last_line_contains="publisher.Publish" padding_after="2" %}}
-{{< /tab >}}
-
-{{< tab "RabbitMQ (AMQP)" "amqp" >}}
-{{% load-snippet-partial file="src-link/_examples/pubsubs/amqp/main.go" first_line_contains="message.NewMessage" last_line_contains="publisher.Publish" padding_after="2" %}}
-{{< /tab >}}
-
-{{< tab "SQL" "sql" >}}
-{{% load-snippet-partial file="src-link/_examples/pubsubs/sql/main.go" first_line_contains="message.NewMessage" last_line_contains="publisher.Publish" padding_after="2" %}}
-{{< /tab >}}
-
-{{< tab "AWS SQS" "aws-sqs" >}}
-{{% load-snippet-partial file="src-link/_examples/pubsubs/aws-sqs/main.go" first_line_contains="message.NewMessage" last_line_contains="publisher.Publish" padding_after="2" %}}
-{{< /tab >}}
-
-{{< tab "AWS SNS" "aws-sns" >}}
-{{% load-snippet-partial file="src-link/_examples/pubsubs/aws-sns/main.go" first_line_contains="message.NewMessage" last_line_contains="publisher.Publish" padding_after="2" %}}
-{{< /tab >}}
-
-{{< /tabs >}}
+<div class="text-center">
+    <img src="/img/pyramid.png" alt="Watermill components pyramid" style="width:35rem;" />
+</div>
 
 ## Router
 
 [*Publishers and subscribers*]({{< ref "/docs/pub-sub" >}}) are the low-level parts of Watermill.
-For most cases, you want to use a high-level API: [*Router*]({{< ref "/docs/messages-router" >}}) component.
+For most cases, you want to use a high-level API: the [*Router*]({{< ref "/docs/messages-router" >}}) component.
 
 ### Router configuration
 
@@ -360,9 +369,12 @@ You can also map Watermill's log levels to `slog` levels with [`watermill.NewSlo
 
 ## What's next?
 
+See the [CQRS component](/docs/cqrs) for the generic high-level API.
+
 For more details, see [documentation topics]({{< ref "/docs" >}}).
 
-See the [CQRS component](/docs/cqrs) for another high-level API.
+We recommend checking the examples below to see how Watermill works in practice.
+You can also try the [free hands-on training]({{< ref "/learn/quickstart/" >}}) to learn how to use Watermill in practice.
 
 ## Examples
 

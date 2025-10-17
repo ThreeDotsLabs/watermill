@@ -7,6 +7,30 @@ draft = false
 bref = "Go CQRS implementation in Watermill"
 +++
 
+The CQRS component is a high-level API that lets you work with Go structs instead of messages.
+
+Once you configure the EventBus and EventProcessor (or the command equivalents), publishing and handling events becomes very straightforward.
+
+```go
+event := UserRegistered{
+    UserID:   id,
+    Email:    email,
+    JoinedAt: time.Now(),
+}
+
+err := eventBus.Publish(ctx, event)
+```
+
+```go
+eventProcessor.AddHandlers(
+    cqrs.NewEventHandler("SendWelcomeEmail", sendWelcomeEmail),
+)
+
+func sendWelcomeEmail(ctx context.Context, event *UserRegistered) error {
+    return emailService.Send(event.Email, "Welcome!")
+}
+```
+
 ## CQRS
 
 > CQRS means "Command-query responsibility segregation". We segregate the responsibility between commands (write requests) and queries (read requests). The write requests and the read requests are handled by different objects.
