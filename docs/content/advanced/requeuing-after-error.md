@@ -50,6 +50,6 @@ A better way to use the `Requeuer` is to combine it with the `Poison` middleware
 The middleware moves messages to a separate "poison" topic.
 Then, the requeuer moves them back to the original topic based on the metadata.
 
-You combine this with a Pub/Sub that supports delayed messages.
+You combine this with a Pub/Sub that [supports delayed messages](/advanced/delayed-messages/#supported-pubsubs).
 See the [full example based on PostgreSQL](https://github.com/ThreeDotsLabs/watermill/blob/master/_examples/real-world-examples/delayed-requeue/main.go).
 

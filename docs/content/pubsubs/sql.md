@@ -117,7 +117,8 @@ You can use it to filter messages by some condition in the payload or in the met
 Additionally, you can choose to delete messages from the table after they are acknowledged.
 Thanks to this, the table doesn't grow in size with time.
 
-Currently, this schema is supported only for PostgreSQL.
+This schema is supported by both PostgreSQL and MySQL.
+The example below is based on PostgreSQL, but the same approach can be used with MySQL. 
 
 {{% load-snippet-partial file="src-link/watermill-sql/pkg/sql/queue_schema_adapter_postgresql.go" first_line_contains="// PostgreSQLQueueSchema" last_line_contains="}" %}}
 
