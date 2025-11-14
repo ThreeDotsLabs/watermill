@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-// FullyQualifiedStructName name returns object name in format [package].[type name].
+// FullyQualifiedStructName returns object name in format [package].[type name].
 // For example, for the struct:
 //
 //	package events
@@ -21,7 +21,7 @@ func FullyQualifiedStructName(v interface{}) string {
 	return s
 }
 
-// StructName name returns struct name in format [type name].
+// StructName returns struct name in format [type name].
 // For example, for the struct:
 //
 //	package events
