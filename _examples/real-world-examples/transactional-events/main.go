@@ -87,7 +87,7 @@ func createDB() *stdSQL.DB {
 }
 
 func createSubscriber(db *stdSQL.DB) message.Subscriber {
-	pub, err := sql.NewSubscriber(
+	sub, err := sql.NewSubscriber(
 		sql.BeginnerFromStdSQL(db),
 		sql.SubscriberConfig{
 			SchemaAdapter:    sql.DefaultMySQLSchema{},
@@ -100,7 +100,7 @@ func createSubscriber(db *stdSQL.DB) message.Subscriber {
 		panic(err)
 	}
 
-	return pub
+	return sub
 }
 
 func createPublisher() message.Publisher {
