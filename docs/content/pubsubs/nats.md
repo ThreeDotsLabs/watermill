@@ -8,9 +8,10 @@ weight = 90
 
 NATS Jetstream is a data streaming system powered by NATS, and written in the Go programming language.
 
-As of v2.0.2 this middleware will contain a beta implementation in `pkg/jetstream` based on the
-[nats.go Jetstream package](https://github.com/nats-io/nats.go/tree/main/jetstream). This implementation is
-considered experimental tracking with the upstream client though we target a stable watermill API by v2.1.
+As of v2.0.2, this middleware includes an experimental implementation in `pkg/jetstream`, based on the
+[nats.go Jetstream package](https://github.com/nats-io/nats.go/tree/main/jetstream). This implementation
+remains **beta** and is **not considered a stable API**. It tracks the evolving upstream JetStream client
+and currently exposes only a minimal configuration surface.
 For production use it is recommended to use the pubsub implementations in `pkg/nats` with Jetstream enabled.
 
 You can find a fully functional example with NATS JetStream in the [Watermill examples](https://github.com/ThreeDotsLabs/watermill/tree/master/_examples/pubsubs/nats-jetstream).
