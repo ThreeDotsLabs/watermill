@@ -10,7 +10,7 @@ import (
 // ErrInvalidPoisonQueueTopic occurs when the topic supplied to the PoisonQueue constructor is invalid.
 var ErrInvalidPoisonQueueTopic = errors.New("invalid poison queue topic")
 
-// Metadata keys which marks the reason and context why the message was deemed poisoned.
+// Metadata keys that mark the reason and context for why the message was deemed poisoned.
 const (
 	ReasonForPoisonedKey  = "reason_poisoned"
 	PoisonedTopicKey      = "topic_poisoned"
@@ -25,7 +25,7 @@ type poisonQueue struct {
 	shouldGoToPoisonQueue func(err error) bool
 }
 
-// PoisonQueue provides a middleware that salvages unprocessable messages and published them on a separate topic.
+// PoisonQueue provides a middleware that salvages unprocessable messages and publishes them on a separate topic.
 // The main middleware chain then continues on, business as usual.
 func PoisonQueue(pub message.Publisher, topic string) (message.HandlerMiddleware, error) {
 	if topic == "" {
