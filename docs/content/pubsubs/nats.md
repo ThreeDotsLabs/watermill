@@ -27,7 +27,7 @@ go get github.com/ThreeDotsLabs/watermill-nats/v2
 | Feature             | Implements | Note                                                                                                                  |
 |---------------------|------------|-----------------------------------------------------------------------------------------------------------------------|
 | ConsumerGroups      | yes        | you need to set `QueueGroupPrefix` name or provide an optional calculator                                             |
-| ExactlyOnceDelivery | yes        | you need to ensure 'AckAsync' has default false value and set 'TrackMsgId' to true on the Jetstream configuration     |
+| ExactlyOnceDelivery | yes        | you need to ensure `AckAsync` has default false value and set `TrackMsgId` to true on the Jetstream configuration     |
 | GuaranteedOrder     | no         | [with the redelivery feature, order can't be guaranteed](https://github.com/nats-io/nats-streaming-server/issues/187) |
 | Persistent          | yes        |                                                                                                                       |
 
@@ -41,13 +41,13 @@ PublisherConfig:
 
 {{% load-snippet-partial file="src-link/watermill-nats/pkg/nats/publisher.go" first_line_contains="type PublisherConfig struct" last_line_contains="type Publisher struct {" %}}
 
-Subscriber Config:
+SubscriberConfig:
 
 {{% load-snippet-partial file="src-link/watermill-nats/pkg/nats/subscriber.go" first_line_contains="type SubscriberConfig struct" last_line_contains="type Subscriber struct" %}}
 
 ### Connecting
 
-By default NATS client will try to connect to `localhost:4222`. If you are using different hostname or port you should specify using the URL property of `SubscriberConfig` and `PublisherConfig`.
+By default, the NATS client will try to connect to `localhost:4222`. If you are using different hostname or port you should specify using the URL property of `SubscriberConfig` and `PublisherConfig`.
 
 {{% load-snippet-partial file="src-link/watermill-nats/pkg/nats/publisher.go" first_line_contains="// NewPublisher" last_line_contains="func NewPublisher" %}}
 
@@ -80,8 +80,8 @@ Other builtin marshalers are based on Golang's [`gob`](https://golang.org/pkg/en
 When you have your own format of the messages, you can implement your own Marshaler, which will serialize messages in your format.  An example protobuf implementation with tests and benchmarks can be found [here](https://github.com/ThreeDotsLabs/watermill-nats/tree/master/_examples/marshalers/protobuf/)
 
 When needed, you can bypass both [UUID]({{< ref "message#message" >}}) and [Metadata]({{< ref "message#message" >}}) and send just a `message.Payload`,
-but some standard [middlewares]({{< ref "messages-router#middleware" >}}) may be not working.
+but some standard [middlewares]({{< ref "messages-router#middleware" >}}) may not work.
 
-## Core-Nats
+## Core NATS
 
-This package also includes limited support for connecting to [core-nats](https://docs.nats.io/nats-concepts/core-nats).  While core-nats does not support many of the streaming features needed for a perfect fit with watermill and most acks end up implemented as no-ops, in environments with a mix of jetstream and core-nats messaging in play it can be nice to use watermill consistently on the application side.
+This package also includes limited support for connecting to [Core NATS](https://docs.nats.io/nats-concepts/core-nats).  While Core NATS does not support many of the streaming features needed for a perfect fit with watermill and most acks end up implemented as no-ops, in environments with a mix of jetstream and Core NATS messaging in play it can be nice to use watermill consistently on the application side.
