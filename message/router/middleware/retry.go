@@ -35,7 +35,7 @@ type Retry struct {
 	// MaxElapsedTime sets the time limit of how long retries will be attempted. Disabled if 0.
 	MaxElapsedTime time.Duration
 	// RandomizationFactor randomizes the spread of the backoff times within the interval of:
-	// [currentInterval * (1 - randomization_factor), currentInterval * (1 + randomization_factor)].
+	// [currentInterval * (1 - RandomizationFactor), currentInterval * (1 + RandomizationFactor)].
 	RandomizationFactor float64
 
 	// OnRetryHook is an optional function that will be executed on each retry attempt.
@@ -73,7 +73,7 @@ func (r Retry) Middleware(h message.HandlerFunc) message.HandlerFunc {
 
 		maxElapsedBackoff := backoff.WithMaxElapsedTime(r.MaxElapsedTime)
 
-		// notification: called on a failed retry attempt.
+		// notification is called on a failed retry attempt.
 		notification := func(err error, delay time.Duration) {
 			if r.Logger != nil {
 				r.Logger.Error("Error occurred, retrying", err, watermill.LogFields{
@@ -91,7 +91,7 @@ func (r Retry) Middleware(h message.HandlerFunc) message.HandlerFunc {
 				return nil, originalCtx.Err()
 			default:
 				if r.ResetContextOnRetry {
-					// message is passed as a pointer, so it's context can be canceled
+					// message is passed as a pointer, so its context can be canceled
 					// by the previous attempts -> it will break retries, because any
 					// underlying logic that relies on the context will fail.
 					// see more: https://github.com/ThreeDotsLabs/watermill/issues/467
