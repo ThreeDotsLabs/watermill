@@ -11,11 +11,11 @@ bref = "When something goes wrong"
 In most cases, you will find the answer to your problem in the logs.
 Watermill offers a significant amount of logs on different severity levels.
 
-If you are using `StdLoggerAdapter`, just change `debug`, and `trace` options to true:
+If you are using `StdLoggerAdapter`, just change `debug` and `trace` options to true:
 
 ```bash
 logger := watermill.NewStdLogger(true, true)
-````
+```
 
 ## Debugging Pub/Sub tests
 
@@ -26,12 +26,12 @@ make up
 go test -v ./... -run TestPublishSubscribe/TestContinueAfterSubscribeClose
 ```
 
-### grep is your friend
+### Grep is your friend
 
 Each executed test case has a unique UUID.
-It's used in the topic's name.
+It's used in the topic name.
 Thanks to that, you can easily grep the output of the test.
-It gives you detailed information about the test execution.
+This gives you detailed information about the test execution.
 
 ```bash
 > go test -v ./... > test.out
@@ -86,7 +86,7 @@ main.main()
 When running in production and you don't want to kill the entire process, a better idea is to use [pprof](https://golang.org/pkg/net/http/pprof/).
 
 You can visit [http://localhost:6060/debug/pprof/goroutine?debug=1](http://localhost:6060/debug/pprof/goroutine?debug=1)
-on your local machine to see all goroutines status.
+on your local machine to see the status of all goroutines.
 
 
 ```bash
