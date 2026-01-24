@@ -20,6 +20,8 @@ const topic = "counter"
 
 func main() {
 	db := createDB()
+	defer db.Close()
+
 	logger := watermill.NewStdLogger(false, false)
 
 	go runWatermillRouter(db, logger)
