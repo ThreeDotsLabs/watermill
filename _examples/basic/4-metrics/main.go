@@ -33,7 +33,7 @@ func delay() {
 	time.Sleep(time.Duration(float64(time.Second) * delay))
 }
 
-// handler publishes 0-4 messages with a random delay.
+// handler publishes 0–3 messages after a random delay.
 func handler(msg *message.Message) ([]*message.Message, error) {
 	delay()
 
@@ -46,7 +46,7 @@ func handler(msg *message.Message) ([]*message.Message, error) {
 	return outgoing, nil
 }
 
-// consumeMessages consumes the messages exiting the handler.
+// consumeMessages consumes messages published by the handler.
 func consumeMessages(subscriber message.Subscriber) {
 	messages, err := subscriber.Subscribe(context.Background(), "pub_topic")
 	if err != nil {
@@ -58,7 +58,7 @@ func consumeMessages(subscriber message.Subscriber) {
 	}
 }
 
-// produceMessages produces the incoming messages in delays of 50-100 milliseconds.
+// produceMessages generates incoming messages with delays of 50–100 milliseconds.
 func produceMessages(routerClosed chan struct{}, publisher message.Publisher) {
 	for {
 		select {
@@ -115,7 +115,7 @@ func main() {
 	// The handler's publisher and subscriber will be decorated by `AddPrometheusRouterMetrics`.
 	// We are using the same pub/sub to generate messages incoming to the handler
 	// and consume the outgoing messages.
-	// They will have `handler_name=<no handler>` label in Prometheus.
+	// These will have the label handler_name=<no handler> in Prometheus.
 	subWithMetrics, err := metricsBuilder.DecorateSubscriber(pubSub)
 	if err != nil {
 		panic(err)
