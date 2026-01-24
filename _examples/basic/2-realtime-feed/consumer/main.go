@@ -72,7 +72,7 @@ func main() {
 		middleware.RandomPanic(0.01),
 	)
 
-	// Close the router when a SIGTERM is sent
+	// Close the router when a SIGTERM is received
 	r.AddPlugin(plugin.SignalsHandler)
 
 	// Handler that counts consumed posts
