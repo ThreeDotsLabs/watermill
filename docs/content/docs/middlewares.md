@@ -9,11 +9,11 @@ bref = "Add functionality to handlers"
 
 ## Introduction
 
-Middleware wrap handlers with functionality that is important, but not relevant for the primary handler's logic. 
-Examples include retrying the handler after an error was returned, or recovering from panic in the handler
+Middleware wraps handlers with functionality that is important, but not relevant for the primary handler's logic. 
+Examples include retrying the handler after an error was returned, or recovering from a panic in the handler
 and capturing the stacktrace.
 
-Middleware wrap the handler function like this:
+Middleware wraps the handler function like this:
 
 {{% load-snippet-partial file="src-link/message/router.go" first_line_contains="// HandlerMiddleware" last_line_contains="type HandlerMiddleware" %}}
 
