@@ -18,6 +18,8 @@ const topic = "counter"
 
 func main() {
 	db := createDB()
+	defer db.Close()
+
 	logger := watermill.NewStdLogger(false, false)
 
 	r := chi.NewRouter()
