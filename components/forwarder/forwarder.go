@@ -2,6 +2,7 @@ package forwarder
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/ThreeDotsLabs/watermill"
@@ -29,7 +30,8 @@ type Config struct {
 	// If not provided, a new router will be created.
 	//
 	// If router is provided, it's not necessary to call `Forwarder.Run()` if the router is started with `router.Run()`.
-	Router *message.Router
+	Router    *message.Router
+	Unmarshal func(data []byte, v any) error
 }
 
 func (c *Config) setDefaults() {
@@ -38,6 +40,9 @@ func (c *Config) setDefaults() {
 	}
 	if c.ForwarderTopic == "" {
 		c.ForwarderTopic = defaultForwarderTopic
+	}
+	if c.Unmarshal == nil {
+		c.Unmarshal = json.Unmarshal
 	}
 }
 
@@ -64,7 +69,12 @@ type Forwarder struct {
 //
 // Note: Keep in mind that by default the forwarder will nack all messages which weren't sent using a decorated publisher.
 // You can change this behavior by passing a middleware which will ack them instead.
-func NewForwarder(subscriberIn message.Subscriber, publisherOut message.Publisher, logger watermill.LoggerAdapter, config Config) (*Forwarder, error) {
+func NewForwarder(
+	subscriberIn message.Subscriber,
+	publisherOut message.Publisher,
+	logger watermill.LoggerAdapter,
+	config Config,
+) (*Forwarder, error) {
 	config.setDefaults()
 
 	routerConfig := message.RouterConfig{CloseTimeout: config.CloseTimeout}
@@ -117,7 +127,7 @@ func (f *Forwarder) Running() chan struct{} {
 }
 
 func (f *Forwarder) forwardMessage(msg *message.Message) error {
-	destTopic, unwrappedMsg, err := unwrapMessageFromEnvelope(msg)
+	destTopic, unwrappedMsg, err := unwrapMessageFromEnvelope(msg, f.config.Unmarshal)
 	if err != nil {
 		f.logger.Error("Could not unwrap a message from an envelope", err, watermill.LogFields{
 			"uuid":     msg.UUID,

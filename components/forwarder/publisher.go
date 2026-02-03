@@ -1,6 +1,8 @@
 package forwarder
 
 import (
+	"encoding/json"
+
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/pkg/errors"
 )
@@ -9,11 +11,15 @@ type PublisherConfig struct {
 	// ForwarderTopic is a topic which the forwarder is listening to. Publisher will send enveloped messages to this topic.
 	// Defaults to `forwarder_topic`.
 	ForwarderTopic string
+	Marshal        func(v any) ([]byte, error)
 }
 
 func (c *PublisherConfig) setDefaults() {
 	if c.ForwarderTopic == "" {
 		c.ForwarderTopic = defaultForwarderTopic
+	}
+	if c.Marshal == nil {
+		c.Marshal = json.Marshal
 	}
 }
 
@@ -44,7 +50,7 @@ func NewPublisher(publisher message.Publisher, config PublisherConfig) *Publishe
 func (p *Publisher) Publish(topic string, messages ...*message.Message) error {
 	envelopedMessages := make([]*message.Message, 0, len(messages))
 	for _, msg := range messages {
-		envelopedMsg, err := wrapMessageInEnvelope(topic, msg)
+		envelopedMsg, err := wrapMessageInEnvelope(topic, msg, p.config.Marshal)
 		if err != nil {
 			return errors.Wrapf(err, "cannot wrap message, target topic: '%s', uuid: '%s'", topic, msg.UUID)
 		}
