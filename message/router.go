@@ -669,6 +669,10 @@ func (h *handler) run(ctx context.Context, middlewares []middleware) {
 	}
 
 	if h.publisher != nil {
+		h.logger.Debug("Waiting on message processing go routines", nil)
+		h.runningHandlersWg.Wait()
+		h.logger.Debug("Done Waiting on message processing go routines", nil)
+
 		h.logger.Debug("Waiting for publisher to close", nil)
 		if err := h.publisher.Close(); err != nil {
 			h.logger.Error("Failed to close publisher", err, nil)
