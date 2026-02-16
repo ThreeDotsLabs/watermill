@@ -643,10 +643,12 @@ type handler struct {
 }
 
 func (h *handler) run(ctx context.Context, middlewares []middleware) {
-	h.logger.Info("Starting handler", watermill.LogFields{
+	lf := watermill.LogFields{
 		"subscriber_name": h.name,
 		"topic":           h.subscribeTopic,
-	})
+	}
+
+	h.logger.Info("Starting handler", lf)
 
 	middlewareHandler := h.handlerFunc
 	// first added middlewares should be executed first (so should be at the top of call stack)
@@ -669,6 +671,10 @@ func (h *handler) run(ctx context.Context, middlewares []middleware) {
 	}
 
 	if h.publisher != nil {
+		h.logger.Debug("Waiting on message processing go routines", lf)
+		h.runningHandlersWg.Wait()
+		h.logger.Debug("Done Waiting on message processing go routines", lf)
+
 		h.logger.Debug("Waiting for publisher to close", nil)
 		if err := h.publisher.Close(); err != nil {
 			h.logger.Error("Failed to close publisher", err, nil)
