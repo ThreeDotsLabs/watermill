@@ -75,6 +75,49 @@ func TestRetry_retry_hook(t *testing.T) {
 	assert.EqualValues(t, []int{1, 2}, retriesFromHook)
 }
 
+func TestRetry_retries_exhausted_hook(t *testing.T) {
+	var exhaustedErr error
+	var exhaustedRetryNum int
+
+	handlerErr := errors.New("foo")
+
+	retry := middleware.Retry{
+		MaxRetries: 2,
+		OnRetriesExhausted: func(err error, retryNum int) {
+			exhaustedErr = err
+			exhaustedRetryNum = retryNum
+		},
+	}
+
+	h := retry.Middleware(func(msg *message.Message) (messages []*message.Message, e error) {
+		return nil, handlerErr
+	})
+	_, _ = h(message.NewMessage("1", nil))
+
+	assert.ErrorIs(t, exhaustedErr, handlerErr)
+	// With MaxRetries=2, there are 3 total attempts (1 initial + 2 retries)
+	// retryNum is incremented after each attempt, so it's 3 when exhausted
+	assert.Equal(t, 3, exhaustedRetryNum)
+}
+
+func TestRetry_retries_exhausted_hook_not_called_on_success(t *testing.T) {
+	var hookCalled bool
+
+	retry := middleware.Retry{
+		MaxRetries: 2,
+		OnRetriesExhausted: func(err error, retryNum int) {
+			hookCalled = true
+		},
+	}
+
+	h := retry.Middleware(func(msg *message.Message) (messages []*message.Message, e error) {
+		return nil, nil
+	})
+	_, _ = h(message.NewMessage("1", nil))
+
+	assert.False(t, hookCalled, "OnRetriesExhausted should not be called on success")
+}
+
 func TestRetry_logger(t *testing.T) {
 	logger := watermill.NewCaptureLogger()
 

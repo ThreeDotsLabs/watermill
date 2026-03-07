@@ -42,6 +42,10 @@ type Retry struct {
 	// The number of the current retry is passed as retryNum,
 	OnRetryHook func(retryNum int, delay time.Duration)
 
+	// OnRetriesExhausted is an optional function that will be executed when all retries are exhausted.
+	// This is called when MaxRetries is reached and the handler still returns an error.
+	OnRetriesExhausted func(err error, retryNum int)
+
 	// ShouldRetry is an optional function that will be executed before each retry attempt.
 	// If ShouldRetry returns false, the retry will not be attempted.
 	ShouldRetry func(params RetryParams) bool
@@ -138,6 +142,9 @@ func (r Retry) Middleware(h message.HandlerFunc) message.HandlerFunc {
 			return producedMessages, backoffPermanentError.Unwrap()
 		}
 		if retryErr != nil {
+			if r.OnRetriesExhausted != nil {
+				r.OnRetriesExhausted(retryErr, retryNum)
+			}
 			return producedMessages, retryErr
 		}
 
