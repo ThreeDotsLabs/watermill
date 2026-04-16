@@ -139,12 +139,18 @@ func sendCountRequest(counterUUID string) {
 	for {
 		resp, err := http.Post("http://localhost:8080/count/"+counterUUID, "", nil)
 		if err != nil {
+			time.Sleep(100 * time.Millisecond)
 			continue
 		}
 
-		if resp.StatusCode == http.StatusNoContent {
+		status := resp.StatusCode
+		resp.Body.Close()
+
+		if status == http.StatusNoContent {
 			break
 		}
+
+		time.Sleep(100 * time.Millisecond)
 	}
 }
 
