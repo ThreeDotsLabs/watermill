@@ -3,6 +3,7 @@ package main
 import (
 	stdSQL "database/sql"
 	"fmt"
+	"io"
 	"net/http"
 	"os/exec"
 	"sync"
@@ -139,12 +140,26 @@ func sendCountRequest(counterUUID string) {
 	for {
 		resp, err := http.Post("http://localhost:8080/count/"+counterUUID, "", nil)
 		if err != nil {
+			// No resp to close on transport errors; back off briefly so we
+			// do not hammer the handler in a tight retry loop.
+			time.Sleep(100 * time.Millisecond)
 			continue
 		}
 
-		if resp.StatusCode == http.StatusNoContent {
+		status := resp.StatusCode
+		// Drain and close the body on every attempt. http.Post returns a
+		// non-nil resp.Body even for non-2xx responses, and skipping the
+		// drain pins the underlying TCP connection until GC (#664).
+		_, _ = io.Copy(io.Discard, resp.Body)
+		_ = resp.Body.Close()
+
+		if status == http.StatusNoContent {
 			break
 		}
+
+		// Any non-2xx response: back off instead of retrying in a tight
+		// loop, same rationale as the transport-error branch above.
+		time.Sleep(100 * time.Millisecond)
 	}
 }
 
