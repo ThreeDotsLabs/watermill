@@ -3,6 +3,7 @@ package main
 import (
 	stdSQL "database/sql"
 	"fmt"
+	"io"
 	"net/http"
 	"os/exec"
 	"sync"
@@ -139,12 +140,20 @@ func sendCountRequest(counterUUID string) {
 	for {
 		resp, err := http.Post("http://localhost:8080/count/"+counterUUID, "", nil)
 		if err != nil {
+			// Back off a bit so transient errors do not spin the CPU.
+			time.Sleep(100 * time.Millisecond)
 			continue
 		}
+
+		// Drain and close the body so net/http can reuse the connection
+		// and goroutines / file descriptors are released (#664).
+		_, _ = io.Copy(io.Discard, resp.Body)
+		_ = resp.Body.Close()
 
 		if resp.StatusCode == http.StatusNoContent {
 			break
 		}
+		time.Sleep(100 * time.Millisecond)
 	}
 }
 
