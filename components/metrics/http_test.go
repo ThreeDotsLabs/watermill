@@ -22,7 +22,7 @@ func TestCreateRegistryAndServeHTTP_metrics_endpoint(t *testing.T) {
 	waitServerReady(t, "http://localhost:8090")
 	resp, err := http.DefaultClient.Get("http://localhost:8090/metrics")
 	if resp != nil {
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 	}
 
 	if err != nil {
@@ -42,7 +42,7 @@ func TestCreateRegistryAndServeHTTP_unknown_endpoint(t *testing.T) {
 	waitServerReady(t, "http://localhost:8091")
 	resp, err := http.DefaultClient.Get("http://localhost:8091/unknown")
 	if resp != nil {
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 	}
 
 	if err != nil {

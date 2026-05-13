@@ -905,7 +905,7 @@ func BenchmarkRouterHandler(b *testing.B) {
 
 	go func() {
 		allProcessedWg.Wait()
-		router.Close()
+		_ = router.Close()
 	}()
 
 	b.ResetTimer()
@@ -945,7 +945,7 @@ func TestRouterNoPublisherHandler(t *testing.T) {
 		err = r.Run(context.Background())
 		require.NoError(t, err)
 	}()
-	defer r.Close()
+	defer func() { _ = r.Close() }()
 
 	<-r.Running()
 
@@ -988,7 +988,7 @@ func BenchmarkRouterNoPublisherHandler(b *testing.B) {
 
 	go func() {
 		allProcessedWg.Wait()
-		router.Close()
+		_ = router.Close()
 	}()
 
 	b.ResetTimer()
