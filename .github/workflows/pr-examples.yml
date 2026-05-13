@@ -5,12 +5,48 @@ on:
       - '_examples/**/*'
 
 jobs:
-  validate-examples:
+  detect-changed-examples:
     runs-on: ubuntu-latest
+    outputs:
+      examples: ${{ steps.set.outputs.examples }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v4
+        with:
+          fetch-depth: 0
+      - id: set
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          changed=$(git diff --name-only "$BASE_SHA"..."$HEAD_SHA")
+          example_dirs=$(find _examples -name '.validate_example*.yml' -exec dirname {} \; | sort -u)
+          examples=()
+          while IFS= read -r dir; do
+            if printf '%s\n' "$changed" | grep -q "^${dir}/"; then
+              examples+=("${dir#_examples/}")
+            fi
+          done <<< "$example_dirs"
+          if [ ${#examples[@]} -eq 0 ]; then
+            json='[]'
+          else
+            json=$(jq -c -n '$ARGS.positional' --args "${examples[@]}")
+          fi
+          echo "examples=$json" >> "$GITHUB_OUTPUT"
+          echo "Detected changed examples: $json"
+
+  validate:
+    needs: detect-changed-examples
+    if: needs.detect-changed-examples.outputs.examples != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        example: ${{ fromJSON(needs.detect-changed-examples.outputs.examples) }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
           go-version: '^1.26'
-      - run: make validate_examples
-        timeout-minutes: 30
+      - name: Validate ${{ matrix.example }}
+        run: cd dev/validate-examples && go run main.go "${{ matrix.example }}"
