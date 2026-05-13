@@ -133,7 +133,7 @@ func TestPoisonQueue_context_values(t *testing.T) {
 		require.NoError(t, router.Run(context.Background()))
 	}()
 	require.NoError(t, err)
-	defer router.Close()
+	defer func() { _ = router.Close() }()
 
 	select {
 	case <-router.Running():

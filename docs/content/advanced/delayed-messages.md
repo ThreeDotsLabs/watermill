@@ -37,6 +37,7 @@ You can also use `delay.Until` instead of `delay.For` to specify `time.Time` ins
 ## Supported Pub/Subs
 
 * [PostgreSQL](/pubsubs/sql/)
+* [MySQL](/pubsubs/sql/)
 
 ## Full Example
 

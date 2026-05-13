@@ -21,23 +21,16 @@ services:
       MYSQL_DATABASE: watermill
       MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
 
-  zookeeper:
-    image: confluentinc/cp-zookeeper:7.3.1
-    logging:
-      driver: none
-    restart: unless-stopped
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-
   kafka:
-    image: confluentinc/cp-kafka:7.3.1
+    image: redpandadata/redpanda:v26.1.7
     logging:
       driver: none
     restart: unless-stopped
-    depends_on:
-      - zookeeper
-    environment:
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    command:
+      - redpanda
+      - start
+      - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr internal://kafka:9092,external://localhost:19092
+      - --mode dev-container
+      - --smp 1
+      - --default-log-level=warn

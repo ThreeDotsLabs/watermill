@@ -84,8 +84,8 @@ func (b PrometheusMetricsBuilder) DecoratePublisher(pub message.Publisher) (mess
 func (b PrometheusMetricsBuilder) DecorateSubscriber(sub message.Subscriber) (message.Subscriber, error) {
 	var err error
 	d := &SubscriberPrometheusMetricsDecorator{
-		closing:        make(chan struct{}),
-		subscriberName: internal.StructName(sub),
+		closing:          make(chan struct{}),
+		subscriberName:   internal.StructName(sub),
 		additionalLabels: b.additionalLabels,
 	}
 
