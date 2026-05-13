@@ -38,7 +38,7 @@ func main() {
 	}
 
 	delayedRequeuer, err := sql.NewPostgreSQLDelayedRequeuer(sql.DelayedRequeuerConfig{
-		DB:        db,
+		DB:        sql.BeginnerFromStdSQL(db),
 		Publisher: redisPublisher,
 		DelayOnError: &middleware.DelayOnError{
 			InitialInterval: 10 * time.Second,
