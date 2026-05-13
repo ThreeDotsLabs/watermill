@@ -41,14 +41,14 @@ func (e *messageEnvelope) validate() error {
 func wrapMessageInEnvelope(
 	destinationTopic string,
 	msg *message.Message,
-	marshal func(any) ([]byte, error),
+	marshaler Marshaler,
 ) (*message.Message, error) {
 	envelope, err := newMessageEnvelope(destinationTopic, msg)
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot envelope a message")
 	}
 
-	envelopedMessage, err := marshal(envelope)
+	envelopedMessage, err := marshaler.Marshal(envelope)
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot marshal a message")
 	}
@@ -61,10 +61,10 @@ func wrapMessageInEnvelope(
 
 func unwrapMessageFromEnvelope(
 	msg *message.Message,
-	unmarshal func(data []byte, v any) error,
+	marshaler Marshaler,
 ) (destinationTopic string, unwrappedMsg *message.Message, err error) {
 	envelopedMsg := messageEnvelope{}
-	if err := unmarshal(msg.Payload, &envelopedMsg); err != nil {
+	if err := marshaler.Unmarshal(msg.Payload, &envelopedMsg); err != nil {
 		return "", nil, errors.Wrap(err, "cannot unmarshal message wrapped in an envelope")
 	}
 
