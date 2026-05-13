@@ -218,7 +218,11 @@ func (c *CaptureLoggerAdapter) Captured() map[LogLevel][]CapturedMessage {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
-	return c.captured
+	cpy := make(map[LogLevel][]CapturedMessage, len(c.captured))
+	for level, msgs := range c.captured {
+		cpy[level] = slices.Clone(msgs)
+	}
+	return cpy
 }
 
 type Logfer interface {
