@@ -9,7 +9,7 @@ This example showcases the use of the **HTTP Publisher** to call webhooks with H
     1. `/foo_or_bar` for events of type `Foo` or `Bar`
     1. `/all` for all events.
 
-Additionally, services `zookeeper` and `kafka` are present to provide backend for the Kafka producer and subscriber.
+Additionally, the `kafka` service (a Redpanda broker) is present to provide backend for the Kafka producer and subscriber.
 
 ## Requirements
 
