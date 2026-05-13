@@ -405,7 +405,9 @@ func TestRouter_AddMiddleware_to_router(t *testing.T) {
 	router.AddMiddleware(secondMiddleware)
 	router.AddMiddleware(thirdMiddleware)
 
+	publishDone := make(chan struct{})
 	go func() {
+		defer close(publishDone)
 		msg := message.NewMessage(watermill.NewUUID(), []byte("test_payload"))
 		err := pub.Publish(topic, msg)
 		require.NoError(t, err)
@@ -429,6 +431,7 @@ func TestRouter_AddMiddleware_to_router(t *testing.T) {
 	}()
 	<-router.Running()
 	<-allMiddlewareExecuted
+	<-publishDone
 
 	err = router.Close()
 	require.NoError(t, err)
