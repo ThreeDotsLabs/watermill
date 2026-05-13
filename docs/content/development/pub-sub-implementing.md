@@ -24,7 +24,7 @@ These scenarios check both basic usage and more uncommon use cases. Stress tests
 Here are a few things you shouldn't forget about:
 
 1. Logging (good messages and proper levels).
-2. Replaceable and configurable messages marshaller.
+2. Replaceable and configurable message marshaler.
 3. `Close()` implementation for the publisher and subscriber that is:
     - idempotent
     - working correctly even when the publisher or the subscriber is blocked (for example, waiting for an Ack).
@@ -35,6 +35,6 @@ Here are a few things you shouldn't forget about:
 7. Performance optimizations.
 8. GoDocs, [Markdown docs]({{< ref "/pubsubs" >}}) and [Getting Started examples](/learn/getting-started).
 
-We will also be thankful for submitting a [pull requests](https://github.com/ThreeDotsLabs/watermill/pulls) with the new Pub/Sub implementation.
+We will also be thankful for submitting a [pull request](https://github.com/ThreeDotsLabs/watermill/pulls) with the new Pub/Sub implementation.
 
 If anything is not clear, feel free to use any of our [support channels]({{< ref "/support" >}}) to reach us, we will be glad to help.

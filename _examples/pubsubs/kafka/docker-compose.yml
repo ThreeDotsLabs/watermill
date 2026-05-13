@@ -10,23 +10,16 @@ services:
     working_dir: /app
     command: go run main.go
 
-  zookeeper:
-    image: confluentinc/cp-zookeeper:7.3.1
-    restart: unless-stopped
-    logging:
-      driver: none
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-
   kafka:
-    image: confluentinc/cp-kafka:7.3.1
+    image: redpandadata/redpanda:v26.1.7
     restart: unless-stopped
-    depends_on:
-      - zookeeper
     logging:
       driver: none
-    environment:
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    command:
+      - redpanda
+      - start
+      - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr internal://kafka:9092,external://localhost:19092
+      - --mode dev-container
+      - --smp 1
+      - --default-log-level=warn

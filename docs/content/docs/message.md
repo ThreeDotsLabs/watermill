@@ -7,8 +7,8 @@ draft = false
 bref = "Message is one of core parts of Watermill"
 +++
 
-Message is one of core parts of Watermill. Messages are emitted by [*Publishers*]({{< ref "/docs/pub-sub#publisher" >}}) and received by [*Subscribers*]({{< ref "/docs/pub-sub#subscriber" >}}).
-When a message is processed, you should send an [`Ack()`]({{< ref "#ack" >}}) or a [`Nack()`]({{< ref "#ack" >}}) when the processing failed.
+Message is one of the core parts of Watermill. Messages are emitted by [*Publishers*]({{< ref "/docs/pub-sub#publisher" >}}) and received by [*Subscribers*]({{< ref "/docs/pub-sub#subscriber" >}}).
+When a message is processed, you should send an [`Ack()`]({{< ref "#ack" >}}) or a [`Nack()`]({{< ref "#nack" >}}) when the processing failed.
 
 `Acks` and `Nacks` are processed by Subscribers (in default implementations, the subscribers are waiting for an `Ack` or a `Nack`).
 

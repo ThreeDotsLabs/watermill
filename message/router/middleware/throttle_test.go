@@ -30,6 +30,7 @@ func TestThrottle_Middleware(t *testing.T) {
 
 	for i := 0; i < concurrentHandlers; i++ {
 		go func() {
+		HandlerLoop:
 			for {
 				producedMessages := []*message.Message{message.NewMessage("produced", nil)}
 				producedErr := errors.New("produced err")
@@ -50,7 +51,7 @@ func TestThrottle_Middleware(t *testing.T) {
 
 				select {
 				case <-ctx.Done():
-					break
+					break HandlerLoop
 				default:
 				}
 			}
