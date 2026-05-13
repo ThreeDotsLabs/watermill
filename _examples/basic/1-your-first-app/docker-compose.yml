@@ -1,6 +1,6 @@
 services:
   server:
-    image: golang:1.25
+    image: golang:1.26
     restart: unless-stopped
     volumes:
     - .:/app
