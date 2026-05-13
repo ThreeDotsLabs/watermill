@@ -13,8 +13,8 @@ bref = "Publishers and Subscribers"
 
 ### Publishing multiple messages
 
-Most publishers implementations don't support atomic publishing of messages.
-This means that if publishing one of the messages fails, the next messages won't be published.
+Most publisher implementations don't support atomic publishing of messages.
+This means that if publishing one of the messages fails, the remaining messages won't be published.
 
 ### Async publish
 
@@ -23,7 +23,7 @@ Publish can be synchronous or asynchronous - it depends on the implementation.
 #### `Close()`
 
 `Close` should flush unsent messages if the publisher is asynchronous.
-**It is important to not forget to close the subscriber**. Otherwise you may lose some of the messages.
+**It is important not to forget to close the publisher**. Otherwise you may lose some of the messages.
 
 ## Subscriber
 
@@ -36,16 +36,16 @@ A proper implementation should wait for an `Ack` or a `Nack` before consuming th
 
 **Important Subscriber's implementation notice**:
 Ack/offset to message's storage/broker **must** be sent after Ack from Watermill's message.
-Otherwise there is a chance to lose messages if the process dies before the messages have been processed.
+Otherwise there is a risk of losing messages if the process dies before the messages have been processed.
 
 #### `Close()`
 
-`Close` closes all subscriptions with their output channels and flushes offsets, etc. when needed.
+`Close` shuts down all subscriptions, closes their output channels, and flushes offsets when needed.
 
 ## At-least-once delivery
 
 Watermill is built with [at-least-once delivery](http://www.cloudcomputingpatterns.org/at_least_once_delivery/) semantics.
-That means when some error occurs when processing a message and an Ack cannot be sent, the message will be redelivered.
+This means that if an error occurs while processing a message and an Ack cannot be sent, the message will be redelivered.
 
 You need to keep it in mind and build your application to be [idempotent](http://www.cloudcomputingpatterns.org/idempotent_processor/) or implement a deduplication mechanism.
 
@@ -54,7 +54,7 @@ Unfortunately, it's not possible to create a universal [*middleware*]({{< ref "/
 ## Universal tests
 
 Every Pub/Sub is similar in most aspects.
-To avoid implementing separate tests for every Pub/Sub, we've created a test suite which should be passed by any Pub/Sub
+To avoid implementing separate tests for every Pub/Sub, we've created a test suite, which should be passed by any Pub/Sub
 implementation.
 
 These tests can be found in `pubsub/tests/test_pubsub.go`.

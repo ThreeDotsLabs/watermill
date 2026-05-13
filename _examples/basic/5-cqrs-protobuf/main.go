@@ -92,7 +92,7 @@ func (o OrderBeerHandler) Handle(ctx context.Context, cmd *OrderBeer) error {
 // BookingsFinancialReport is a read model, which calculates how much money we may earn from bookings.
 // Like OrderBeerOnRoomBooked, it listens for RoomBooked event.
 //
-// This implementation is just writing to the memory. In production, you will probably will use some persistent storage.
+// This implementation is just writing to the memory. In production, you will probably use some persistent storage.
 type BookingsFinancialReport struct {
 	handledBookings map[string]struct{}
 	totalCharge     int64
@@ -104,7 +104,7 @@ func NewBookingsFinancialReport() *BookingsFinancialReport {
 }
 
 func (b *BookingsFinancialReport) Handle(ctx context.Context, event *RoomBooked) error {
-	// Handle may be called concurrently, so it need to be thread safe.
+	// Handle may be called concurrently, so it needs to be thread safe.
 	b.lock.Lock()
 	defer b.lock.Unlock()
 

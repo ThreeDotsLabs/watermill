@@ -136,16 +136,20 @@ func restartMySQL() {
 }
 
 func sendCountRequest(counterUUID string) {
-	for {
-		resp, err := http.Post("http://localhost:8080/count/"+counterUUID, "", nil)
-		if err != nil {
-			continue
-		}
+    for {
+        resp, err := http.Post("http://localhost:8080/count/"+counterUUID, "", nil)
+        if err != nil {
+            time.Sleep(100 * time.Millisecond)
+            continue
+        }
+        resp.Body.Close()
 
-		if resp.StatusCode == http.StatusNoContent {
-			break
-		}
-	}
+        if resp.StatusCode == http.StatusNoContent {
+            break
+        }
+
+        time.Sleep(100 * time.Millisecond)
+    }
 }
 
 func createDB() *stdSQL.DB {
