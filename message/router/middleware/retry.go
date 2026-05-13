@@ -75,6 +75,11 @@ func (r Retry) Middleware(h message.HandlerFunc) message.HandlerFunc {
 	return func(msg *message.Message) ([]*message.Message, error) {
 		originalCtx := msg.Context()
 		retryNum := 0
+		// stoppedByPermanent is set when ShouldRetry returns false, so we know
+		// to skip OnRetriesExhausted — retries weren't actually exhausted, they
+		// were short-circuited. backoff/v5 strips the *PermanentError wrapper
+		// inside Retry, so we can't detect this from the returned error alone.
+		stoppedByPermanent := false
 
 		expBackoff := backoff.NewExponentialBackOff()
 		expBackoff.InitialInterval = r.InitialInterval
@@ -126,6 +131,7 @@ func (r Retry) Middleware(h message.HandlerFunc) message.HandlerFunc {
 					Delay:    expBackoff.NextBackOff(),
 				}) {
 					// backoff.Permanent will stop the retry attempts
+					stoppedByPermanent = true
 					return producedMessages, backoff.Permanent(err)
 				}
 
@@ -152,7 +158,7 @@ func (r Retry) Middleware(h message.HandlerFunc) message.HandlerFunc {
 			return producedMessages, backoffPermanentError.Unwrap()
 		}
 		if retryErr != nil {
-			if r.OnRetriesExhausted != nil {
+			if r.OnRetriesExhausted != nil && !stoppedByPermanent {
 				r.OnRetriesExhausted(RetriesExhaustedParams{
 					Err:      retryErr,
 					RetryNum: retryNum,

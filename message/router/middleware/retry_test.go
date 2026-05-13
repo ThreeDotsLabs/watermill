@@ -116,6 +116,27 @@ func TestRetry_retries_exhausted_hook_not_called_on_success(t *testing.T) {
 	assert.False(t, hookCalled, "OnRetriesExhausted should not be called on success")
 }
 
+func TestRetry_retries_exhausted_hook_not_called_when_should_retry_returns_false(t *testing.T) {
+	var hookCalled bool
+
+	retry := middleware.Retry{
+		MaxRetries: 5,
+		ShouldRetry: func(params middleware.RetryParams) bool {
+			return false
+		},
+		OnRetriesExhausted: func(params middleware.RetriesExhaustedParams) {
+			hookCalled = true
+		},
+	}
+
+	h := retry.Middleware(func(msg *message.Message) (messages []*message.Message, e error) {
+		return nil, errors.New("foo")
+	})
+	_, _ = h(message.NewMessage("1", nil))
+
+	assert.False(t, hookCalled, "OnRetriesExhausted should not be called when ShouldRetry returns false")
+}
+
 func TestRetry_logger(t *testing.T) {
 	logger := watermill.NewCaptureLogger()
 
