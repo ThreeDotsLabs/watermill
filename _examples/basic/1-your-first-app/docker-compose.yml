@@ -1,6 +1,6 @@
 services:
   server:
-    image: golang:1.25
+    image: golang:1.26
     restart: unless-stopped
     volumes:
     - .:/app
@@ -11,10 +11,13 @@ services:
                   go run main.go"
 
   kafka:
-    image: bitnami/kafka:3.5.0
+    image: redpandadata/redpanda:v26.1.7
     restart: unless-stopped
-    environment:
-      ALLOW_PLAINTEXT_LISTENER: yes
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    command:
+      - redpanda
+      - start
+      - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr internal://kafka:9092,external://localhost:19092
+      - --mode dev-container
+      - --smp 1
+      - --default-log-level=warn

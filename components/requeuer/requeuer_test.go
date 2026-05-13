@@ -98,7 +98,6 @@ func TestRequeue(t *testing.T) {
 			received = append(received, i)
 		case <-time.After(5 * time.Second):
 			timeout = true
-			break
 		}
 	}
 

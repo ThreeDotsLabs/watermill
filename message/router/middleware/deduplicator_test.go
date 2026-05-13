@@ -54,7 +54,7 @@ func TestDeduplicatorPublisherDecorator(t *testing.T) {
 		OutputChannelBuffer: 100,
 		Persistent:          true,
 	}, nil)
-	defer pubSub.Close()
+	defer func() { _ = pubSub.Close() }()
 
 	const testDedupeTopic = "testTopic"
 	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*50)
