@@ -7,7 +7,7 @@ import (
 func isPointer(v interface{}) error {
 	rv := reflect.ValueOf(v)
 
-	if rv.Kind() != reflect.Ptr || rv.IsNil() {
+	if rv.Kind() != reflect.Pointer || rv.IsNil() {
 		return NonPointerError{rv.Type()}
 	}
 

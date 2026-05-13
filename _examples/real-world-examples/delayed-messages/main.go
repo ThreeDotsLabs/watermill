@@ -42,7 +42,7 @@ func main() {
 	}
 
 	var sqlPublisher message.Publisher
-	sqlPublisher, err = sql.NewDelayedPostgreSQLPublisher(db, sql.DelayedPostgreSQLPublisherConfig{
+	sqlPublisher, err = sql.NewDelayedPostgreSQLPublisher(sql.BeginnerFromStdSQL(db), sql.DelayedPostgreSQLPublisherConfig{
 		DelayPublisherConfig: delay.PublisherConfig{},
 		Logger:               logger,
 	})
@@ -155,7 +155,7 @@ func main() {
 		panic(err)
 	}
 
-	sqlSubscriber, err := sql.NewDelayedPostgreSQLSubscriber(db, sql.DelayedPostgreSQLSubscriberConfig{
+	sqlSubscriber, err := sql.NewDelayedPostgreSQLSubscriber(sql.BeginnerFromStdSQL(db), sql.DelayedPostgreSQLSubscriberConfig{
 		DeleteOnAck: true,
 		Logger:      logger,
 	})

@@ -23,7 +23,7 @@ type NoProtoMessageError struct {
 
 func (e NoProtoMessageError) Error() string {
 	rv := reflect.ValueOf(e.v)
-	if rv.Kind() != reflect.Ptr {
+	if rv.Kind() != reflect.Pointer {
 		return "v is not proto.Message, you must pass pointer value to implement proto.Message"
 	}
 

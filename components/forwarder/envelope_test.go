@@ -14,6 +14,7 @@ type contextKey string
 
 func TestEnvelope(t *testing.T) {
 	expectedUUID := watermill.NewUUID()
+	marshaler := DefaultMarshaler{}
 	expectedPayload := message.Payload("msg content")
 	expectedMetadata := message.Metadata{"key": "value"}
 	expectedDestinationTopic := "dest_topic"
@@ -24,14 +25,14 @@ func TestEnvelope(t *testing.T) {
 	msg.Metadata = expectedMetadata
 	msg.SetContext(ctx)
 
-	wrappedMsg, err := wrapMessageInEnvelope(expectedDestinationTopic, msg)
+	wrappedMsg, err := wrapMessageInEnvelope(expectedDestinationTopic, msg, marshaler)
 	require.NoError(t, err)
 	require.NotNil(t, wrappedMsg)
 	v, ok := wrappedMsg.Context().Value(contextKey("key")).(string)
 	require.True(t, ok)
 	require.Equal(t, "value", v)
 
-	destinationTopic, unwrappedMsg, err := unwrapMessageFromEnvelope(wrappedMsg)
+	destinationTopic, unwrappedMsg, err := unwrapMessageFromEnvelope(wrappedMsg, marshaler)
 	require.NoError(t, err)
 	require.NotNil(t, unwrappedMsg)
 	assert.Equal(t, expectedUUID, unwrappedMsg.UUID)

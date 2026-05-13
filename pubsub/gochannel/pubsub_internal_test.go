@@ -3,6 +3,7 @@ package gochannel
 import (
 	"context"
 	"strconv"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -65,4 +66,35 @@ func TestPublish_clean_lock_data(t *testing.T) {
 	assert.Equal(t, 1, lockCount)
 
 	assert.NoError(t, pubSub.Close())
+}
+
+// TestPublish_concurrent_close ensures Close does not race with in-flight persistent Publish calls. 
+func TestPublish_concurrent_close(t *testing.T) {
+	pubSub := NewGoChannel(
+		Config{Persistent: true},
+		watermill.NewStdLogger(false, false),
+	)
+	topicName := "test_topic"
+
+	publisherCount := 20
+	startPublishing := make(chan struct{})
+	wg := sync.WaitGroup{}
+
+	for i := 0; i < publisherCount; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-startPublishing
+			for {
+				err := pubSub.Publish(topicName, message.NewMessage(watermill.NewShortUUID(), nil))
+				if err != nil {
+					return
+				}
+			}
+		}()
+	}
+
+	close(startPublishing)
+	require.NoError(t, pubSub.Close())
+	wg.Wait()
 }

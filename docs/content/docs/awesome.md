@@ -40,7 +40,6 @@ check out [Implementing custom Pub/Sub](/development/pub-sub-implementing).
 * logrus
   * https://github.com/ma-hartma/watermill-logrus-adapter
   * https://github.com/UNIwise/walrus
-* logur https://github.com/logur/integration-watermill
 * zap
   * https://github.com/garsue/watermillzap
   * https://github.com/pperaltaisern/watermillzap

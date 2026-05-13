@@ -1,8 +1,6 @@
 package forwarder
 
 import (
-	"encoding/json"
-
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/pkg/errors"
@@ -40,13 +38,17 @@ func (e *messageEnvelope) validate() error {
 	return nil
 }
 
-func wrapMessageInEnvelope(destinationTopic string, msg *message.Message) (*message.Message, error) {
+func wrapMessageInEnvelope(
+	destinationTopic string,
+	msg *message.Message,
+	marshaler Marshaler,
+) (*message.Message, error) {
 	envelope, err := newMessageEnvelope(destinationTopic, msg)
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot envelope a message")
 	}
 
-	envelopedMessage, err := json.Marshal(envelope)
+	envelopedMessage, err := marshaler.Marshal(envelope)
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot marshal a message")
 	}
@@ -57,9 +59,12 @@ func wrapMessageInEnvelope(destinationTopic string, msg *message.Message) (*mess
 	return wrappedMsg, nil
 }
 
-func unwrapMessageFromEnvelope(msg *message.Message) (destinationTopic string, unwrappedMsg *message.Message, err error) {
+func unwrapMessageFromEnvelope(
+	msg *message.Message,
+	marshaler Marshaler,
+) (destinationTopic string, unwrappedMsg *message.Message, err error) {
 	envelopedMsg := messageEnvelope{}
-	if err := json.Unmarshal(msg.Payload, &envelopedMsg); err != nil {
+	if err := marshaler.Unmarshal(msg.Payload, &envelopedMsg); err != nil {
 		return "", nil, errors.Wrap(err, "cannot unmarshal message wrapped in an envelope")
 	}
 
