@@ -331,7 +331,6 @@ func (g *GoChannel) Close() error {
 	g.subscribersWg.Wait()
 
 	g.logger.Info("Pub/Sub closed", nil)
-	g.persistedMessages = nil
 
 	return nil
 }
