@@ -20,6 +20,15 @@ type RetryParams struct {
 	Delay time.Duration
 }
 
+// RetriesExhaustedParams holds the parameters passed to OnRetriesExhausted.
+type RetriesExhaustedParams struct {
+	// Err is the last error returned by the handler before retries were exhausted.
+	Err error
+	// RetryNum is the total number of attempts performed (1 initial + MaxRetries retries).
+	// For MaxRetries=N this will equal N+1.
+	RetryNum int
+}
+
 // Retry provides a middleware that retries the handler if errors are returned.
 // The retry behaviour is configurable, with exponential backoff and maximum elapsed time.
 type Retry struct {
@@ -44,7 +53,8 @@ type Retry struct {
 
 	// OnRetriesExhausted is an optional function that will be executed when all retries are exhausted.
 	// This is called when MaxRetries is reached and the handler still returns an error.
-	OnRetriesExhausted func(err error, retryNum int)
+	// It is NOT called when ShouldRetry returns false (that path returns a permanent error and exits earlier).
+	OnRetriesExhausted func(params RetriesExhaustedParams)
 
 	// ShouldRetry is an optional function that will be executed before each retry attempt.
 	// If ShouldRetry returns false, the retry will not be attempted.
@@ -143,7 +153,10 @@ func (r Retry) Middleware(h message.HandlerFunc) message.HandlerFunc {
 		}
 		if retryErr != nil {
 			if r.OnRetriesExhausted != nil {
-				r.OnRetriesExhausted(retryErr, retryNum)
+				r.OnRetriesExhausted(RetriesExhaustedParams{
+					Err:      retryErr,
+					RetryNum: retryNum,
+				})
 			}
 			return producedMessages, retryErr
 		}
