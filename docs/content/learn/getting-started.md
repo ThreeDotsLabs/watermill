@@ -116,8 +116,8 @@ if err != nil {
 {{% load-snippet-partial file="src-link/_examples/pubsubs/kafka/main.go" first_line_contains="message.NewMessage" last_line_contains="publisher.Publish" padding_after="2" %}}
 {{< /tab >}}
 
-{{< tab "NATS Streaming" "nats" >}}
-{{% load-snippet-partial file="src-link/_examples/pubsubs/nats-streaming/main.go" first_line_contains="message.NewMessage" last_line_contains="publisher.Publish" padding_after="2" %}}
+{{< tab "NATS JetStream" "nats" >}}
+{{% load-snippet-partial file="src-link/_examples/pubsubs/nats-jetstream/main.go" first_line_contains="message.NewMessage" last_line_contains="publisher.Publish" padding_after="2" %}}
 {{< /tab >}}
 
 {{< tab "Google Cloud Pub/Sub" "gcp" >}}
@@ -194,14 +194,14 @@ A more detailed explanation of how it works (and how to add live code reload) ca
 {{% load-snippet-partial file="src-link/_examples/pubsubs/kafka/main.go" first_line_contains="func process" %}}
 {{< /tab >}}
 
-{{< tab "NATS Streaming" "nats" >}}
+{{< tab "NATS JetStream" "nats" >}}
 
 <details>
 <summary><strong>Running in Docker</strong></summary>
 
 The easiest way to run Watermill locally with NATS is using Docker.
 
-{{% load-snippet file="src-link/_examples/pubsubs/nats-streaming/docker-compose.yml" type="yaml" %}}
+{{% load-snippet file="src-link/_examples/pubsubs/nats-jetstream/docker-compose.yml" type="yaml" %}}
 
 The source should go to `main.go`.
 
@@ -210,10 +210,9 @@ To run, execute the `docker-compose up` command.
 A more detailed explanation of how it is working (and how to add live code reload) can be found in [*Go Docker dev environment* article](https://threedots.tech/post/go-docker-dev-environment-with-go-modules-and-live-code-reloading/).
 </details>
 
-{{% load-snippet-partial file="src-link/_examples/pubsubs/nats-streaming/main.go" first_line_contains="package main" last_line_contains="process(messages)" %}}
-{{% load-snippet-partial file="src-link/_examples/pubsubs/nats-streaming/main.go" first_line_contains="func process" %}}
-{{< /tabs >}}
-
+{{% load-snippet-partial file="src-link/_examples/pubsubs/nats-jetstream/main.go" first_line_contains="package main" last_line_contains="process(messages)" %}}
+{{% load-snippet-partial file="src-link/_examples/pubsubs/nats-jetstream/main.go" first_line_contains="func process" %}}
+{{< /tab >}}
 
 {{< tab "Google Cloud Pub/Sub" "gcp" >}}
 
