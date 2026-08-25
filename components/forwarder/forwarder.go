@@ -9,12 +9,22 @@ import (
 	"github.com/pkg/errors"
 )
 
-const defaultForwarderTopic = "forwarder_topic"
+const (
+	defaultForwarderTopic = "forwarder_topic"
+	defaultHandlerName    = "events_forwarder"
+)
 
 type Config struct {
 	// ForwarderTopic is a topic on which the forwarder will be listening to enveloped messages to forward.
 	// Defaults to `forwarder_topic`.
 	ForwarderTopic string
+
+	// HandlerName is the name of the forwarder's handler registered in the router.
+	// Defaults to `events_forwarder`.
+	//
+	// Handler names must be unique within a router, so it needs to be set explicitly
+	// if you want to run multiple forwarders on the same router.
+	HandlerName string
 
 	// Middlewares are used to decorate forwarder's handler function.
 	Middlewares []message.HandlerMiddleware
@@ -44,6 +54,9 @@ func (c *Config) setDefaults() {
 	if c.ForwarderTopic == "" {
 		c.ForwarderTopic = defaultForwarderTopic
 	}
+	if c.HandlerName == "" {
+		c.HandlerName = defaultHandlerName
+	}
 	if c.Marshaler == nil {
 		c.Marshaler = DefaultMarshaler{}
 	}
@@ -52,6 +65,9 @@ func (c *Config) setDefaults() {
 func (c *Config) Validate() error {
 	if c.ForwarderTopic == "" {
 		return errors.New("empty forwarder topic")
+	}
+	if c.HandlerName == "" {
+		return errors.New("empty handler name")
 	}
 
 	return nil
@@ -99,7 +115,7 @@ func NewForwarder(
 	f := &Forwarder{router, publisherOut, logger, config}
 
 	handler := router.AddConsumerHandler(
-		"events_forwarder",
+		config.HandlerName,
 		config.ForwarderTopic,
 		subscriberIn,
 		f.forwardMessage,
