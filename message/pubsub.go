@@ -38,6 +38,17 @@ type Subscriber interface {
 	Close() error
 }
 
+// Stoppable is an optional interface that a Subscriber may implement to support
+// graceful shutdown. When Stop is called, the subscriber should stop delivering
+// new messages but continue to allow in-flight messages to be Acked or Nacked.
+//
+// The Router checks for this interface during shutdown. If the subscriber
+// implements Stoppable, the Router calls Stop first, waits for running handlers
+// to finish, and then calls Close.
+type Stoppable interface {
+	Stop() error
+}
+
 // SubscribeInitializer is used to initialize subscribers.
 type SubscribeInitializer interface {
 	// SubscribeInitialize can be called to initialize subscribe before consume.
