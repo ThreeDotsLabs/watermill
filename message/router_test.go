@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -1500,4 +1501,213 @@ func TestRouter_stopping_all_handlers_logs_error(t *testing.T) {
 		"expected log message not found, logs: %#v",
 		logger.Captured(),
 	)
+}
+
+func TestRouter_close_when_handlers_were_not_started(t *testing.T) {
+	t.Parallel()
+
+	pub, sub := createPubSub()
+	defer func() {
+		assert.NoError(t, pub.Close())
+		assert.NoError(t, sub.Close())
+	}()
+
+	r, err := message.NewRouter(
+		message.RouterConfig{
+			CloseTimeout: time.Second * 10,
+		},
+		watermill.NewStdLogger(true, true),
+	)
+	require.NoError(t, err)
+
+	// The router is never run - for example, the surrounding service failed
+	// later in startup and calls Close() as part of its cleanup.
+	r.AddConsumerHandler(
+		"handler",
+		"subscribe_topic",
+		sub,
+		func(msg *message.Message) error {
+			return nil
+		},
+	)
+
+	closed := make(chan error)
+	go func() {
+		closed <- r.Close()
+	}()
+
+	select {
+	case err := <-closed:
+		assert.NoError(t, err)
+	case <-time.After(time.Second):
+		t.Fatal("Close() didn't return for a handler that was never started")
+	}
+}
+
+func TestRouter_close_closes_pubsub_of_handlers_that_were_not_started(t *testing.T) {
+	t.Parallel()
+
+	r, err := message.NewRouter(
+		message.RouterConfig{
+			CloseTimeout: time.Second * 10,
+		},
+		watermill.NewStdLogger(true, true),
+	)
+	require.NoError(t, err)
+
+	sub := &closeRecordingSubscriber{}
+	pub := &closeRecordingPublisher{}
+
+	// The router is never run, so nothing else will close the handler's
+	// subscriber and publisher.
+	r.AddHandler(
+		"handler",
+		"subscribe_topic",
+		sub,
+		"publish_topic",
+		pub,
+		func(msg *message.Message) ([]*message.Message, error) {
+			return nil, nil
+		},
+	)
+
+	closed := make(chan error)
+	go func() {
+		closed <- r.Close()
+	}()
+
+	select {
+	case err := <-closed:
+		assert.NoError(t, err)
+	case <-time.After(time.Second):
+		t.Fatal("Close() didn't return for a handler that was never started")
+	}
+
+	assert.True(t, sub.closed.Load(), "subscriber of a handler that was never started was not closed")
+	assert.True(t, pub.closed.Load(), "publisher of a handler that was never started was not closed")
+}
+
+func TestRouter_close_when_running_handlers_failed(t *testing.T) {
+	t.Parallel()
+
+	pub, sub := createPubSub()
+	defer func() {
+		assert.NoError(t, pub.Close())
+		assert.NoError(t, sub.Close())
+	}()
+
+	r, err := message.NewRouter(
+		message.RouterConfig{
+			CloseTimeout: time.Second * 10,
+		},
+		watermill.NewStdLogger(true, true),
+	)
+	require.NoError(t, err)
+
+	noopHandler := func(msg *message.Message) error {
+		return nil
+	}
+
+	// RunHandlers starts handlers in a loop and returns early when one of the
+	// subscriptions fails. Handlers that the loop never reached are not started.
+	for _, name := range []string{"handler_1", "handler_2", "handler_3"} {
+		r.AddConsumerHandler(name, "subscribe_topic", sub, noopHandler)
+	}
+	r.AddConsumerHandler("failing_handler", "subscribe_topic", &failingSubscriberMock{}, noopHandler)
+
+	err = r.Run(context.Background())
+	require.Error(t, err)
+
+	closed := make(chan error)
+	go func() {
+		closed <- r.Close()
+	}()
+
+	select {
+	case err := <-closed:
+		assert.NoError(t, err)
+	case <-time.After(time.Second):
+		t.Fatal("Close() didn't return after RunHandlers failed")
+	}
+}
+
+func TestRouter_close_when_handler_added_while_running_was_not_started(t *testing.T) {
+	t.Parallel()
+
+	pub, sub := createPubSub()
+	defer func() {
+		assert.NoError(t, pub.Close())
+		assert.NoError(t, sub.Close())
+	}()
+
+	r, err := message.NewRouter(
+		message.RouterConfig{
+			CloseTimeout: time.Second * 10,
+		},
+		watermill.NewStdLogger(true, true),
+	)
+	require.NoError(t, err)
+
+	noopHandler := func(msg *message.Message) error {
+		return nil
+	}
+
+	r.AddConsumerHandler("running_handler", "subscribe_topic", sub, noopHandler)
+
+	go func() {
+		assert.NoError(t, r.Run(context.Background()))
+	}()
+	<-r.Running()
+
+	// Handlers added while the router is running are started by RunHandlers,
+	// which is never called here.
+	r.AddConsumerHandler("not_started_handler", "subscribe_topic_2", sub, noopHandler)
+
+	closed := make(chan error)
+	go func() {
+		closed <- r.Close()
+	}()
+
+	select {
+	case err := <-closed:
+		assert.NoError(t, err)
+	case <-time.After(time.Second):
+		t.Fatal("Close() didn't return for a handler added while running that was never started")
+	}
+}
+
+type failingSubscriberMock struct{}
+
+func (s *failingSubscriberMock) Subscribe(ctx context.Context, topic string) (<-chan *message.Message, error) {
+	return nil, errors.New("cannot subscribe")
+}
+
+func (s *failingSubscriberMock) Close() error {
+	return nil
+}
+
+type closeRecordingSubscriber struct {
+	closed atomic.Bool
+}
+
+func (s *closeRecordingSubscriber) Subscribe(ctx context.Context, topic string) (<-chan *message.Message, error) {
+	return make(chan *message.Message), nil
+}
+
+func (s *closeRecordingSubscriber) Close() error {
+	s.closed.Store(true)
+	return nil
+}
+
+type closeRecordingPublisher struct {
+	closed atomic.Bool
+}
+
+func (p *closeRecordingPublisher) Publish(topic string, messages ...*message.Message) error {
+	return nil
+}
+
+func (p *closeRecordingPublisher) Close() error {
+	p.closed.Store(true)
+	return nil
 }

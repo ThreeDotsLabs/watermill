@@ -575,6 +575,25 @@ func (r *Router) Close() error {
 	r.logger.Debug("Running Close()", nil)
 	r.closed = true
 
+	// Handlers that were added but never started have no goroutine that closes
+	// their subscriber and publisher and then calls handlersWg.Done(), so do it
+	// here. Otherwise Close waits out the whole CloseTimeout for handlers that
+	// never ran, and leaves their subscribers open. The closing runs in a
+	// goroutine, so that handlersWg.Done() marks it finished and waitForHandlers
+	// bounds it by CloseTimeout, as it does for started handlers. The goroutine
+	// must not take handlersLock, which is held here until Close returns.
+	for name, h := range r.handlers {
+		if h.started {
+			continue
+		}
+		r.logger.Debug("Handler was not started, closing its subscriber and publisher", watermill.LogFields{"handler_name": name})
+		go func() {
+			defer r.handlersWg.Done()
+			h.closePubSub()
+		}()
+		delete(r.handlers, name)
+	}
+
 	r.logger.Info("Closing router", nil)
 	defer r.logger.Info("Router closed", nil)
 
@@ -784,6 +803,26 @@ func (h *handler) addHandlerContext(messages ...*Message) {
 			ctx = context.WithValue(ctx, publishTopicKey, h.publishTopic)
 		}
 		messages[i].SetContext(ctx)
+	}
+}
+
+// closePubSub closes the handler's subscriber and publisher. It is used for
+// handlers that never started, where run and handleClose never close them.
+func (h *handler) closePubSub() {
+	if h.subscriber != nil {
+		h.logger.Debug("Waiting for subscriber to close", nil)
+		if err := h.subscriber.Close(); err != nil {
+			h.logger.Error("Failed to close subscriber", err, nil)
+		}
+		h.logger.Debug("Subscriber closed", nil)
+	}
+
+	if h.publisher != nil {
+		h.logger.Debug("Waiting for publisher to close", nil)
+		if err := h.publisher.Close(); err != nil {
+			h.logger.Error("Failed to close publisher", err, nil)
+		}
+		h.logger.Debug("Publisher closed", nil)
 	}
 }
 
