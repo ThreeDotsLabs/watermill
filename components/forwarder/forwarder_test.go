@@ -9,6 +9,8 @@ import (
 	"github.com/ThreeDotsLabs/watermill/components/forwarder"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/pubsub/gochannel"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -107,6 +109,69 @@ func (s *ForwarderSuite) TestForwarder_publish_using_non_decorated_publisher_ack
 	s.Require().NoError(err)
 
 	s.requireFirstAckingResult(msgAckedCh, true)
+}
+
+// TestForwarder_multiple_forwarders_on_one_router ensures that forwarders sharing a router
+// can coexist as long as they have unique handler names.
+func TestForwarder_multiple_forwarders_on_one_router(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	pubSubIn := gochannel.NewGoChannel(gochannel.Config{}, logger)
+	pubSubOut := gochannel.NewGoChannel(gochannel.Config{}, logger)
+
+	router, err := message.NewRouter(message.RouterConfig{}, logger)
+	require.NoError(t, err)
+
+	handlerNames := []string{"first_forwarder", "second_forwarder"}
+
+	for _, handlerName := range handlerNames {
+		_, err := forwarder.NewForwarder(pubSubIn, pubSubOut, logger, forwarder.Config{
+			ForwarderTopic: handlerName + "_topic",
+			HandlerName:    handlerName,
+			Router:         router,
+		})
+		require.NoError(t, err)
+	}
+
+	go func() {
+		assert.NoError(t, router.Run(ctx))
+	}()
+	defer func() {
+		assert.NoError(t, router.Close())
+	}()
+
+	select {
+	case <-router.Running():
+	case <-ctx.Done():
+		t.Fatal("router not running")
+	}
+
+	outMessagesCh, err := pubSubOut.Subscribe(ctx, outTopic)
+	require.NoError(t, err)
+
+	for _, handlerName := range handlerNames {
+		publisher := forwarder.NewPublisher(pubSubIn, forwarder.PublisherConfig{
+			ForwarderTopic: handlerName + "_topic",
+		})
+
+		msg := message.NewMessage(watermill.NewUUID(), message.Payload(handlerName))
+		require.NoError(t, publisher.Publish(outTopic, msg))
+	}
+
+	// Both forwarders publish to the same out topic, so messages can arrive in any order.
+	receivedPayloads := map[string]bool{}
+	for range handlerNames {
+		select {
+		case receivedMsg := <-outMessagesCh:
+			receivedPayloads[string(receivedMsg.Payload)] = true
+			receivedMsg.Ack()
+		case <-time.After(time.Second * 3):
+			t.Fatal("didn't receive all forwarded messages")
+		}
+	}
+
+	assert.Equal(t, map[string]bool{"first_forwarder": true, "second_forwarder": true}, receivedPayloads)
 }
 
 type PubSubInPublisher struct {

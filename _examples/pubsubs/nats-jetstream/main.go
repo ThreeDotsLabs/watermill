@@ -35,7 +35,7 @@ func main() {
 		ConnectOptions:   nil,
 		SubscribeOptions: subscribeOptions,
 		PublishOptions:   nil,
-		TrackMsgId:       false,
+		TrackMsgID:       false,
 		AckAsync:         false,
 		DurablePrefix:    "",
 	}
@@ -68,7 +68,7 @@ func main() {
 		panic(err)
 	}
 
-	go processJS(messages)
+	go process(messages)
 
 	publisher, err := nats.NewPublisher(
 		nats.PublisherConfig{
@@ -83,6 +83,10 @@ func main() {
 		panic(err)
 	}
 
+	publishMessages(publisher)
+}
+
+func publishMessages(publisher message.Publisher) {
 	for {
 		msg := message.NewMessage(watermill.NewUUID(), []byte("Hello, world!"))
 
@@ -94,7 +98,7 @@ func main() {
 	}
 }
 
-func processJS(messages <-chan *message.Message) {
+func process(messages <-chan *message.Message) {
 	for msg := range messages {
 		log.Printf("received message: %s, payload: %s", msg.UUID, string(msg.Payload))
 
