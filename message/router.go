@@ -295,9 +295,10 @@ func (r *Router) AddHandler(
 		name:   handlerName,
 		logger: r.logger,
 
-		subscriber:     subscriber,
-		subscribeTopic: subscribeTopic,
-		subscriberName: subscriberName,
+		subscriber:         subscriber,
+		originalSubscriber: subscriber,
+		subscribeTopic:     subscribeTopic,
+		subscriberName:     subscriberName,
 
 		publisher:     publisher,
 		publishTopic:  publishTopic,
@@ -619,9 +620,10 @@ type handler struct {
 	name   string
 	logger watermill.LoggerAdapter
 
-	subscriber     Subscriber
-	subscribeTopic string
-	subscriberName string
+	subscriber           Subscriber
+	originalSubscriber   Subscriber // before decoration, used for Stoppable check
+	subscribeTopic       string
+	subscriberName       string
 
 	publisher     Publisher
 	publishTopic  string
@@ -789,7 +791,16 @@ func (h *handler) addHandlerContext(messages ...*Message) {
 
 func (h *handler) handleClose(ctx context.Context) {
 	closeSubscriber := func() {
-		h.logger.Debug("Waiting for subscriber to close", nil)
+		if stoppable, ok := h.originalSubscriber.(Stoppable); ok {
+			h.logger.Debug("Stopping subscriber", nil)
+			if err := stoppable.Stop(); err != nil {
+				h.logger.Error("Failed to stop subscriber", err, nil)
+			}
+			h.logger.Debug("Subscriber stopped, waiting for in-flight messages", nil)
+			h.runningHandlersWg.Wait()
+		}
+
+		h.logger.Debug("Closing subscriber", nil)
 		if err := h.subscriber.Close(); err != nil {
 			h.logger.Error("Failed to close subscriber", err, nil)
 		}

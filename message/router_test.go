@@ -1501,3 +1501,125 @@ func TestRouter_stopping_all_handlers_logs_error(t *testing.T) {
 		logger.Captured(),
 	)
 }
+
+// stoppableSubscriber wraps a message.Subscriber and records Stop/Close call order.
+type stoppableSubscriber struct {
+	message.Subscriber
+	mu      sync.Mutex
+	calls   []string
+	stopErr error
+}
+
+func (s *stoppableSubscriber) Stop() error {
+	s.mu.Lock()
+	s.calls = append(s.calls, "stop")
+	s.mu.Unlock()
+	return s.stopErr
+}
+
+func (s *stoppableSubscriber) Close() error {
+	s.mu.Lock()
+	s.calls = append(s.calls, "close")
+	s.mu.Unlock()
+	return s.Subscriber.Close()
+}
+
+func TestRouter_stoppable_subscriber_stop_called_before_close(t *testing.T) {
+	t.Parallel()
+
+	pubSub := gochannel.NewGoChannel(
+		gochannel.Config{Persistent: true},
+		watermill.NewStdLogger(true, true),
+	)
+
+	sub := &stoppableSubscriber{Subscriber: pubSub}
+	logger := watermill.NewCaptureLogger()
+
+	r, err := message.NewRouter(message.RouterConfig{}, logger)
+	require.NoError(t, err)
+
+	handlerDone := make(chan struct{})
+
+	r.AddConsumerHandler(
+		"foo",
+		"subscribe_topic",
+		sub,
+		func(msg *message.Message) error {
+			close(handlerDone)
+			return nil
+		},
+	)
+
+	go func() {
+		err := r.Run(context.Background())
+		assert.NoError(t, err)
+	}()
+	<-r.Running()
+
+	err = pubSub.Publish("subscribe_topic", message.NewMessage(watermill.NewUUID(), nil))
+	require.NoError(t, err)
+
+	<-handlerDone
+
+	assert.NoError(t, r.Close())
+
+	sub.mu.Lock()
+	defer sub.mu.Unlock()
+
+	require.Len(t, sub.calls, 2)
+	assert.Equal(t, "stop", sub.calls[0])
+	assert.Equal(t, "close", sub.calls[1])
+}
+
+func TestRouter_stoppable_subscriber_stop_error_does_not_prevent_close(t *testing.T) {
+	t.Parallel()
+
+	pubSub := gochannel.NewGoChannel(
+		gochannel.Config{Persistent: true},
+		watermill.NewStdLogger(true, true),
+	)
+
+	sub := &stoppableSubscriber{
+		Subscriber: pubSub,
+		stopErr:    fmt.Errorf("stop failed"),
+	}
+	logger := watermill.NewCaptureLogger()
+
+	r, err := message.NewRouter(message.RouterConfig{}, logger)
+	require.NoError(t, err)
+
+	handlerDone := make(chan struct{})
+
+	r.AddConsumerHandler(
+		"foo",
+		"subscribe_topic",
+		sub,
+		func(msg *message.Message) error {
+			close(handlerDone)
+			return nil
+		},
+	)
+
+	go func() {
+		err := r.Run(context.Background())
+		assert.NoError(t, err)
+	}()
+	<-r.Running()
+
+	err = pubSub.Publish("subscribe_topic", message.NewMessage(watermill.NewUUID(), nil))
+	require.NoError(t, err)
+
+	<-handlerDone
+
+	assert.NoError(t, r.Close())
+
+	sub.mu.Lock()
+	defer sub.mu.Unlock()
+
+	// Stop() error should not prevent Close() from being called.
+	require.Len(t, sub.calls, 2)
+	assert.Equal(t, "stop", sub.calls[0])
+	assert.Equal(t, "close", sub.calls[1])
+
+	assert.True(t, logger.HasError(sub.stopErr))
+}
