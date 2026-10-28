@@ -37,7 +37,7 @@ func sendWelcomeEmail(ctx context.Context, event *UserRegistered) error {
 >
 > That's it. We can further split up the data storage, having separate read and write stores. Once that happens, there may be many read stores, optimized for handling different types of queries or spanning many bounded contexts. Though separate read/write stores are often discussed in relation with CQRS, this is not CQRS itself. CQRS is just the first split of commands and queries.
 >
-> Source: [www.cqrs.nu FAQ](http://www.cqrs.nu/Faq/command-query-responsibility-segregation)
+> Source: [www.cqrs.nu FAQ](https://cqrs.nu/faq/Command%20and%20Query%20Responsibility%20Segregation/)
 
 <img src="https://threedots.tech/watermill-io/cqrs-big-picture.svg" alt="CQRS Schema" style="width:100%; margin-bottom: 3rem; background-color: white; padding: 2rem;" />
 
