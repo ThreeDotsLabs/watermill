@@ -7,17 +7,10 @@ on:
         required: false
         type: boolean
         default: false
-      codecov:
-        required: false
-        type: boolean
-        default: false
       runs-on:
         required: false
         type: string
         default: 'ubuntu-latest'
-    secrets:
-      codecov_token:
-        required: false
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -76,20 +69,3 @@ jobs:
       - name: Dump docker logs on failure
         if: failure()
         uses: jwalton/gh-docker-logs@a8cb5301950dd4d2b86619cd487b3b281526b178 # v2.2.0
-  codecov:
-    runs-on: ${{ inputs.runs-on }}
-    if: ${{ inputs.codecov }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v4
-        with:
-          go-version: '^1.26'
-      - run: cat .env >> $GITHUB_ENV || true
-      - run: make up
-      - run: make wait
-      - run: make test_codecov
-      - uses: codecov/codecov-action@v4
-        with:
-          fail_ci_if_error: true
-          files: ./coverage.out
-          token: ${{ secrets.codecov_token }}
