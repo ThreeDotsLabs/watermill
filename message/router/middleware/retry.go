@@ -125,10 +125,22 @@ func (r Retry) Middleware(h message.HandlerFunc) message.HandlerFunc {
 					return producedMessages, nil
 				}
 
+				// Compute the expected delay without calling NextBackOff().
+				// Calling expBackoff.NextBackOff() inside this function would
+				// advance the backoff's internal state, making backoff.Retry's
+				// own NextBackOff() call read a future interval.
+				// See https://github.com/ThreeDotsLabs/watermill/issues/XXX
+			approxDelay := computeBackoffDelay_atRetryNum(
+				retryNum,
+				expBackoff.InitialInterval,
+				expBackoff.MaxInterval,
+				expBackoff.Multiplier,
+			)
+
 				if r.ShouldRetry != nil && !r.ShouldRetry(RetryParams{
 					RetryNum: retryNum,
 					Err:      err,
-					Delay:    expBackoff.NextBackOff(),
+					Delay:    approxDelay,
 				}) {
 					// backoff.Permanent will stop the retry attempts
 					stoppedByPermanent = true
@@ -137,7 +149,7 @@ func (r Retry) Middleware(h message.HandlerFunc) message.HandlerFunc {
 
 				if r.OnRetryHook != nil && retryNum > 0 {
 					// call RetryHook function on each retry attempt.
-					r.OnRetryHook(retryNum, expBackoff.NextBackOff())
+					r.OnRetryHook(retryNum, approxDelay)
 				}
 				retryNum++
 				return producedMessages, err
@@ -169,4 +181,24 @@ func (r Retry) Middleware(h message.HandlerFunc) message.HandlerFunc {
 
 		return producedMessages, nil
 	}
+}
+
+// computeBackoffDelay_atRetryNum computes the expected backoff delay for the
+// given retry attempt number (1-based: retry 1 is the first retry, delay =
+// InitialInterval × Multiplier^(retry-1)), capped to MaxInterval. This does
+// NOT mutate any state, making it safe to use without corrupting the backoff
+// state machine maintained by backoff.Retry.
+func computeBackoffDelay_atRetryNum(retryNum int, initialInterval, maxInterval time.Duration, multiplier float64) time.Duration {
+	if retryNum <= 1 {
+		return initialInterval
+	}
+	delay := initialInterval
+	for i := 1; i < retryNum; i++ {
+		delay = time.Duration(float64(delay) * multiplier)
+		if maxInterval > 0 && delay > maxInterval {
+			delay = maxInterval
+			break
+		}
+	}
+	return delay
 }
