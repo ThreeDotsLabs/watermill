@@ -25,6 +25,15 @@ type Config struct {
 
 	// When true, Publish will block until subscriber Ack's the message.
 	// If there are no subscribers, Publish will not block (also when Persistent is true).
+	//
+	// Only one message per topic waits for the ack at a time: concurrent Publish calls on the same topic
+	// wait for each other, and the messages of one call are sent one by one.
+	// Also Subscribe on that topic waits until the Publish in progress returns.
+	// Calls on other topics don't wait.
+	//
+	// Because of that, a subscriber must not publish to its own topic (or subscribe to it) before acking
+	// the message it received: Publish waits for that ack, so they deadlock.
+	// Ack the message first, publish from another goroutine without waiting for it, or use another topic.
 	BlockPublishUntilSubscriberAck bool
 
 	// PreserveContext is a flag that determines if the context should be preserved when sending messages to subscribers.
@@ -48,6 +57,14 @@ type GoChannel struct {
 	subscribers            map[string][]*subscriber
 	subscribersLock        sync.RWMutex
 	subscribersByTopicLock sync.Map // map of *sync.Mutex
+
+	// blockingPublishLocks keeps blocking Publish calls on one topic waiting for each other, which users rely on,
+	// without holding subscribersLock while waiting for the ack: a queued Subscribe or unsubscribe would then
+	// stall every Publish on every topic, including the handler's own publish before acking, a deadlock.
+	//
+	// Lock order: blockingPublishLocks, subscribersLock, subscribersByTopicLock, persistedMessagesLock.
+	// Unsubscribing doesn't take blockingPublishLocks, so it never waits for an ack.
+	blockingPublishLocks topicLocks
 
 	closed     bool
 	closedLock sync.Mutex
@@ -83,8 +100,8 @@ func NewGoChannel(config Config, logger watermill.LoggerAdapter) *GoChannel {
 	}
 }
 
-// Publish in GoChannel is NOT blocking until all consumers consume.
-// Messages will be sent in background.
+// Publish sends the messages to the topic's subscribers in the background, without waiting for them.
+// With Config.BlockPublishUntilSubscriberAck, it waits until the subscribers ack each message.
 //
 // Messages may be persisted or not, depending on persistent attribute.
 func (g *GoChannel) Publish(topic string, messages ...*message.Message) error {
@@ -101,6 +118,30 @@ func (g *GoChannel) Publish(topic string, messages ...*message.Message) error {
 		}
 	}
 
+	if !g.config.BlockPublishUntilSubscriberAck {
+		_, err := g.sendMessages(topic, messagesToPublish)
+		return err
+	}
+
+	unlockTopic := g.blockingPublishLocks.Lock(topic)
+	defer unlockTopic()
+
+	for _, msg := range messagesToPublish {
+		ackedBySubscribers, err := g.sendMessages(topic, message.Messages{msg})
+		if err != nil {
+			return err
+		}
+
+		g.waitForAckFromSubscribers(msg, ackedBySubscribers[0])
+	}
+
+	return nil
+}
+
+// Persisting and sending happen under the same locks as adding a subscriber,
+// so a new subscriber receives each message once: either as a persisted message or as a sent one.
+// The caller waits for the ack after the locks are released, so unsubscribing never waits for an ack.
+func (g *GoChannel) sendMessages(topic string, messages message.Messages) ([]<-chan struct{}, error) {
 	g.subscribersLock.RLock()
 	defer g.subscribersLock.RUnlock()
 
@@ -117,24 +158,20 @@ func (g *GoChannel) Publish(topic string, messages ...*message.Message) error {
 		if _, ok := g.persistedMessages[topic]; !ok {
 			g.persistedMessages[topic] = make([]*message.Message, 0)
 		}
-		g.persistedMessages[topic] = append(g.persistedMessages[topic], messagesToPublish...)
+		g.persistedMessages[topic] = append(g.persistedMessages[topic], messages...)
 		g.persistedMessagesLock.Unlock()
 	}
 
-	for i := range messagesToPublish {
-		msg := messagesToPublish[i]
-
-		ackedBySubscribers, err := g.sendMessage(topic, msg)
+	ackedBySubscribers := make([]<-chan struct{}, len(messages))
+	for i, msg := range messages {
+		acked, err := g.sendMessage(topic, msg)
 		if err != nil {
-			return err
+			return nil, err
 		}
-
-		if g.config.BlockPublishUntilSubscriberAck {
-			g.waitForAckFromSubscribers(msg, ackedBySubscribers)
-		}
+		ackedBySubscribers[i] = acked
 	}
 
-	return nil
+	return ackedBySubscribers, nil
 }
 
 func (g *GoChannel) waitForAckFromSubscribers(msg *message.Message, ackedByConsumer <-chan struct{}) {
@@ -196,6 +233,11 @@ func (g *GoChannel) Subscribe(ctx context.Context, topic string) (<-chan *messag
 	g.subscribersWg.Add(1)
 	g.closedLock.Unlock()
 
+	unlockTopic := func() {}
+	if g.config.BlockPublishUntilSubscriberAck {
+		unlockTopic = g.blockingPublishLocks.Lock(topic)
+	}
+
 	g.subscribersLock.Lock()
 
 	subLock, _ := g.subscribersByTopicLock.LoadOrStore(topic, &sync.Mutex{})
@@ -232,6 +274,7 @@ func (g *GoChannel) Subscribe(ctx context.Context, topic string) (<-chan *messag
 	}(s, g)
 
 	if !g.config.Persistent {
+		defer unlockTopic()
 		defer g.subscribersLock.Unlock()
 		defer subLock.(*sync.Mutex).Unlock()
 
@@ -241,6 +284,7 @@ func (g *GoChannel) Subscribe(ctx context.Context, topic string) (<-chan *messag
 	}
 
 	go func(s *subscriber) {
+		defer unlockTopic()
 		defer g.subscribersLock.Unlock()
 		defer subLock.(*sync.Mutex).Unlock()
 
@@ -333,6 +377,47 @@ func (g *GoChannel) Close() error {
 	g.logger.Info("Pub/Sub closed", nil)
 
 	return nil
+}
+
+// A topic's mutex is removed when nobody holds or waits for it,
+// so publishing to many short-lived topics doesn't grow the memory.
+type topicLocks struct {
+	lock  sync.Mutex
+	locks map[string]*topicLock
+}
+
+type topicLock struct {
+	sync.Mutex
+	// Counts waiters too: deleting a mutex someone waits for would let
+	// the next caller lock a second mutex for the same topic.
+	users int
+}
+
+func (l *topicLocks) Lock(topic string) (unlock func()) {
+	l.lock.Lock()
+	if l.locks == nil {
+		l.locks = make(map[string]*topicLock)
+	}
+	mutex, ok := l.locks[topic]
+	if !ok {
+		mutex = &topicLock{}
+		l.locks[topic] = mutex
+	}
+	mutex.users++
+	l.lock.Unlock()
+
+	mutex.Lock()
+
+	return func() {
+		l.lock.Lock()
+		mutex.users--
+		if mutex.users == 0 {
+			delete(l.locks, topic)
+		}
+		l.lock.Unlock()
+
+		mutex.Unlock()
+	}
 }
 
 type subscriber struct {
