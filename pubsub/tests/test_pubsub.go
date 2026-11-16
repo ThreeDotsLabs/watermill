@@ -1101,7 +1101,8 @@ func TestReconnect(
 						time.Sleep(time.Millisecond * 500)
 					}
 
-					if err := publishWithRetry(pub, topicName, msg); err == nil {
+					err := publishWithRetry(pub, topicName, msg)
+					if err == nil {
 						break
 					}
 
