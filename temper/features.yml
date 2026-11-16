@@ -1,0 +1,9 @@
+# The Pub/Subs this reference maps. Add one feature and one subject file per Pub/Sub.
+features:
+  - id: pubsub.sql.postgres
+    description: "PostgreSQL (watermill-sql)."
+    requires: [ci]
+
+  - id: pubsub.sql.mysql
+    description: "MySQL (watermill-sql)."
+    requires: [ci]

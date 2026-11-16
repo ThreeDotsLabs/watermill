@@ -1,0 +1,6 @@
+temper: "0.1"
+project: watermill
+
+levels:
+  - name: ci
+    description: the tests each Pub/Sub repository runs in CI (make test)

@@ -1,0 +1,74 @@
+# Guarantees every Pub/Sub must hold, from watermill's docs, the Publisher and
+# Subscriber interfaces, and the universal test suite (pubsub/tests).
+invariants:
+  - id: delivery.at_least_once
+    claim: "Every published message is delivered at least once (docs: at-least-once delivery)."
+    applies_to: pubsub
+    family: delivery
+    requires: [ci]
+
+  - id: delivery.concurrent_subscribers
+    claim: "Concurrent subscribers, on one or several topics, each receive their messages."
+    applies_to: pubsub
+    family: delivery
+    requires: [ci]
+
+  - id: delivery.topics_isolated
+    claim: "A subscriber receives only the messages of its own topic."
+    applies_to: pubsub
+    family: delivery
+    requires: [ci]
+
+  - id: delivery.no_loss_across_restart
+    claim: "No published message is lost when the broker restarts (tests.TestReconnect)."
+    applies_to: pubsub
+    family: delivery
+    requires: [ci]
+
+  - id: ack.nack_redelivers
+    claim: "A nacked message is redelivered (Subscriber interface)."
+    applies_to: pubsub
+    family: ack
+    requires: [ci]
+
+  - id: ack.next_only_after_ack
+    claim: "The next message is delivered only after the current one is acked (Subscriber interface)."
+    applies_to: pubsub
+    family: ack
+    requires: [ci]
+
+  - id: ack.ack_cancels_message_context
+    claim: "Ack or Nack cancels the message's context (Subscriber interface)."
+    applies_to: pubsub
+    family: ack
+    requires: [ci]
+
+  - id: handling.continues_after_errors
+    claim: "Consuming continues after a handler fails."
+    applies_to: pubsub
+    family: handling
+    requires: [ci]
+
+  - id: shutdown.subscriber_close_keeps_offsets
+    claim: "After a subscriber closes, a new subscriber continues where it stopped (Close flushes offsets)."
+    applies_to: pubsub
+    family: shutdown
+    requires: [ci]
+
+  - id: shutdown.concurrent_close_safe
+    claim: "Closing subscribers concurrently while they consume is safe."
+    applies_to: pubsub
+    family: shutdown
+    requires: [ci]
+
+  - id: shutdown.subscribe_ctx_cancel_closes
+    claim: "Canceling the Subscribe context closes the subscription and its channel."
+    applies_to: pubsub
+    family: shutdown
+    requires: [ci]
+
+  - id: shutdown.publisher_close_flushes
+    claim: "Publisher Close flushes unsent messages."
+    applies_to: pubsub
+    family: shutdown
+    requires: [ci]

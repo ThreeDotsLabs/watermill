@@ -1,0 +1,65 @@
+name: temper
+# Builds the Temper matrix for the SQL Pub/Subs: each guarantee in temper/,
+# and whether a test proves it for MySQL and PostgreSQL.
+#
+# watermill-sql runs the universal suite in pubsub/tests. The suite states what
+# each test proves (pubsub/tests/temper_claims.go). Running watermill-sql's
+# tests against this checkout under `temper run` records that evidence.
+# `temper matrix` joins it with the declarations and writes MATRIX.md.
+#
+# To map another Pub/Sub, add a feature and a subject file in temper/ and a
+# job like this one.
+
+on:
+  schedule:
+    - cron: "0 4 * * *"
+  workflow_dispatch:
+
+env:
+  TEMPER_VERSION: v0.1.1
+
+jobs:
+  sql:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: watermill
+      - uses: actions/checkout@v4
+        with:
+          repository: ThreeDotsLabs/watermill-sql
+          path: watermill-sql
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '^1.25'
+      - run: go install github.com/turbolytics/temper/cmd/temper@${{ env.TEMPER_VERSION }}
+      - name: Start MySQL and PostgreSQL
+        working-directory: watermill-sql
+        run: make up && make wait
+      - name: Test watermill-sql against this checkout, through Temper
+        working-directory: watermill-sql
+        env:
+          TEMPER_SUBJECT_MAP: "TestMySQL=pubsub.sql.mysql,TestPostgreSQL=pubsub.sql.postgres,TestPgx=pubsub.sql.postgres"
+        run: |
+          go mod edit -replace github.com/ThreeDotsLabs/watermill=$GITHUB_WORKSPACE/watermill
+          go mod tidy
+          temper --root $GITHUB_WORKSPACE/watermill run --level ci -- go test -timeout=30m ./...
+        continue-on-error: true
+      # temper matrix exits 1 when a guarantee has no passing test, and 2 on an
+      # error. This job fails only on an error, and reports gaps in the job
+      # summary. To fail on gaps too, replace the last line with `exit $code`.
+      - name: Build the matrix
+        working-directory: watermill
+        run: |
+          set +e
+          temper matrix > summary.txt 2>&1
+          code=$?
+          { echo '### Temper'; echo; echo '```'; cat summary.txt; echo '```'; echo; cat MATRIX.md; } >> "$GITHUB_STEP_SUMMARY"
+          if [ $code -ge 2 ]; then exit $code; fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: temper-matrix
+          path: |
+            watermill/MATRIX.md
+            watermill/temper/status/
