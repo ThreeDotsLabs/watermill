@@ -312,8 +312,6 @@ func listSubscriptions(topic string, adapter watermill.LoggerAdapter, verbose bo
 			return errors.Wrap(err, "error listing subscriptions for topic")
 		}
 	}
-
-	return nil
 }
 
 func listSubscriptionsForTopic(ctx context.Context, client *pubsub.Client, topic *pubsub.Topic, logger watermill.LoggerAdapter, verbose bool) error {
@@ -373,7 +371,7 @@ func printSubscriptionInfo(name string, config pubsub.SubscriptionConfig) error 
 		return err
 	}
 
-	fmt.Printf(internal.Indent(string(b), "  "))
+	fmt.Print(internal.Indent(string(b), "  "))
 	return nil
 }
 
