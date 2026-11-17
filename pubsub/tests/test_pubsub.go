@@ -27,6 +27,10 @@ import (
 
 var defaultTimeout = time.Second * 15
 
+// exactlyOnceGracePeriod is not scaled with defaultTimeout: a shorter window can only miss a late duplicate,
+// never report a false one, and every bulkRead of an exactly-once Pub/Sub waits for it.
+const exactlyOnceGracePeriod = time.Millisecond * 500
+
 // TestPubSub is a universal test suite. Every Pub/Sub implementation should pass it
 // before it's considered production ready.
 //
@@ -104,6 +108,11 @@ type Features struct {
 
 	// Some Pub/Subs guarantee the order only when one subscriber is subscribed at a time.
 	GuaranteedOrderWithSingleSubscriber bool
+
+	// GuaranteedTotalOrder should be true if all messages published to a topic are received in the order
+	// they were published, not only messages that share a partition or an ordering key.
+	// It requires GuaranteedOrder.
+	GuaranteedTotalOrder bool
 
 	// Persistent should be true, if messages are persistent between multiple instances of a Pub/Sub
 	// (in practice, only GoChannel doesn't support that).
@@ -269,7 +278,7 @@ func TestPublishSubscribe(
 	messages, err := sub.Subscribe(context.Background(), topicName)
 	require.NoError(t, err)
 
-	receivedMessages, all := bulkRead(tCtx, messages, len(messagesToPublish), defaultTimeout*3)
+	receivedMessages, all := bulkRead(t, tCtx, messages, len(messagesToPublish), defaultTimeout*3)
 	assert.True(t, all)
 
 	AssertAllMessagesReceived(t, messagesToPublish, receivedMessages)
@@ -317,7 +326,7 @@ func TestConcurrentSubscribe(
 	messages, err := sub.Subscribe(context.Background(), topicName)
 	require.NoError(t, err)
 
-	receivedMessages, all := bulkRead(tCtx, messages, len(publishedMessages), defaultTimeout*3)
+	receivedMessages, all := bulkRead(t, tCtx, messages, len(publishedMessages), defaultTimeout*3)
 	assert.True(t, all)
 
 	AssertAllMessagesReceived(t, publishedMessages, receivedMessages)
@@ -381,7 +390,7 @@ func TestConcurrentSubscribeMultipleTopics(
 			if err != nil {
 				t.Error(err)
 			}
-			topicMessages, _ := bulkRead(tCtx, messages, len(messagesToPublishForTopic), defaultTimeout*5)
+			topicMessages, _ := bulkRead(t, tCtx, messages, len(messagesToPublishForTopic), defaultTimeout*5)
 
 			receivedMessagesCh <- topicMessages
 		}()
@@ -402,11 +411,16 @@ func TestConcurrentSubscribeMultipleTopics(
 
 // TestPublishSubscribeInOrder tests if published messages are received in a proper order.
 // This test is skipped for Pub/Subs that don't support GuaranteedOrder feature.
+// The order of all messages is checked only for Pub/Subs that support GuaranteedTotalOrder feature.
 func TestPublishSubscribeInOrder(
 	t *testing.T,
 	tCtx TestContext,
 	pubSubConstructor PubSubConstructor,
 ) {
+	if tCtx.Features.GuaranteedTotalOrder && !tCtx.Features.GuaranteedOrder {
+		t.Fatal("Features.GuaranteedTotalOrder requires Features.GuaranteedOrder")
+	}
+
 	if !tCtx.Features.GuaranteedOrder {
 		t.Skipf("order is not guaranteed")
 	}
@@ -426,6 +440,7 @@ func TestPublishSubscribeInOrder(
 	}
 
 	var messagesToPublish []*message.Message
+	var publishedIDs []string
 	expectedMessages := map[string][]string{}
 
 	for i := 0; i < messagesCount; i++ {
@@ -435,6 +450,7 @@ func TestPublishSubscribeInOrder(
 		msg := message.NewMessage(id, []byte(msgType))
 
 		messagesToPublish = append(messagesToPublish, msg)
+		publishedIDs = append(publishedIDs, msg.UUID)
 
 		if _, ok := expectedMessages[msgType]; !ok {
 			expectedMessages[msgType] = []string{}
@@ -461,7 +477,7 @@ func TestPublishSubscribeInOrder(
 	messages, err := sub.Subscribe(context.Background(), topicName)
 	require.NoError(t, err)
 
-	receivedMessages, all := bulkRead(tCtx, messages, len(messagesToPublish), defaultTimeout)
+	receivedMessages, all := bulkRead(t, tCtx, messages, len(messagesToPublish), defaultTimeout)
 	require.True(t, all, "not all messages received (%d of %d)", len(receivedMessages), len(messagesToPublish))
 
 	receivedMessagesByType := map[string][]string{}
@@ -477,6 +493,18 @@ func TestPublishSubscribeInOrder(
 
 	for key, ids := range expectedMessages {
 		assert.Equal(t, ids, receivedMessagesByType[key])
+	}
+
+	if tCtx.Features.GuaranteedTotalOrder {
+		for i, receivedID := range receivedMessages.IDs() {
+			if receivedID != publishedIDs[i] {
+				t.Errorf(
+					"messages were not received in the order they were published: received message %d is %s, but %s was published at this position",
+					i, receivedID, publishedIDs[i],
+				)
+				break
+			}
+		}
 	}
 }
 
@@ -522,7 +550,7 @@ NackLoop:
 		}
 	}
 
-	receivedMessages, _ := bulkRead(tCtx, messages, messagesToSend, defaultTimeout)
+	receivedMessages, _ := bulkRead(t, tCtx, messages, messagesToSend, defaultTimeout)
 
 	<-allMessagesSent
 	AssertAllMessagesReceived(t, publishedMessages, receivedMessages)
@@ -651,7 +679,7 @@ func TestContinueAfterSubscribeClose(
 			messagesToRead = messagesLeft
 		}
 
-		receivedMessagesBatch, _ := bulkRead(tCtx, messages, messagesToRead, defaultTimeout)
+		receivedMessagesBatch, _ := bulkRead(t, tCtx, messages, messagesToRead, defaultTimeout)
 		closePubSub(t, pub, sub)
 
 		for _, msg := range receivedMessagesBatch {
@@ -744,7 +772,7 @@ func TestConcurrentClose(
 	messages, err := sub.Subscribe(context.Background(), topicName)
 	require.NoError(t, err)
 
-	receivedMessages, all := bulkRead(tCtx, messages, len(expectedMessages), defaultTimeout*3)
+	receivedMessages, all := bulkRead(t, tCtx, messages, len(expectedMessages), defaultTimeout*3)
 	assert.True(t, all)
 
 	AssertAllMessagesReceived(t, expectedMessages, receivedMessages)
@@ -808,7 +836,7 @@ func TestContinueAfterErrors(
 	require.NoError(t, err)
 
 	// only nacks was sent, so all messages should be consumed
-	receivedMessages, _ := bulkRead(tCtx, messages, totalMessagesCount, defaultTimeout*6)
+	receivedMessages, _ := bulkRead(t, tCtx, messages, totalMessagesCount, defaultTimeout*6)
 	AssertAllMessagesReceived(t, messagesToPublish, receivedMessages)
 }
 
@@ -864,7 +892,7 @@ func TestPublisherClose(
 
 	messages, err := sub.Subscribe(context.Background(), topicName)
 	require.NoError(t, err)
-	receivedMessages, _ := bulkRead(tCtx, messages, messagesCount, defaultTimeout*3)
+	receivedMessages, _ := bulkRead(t, tCtx, messages, messagesCount, defaultTimeout*3)
 
 	AssertAllMessagesReceived(t, producedMessages, receivedMessages)
 }
@@ -900,10 +928,10 @@ func TestTopic(
 	messagesTopic2, err := sub.Subscribe(context.Background(), topic2)
 	require.NoError(t, err)
 
-	messagesConsumedTopic1, received := bulkRead(tCtx, messagesTopic1, 1, defaultTimeout)
+	messagesConsumedTopic1, received := bulkRead(t, tCtx, messagesTopic1, 1, defaultTimeout)
 	require.True(t, received, "no messages received in topic %s", topic1)
 
-	messagesConsumedTopic2, received := bulkRead(tCtx, messagesTopic2, 1, defaultTimeout)
+	messagesConsumedTopic2, received := bulkRead(t, tCtx, messagesTopic2, 1, defaultTimeout)
 	require.True(t, received, "no messages received in topic %s", topic2)
 
 	assert.Equal(t, messagesConsumedTopic1.IDs()[0], topic1Msg.UUID)
@@ -1018,23 +1046,31 @@ ClosedLoop:
 
 	ctx := context.WithValue(context.Background(), contextKey("foo"), "bar")
 
-	// For mocking the output of pub-subs where context is preserved vs not preserved
-	expectedContexts := make(map[string]context.Context)
-	for _, msg := range publishedMessages {
-		if tCtx.Features.ContextPreserved {
-			expectedContexts[msg.UUID] = msg.Context()
-		} else {
-			expectedContexts[msg.UUID] = ctx
-		}
-	}
-
 	msgs, err := sub.Subscribe(ctx, topicName)
 	require.NoError(t, err)
 
-	receivedMessages, _ := bulkRead(tCtx, msgs, messagesCount, defaultTimeout)
+	receivedMessages, _ := bulkRead(t, tCtx, msgs, messagesCount, defaultTimeout)
 	AssertAllMessagesReceived(t, publishedMessages, receivedMessages)
+
 	if tCtx.Features.ContextPreserved {
+		// The message carries the publisher's context instead of the one passed to Subscribe.
+		expectedContexts := make(map[string]context.Context)
+		for _, msg := range publishedMessages {
+			expectedContexts[msg.UUID] = msg.Context()
+		}
+
 		AssertAllMessagesHaveSameContext(t, contextKeyString, expectedContexts, receivedMessages)
+	} else {
+		// Subscriber contract: "The provided ctx is passed to all produced messages."
+		for _, msg := range receivedMessages {
+			assert.EqualValues(
+				t,
+				"bar",
+				msg.Context().Value(contextKey("foo")),
+				"message %s does not carry the values of the context passed to Subscribe",
+				msg.UUID,
+			)
+		}
 	}
 }
 
@@ -1114,7 +1150,7 @@ func TestReconnect(
 		}()
 	}
 
-	receivedMessages, allMessages := bulkRead(tCtx, messages, messagesCount, defaultTimeout*4)
+	receivedMessages, allMessages := bulkRead(t, tCtx, messages, messagesCount, defaultTimeout*4)
 	assert.True(t, allMessages, "not all messages received (has %d of %d)", len(receivedMessages), messagesCount)
 
 	AssertAllMessagesReceived(t, publishedMessages, receivedMessages)
@@ -1177,7 +1213,7 @@ func TestNewSubscriberReceivesOldMessages(
 	var consumeMessages = func() {
 		for i, sub := range subscribers {
 			toConsume := len(publishedMessages) - sub.ConsumedMessages
-			receivedMessages, all := bulkRead(tCtx, sub.Msgs, toConsume, defaultTimeout)
+			receivedMessages, all := bulkRead(t, tCtx, sub.Msgs, toConsume, defaultTimeout)
 
 			require.True(t, all, "subscriber %d not received all messages (%d/%d)", i, len(receivedMessages), toConsume)
 
@@ -1226,7 +1262,7 @@ func assertConsumerGroupReceivedMessages(
 	messages, err := sub.Subscribe(context.Background(), topicName)
 	require.NoError(t, err)
 
-	receivedMessages, all := bulkRead(tCtx, messages, len(expectedMessages), defaultTimeout)
+	receivedMessages, all := bulkRead(t, tCtx, messages, len(expectedMessages), defaultTimeout)
 	assert.True(t, all)
 
 	AssertAllMessagesReceived(t, expectedMessages, receivedMessages)
@@ -1369,25 +1405,60 @@ func publishWithRetry(publisher message.Publisher, topic string, messages ...*me
 	}
 }
 
-func bulkRead(testCtx TestContext, messagesCh <-chan *message.Message, limit int, timeout time.Duration) (receivedMessages message.Messages, all bool) {
+// bulkRead keeps reading after all messages of an exactly-once Pub/Sub arrived, because reading stops at limit:
+// without it, a Pub/Sub delivering messages again after the subscriber caught up would pass the whole suite.
+func bulkRead(t *testing.T, testCtx TestContext, messagesCh <-chan *message.Message, limit int, timeout time.Duration) (receivedMessages message.Messages, all bool) {
 	start := time.Now()
 
-	defer func() {
-		duration := time.Since(start)
-
-		logMsg := "all messages (%d/%d) received in bulk read after %s of %s (test ID: %s)\n"
-		if !all {
-			logMsg = "not " + logMsg
-		}
-
-		log.Printf(logMsg, len(receivedMessages), limit, duration, timeout, testCtx.TestID)
-	}()
-
-	if !testCtx.Features.ExactlyOnceDelivery {
-		return subscriber.BulkReadWithDeduplication(messagesCh, limit, timeout)
+	if testCtx.Features.ExactlyOnceDelivery {
+		receivedMessages, all = subscriber.BulkRead(messagesCh, limit, timeout)
+	} else {
+		receivedMessages, all = subscriber.BulkReadWithDeduplication(messagesCh, limit, timeout)
 	}
 
-	return subscriber.BulkRead(messagesCh, limit, timeout)
+	logMsg := "all messages (%d/%d) received in bulk read after %s of %s (test ID: %s)\n"
+	if !all {
+		logMsg = "not " + logMsg
+	}
+	log.Printf(logMsg, len(receivedMessages), limit, time.Since(start), timeout, testCtx.TestID)
+
+	if testCtx.Features.ExactlyOnceDelivery && all {
+		assertNoMoreMessages(t, testCtx, messagesCh, exactlyOnceGracePeriod)
+	}
+
+	return receivedMessages, all
+}
+
+func assertNoMoreMessages(t *testing.T, testCtx TestContext, messagesCh <-chan *message.Message, gracePeriod time.Duration) {
+	var extraIDs []string
+	timeout := time.After(gracePeriod)
+
+MessagesLoop:
+	for {
+		select {
+		case msg, ok := <-messagesCh:
+			if !ok {
+				break MessagesLoop
+			}
+
+			extraIDs = append(extraIDs, msg.UUID)
+			msg.Ack()
+		case <-timeout:
+			break MessagesLoop
+		}
+	}
+
+	if len(extraIDs) > 0 {
+		shownIDs := extraIDs
+		if len(shownIDs) > 10 {
+			shownIDs = shownIDs[:10]
+		}
+
+		t.Errorf(
+			"ExactlyOnceDelivery is declared, but %d more messages were delivered within %s after all expected messages had been received and acked (test ID: %s), first IDs: %v",
+			len(extraIDs), gracePeriod, testCtx.TestID, shownIDs,
+		)
+	}
 }
 
 func createMultipliedSubscriber(t *testing.T, pubSubConstructor PubSubConstructor, subscribersCount int) message.Subscriber {
