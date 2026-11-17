@@ -117,7 +117,7 @@ func newRouter(config RouterConfig, logger watermill.LoggerAdapter) *Router {
 		runningHandlersWg:     &sync.WaitGroup{},
 		runningHandlersWgLock: &sync.Mutex{},
 
-		handlerAdded: make(chan struct{}),
+		allHandlersStopped: make(chan struct{}),
 
 		middlewaresLock: &sync.RWMutex{},
 		handlersLock:    &sync.RWMutex{},
@@ -160,7 +160,10 @@ type Router struct {
 	runningHandlersWg     *sync.WaitGroup
 	runningHandlersWgLock *sync.Mutex
 
-	handlerAdded chan struct{}
+	// A channel closed under handlersLock instead of handlersWg.Wait(): Wait panics with "WaitGroup is reused"
+	// when AddHandler calls Add while the last handler is stopping.
+	allHandlersStopped       chan struct{}
+	allHandlersStoppedClosed bool
 
 	closingInProgressCh chan struct{}
 	closedCh            chan struct{}
@@ -315,16 +318,11 @@ func (r *Router) AddHandler(
 		routersCloseCh: r.closingInProgressCh,
 
 		startedCh: make(chan struct{}),
+		stopped:   make(chan struct{}),
 	}
 
 	r.handlersWg.Add(1)
 	r.handlers[handlerName] = newHandler
-
-	select {
-	case r.handlerAdded <- struct{}{}:
-	default:
-		// watchAllHandlersStopped is not always waiting for handlerAdded
-	}
 
 	return &Handler{
 		router:  r,
@@ -466,13 +464,12 @@ func (r *Router) RunHandlers(ctx context.Context) error {
 		}
 
 		h.messagesCh = messages
+		// stopFn is set before startedCh is closed, so Stop can be called as soon as Started is closed
+		h.stopFn = cancel
 		h.started = true
 		close(h.startedCh)
 
 		r.rememberPublisherToClose(undecoratedPublisher, h.publisher)
-
-		h.stopFn = cancel
-		h.stopped = make(chan struct{})
 
 		go func() {
 			defer cancel()
@@ -488,6 +485,10 @@ func (r *Router) RunHandlers(ctx context.Context) error {
 
 			r.handlersLock.Lock()
 			delete(r.handlers, name)
+			if len(r.handlers) == 0 && !r.allHandlersStoppedClosed {
+				close(r.allHandlersStopped)
+				r.allHandlersStoppedClosed = true
+			}
 			r.handlersLock.Unlock()
 
 			logger.Trace("Removed subscriber from r.handlers", nil)
@@ -506,25 +507,15 @@ func (r *Router) RunHandlers(ctx context.Context) error {
 // watchAllHandlersStopped closes router when all handlers have stopped,
 // (for example, because for example all subscriptions are closed)
 func (r *Router) watchAllHandlersStopped(ctx context.Context) {
-	r.handlersLock.RLock()
-	hasNoHandlersYet := len(r.handlers) == 0
-	r.handlersLock.RUnlock()
-
 	go func() {
-		if hasNoHandlersYet {
-			// we can start router without any handlers,
-			// in that situation router would be closed immediately (even if they are no routers)
-			// let's wait for
-			select {
-			case <-r.handlerAdded:
-				// it should be some handler to track
-			case <-r.closedCh:
-				// let's avoid goroutine leak
-				return
-			}
+		// allHandlersStopped is closed only when a handler is removed, so a router started without handlers
+		// keeps running until the handlers added later have stopped.
+		select {
+		case <-r.allHandlersStopped:
+		case <-r.closedCh:
+			return
 		}
 
-		r.handlersWg.Wait()
 		if r.IsClosed() {
 			r.logger.Trace("watchAllHandlersStopped: already closed", nil)
 			// already closed
@@ -616,11 +607,10 @@ func (r *Router) waitForHandlers() bool {
 	waitGroup.Add(1)
 	go func() {
 		defer waitGroup.Done()
+
+		// The message loops add received messages to runningHandlersWg, so they must end first.
+		// Otherwise, a message received after runningHandlersWg.Wait() returned wouldn't be waited for.
 		r.handlersWg.Wait()
-	}()
-	waitGroup.Add(1)
-	go func() {
-		defer waitGroup.Done()
 
 		r.runningHandlersWgLock.Lock()
 		defer r.runningHandlersWgLock.Unlock()

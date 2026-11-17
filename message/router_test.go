@@ -3,6 +3,7 @@ package message_test
 import (
 	"context"
 	"fmt"
+	"runtime"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -1949,4 +1950,216 @@ func waitForAck(t *testing.T, msg *message.Message) {
 	case <-time.After(time.Second):
 		t.Fatal("timeout waiting for ack")
 	}
+}
+
+func TestRouter_adding_handler_when_last_handler_stops(t *testing.T) {
+	t.Parallel()
+
+	for i := 0; i < 10; i++ {
+		var r *message.Router
+		var addOnce sync.Once
+		handlerAdded := make(chan *message.Handler, 1)
+
+		// The handler is added from the stopping handler's goroutine, right after it was counted as stopped,
+		// before the router has a chance to notice that its last handler stopped.
+		logger := &infoLogHook{
+			onInfo: func(msg string) {
+				if msg != "Subscriber stopped" {
+					return
+				}
+				addOnce.Do(func() {
+					handlerAdded <- r.AddConsumerHandler("handler_2", "topic", newContextSubscriberMock(), func(msg *message.Message) error {
+						return nil
+					})
+				})
+			},
+		}
+
+		var err error
+		r, err = message.NewRouter(message.RouterConfig{CloseTimeout: time.Second}, logger)
+		require.NoError(t, err)
+
+		handler1 := r.AddConsumerHandler("handler_1", "topic", newContextSubscriberMock(), func(msg *message.Message) error {
+			return nil
+		})
+
+		runFinished := make(chan struct{})
+		go func() {
+			defer close(runFinished)
+			assert.NoError(t, r.Run(context.Background()))
+		}()
+		<-r.Running()
+
+		handler1.Stop()
+
+		var handler2 *message.Handler
+		select {
+		case handler2 = <-handlerAdded:
+		case <-time.After(time.Second):
+			t.Fatal("timeout waiting for handler_2 to be added")
+		}
+
+		require.NoError(t, r.RunHandlers(context.Background()))
+		handler2.Stop()
+		waitFor(t, runFinished, "router to close after all handlers stopped")
+	}
+}
+
+type infoLogHook struct {
+	watermill.NopLogger
+	onInfo func(msg string)
+}
+
+func (l *infoLogHook) Info(msg string, fields watermill.LogFields) {
+	l.onInfo(msg)
+}
+
+func (l *infoLogHook) With(fields watermill.LogFields) watermill.LoggerAdapter {
+	return l
+}
+
+func TestRouter_started_without_handlers_closes_when_added_handler_stops(t *testing.T) {
+	t.Parallel()
+
+	for i := 0; i < 10; i++ {
+		r, err := message.NewRouter(message.RouterConfig{CloseTimeout: time.Second}, watermill.NopLogger{})
+		require.NoError(t, err)
+
+		runFinished := make(chan struct{})
+		go func() {
+			defer close(runFinished)
+			assert.NoError(t, r.Run(context.Background()))
+		}()
+		<-r.Running()
+
+		handler := r.AddConsumerHandler("handler", "topic", newContextSubscriberMock(), func(msg *message.Message) error {
+			return nil
+		})
+		require.NoError(t, r.RunHandlers(context.Background()))
+
+		handler.Stop()
+		waitFor(t, runFinished, "router to close after its only handler stopped")
+	}
+}
+
+func TestRouter_close_waits_for_message_received_while_closing(t *testing.T) {
+	t.Parallel()
+
+	// The message is received while Close is already waiting, which depends on scheduling,
+	// so the scenario is repeated a few times.
+	for i := 0; i < 10; i++ {
+		logger := watermill.NewCaptureLogger()
+		lateMessage := message.NewMessage(watermill.NewUUID(), nil)
+		subscriber := newDeliverOnCloseSubscriberMock(lateMessage)
+
+		r, err := message.NewRouter(message.RouterConfig{CloseTimeout: time.Second}, logger)
+		require.NoError(t, err)
+
+		handlerStarted := make(chan struct{})
+		releaseHandler := make(chan struct{})
+
+		r.AddConsumerHandler("handler", "topic", subscriber, func(msg *message.Message) error {
+			close(handlerStarted)
+			<-releaseHandler
+			return nil
+		})
+
+		go func() {
+			assert.NoError(t, r.Run(context.Background()))
+		}()
+		<-r.Running()
+
+		type closeResult struct {
+			Err          error
+			MessageAcked bool
+		}
+		closed := make(chan closeResult, 1)
+		go func() {
+			err := r.Close()
+			closed <- closeResult{Err: err, MessageAcked: isAcked(lateMessage)}
+		}()
+
+		waitFor(t, handlerStarted, "handler to start processing the message received while closing")
+		// the handler's message loop has ended, so the router has received all messages
+		waitForSubscriberStopped(t, logger, "handler", "topic")
+		close(releaseHandler)
+
+		select {
+		case result := <-closed:
+			require.NoError(t, result.Err)
+			require.True(t, result.MessageAcked, "Close returned before the message received while closing was processed")
+		case <-time.After(time.Second):
+			t.Fatal("timeout waiting for router to close")
+		}
+	}
+}
+
+// Like subscribers that deliver messages they have already fetched while the subscription is being closed.
+type deliverOnCloseSubscriberMock struct {
+	output      chan *message.Message
+	lastMessage *message.Message
+	closeOnce   sync.Once
+}
+
+func newDeliverOnCloseSubscriberMock(lastMessage *message.Message) *deliverOnCloseSubscriberMock {
+	return &deliverOnCloseSubscriberMock{
+		output:      make(chan *message.Message),
+		lastMessage: lastMessage,
+	}
+}
+
+func (s *deliverOnCloseSubscriberMock) Subscribe(ctx context.Context, topic string) (<-chan *message.Message, error) {
+	return s.output, nil
+}
+
+func (s *deliverOnCloseSubscriberMock) Close() error {
+	s.closeOnce.Do(func() {
+		// let the goroutines started by Router.Close run first, so the message arrives while Close is waiting
+		runtime.Gosched()
+		s.output <- s.lastMessage
+		close(s.output)
+	})
+	return nil
+}
+
+func isAcked(msg *message.Message) bool {
+	select {
+	case <-msg.Acked():
+		return true
+	default:
+		return false
+	}
+}
+
+func TestRouter_handler_stopped_right_after_it_started(t *testing.T) {
+	t.Parallel()
+
+	r, err := message.NewRouter(message.RouterConfig{CloseTimeout: time.Second}, watermill.NopLogger{})
+	require.NoError(t, err)
+
+	handler := r.AddConsumerHandler("handler", "topic", newContextSubscriberMock(), func(msg *message.Message) error {
+		return nil
+	})
+
+	// to keep at least one running handler to prevent router from closing
+	r.AddConsumerHandler("other_handler", "topic", newContextSubscriberMock(), func(msg *message.Message) error {
+		return nil
+	})
+
+	// Taken before the handler is started: Stopped() used to return nil then, and waiting on it blocked forever.
+	stopped := handler.Stopped()
+
+	go func() {
+		assert.NoError(t, r.Run(context.Background()))
+	}()
+	defer func() {
+		<-r.Running()
+		assert.NoError(t, r.Close())
+	}()
+
+	// not waiting for r.Running(), as it's closed only after all handlers have started
+	waitFor(t, handler.Started(), "handler to start")
+	handler.Stop()
+
+	waitFor(t, stopped, "handler to stop")
 }
