@@ -39,38 +39,29 @@ For the configuration of consuming/producing of the messages, check the help of 
 	},
 }
 
+// Both configs start from a watermill-amqp constructor because the library dereferences
+// TopologyBuilder and QueueBind.GenerateRoutingKey without checking them. The durable constructor
+// is used also for --durable=false, because the non-durable one switches messages to
+// non-persistent delivery, which the flag never controlled.
+
 func amqpConsumerConfig() amqp.Config {
 	uri := viper.GetString("amqp.uri")
 	queue := viper.GetString("amqp.consume.queue")
 	exchangeName := viper.GetString("amqp.consume.exchange")
 	exchangeType := viper.GetString("amqp.produce.exchangeType")
+	bindingKey := viper.GetString("amqp.consume.bindingKey")
 	durable := viper.GetBool("amqp.durable")
 
-	return amqp.Config{
-		Connection: amqp.ConnectionConfig{
-			AmqpURI: uri,
-		},
-		Marshaler: amqp.DefaultMarshaler{},
-		Queue: amqp.QueueConfig{
-			GenerateName: func(topic string) string {
-				return queue
-			},
-			Durable: durable,
-		},
-		Consume: amqp.ConsumeConfig{
-			Qos: amqp.QosConfig{
-				PrefetchCount: 1,
-			},
-		},
-
-		Exchange: amqp.ExchangeConfig{
-			GenerateName: func(topic string) string {
-				return exchangeName
-			},
-			Type:    exchangeType,
-			Durable: durable,
-		},
+	config := amqp.NewDurablePubSubConfig(uri, amqp.GenerateQueueNameConstant(queue))
+	config.Queue.Durable = durable
+	config.Exchange.GenerateName = amqp.GenerateExchangeNameConstant(exchangeName)
+	config.Exchange.Type = exchangeType
+	config.Exchange.Durable = durable
+	config.QueueBind.GenerateRoutingKey = func(topic string) string {
+		return bindingKey
 	}
+
+	return config
 }
 
 func amqpProducerConfig() amqp.Config {
@@ -80,24 +71,15 @@ func amqpProducerConfig() amqp.Config {
 	routingKey := viper.GetString("amqp.produce.routingKey")
 	durable := viper.GetBool("amqp.durable")
 
-	return amqp.Config{
-		Connection: amqp.ConnectionConfig{
-			AmqpURI: uri,
-		},
-		Marshaler: amqp.DefaultMarshaler{},
-		Exchange: amqp.ExchangeConfig{
-			GenerateName: func(topic string) string {
-				return exchangeName
-			},
-			Type:    exchangeType,
-			Durable: durable,
-		},
-		Publish: amqp.PublishConfig{
-			GenerateRoutingKey: func(topic string) string {
-				return routingKey
-			},
-		},
+	config := amqp.NewDurablePubSubConfig(uri, nil)
+	config.Exchange.GenerateName = amqp.GenerateExchangeNameConstant(exchangeName)
+	config.Exchange.Type = exchangeType
+	config.Exchange.Durable = durable
+	config.Publish.GenerateRoutingKey = func(topic string) string {
+		return routingKey
 	}
+
+	return config
 }
 
 func init() {
@@ -151,6 +133,13 @@ func configureConsumeCmd(consumeCmd *cobra.Command) {
 		"If non-empty, an exchange with this name is created if it didn't exist. Then, the queue is bound to this exchange.",
 	)
 	ensure(viper.BindPFlag("amqp.consume.exchange", consumeCmd.PersistentFlags().Lookup("exchange")))
+
+	consumeCmd.PersistentFlags().String(
+		"binding-key",
+		"",
+		"The binding key used to bind the queue to the exchange (only with --exchange). Fanout exchanges ignore it.",
+	)
+	ensure(viper.BindPFlag("amqp.consume.bindingKey", consumeCmd.PersistentFlags().Lookup("binding-key")))
 }
 
 func configureProduceCmd(produceCmd *cobra.Command) {
