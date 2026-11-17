@@ -38,6 +38,8 @@ Fortunately, it's still 13,305,600 messages per day. It's more than enough for a
 
     docker-compose up
 
+On start, the `requests` service sends three requests for the `demo` counter, and the worker logs each update.
+
     go run run.go
 
 *Please note that `run.go` needs to be executed by a user having privileges to manage Docker.
