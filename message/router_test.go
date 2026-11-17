@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -1500,4 +1501,452 @@ func TestRouter_stopping_all_handlers_logs_error(t *testing.T) {
 		"expected log message not found, logs: %#v",
 		logger.Captured(),
 	)
+}
+
+func TestRouter_stopped_handler_does_not_close_shared_publisher(t *testing.T) {
+	testCases := []struct {
+		Name        string
+		StopHandler func(t *testing.T, handler *message.Handler, subscriber *contextSubscriberMock)
+	}{
+		{
+			Name: "handler_stopped",
+			StopHandler: func(t *testing.T, handler *message.Handler, subscriber *contextSubscriberMock) {
+				handler.Stop()
+			},
+		},
+		{
+			Name: "subscription_closed",
+			StopHandler: func(t *testing.T, handler *message.Handler, subscriber *contextSubscriberMock) {
+				require.NoError(t, subscriber.Close())
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.Name, func(t *testing.T) {
+			t.Parallel()
+
+			publisher := newClosablePublisherMock()
+			subscriber1 := newContextSubscriberMock()
+			subscriber2 := newContextSubscriberMock()
+
+			r, err := message.NewRouter(message.RouterConfig{CloseTimeout: time.Second}, watermill.NopLogger{})
+			require.NoError(t, err)
+
+			handler1 := r.AddHandler("handler_1", "topic_1", subscriber1, "out", publisher, message.PassthroughHandler)
+			r.AddHandler("handler_2", "topic_2", subscriber2, "out", publisher, message.PassthroughHandler)
+
+			go func() {
+				assert.NoError(t, r.Run(context.Background()))
+			}()
+			<-r.Running()
+			defer func() {
+				assert.NoError(t, r.Close())
+			}()
+
+			tc.StopHandler(t, handler1, subscriber1)
+			waitFor(t, handler1.Stopped(), "handler_1 to stop")
+
+			msg := message.NewMessage(watermill.NewUUID(), nil)
+			sendMessage(t, subscriber2, msg)
+
+			// handler_2 is still running, so it must still be able to publish with the shared publisher
+			waitForAck(t, msg)
+		})
+	}
+}
+
+func TestRouter_close_closes_publisher_of_stopped_handler(t *testing.T) {
+	t.Parallel()
+
+	publisher := newClosablePublisherMock()
+	subscriber := newContextSubscriberMock()
+
+	r, err := message.NewRouter(message.RouterConfig{CloseTimeout: time.Second}, watermill.NopLogger{})
+	require.NoError(t, err)
+
+	handler := r.AddHandler("handler", "topic", subscriber, "out", publisher, message.PassthroughHandler)
+
+	// to keep at least one running handler to prevent router from closing
+	r.AddConsumerHandler("other_handler", "topic", newContextSubscriberMock(), func(msg *message.Message) error {
+		return nil
+	})
+
+	go func() {
+		assert.NoError(t, r.Run(context.Background()))
+	}()
+	<-r.Running()
+
+	handler.Stop()
+	waitFor(t, handler.Stopped(), "handler to stop")
+
+	require.NoError(t, r.Close())
+
+	assert.True(t, publisher.IsClosed(), "publisher of a stopped handler should be closed when the router is closed")
+}
+
+func TestRouter_close_closes_shared_publisher_once_per_handler(t *testing.T) {
+	testCases := []struct {
+		Name       string
+		Decorators []message.PublisherDecorator
+	}{
+		{
+			Name: "without_decorators",
+		},
+		{
+			Name:       "with_decorators",
+			Decorators: []message.PublisherDecorator{message.MessageTransformPublisherDecorator(func(*message.Message) {})},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.Name, func(t *testing.T) {
+			t.Parallel()
+
+			publisher := newClosablePublisherMock()
+
+			r, err := message.NewRouter(message.RouterConfig{CloseTimeout: time.Second}, watermill.NopLogger{})
+			require.NoError(t, err)
+			r.AddPublisherDecorators(tc.Decorators...)
+
+			r.AddHandler("handler_1", "topic", newContextSubscriberMock(), "out", publisher, message.PassthroughHandler)
+			r.AddHandler("handler_2", "topic", newContextSubscriberMock(), "out", publisher, message.PassthroughHandler)
+
+			go func() {
+				assert.NoError(t, r.Run(context.Background()))
+			}()
+			<-r.Running()
+
+			require.NoError(t, r.Close())
+
+			assert.EqualValues(t, 2, publisher.closeCalls.Load())
+		})
+	}
+}
+
+func TestRouter_close_closes_non_comparable_publisher(t *testing.T) {
+	t.Parallel()
+
+	// a publisher passed by value, which can't be compared, because it has a slice field
+	publisher := nonComparablePublisherMock{
+		closeCalls: &atomic.Int32{},
+		topics:     []string{"out"},
+	}
+
+	r, err := message.NewRouter(message.RouterConfig{CloseTimeout: time.Second}, watermill.NopLogger{})
+	require.NoError(t, err)
+
+	r.AddHandler("handler_1", "topic", newContextSubscriberMock(), "out", publisher, message.PassthroughHandler)
+	r.AddHandler("handler_2", "topic", newContextSubscriberMock(), "out", publisher, message.PassthroughHandler)
+
+	go func() {
+		assert.NoError(t, r.Run(context.Background()))
+	}()
+	<-r.Running()
+
+	require.NoError(t, r.Close())
+
+	assert.NotZero(t, publisher.closeCalls.Load())
+}
+
+func TestRouter_close_publishes_messages_of_running_handlers(t *testing.T) {
+	t.Parallel()
+
+	logger := watermill.NewCaptureLogger()
+	publisher := newClosablePublisherMock()
+	subscriber := newContextSubscriberMock()
+
+	r, err := message.NewRouter(message.RouterConfig{CloseTimeout: time.Second}, logger)
+	require.NoError(t, err)
+
+	handlerStarted := make(chan struct{})
+	releaseHandler := make(chan struct{})
+
+	r.AddHandler(
+		"handler",
+		"topic",
+		subscriber,
+		"out",
+		publisher,
+		func(msg *message.Message) ([]*message.Message, error) {
+			close(handlerStarted)
+			<-releaseHandler
+			return message.Messages{message.NewMessage(watermill.NewUUID(), nil)}, nil
+		},
+	)
+
+	go func() {
+		assert.NoError(t, r.Run(context.Background()))
+	}()
+	<-r.Running()
+
+	msg := message.NewMessage(watermill.NewUUID(), nil)
+	sendMessage(t, subscriber, msg)
+	waitFor(t, handlerStarted, "handler to start processing the message")
+
+	closeErr := make(chan error, 1)
+	go func() {
+		closeErr <- r.Close()
+	}()
+
+	waitForSubscriberStopped(t, logger, "handler", "topic")
+	close(releaseHandler)
+
+	// the message is nacked if the publisher was closed before the handler's output was published
+	waitForAck(t, msg)
+
+	select {
+	case err := <-closeErr:
+		require.NoError(t, err)
+	case <-time.After(time.Second):
+		t.Fatal("timeout waiting for router to close")
+	}
+
+	assert.True(t, publisher.IsClosed(), "publisher should be closed when the router is closed")
+}
+
+func TestRouter_close_timeout_closes_publishers(t *testing.T) {
+	t.Parallel()
+
+	publisher := newClosablePublisherMock()
+	subscriber := newContextSubscriberMock()
+
+	r, err := message.NewRouter(message.RouterConfig{CloseTimeout: time.Millisecond}, watermill.NopLogger{})
+	require.NoError(t, err)
+
+	handlerStarted := make(chan struct{})
+	releaseHandler := make(chan struct{})
+	defer close(releaseHandler)
+
+	r.AddHandler(
+		"handler",
+		"topic",
+		subscriber,
+		"out",
+		publisher,
+		func(msg *message.Message) ([]*message.Message, error) {
+			close(handlerStarted)
+			<-releaseHandler
+			return nil, nil
+		},
+	)
+
+	go func() {
+		assert.NoError(t, r.Run(context.Background()))
+	}()
+	<-r.Running()
+
+	sendMessage(t, subscriber, message.NewMessage(watermill.NewUUID(), nil))
+	waitFor(t, handlerStarted, "handler to start processing the message")
+
+	assert.EqualError(t, r.Close(), "router close timeout")
+
+	waitFor(t, publisher.closed, "publisher to be closed after the close timeout")
+}
+
+func TestRouter_handler_stopped_after_running_messages_are_processed(t *testing.T) {
+	t.Parallel()
+
+	logger := watermill.NewCaptureLogger()
+	subscriber := newContextSubscriberMock()
+
+	r, err := message.NewRouter(message.RouterConfig{CloseTimeout: time.Second}, logger)
+	require.NoError(t, err)
+
+	handlerStarted := make(chan struct{})
+	releaseHandler := make(chan struct{})
+	handlerFinished := make(chan struct{})
+	stoppedWhileProcessing := make(chan struct{})
+
+	var handler *message.Handler
+	handler = r.AddConsumerHandler("handler", "topic", subscriber, func(msg *message.Message) error {
+		defer close(handlerFinished)
+
+		close(handlerStarted)
+		<-releaseHandler
+
+		select {
+		case <-handler.Stopped():
+			close(stoppedWhileProcessing)
+		default:
+		}
+
+		return nil
+	})
+
+	// to keep at least one running handler to prevent router from closing
+	r.AddConsumerHandler("other_handler", "topic", newContextSubscriberMock(), func(msg *message.Message) error {
+		return nil
+	})
+
+	go func() {
+		assert.NoError(t, r.Run(context.Background()))
+	}()
+	<-r.Running()
+	defer func() {
+		assert.NoError(t, r.Close())
+	}()
+
+	msg := message.NewMessage(watermill.NewUUID(), nil)
+	sendMessage(t, subscriber, msg)
+	waitFor(t, handlerStarted, "handler to start processing the message")
+
+	handler.Stop()
+	waitForSubscriberStopped(t, logger, "handler", "topic")
+	close(releaseHandler)
+
+	waitFor(t, handler.Stopped(), "handler to stop")
+	waitFor(t, handlerFinished, "handler to finish processing the message")
+
+	select {
+	case <-stoppedWhileProcessing:
+		t.Fatal("handler was reported as stopped while it was still processing a message")
+	default:
+	}
+	assertAcked(t, msg)
+}
+
+// contextSubscriberMock delivers messages sent with sendMessage to a single subscription.
+// The subscription is closed when the context passed to Subscribe is canceled or when Close is called.
+type contextSubscriberMock struct {
+	messages  chan *message.Message
+	closing   chan struct{}
+	closeOnce sync.Once
+}
+
+func newContextSubscriberMock() *contextSubscriberMock {
+	return &contextSubscriberMock{
+		messages: make(chan *message.Message),
+		closing:  make(chan struct{}),
+	}
+}
+
+func (s *contextSubscriberMock) Subscribe(ctx context.Context, topic string) (<-chan *message.Message, error) {
+	output := make(chan *message.Message)
+
+	go func() {
+		defer close(output)
+
+		for {
+			select {
+			case msg := <-s.messages:
+				select {
+				case output <- msg:
+				case <-ctx.Done():
+					return
+				case <-s.closing:
+					return
+				}
+			case <-ctx.Done():
+				return
+			case <-s.closing:
+				return
+			}
+		}
+	}()
+
+	return output, nil
+}
+
+func (s *contextSubscriberMock) Close() error {
+	s.closeOnce.Do(func() {
+		close(s.closing)
+	})
+	return nil
+}
+
+func sendMessage(t *testing.T, subscriber *contextSubscriberMock, msg *message.Message) {
+	t.Helper()
+
+	select {
+	case subscriber.messages <- msg:
+	case <-time.After(time.Second):
+		t.Fatal("timeout waiting for subscriber to receive the message")
+	}
+}
+
+// closablePublisherMock fails to publish after it was closed, like real publishers do.
+type closablePublisherMock struct {
+	closed     chan struct{}
+	closeOnce  sync.Once
+	closeCalls atomic.Int32
+}
+
+func newClosablePublisherMock() *closablePublisherMock {
+	return &closablePublisherMock{
+		closed: make(chan struct{}),
+	}
+}
+
+func (p *closablePublisherMock) Publish(topic string, messages ...*message.Message) error {
+	if p.IsClosed() {
+		return errors.New("publisher closed")
+	}
+	return nil
+}
+
+func (p *closablePublisherMock) Close() error {
+	p.closeCalls.Add(1)
+	p.closeOnce.Do(func() {
+		close(p.closed)
+	})
+	return nil
+}
+
+type nonComparablePublisherMock struct {
+	closeCalls *atomic.Int32
+	topics     []string
+}
+
+func (p nonComparablePublisherMock) Publish(topic string, messages ...*message.Message) error {
+	return nil
+}
+
+func (p nonComparablePublisherMock) Close() error {
+	p.closeCalls.Add(1)
+	return nil
+}
+
+func (p *closablePublisherMock) IsClosed() bool {
+	select {
+	case <-p.closed:
+		return true
+	default:
+		return false
+	}
+}
+
+// waitForSubscriberStopped waits until the router logs that the handler stopped receiving messages.
+func waitForSubscriberStopped(t *testing.T, logger *watermill.CaptureLoggerAdapter, handlerName string, topic string) {
+	t.Helper()
+
+	require.Eventually(t, func() bool {
+		return logger.Has(watermill.CapturedMessage{
+			Level:  watermill.InfoLogLevel,
+			Fields: watermill.LogFields{"subscriber_name": handlerName, "topic": topic},
+			Msg:    "Subscriber stopped",
+		})
+	}, time.Second, time.Millisecond, "handler %s did not stop receiving messages", handlerName)
+}
+
+func waitFor(t *testing.T, ch <-chan struct{}, what string) {
+	t.Helper()
+
+	select {
+	case <-ch:
+	case <-time.After(time.Second):
+		t.Fatalf("timeout waiting for %s", what)
+	}
+}
+
+func waitForAck(t *testing.T, msg *message.Message) {
+	t.Helper()
+
+	select {
+	case <-msg.Acked():
+	case <-msg.Nacked():
+		t.Fatal("message was nacked")
+	case <-time.After(time.Second):
+		t.Fatal("timeout waiting for ack")
+	}
 }
