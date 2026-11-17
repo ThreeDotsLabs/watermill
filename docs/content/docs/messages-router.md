@@ -73,10 +73,11 @@ To close the Router, you need to call `Close()`.
 
 {{% load-snippet-partial file="src-link/message/router.go" first_line_contains="// Close gracefully" last_line_contains="func (r *Router) Close()" padding_after="1" %}}
 
-`Close()` will close all publishers and subscribers, and wait for all handlers to finish.
+`Close()` will close all subscribers, wait for all handlers to finish, and then close all publishers,
+so messages produced by handlers that were still running can be published.
 
 `Close()` will wait for a timeout configured in `RouterConfig.CloseTimeout`.
-If the timeout is reached, `Close()` will return an error.
+If the timeout is reached, `Close()` will return an error. The publishers are closed in this case as well.
 
 ## Adding handler after the router has started
 
@@ -88,6 +89,9 @@ To do that, you need to call `AddConsumerHandler` or `AddHandler` and call `RunH
 ## Stopping running handler
 
 It is possible to stop **just one running handler** by calling `Stop()`.
+
+`Stopped()` is closed after the handler has finished processing the messages it received.
+If you call `Stop()` from the handler's own function, don't wait for `Stopped()` there, as it would block forever.
 
 Please keep in mind, that router will be closed when there are no running handlers.
 
