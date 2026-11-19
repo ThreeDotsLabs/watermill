@@ -1,0 +1,143 @@
+# Runs Kafka, PostgreSQL and the five services of the example.
+# payments and shipping run two instances each (payments-1, payments-2, shipping-1, shipping-2).
+#
+# The services are built from the local copies of watermill, watermill-kafka and watermill-sql,
+# which have to be next to each other (see `replace` in go.mod).
+#
+#   docker compose up -d               start everything
+#   docker compose restart orders      rebuild and restart one service
+#   docker compose logs -f payments-1  see what a service is doing
+
+x-service: &service
+  image: golang:1.26
+  restart: unless-stopped
+  working_dir: /src/watermill/_examples/basic/7-inspector
+  volumes:
+    - ../../..:/src/watermill
+    - ../../../../watermill-kafka:/src/watermill-kafka
+    - ../../../../watermill-sql:/src/watermill-sql
+    - go-mod:/go/pkg/mod
+    - go-build:/root/.cache/go-build
+  depends_on:
+    kafka-setup:
+      condition: service_completed_successfully
+    postgres:
+      condition: service_healthy
+
+x-environment: &environment
+  KAFKA_BROKERS: kafka:9092
+  POSTGRES_DSN: postgres://watermill:password@postgres:5432/watermill?sslmode=disable
+  # The repositories are mounted from the host, so Go can't read their version control status.
+  GOFLAGS: -buildvcs=false
+
+services:
+  orders:
+    <<: *service
+    command: go run . -service orders -addr 0.0.0.0:8787
+    environment:
+      <<: *environment
+      INSPECTOR_ADVERTISE_URL: http://orders:8787/
+    ports:
+      - 8787:8787
+
+  payments-1:
+    <<: *service
+    command: go run . -service payments -addr 0.0.0.0:8788
+    environment:
+      <<: *environment
+      INSPECTOR_ADVERTISE_URL: http://payments-1:8788/
+    ports:
+      - 8788:8788
+
+  payments-2:
+    <<: *service
+    command: go run . -service payments -addr 0.0.0.0:8792
+    environment:
+      <<: *environment
+      INSPECTOR_ADVERTISE_URL: http://payments-2:8792/
+    ports:
+      - 8792:8792
+
+  webhooks:
+    <<: *service
+    command: go run . -service webhooks -addr 0.0.0.0:8789
+    environment:
+      <<: *environment
+      INSPECTOR_ADVERTISE_URL: http://webhooks:8789/
+    ports:
+      - 8789:8789
+
+  shipping-1:
+    <<: *service
+    command: go run . -service shipping -addr 0.0.0.0:8790
+    environment:
+      <<: *environment
+      INSPECTOR_ADVERTISE_URL: http://shipping-1:8790/
+    ports:
+      - 8790:8790
+
+  shipping-2:
+    <<: *service
+    command: go run . -service shipping -addr 0.0.0.0:8793
+    environment:
+      <<: *environment
+      INSPECTOR_ADVERTISE_URL: http://shipping-2:8793/
+    ports:
+      - 8793:8793
+
+  notifications:
+    <<: *service
+    command: go run . -service notifications -addr 0.0.0.0:8791
+    environment:
+      <<: *environment
+      INSPECTOR_ADVERTISE_URL: http://notifications:8791/
+    ports:
+      - 8791:8791
+
+  kafka:
+    image: redpandadata/redpanda:v26.1.7
+    restart: unless-stopped
+    command:
+      - redpanda
+      - start
+      - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr internal://kafka:9092,external://localhost:19092
+      - --mode dev-container
+      - --smp 1
+      - --default-log-level=warn
+    ports:
+      - 19092:19092
+    healthcheck:
+      test: ["CMD", "rpk", "cluster", "health", "--exit-when-healthy"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  # Topics are created with a few partitions, so instances of one service in the same consumer group
+  # split the messages between them. With one partition, only one instance would get messages.
+  kafka-setup:
+    image: redpandadata/redpanda:v26.1.7
+    entrypoint: rpk
+    command: cluster config set default_topic_partitions 4 -X admin.hosts=kafka:9644
+    depends_on:
+      kafka:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: watermill
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: watermill
+    ports:
+      - 15432:5432
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "watermill"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+volumes:
+  go-mod:
+  go-build:

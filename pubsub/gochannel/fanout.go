@@ -8,6 +8,7 @@ import (
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ThreeDotsLabs/watermill/topology"
 )
 
 // FanOut is a component that receives messages from a topic and passes them
@@ -49,8 +50,12 @@ func NewFanOut(
 		return nil, err
 	}
 
+	internalPubSub := NewGoChannel(Config{}, logger)
+	internalPubSub.topologyName = "FanOut"
+	topology.Current().Annotate(router, "FanOut", map[string]string{topology.LabelComponent: "FanOut"})
+
 	return &FanOut{
-		internalPubSub: NewGoChannel(Config{}, logger),
+		internalPubSub: internalPubSub,
 		internalRouter: router,
 
 		subscriber: subscriber,
@@ -105,6 +110,11 @@ func (f *FanOut) IsClosed() bool {
 }
 
 // Subscribe starts subscription to the FanOut's internal Pub/Sub.
+// DescribeTopic implements topology.Describer.
+func (f *FanOut) DescribeTopic(topic string) topology.Description {
+	return f.internalPubSub.DescribeTopic(topic)
+}
+
 func (f *FanOut) Subscribe(ctx context.Context, topic string) (<-chan *message.Message, error) {
 	return f.internalPubSub.Subscribe(ctx, topic)
 }

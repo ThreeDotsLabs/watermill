@@ -8,6 +8,7 @@ import (
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ThreeDotsLabs/watermill/topology"
 )
 
 type CommandProcessorConfig struct {
@@ -299,12 +300,15 @@ func (p CommandProcessor) addHandlerToRouter(r *message.Router, handler CommandH
 		return nil, errors.Wrap(err, "cannot create subscriber for command processor")
 	}
 
-	return r.AddConsumerHandler(
+	routerHandler := r.AddConsumerHandler(
 		handlerName,
 		topicName,
 		subscriber,
 		handlerFunc,
-	), nil
+	)
+	topology.Current().Annotate(routerHandler, "", map[string]string{topology.LabelComponent: "CQRS Command Handler", "command": commandName})
+
+	return routerHandler, nil
 }
 
 // Handlers returns the CommandProcessor's handlers.

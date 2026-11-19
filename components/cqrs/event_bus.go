@@ -69,6 +69,8 @@ type OnEventSendParams struct {
 type EventBus struct {
 	publisher message.Publisher
 	config    EventBusConfig
+
+	topology busTopology
 }
 
 // NewEventBus creates a new CommandBus.
@@ -96,6 +98,7 @@ func NewEventBus(
 			},
 			Marshaler: marshaler,
 		},
+		topology: newBusTopology("EventBus"),
 	}, nil
 }
 
@@ -110,7 +113,7 @@ func NewEventBusWithConfig(publisher message.Publisher, config EventBusConfig) (
 		return nil, errors.Wrap(err, "invalid config")
 	}
 
-	return &EventBus{publisher, config}, nil
+	return &EventBus{publisher, config, newBusTopology("EventBus")}, nil
 }
 
 // Publish sends event to the event bus.
@@ -142,5 +145,5 @@ func (c EventBus) Publish(ctx context.Context, event any) error {
 		}
 	}
 
-	return c.publisher.Publish(topicName, msg)
+	return c.topology.publish(c.publisher, topicName, msg)
 }

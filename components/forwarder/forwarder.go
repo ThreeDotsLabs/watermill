@@ -6,6 +6,7 @@ import (
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ThreeDotsLabs/watermill/topology"
 	"github.com/pkg/errors"
 )
 
@@ -110,6 +111,7 @@ func NewForwarder(
 		if err != nil {
 			return nil, errors.Wrap(err, "cannot create a router")
 		}
+		topology.Current().Annotate(router, "Forwarder", map[string]string{topology.LabelComponent: "Forwarder"})
 	}
 
 	f := &Forwarder{router, publisherOut, logger, config}
@@ -122,6 +124,7 @@ func NewForwarder(
 	)
 
 	handler.AddMiddleware(config.Middlewares...)
+	topology.Current().Annotate(handler, "", map[string]string{topology.LabelComponent: "Forwarder"})
 
 	return f, nil
 }

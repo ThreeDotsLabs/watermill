@@ -9,6 +9,7 @@ import (
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ThreeDotsLabs/watermill/topology"
 )
 
 const RetriesKey = "_watermill_requeuer_retries"
@@ -110,12 +111,13 @@ func NewRequeuer(
 		config: config,
 	}
 
-	config.Router.AddConsumerHandler(
+	handler := config.Router.AddConsumerHandler(
 		"requeuer",
 		config.SubscribeTopic,
 		config.Subscriber,
 		r.handler,
 	)
+	topology.Current().Annotate(handler, "", map[string]string{topology.LabelComponent: "Requeuer"})
 
 	return r, nil
 }

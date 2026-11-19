@@ -71,6 +71,8 @@ type CommandBus struct {
 	publisher message.Publisher
 
 	config CommandBusConfig
+
+	topology busTopology
 }
 
 // NewCommandBusWithConfig creates a new CommandBus.
@@ -84,7 +86,7 @@ func NewCommandBusWithConfig(publisher message.Publisher, config CommandBusConfi
 		return nil, errors.Wrap(err, "invalid config")
 	}
 
-	return &CommandBus{publisher, config}, nil
+	return &CommandBus{publisher, config, newBusTopology("CommandBus")}, nil
 }
 
 // NewCommandBus creates a new CommandBus.
@@ -109,7 +111,7 @@ func NewCommandBus(
 			return generateTopic(params.CommandName), nil
 		},
 		Marshaler: marshaler,
-	}}, nil
+	}, newBusTopology("CommandBus")}, nil
 }
 
 // Send sends command to the command bus.
@@ -129,7 +131,7 @@ func (c CommandBus) SendWithModifiedMessage(ctx context.Context, cmd any, modify
 		}
 	}
 
-	if err := c.publisher.Publish(topicName, msg); err != nil {
+	if err := c.topology.publish(c.publisher, topicName, msg); err != nil {
 		return err
 	}
 

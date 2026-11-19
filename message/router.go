@@ -12,6 +12,7 @@ import (
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/internal"
 	sync_internal "github.com/ThreeDotsLabs/watermill/pubsub/sync"
+	"github.com/ThreeDotsLabs/watermill/topology"
 )
 
 var (
@@ -107,7 +108,7 @@ func newRouter(config RouterConfig, logger watermill.LoggerAdapter) *Router {
 		logger = watermill.NopLogger{}
 	}
 
-	return &Router{
+	r := &Router{
 		config: config,
 
 		handlers: map[string]*handler{},
@@ -129,6 +130,12 @@ func newRouter(config RouterConfig, logger watermill.LoggerAdapter) *Router {
 
 		running: make(chan struct{}),
 	}
+
+	if registry := topology.Current(); registry != nil {
+		registry.AddNode(topology.Node{Kind: topology.NodeRouter, Name: "Router"}, r)
+	}
+
+	return r
 }
 
 type middleware struct {
@@ -326,9 +333,46 @@ func (r *Router) AddHandler(
 		// watchAllHandlersStopped is not always waiting for handlerAdded
 	}
 
-	return &Handler{
+	publicHandler := &Handler{
 		router:  r,
 		handler: newHandler,
+	}
+
+	if registry := topology.Current(); registry != nil {
+		r.addHandlerToTopology(registry, publicHandler)
+	}
+
+	return publicHandler
+}
+
+// addHandlerToTopology adds the handler and its topics to the topology registry.
+func (r *Router) addHandlerToTopology(registry *topology.Registry, publicHandler *Handler) {
+	h := publicHandler.handler
+
+	routerID := registry.NodeID(r)
+	if routerID == "" {
+		// The router was created before the topology registry was enabled.
+		routerID = registry.AddNode(topology.Node{Kind: topology.NodeRouter, Name: "Router"}, r)
+	}
+
+	labels := map[string]string{"subscriber": h.subscriberName}
+	if h.publishTopic != "" {
+		labels["publisher"] = h.publisherName
+	}
+
+	h.topologyNodeID = registry.AddNode(topology.Node{
+		ID:     routerID + "/" + h.name,
+		Kind:   topology.NodeHandler,
+		Name:   h.name,
+		Parent: routerID,
+		Labels: labels,
+	}, publicHandler)
+
+	h.topologySubscribeTopicID = registry.AddSubscription(h.subscriber, h.subscribeTopic, h.topologyNodeID)
+
+	if h.publishTopic != "" {
+		registry.AddEdge(h.topologyNodeID, registry.TopicID(h.publisher, h.publishTopic), topology.EdgePublish)
+		h.topologyPublisher = h.publisher
 	}
 }
 
@@ -497,6 +541,10 @@ func (r *Router) RunHandlers(ctx context.Context) error {
 			// from closing when all subscriptions end (Close waits for running messages with CloseTimeout).
 			h.runningMessagesWg.Wait()
 
+			if h.topologyNodeID != "" {
+				topology.Current().RemoveNode(h.topologyNodeID)
+			}
+
 			close(h.stopped)
 		}()
 	}
@@ -604,6 +652,9 @@ func (r *Router) Close() error {
 		timedout = true
 	}
 
+	// Also removes the handlers that didn't stop in time, and handlers of a router that never ran.
+	topology.Current().Remove(r)
+
 	if timedout {
 		return errors.New("router close timeout")
 	}
@@ -688,6 +739,12 @@ type handler struct {
 	publisherName string
 
 	handlerFunc HandlerFunc
+
+	// topologyNodeID is empty when the topology registry is disabled.
+	topologyNodeID           string
+	topologySubscribeTopicID string
+	// topologyPublisher is the publisher before decorating.
+	topologyPublisher Publisher
 
 	runningHandlersWg     *sync.WaitGroup
 	runningHandlersWgLock *sync.Mutex
@@ -849,6 +906,10 @@ func (h *handler) addHandlerContext(messages ...*Message) {
 		if h.publishTopic != "" {
 			ctx = context.WithValue(ctx, publishTopicKey, h.publishTopic)
 		}
+		if h.topologyNodeID != "" {
+			ctx = topology.ContextWithSource(ctx, topology.Source{NodeID: h.topologyNodeID, MessageUUID: msg.UUID})
+			ctx = topology.ContextWithFailureReport(ctx)
+		}
 		messages[i].SetContext(ctx)
 	}
 }
@@ -885,6 +946,11 @@ func (h *handler) handleMessage(msg *Message, handler HandlerFunc) {
 	defer h.runningMessagesWg.Done()
 	msgFields := watermill.LogFields{"message_uuid": msg.UUID, "handler_name": h.name}
 
+	var startedAt time.Time
+	if h.topologyNodeID != "" {
+		startedAt = h.reportReceived(msg)
+	}
+
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			h.logger.Error(
@@ -893,6 +959,7 @@ func (h *handler) handleMessage(msg *Message, handler HandlerFunc) {
 				msgFields,
 			)
 			msg.Nack()
+			h.reportFinished(msg, startedAt, errors.Errorf("panic: %v", recovered))
 		}
 	}()
 
@@ -904,18 +971,28 @@ func (h *handler) handleMessage(msg *Message, handler HandlerFunc) {
 			h.logger.Error("Handler returned error", err, msgFields)
 		}
 		msg.Nack()
+		h.reportFinished(msg, startedAt, err)
 		return
 	}
 
 	h.addHandlerContext(producedMessages...)
+	var publishTrackers []*topology.PublishTracker
+	if h.topologyNodeID != "" {
+		publishTrackers = h.trackProduced(msg, producedMessages)
+	}
 
 	if err := h.publishProducedMessages(producedMessages, msgFields); err != nil {
 		h.logger.Error("Publishing produced messages failed", err, nil)
 		msg.Nack()
+		h.reportFinished(msg, startedAt, err)
 		return
+	}
+	if h.topologyNodeID != "" {
+		h.reportPublished(producedMessages, publishTrackers)
 	}
 
 	msg.Ack()
+	h.reportFinished(msg, startedAt, nil)
 	h.logger.Trace("Message acked", msgFields)
 }
 
@@ -942,6 +1019,73 @@ func (h *handler) publishProducedMessages(producedMessages Messages, msgFields w
 	}
 
 	return nil
+}
+
+func (h *handler) reportReceived(msg *Message) time.Time {
+	startedAt := time.Now()
+	registry := topology.Current()
+	registry.Emit(topology.Event{
+		Kind:    topology.EventReceived,
+		Time:    startedAt,
+		NodeID:  h.topologyNodeID,
+		TopicID: h.topologySubscribeTopicID,
+		Message: registry.CopyMessage(msg.UUID, msg.Metadata, msg.Payload),
+	})
+	return startedAt
+}
+
+// trackProduced links the messages returned by the handler with the handled message.
+// The returned trackers tell if the publisher has reported the publishes.
+func (h *handler) trackProduced(msg *Message, producedMessages []*Message) []*topology.PublishTracker {
+	trackers := make([]*topology.PublishTracker, len(producedMessages))
+
+	for i, produced := range producedMessages {
+		ctx := topology.ContextWithSource(
+			produced.Context(),
+			topology.Source{NodeID: h.topologyNodeID, MessageUUID: msg.UUID},
+		)
+		ctx, trackers[i] = topology.TrackPublish(ctx)
+		produced.SetContext(ctx)
+	}
+
+	return trackers
+}
+
+// reportPublished reports the published messages that were not reported by the publisher.
+func (h *handler) reportPublished(producedMessages []*Message, trackers []*topology.PublishTracker) {
+	for i, produced := range producedMessages {
+		if trackers[i].Reported() {
+			continue
+		}
+
+		topology.Current().EmitPublished(
+			h.topologyPublisher, h.publishTopic,
+			produced.Context(), produced.UUID, produced.Metadata, produced.Payload,
+		)
+	}
+}
+
+func (h *handler) reportFinished(msg *Message, startedAt time.Time, err error) {
+	if h.topologyNodeID == "" {
+		return
+	}
+
+	event := topology.Event{
+		Kind:     topology.EventAcked,
+		NodeID:   h.topologyNodeID,
+		TopicID:  h.topologySubscribeTopicID,
+		Message:  topology.Message{UUID: msg.UUID},
+		Duration: time.Since(startedAt),
+	}
+	if err != nil {
+		event.Kind = topology.EventNacked
+		event.Error = err.Error()
+	} else if reason := topology.ReportedFailure(msg.Context()); reason != "" {
+		// A middleware has dealt with the error, so the message is acked. It's still a failure of the handler.
+		event.Kind = topology.EventNacked
+		event.Error = reason
+	}
+	topology.Current().Emit(event)
 }
 
 type disabledPublisher struct{}

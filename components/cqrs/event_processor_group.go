@@ -6,6 +6,7 @@ import (
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ThreeDotsLabs/watermill/topology"
 	"github.com/pkg/errors"
 )
 
@@ -196,7 +197,8 @@ func (p EventGroupProcessor) addHandlerToRouter(r *message.Router, groupName str
 		return errors.Wrap(err, "cannot create subscriber for event processor")
 	}
 
-	_ = addHandlerToRouter(p.config.Logger, r, groupName, topicName, handlerFunc, subscriber)
+	routerHandler := addHandlerToRouter(p.config.Logger, r, groupName, topicName, handlerFunc, subscriber)
+	topology.Current().Annotate(routerHandler, "", map[string]string{topology.LabelComponent: "CQRS Event Group Handler"})
 
 	return nil
 }

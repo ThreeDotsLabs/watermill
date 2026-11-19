@@ -10,6 +10,7 @@ import (
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ThreeDotsLabs/watermill/topology"
 )
 
 type Config struct {
@@ -88,6 +89,7 @@ func NewFanIn(
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot create a router")
 	}
+	topology.Current().Annotate(router, "FanIn", map[string]string{topology.LabelComponent: "FanIn"})
 
 	for _, topic := range config.SourceTopics {
 		router.AddHandler(

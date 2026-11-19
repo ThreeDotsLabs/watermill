@@ -4,6 +4,7 @@ import (
 	stdErrors "errors"
 
 	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ThreeDotsLabs/watermill/topology"
 	"github.com/pkg/errors"
 )
 
@@ -40,7 +41,16 @@ func PoisonQueue(pub message.Publisher, topic string) (message.HandlerMiddleware
 		},
 	}
 
+	markPoisonQueueTopic(pub, topic)
+
 	return pq.Middleware, nil
+}
+
+// markPoisonQueueTopic marks the topic as a poison queue in the topology registry.
+func markPoisonQueueTopic(pub message.Publisher, topic string) {
+	if registry := topology.Current(); registry != nil {
+		registry.AnnotateNode(registry.TopicID(pub, topic), "", map[string]string{topology.LabelRole: topology.RolePoisonQueue})
+	}
 }
 
 // PoisonQueueWithFilter is just like PoisonQueue, but accepts a function that decides which errors qualify for the poison queue.
@@ -55,6 +65,8 @@ func PoisonQueueWithFilter(pub message.Publisher, topic string, shouldGoToPoison
 
 		shouldGoToPoisonQueue: shouldGoToPoisonQueue,
 	}
+
+	markPoisonQueueTopic(pub, topic)
 
 	return pq.Middleware, nil
 }
@@ -91,6 +103,7 @@ func (pq poisonQueue) Middleware(h message.HandlerFunc) message.HandlerFunc {
 					return
 				}
 
+				topology.ReportFailure(msg.Context(), err)
 				err = nil
 				return
 			}

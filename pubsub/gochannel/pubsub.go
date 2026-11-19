@@ -2,6 +2,7 @@ package gochannel
 
 import (
 	"context"
+	"strings"
 	"sync"
 
 	"github.com/lithammer/shortuuid/v3"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ThreeDotsLabs/watermill/topology"
 )
 
 // Config holds the GoChannel Pub/Sub's configuration options.
@@ -72,6 +74,23 @@ type GoChannel struct {
 
 	persistedMessages     map[string][]*message.Message
 	persistedMessagesLock sync.RWMutex
+
+	// topologyName overrides the name of this Pub/Sub in the topology registry.
+	topologyName string
+}
+
+// DescribeTopic implements topology.Describer.
+func (g *GoChannel) DescribeTopic(topic string) topology.Description {
+	id := topology.Current().ObjectID(g, "gochannel")
+
+	name := g.topologyName
+	if name == "" {
+		name = "GoChannel #" + strings.TrimPrefix(id, "gochannel-")
+	}
+
+	return topology.Description{
+		PubSub: topology.PubSub{ID: id, Type: "gochannel", Name: name},
+	}
 }
 
 // NewGoChannel creates new GoChannel Pub/Sub.
@@ -107,6 +126,12 @@ func NewGoChannel(config Config, logger watermill.LoggerAdapter) *GoChannel {
 func (g *GoChannel) Publish(topic string, messages ...*message.Message) error {
 	if g.isClosed() {
 		return errors.New("Pub/Sub closed")
+	}
+
+	if registry := topology.Current(); registry != nil {
+		for _, msg := range messages {
+			registry.EmitPublished(g, topic, msg.Context(), msg.UUID, msg.Metadata, msg.Payload)
+		}
 	}
 
 	messagesToPublish := make(message.Messages, len(messages))
@@ -373,6 +398,8 @@ func (g *GoChannel) Close() error {
 
 	g.logger.Debug("Closing Pub/Sub, waiting for subscribers", nil)
 	g.subscribersWg.Wait()
+
+	topology.Current().Remove(g)
 
 	g.logger.Info("Pub/Sub closed", nil)
 

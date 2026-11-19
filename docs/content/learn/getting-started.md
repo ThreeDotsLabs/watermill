@@ -38,7 +38,7 @@ go get -u github.com/ThreeDotsLabs/watermill
 
 Docs too boring? Prefer learning by doing?
 
-[**Try the free hands-on training**]({{< ref "/learn/quickstart/" >}}) where you'll solve exercises to learn how to use Watermill in your projects.
+[**Try the free hands-on training**]({{< ref "/learn/quickstart" >}}) where you'll solve exercises to learn how to use Watermill in your projects.
 
 It'll guide you through the basics and a few advanced concepts like message ordering and the Outbox pattern.
 
@@ -373,7 +373,7 @@ For more details, see [documentation topics]({{< ref "/docs" >}}).
 [The Outbox Pattern](/advanced/forwarder/) is a key pattern to know in event-driven applications.
 
 We recommend checking the examples below to see how Watermill works in practice.
-You can also try the [free hands-on training]({{< ref "/learn/quickstart/" >}}) to learn how to use Watermill in practice.
+You can also try the [free hands-on training]({{< ref "/learn/quickstart" >}}) to learn how to use Watermill in practice.
 
 ## Examples
 

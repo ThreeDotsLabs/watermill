@@ -21,6 +21,7 @@ if [[ "$1" == "--copy" ]]; then
     cp -r ../pubsub content/src-link/
     cp -r ../_examples content/src-link/
     cp -r ../components content/src-link/
+    cp -r ../topology content/src-link/
 else
     declare -a files_to_link=(
         "_examples"
@@ -55,6 +56,9 @@ else
         "components/metrics/http.go"
 
         "components/fanin/fanin.go"
+
+        "components/inspector/inspector.go"
+        "topology/topology.go"
     )
 
     pushd ../

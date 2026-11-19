@@ -19,6 +19,59 @@ Watermill provides [a set of test scenarios](https://github.com/ThreeDotsLabs/wa
 that any Pub/Sub implementation can use. Each test suite needs to declare what features it supports and how to construct a new Pub/Sub.
 These scenarios check both basic usage and more uncommon use cases. Stress tests are also included.
 
+## Inspector support
+
+To show what's behind a topic in the [inspector](/advanced/inspector/), implement `topology.Describer`
+on the publisher and the subscriber:
+
+{{% load-snippet-partial file="src-link/topology/topology.go" first_line_contains="// Describer can be implemented" last_line_contains="type Resource struct" padding_after="3" %}}
+
+A publisher and a subscriber connected to the same system must return the same `PubSub.ID`.
+If the system can be shared by many services (like a Kafka cluster), set `Shared: true` and use an ID that every service computes the same way.
+Addresses don't work for this: services often reach the same broker under different addresses.
+
+`DescribeTopic` is called for every published message, so keep it cheap.
+
+```go
+func describeTopic(clusterID string, topic string) topology.Description {
+    return topology.Description{
+        PubSub: topology.PubSub{ID: clusterID, Type: "kafka", Name: "Kafka", Shared: true},
+        Resources: []topology.Resource{
+            {Kind: "topic", Name: topic},
+        },
+    }
+}
+
+func (p *Publisher) DescribeTopic(topic string) topology.Description {
+    return describeTopic(p.clusterID, topic)
+}
+
+func (s *Subscriber) DescribeTopic(topic string) topology.Description {
+    d := describeTopic(s.clusterID, topic)
+    // resources that belong only to this subscriber
+    d.SubscriptionResources = []topology.Resource{
+        {Kind: "consumer group", Name: s.config.ConsumerGroup},
+    }
+    return d
+}
+```
+
+The publisher should also report each message it publishes, so messages published outside a router are visible:
+
+```go
+func (p *Publisher) Publish(topic string, messages ...*message.Message) error {
+    if registry := topology.Current(); registry != nil {
+        for _, msg := range messages {
+            registry.EmitPublished(p, topic, msg.Context(), msg.UUID, msg.Metadata, msg.Payload)
+        }
+    }
+
+    // ...
+}
+```
+
+`topology.Current()` returns `nil` when the inspector is not enabled, so this costs nothing by default.
+
 ## TODO list
 
 Here are a few things you shouldn't forget about:

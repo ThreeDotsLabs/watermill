@@ -1,0 +1,1382 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Watermill Inspector</title>
+<script>
+  // The theme is set before the page is drawn, so it doesn't flash in the system theme first.
+  try {
+    const theme = localStorage.getItem("watermill-inspector-theme");
+    if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
+  } catch (_) { /* storage is not available */ }
+</script>
+<style>
+  :root {
+    color-scheme: light;
+    --canvas: #eef3f5;
+    --grid: #cfdbe0;
+    --surface: #ffffff;
+    --ink: #12303b;
+    --ink-soft: #5b747e;
+    --line: #9fb4bc;
+    --water: #1c7fa6;
+    --water-tint: #dbeef5;
+    --bus: #7a5a12;
+    --bus-tint: #f7ecd0;
+    --ok: #1f8a4c;
+    --fail: #c8372d;
+    --fail-tint: #fbe4e1;
+    --select: #e0a100;
+    --frame-fill: 0.07;
+    /* Colors of services. */
+    --s0: #1c7fa6; --s1: #c26a1b; --s2: #6a56b8; --s3: #2f8f6b;
+    --s4: #b8457e; --s5: #7c8a1f; --s6: #3f66c4; --s7: #a5562a;
+    --panel-w: 380px;
+    --font: "Avenir Next", "Segoe UI", system-ui, sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --canvas: #0e1d24;
+      --grid: #1c323c;
+      --surface: #162a33;
+      --ink: #e3eef2;
+      --ink-soft: #8ea6b0;
+      --line: #46616c;
+      --water: #58b9de;
+      --water-tint: #173a4a;
+      --bus: #e2bd5c;
+      --bus-tint: #3a3015;
+      --ok: #4fc581;
+      --fail: #f0766c;
+      --fail-tint: #4a201d;
+      --select: #f2c230;
+      --frame-fill: 0.1;
+      --s0: #58b9de; --s1: #e8954a; --s2: #a594ec; --s3: #55c49a;
+      --s4: #e57fb3; --s5: #b9c64e; --s6: #7d9ef2; --s7: #dc8a5e;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --canvas: #0e1d24;
+    --grid: #1c323c;
+    --surface: #162a33;
+    --ink: #e3eef2;
+    --ink-soft: #8ea6b0;
+    --line: #46616c;
+    --water: #58b9de;
+    --water-tint: #173a4a;
+    --bus: #e2bd5c;
+    --bus-tint: #3a3015;
+    --ok: #4fc581;
+    --fail: #f0766c;
+    --fail-tint: #4a201d;
+    --select: #f2c230;
+    --frame-fill: 0.1;
+    --s0: #58b9de; --s1: #e8954a; --s2: #a594ec; --s3: #55c49a;
+    --s4: #e57fb3; --s5: #b9c64e; --s6: #7d9ef2; --s7: #dc8a5e;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font: 14px/1.4 var(--font);
+    color: var(--ink);
+    background: var(--canvas);
+    display: grid;
+    grid-template-columns: 1fr var(--panel-w);
+    grid-template-rows: auto 1fr;
+    overflow: hidden;
+  }
+  header {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 16px;
+    padding: 10px 16px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--line);
+  }
+  header h1 { font-size: 16px; font-weight: 600; margin: 0; letter-spacing: 0.01em; }
+  #status { color: var(--ink-soft); display: flex; align-items: center; gap: 6px; }
+  #status::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--fail); }
+  #status.live::before { background: var(--ok); }
+  header .spacer { flex: 1; }
+  header .controls { display: flex; gap: 8px; flex-wrap: wrap; }
+  button {
+    font: inherit;
+    color: var(--ink);
+    background: transparent;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 5px 12px;
+    cursor: pointer;
+  }
+  button:hover { border-color: var(--water); }
+  button:focus-visible, .row:focus-visible, input:focus-visible { outline: 2px solid var(--water); outline-offset: 1px; }
+  button[aria-pressed="true"] { background: var(--water); border-color: var(--water); color: var(--surface); }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+  .seg button { border: 0; border-radius: 0; padding: 5px 10px; }
+  .seg button + button { border-left: 1px solid var(--line); }
+
+  #board { position: relative; overflow: hidden; }
+  svg { width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
+  svg.panning { cursor: grabbing; }
+  #empty {
+    position: absolute; inset: 0; display: grid; place-content: center; text-align: center;
+    color: var(--ink-soft); padding: 24px; pointer-events: none;
+  }
+  .frame { cursor: move; }
+  .frame rect { fill: var(--c); stroke: var(--c); fill-opacity: var(--frame-fill); stroke-width: 1.5; stroke-opacity: 0.7; }
+  .frame text { font-size: 15px; font-weight: 600; fill: var(--ink); }
+  .frame .instances { font-weight: 400; fill: var(--ink-soft); }
+  .dimmed .frame { opacity: 0.45; }
+
+  /* --w is set from the rate of messages on the edge. */
+  .edge { fill: none; stroke: var(--line); stroke-width: var(--w, 1.5px); }
+  .edge.dynamic { stroke-dasharray: 5 4; }
+  .edge.on-path { stroke: var(--select); stroke-width: calc(var(--w, 1.5px) + 1px); }
+  .node { cursor: pointer; }
+  .node:focus { outline: none; }
+  .node:focus-visible .shape { stroke: var(--water); stroke-width: 3; }
+  .node .shape { fill: var(--surface); stroke: var(--line); stroke-width: 1.5; }
+  .node.topic .shape { fill: var(--water-tint); stroke: var(--water); }
+  /* A poison queue is a role, not a failure. It turns red only when messages go to it. */
+  .node.topic.poison .shape { stroke-dasharray: 6 4; }
+  .node.topic.poison.receiving .shape { fill: var(--fail-tint); stroke: var(--fail); }
+  .node.bus .shape { fill: var(--bus-tint); stroke: var(--bus); }
+  .node .name { font-weight: 600; font-size: 13px; fill: var(--ink); }
+  .node .caption { font-size: 11px; fill: var(--ink-soft); }
+  .node .rate { font-size: 11px; fill: var(--ink-soft); text-anchor: end; font-variant-numeric: tabular-nums; }
+  .node .caption.errors { fill: var(--fail); font-weight: 600; }
+  .node .health { fill: var(--line); }
+  .node .health.ok { fill: var(--ok); }
+  .node .health.failing { fill: var(--fail); }
+  .node.flash-fail .shape { stroke: var(--fail); stroke-width: 3; }
+  .node.selected .shape, .node.on-path .shape { stroke: var(--select); stroke-width: 3; }
+  .dimmed .node:not(.on-path), .dimmed .edge:not(.on-path) { opacity: 0.3; }
+  .particle { fill: var(--water); stroke: var(--surface); stroke-width: 1.5; }
+  .particle.failed { fill: var(--fail); }
+  .dimmed .particle:not(.on-path) { opacity: 0.2; }
+  marker path { fill: var(--line); }
+
+  aside {
+    background: var(--surface);
+    border-left: 1px solid var(--line);
+    display: flex; flex-direction: column; min-height: 0;
+  }
+  aside h2 { font-size: 14px; font-weight: 600; margin: 0; }
+  .panel-head { padding: 12px 16px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 8px; min-height: 52px; }
+  .panel-head .spacer { flex: 1; }
+  .toolbar { display: flex; gap: 8px; padding: 10px 16px; border-bottom: 1px solid var(--line); }
+  .toolbar input {
+    flex: 1; min-width: 0; font: inherit; font-size: 13px; color: var(--ink);
+    background: var(--canvas); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px;
+  }
+  .panel-body { overflow: auto; flex: 1; min-height: 0; }
+  /* The button with new messages floats over the list, so showing it doesn't move the rows. */
+  .more-wrap { position: sticky; top: 0; height: 0; display: flex; justify-content: center; z-index: 1; }
+  .more-wrap button {
+    margin-top: 8px; height: fit-content; font-size: 12px; padding: 3px 12px; border-radius: 999px;
+    background: var(--water); border-color: var(--water); color: var(--surface);
+    box-shadow: 0 1px 4px rgb(0 0 0 / 0.2);
+  }
+  .hint { color: var(--ink-soft); padding: 16px; margin: 0; }
+  .row {
+    display: grid; grid-template-columns: 10px 1fr auto; gap: 0 8px; align-items: baseline;
+    padding: 6px 16px; border-bottom: 1px solid var(--grid); cursor: pointer; width: 100%;
+    background: none; border-left: 0; border-right: 0; border-top: 0; border-radius: 0; text-align: left;
+  }
+  .row:hover { background: var(--canvas); }
+  .row .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); align-self: center; }
+  .row .dot.pending { background: var(--line); }
+  .row .dot.failed { background: var(--fail); }
+  .row .what { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row .when { color: var(--ink-soft); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .row .id { grid-column: 2 / -1; font: 11px var(--mono); color: var(--ink-soft); }
+  .detail { padding: 14px 16px; display: flex; flex-direction: column; gap: 16px; }
+  .detail h3 { font-size: 12px; font-weight: 600; color: var(--ink-soft); margin: 0 0 6px; }
+  .detail pre {
+    font: 12px/1.5 var(--mono); background: var(--canvas); border-radius: 6px; padding: 10px;
+    margin: 0; overflow: auto; max-height: 280px; white-space: pre-wrap; word-break: break-word;
+  }
+  .kv { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; font-size: 13px; margin: 0; }
+  .kv dt { color: var(--ink-soft); }
+  .kv dd { margin: 0; word-break: break-all; }
+  .hops { list-style: none; margin: 0; padding: 0; font-size: 13px; }
+  .hops li { display: grid; grid-template-columns: 62px 1fr; gap: 8px; padding: 4px 0; border-bottom: 1px solid var(--grid); }
+  .hops .at { color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+  .hops .failed { color: var(--fail); }
+  .link { color: var(--water); background: none; border: 0; padding: 0; text-decoration: underline; cursor: pointer; font: inherit; }
+
+  @media (max-width: 760px) {
+    body { grid-template-columns: 1fr; grid-template-rows: auto 1fr 45%; }
+    aside { border-left: 0; border-top: 1px solid var(--line); }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Watermill Inspector</h1>
+  <span id="status">Connecting</span>
+  <span class="spacer"></span>
+  <div class="controls">
+    <div class="seg" role="group" aria-label="Theme">
+      <button data-theme-choice="system">System</button>
+      <button data-theme-choice="light">Light</button>
+      <button data-theme-choice="dark">Dark</button>
+    </div>
+    <button id="pause" aria-pressed="false">Pause</button>
+    <button id="arrange">Arrange nodes</button>
+    <button id="fit">Fit to screen</button>
+  </div>
+</header>
+
+<div id="board">
+  <svg id="svg" aria-label="Graph of Watermill components">
+    <defs>
+      <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto-start-reverse">
+        <path d="M0,0 L10,5 L0,10 z"></path>
+      </marker>
+    </defs>
+    <g id="viewport">
+      <g id="frames"></g>
+      <g id="edges"></g>
+      <g id="particles"></g>
+      <g id="nodes"></g>
+    </g>
+  </svg>
+  <div id="empty">No Watermill components yet.<br>Create the inspector handler before routers and Pub/Subs.</div>
+</div>
+
+<aside>
+  <div class="panel-head">
+    <h2 id="panel-title">Messages</h2>
+    <span class="spacer"></span>
+    <button id="back" hidden>Back to messages</button>
+  </div>
+  <div class="toolbar" id="toolbar">
+    <input id="filter" type="search" placeholder="Filter by topic, handler or UUID" aria-label="Filter messages" autocomplete="off">
+    <button id="failed-only" aria-pressed="false">Failed only</button>
+  </div>
+  <div class="panel-body" id="scroller">
+    <div class="more-wrap"><button id="more" hidden></button></div>
+    <div id="panel"></div>
+  </div>
+</aside>
+
+<script>
+"use strict";
+
+const SVG_NS = "http://www.w3.org/2000/svg";
+const NODE_W = 196, NODE_H = 54, LAYER_GAP = 84, ROW_GAP = 30;
+const FRAME_PAD = 18, FRAME_HEAD = 30, LANE_GAP = 34;
+const HOP_MS = 650;
+const MAX_MESSAGES = 300;
+// Failed messages are kept longer than others, up to MAX_FAILED of them, so "Failed only" has something to show.
+const MAX_FAILED = 100;
+// Dots moving along one edge at a time. Messages above that are not drawn, apart from failed and selected ones.
+// MAX_PARTICLES is a limit for all edges together, to keep the page responsive.
+const MAX_PER_EDGE = 4, MAX_PARTICLES = 600;
+// Events received while paused are kept up to this number.
+const MAX_QUEUED = 20000;
+const SERVICE_COLORS = 8;
+
+const svg = document.getElementById("svg");
+const viewport = document.getElementById("viewport");
+const framesLayer = document.getElementById("frames");
+const edgesLayer = document.getElementById("edges");
+const particlesLayer = document.getElementById("particles");
+const nodesLayer = document.getElementById("nodes");
+const scroller = document.getElementById("scroller");
+const panel = document.getElementById("panel");
+const panelTitle = document.getElementById("panel-title");
+const backButton = document.getElementById("back");
+const toolbar = document.getElementById("toolbar");
+const filterInput = document.getElementById("filter");
+const failedOnlyButton = document.getElementById("failed-only");
+const moreButton = document.getElementById("more");
+const statusEl = document.getElementById("status");
+const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+const state = {
+  all: new Map(),        // every node from the server, including routers and Pub/Subs
+  nodes: new Map(),      // drawn nodes: id -> view
+  edges: new Map(),      // "from|to" -> view
+  frames: new Map(),     // service name -> frame around the nodes of the service
+  messages: new Map(),   // uuid -> message with its events
+  failedCount: 0,        // number of failed messages in state.messages
+  seq: 0,                // number given to the last new message
+  renderedSeq: 0,        // state.seq when the panel was last drawn
+  view: { x: 40, y: 40, k: 1 },
+  connected: null,       // null before the first connection
+  paused: false,
+  selection: null,       // {type: "message" | "node", id}
+  filter: { text: "", failedOnly: false },
+  hoverRows: false,      // true when the pointer is over a list of messages
+  fittedNodes: 0,        // number of nodes when the graph was last fitted to the screen
+  viewMoved: false,      // true when the user has panned or zoomed
+  services: [],          // services shown in the inspector: {name, instances}
+  pendingSelection: null,
+  serviceColors: new Map(),
+};
+
+function el(tag, attrs, text) {
+  const node = document.createElement(tag);
+  for (const key in attrs || {}) node.setAttribute(key, attrs[key]);
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+function svgEl(tag, attrs) {
+  const node = document.createElementNS(SVG_NS, tag);
+  for (const key in attrs || {}) node.setAttribute(key, attrs[key]);
+  return node;
+}
+function shorten(text, max) {
+  return text.length > max ? text.slice(0, max - 1) + "…" : text;
+}
+function capitalize(text) {
+  text = String(text);
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+function clock(ms) {
+  const d = new Date(ms);
+  const pad = (n, l = 2) => String(n).padStart(l, "0");
+  return pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":" + pad(d.getSeconds()) + "." + pad(d.getMilliseconds(), 3);
+}
+function nodeName(id) {
+  const node = state.all.get(id);
+  return node ? node.name : id;
+}
+
+// ---------- theme ----------
+
+const THEME_KEY = "watermill-inspector-theme";
+const themeButtons = [...document.querySelectorAll("[data-theme-choice]")];
+
+function setTheme(choice) {
+  if (choice === "light" || choice === "dark") document.documentElement.dataset.theme = choice;
+  else delete document.documentElement.dataset.theme;
+  for (const button of themeButtons) button.setAttribute("aria-pressed", String(button.dataset.themeChoice === choice));
+}
+
+for (const button of themeButtons) {
+  button.addEventListener("click", () => {
+    const choice = button.dataset.themeChoice;
+    setTheme(choice);
+    try { localStorage.setItem(THEME_KEY, choice); } catch (_) { /* storage is not available */ }
+  });
+}
+setTheme(document.documentElement.dataset.theme || "system");
+
+// ---------- topology ----------
+
+const DRAWN = new Set(["handler", "topic", "bus"]);
+
+function applyTopology(topology) {
+  state.services = topology.services || [];
+  assignColors();
+  // A component that nothing goes through, like a bus that has not published yet, is not shown.
+  const connected = new Set(topology.edges.flatMap(edge => [edge.from, edge.to]));
+  topology.nodes = topology.nodes.filter(node => !DRAWN.has(node.kind) || connected.has(node.id));
+  state.all = new Map(topology.nodes.map(n => [n.id, n]));
+
+  // Nodes and edges of services that are gone are removed.
+  for (const [id, view] of state.nodes) {
+    if (state.all.has(id)) continue;
+    view.g.remove();
+    state.nodes.delete(id);
+  }
+  const edgeKeys = new Set(topology.edges.map(edge => edge.from + "|" + edge.to));
+  for (const [key, edge] of state.edges) {
+    if (edgeKeys.has(key) && state.nodes.has(edge.data.from) && state.nodes.has(edge.data.to)) continue;
+    edge.path.remove();
+    state.edges.delete(key);
+  }
+
+  for (const data of topology.nodes) {
+    if (!DRAWN.has(data.kind)) continue;
+    let view = state.nodes.get(data.id);
+    if (!view) {
+      view = createNode(data);
+      state.nodes.set(data.id, view);
+    }
+    view.data = data;
+    updateNodeLabels(view);
+  }
+
+  for (const data of topology.edges) {
+    const key = data.from + "|" + data.to;
+    if (state.edges.has(key) || !state.nodes.has(data.from) || !state.nodes.has(data.to)) continue;
+    const path = svgEl("path", { class: "edge" + (data.dynamic ? " dynamic" : ""), "marker-end": "url(#arrow)" });
+    edgesLayer.appendChild(path);
+    state.edges.set(key, { data, path, buckets: new Array(RATE_WINDOW).fill(0), second: 0, inFlight: 0 });
+  }
+
+  document.getElementById("empty").hidden = state.nodes.size > 0;
+  layout(false);
+  // The graph grows when other services are found. It's fitted again, unless the view was moved by hand.
+  if (!state.viewMoved && state.nodes.size !== state.fittedNodes) {
+    fit();
+    state.fittedNodes = state.nodes.size;
+  }
+  highlightSelection();
+}
+
+// Colors are given to services in the order of their names, starting from a color picked by the name.
+// So a service has the same color in the inspector of every service, and two services share a color
+// only when there are more services than colors. The colors are CSS variables, so they follow the theme.
+function assignColors() {
+  state.serviceColors.clear();
+  const used = new Set();
+  for (const name of state.services.map(service => service.name).sort()) {
+    let hash = 0;
+    for (const char of name) hash = (hash * 31 + char.codePointAt(0)) >>> 0;
+    let index = hash % SERVICE_COLORS;
+    for (let i = 0; i < SERVICE_COLORS && used.has(index); i++) index = (index + 1) % SERVICE_COLORS;
+    used.add(index);
+    state.serviceColors.set(name, "var(--s" + index + ")");
+  }
+}
+
+function serviceColor(name) {
+  return state.serviceColors.get(name) || "var(--s0)";
+}
+
+function createNode(data) {
+  const g = svgEl("g", { class: "node " + data.kind, tabindex: "0", role: "button" });
+  const shape = svgEl("rect", {
+    class: "shape", width: NODE_W, height: NODE_H,
+    rx: data.kind === "topic" ? NODE_H / 2 : 7,
+  });
+  g.appendChild(shape);
+
+  const textX = data.kind === "topic" ? 22 : 16;
+  // A bus has no caption, so its name is in the middle.
+  const name = svgEl("text", { class: "name", x: textX, y: data.kind === "bus" ? 32 : 23 });
+  const caption = svgEl("text", { class: "caption", x: textX, y: 40 });
+  const rate = svgEl("text", { class: "rate", x: NODE_W - (data.kind === "topic" ? 20 : 10), y: 40 });
+  const title = svgEl("title");
+  g.append(name, caption, rate, title);
+  // The dot tells if the handler is idle, working, or failing.
+  let health = null;
+  if (data.kind === "handler") {
+    health = svgEl("circle", { class: "health", cx: NODE_W - 14, cy: 18, r: 4 });
+    g.appendChild(health);
+  }
+  nodesLayer.appendChild(g);
+
+  const view = { data, g, name, caption, rate, health, title, lane: "", x: 0, y: 0, moved: false, samples: [] };
+  makeDraggable(view);
+  g.addEventListener("keydown", e => {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select({ type: "node", id: data.id }); }
+  });
+  return view;
+}
+
+// pubSubLabel returns the kind of the Pub/Sub ("Kafka", "GoChannel"), or its full name when
+// another Pub/Sub of the same kind is shown next to it.
+function pubSubLabel(id) {
+  const node = state.all.get(id);
+  if (!node) return "";
+  const short = node.name.split(" ")[0];
+  for (const other of state.all.values()) {
+    if (other !== node && other.kind === "pubsub" && other.service === node.service && other.name.split(" ")[0] === short) {
+      return node.name;
+    }
+  }
+  return short;
+}
+
+function captionOf(data) {
+  const labels = data.labels || {};
+  if (data.kind === "topic") {
+    const pubSub = data.parent ? pubSubLabel(data.parent) : "";
+    return labels.role ? labels.role + ", " + pubSub : pubSub;
+  }
+  // Components like FanIn label their router, not each handler.
+  if (data.kind === "handler") {
+    const router = state.all.get(data.parent);
+    return labels.component || (router && router.labels && router.labels.component) || "Handler";
+  }
+  return "";
+}
+
+function updateNodeLabels(view) {
+  const data = view.data;
+  // The name of a handler leaves space for the dot.
+  view.name.textContent = shorten(data.name, data.kind === "handler" ? 22 : 24);
+  view.title.textContent = data.name;
+  view.g.classList.toggle("poison", (data.labels || {}).role === "poison queue");
+  updateRate(view);
+}
+
+// Rates are averages over the last RATE_WINDOW seconds. They are calculated from the totals that the server
+// sends every second, so they don't depend on the events that reach the browser.
+const RATE_WINDOW = 10;
+const NO_STATS = { published: 0, handled: 0, failed: 0, handlingMs: 0 };
+
+// sample remembers the totals of the node at this moment.
+function sample(view, totals, now) {
+  const stats = { time: now, ...NO_STATS, ...totals };
+  const last = view.samples[view.samples.length - 1];
+  // Totals go down when an instance of the service is gone. The rate starts from scratch then.
+  if (last && (stats.published < last.published || stats.handled < last.handled || stats.failed < last.failed)) {
+    view.samples.length = 0;
+  }
+  view.samples.push(stats);
+  while (view.samples.length > 2 && view.samples[1].time <= now - RATE_WINDOW * 1000) view.samples.shift();
+}
+
+// rates returns per-second rates of the node.
+function rates(view) {
+  const first = view.samples[0], last = view.samples[view.samples.length - 1];
+  const seconds = first ? (last.time - first.time) / 1000 : 0;
+  if (seconds <= 0) return { handled: 0, failed: 0, seen: 0, averageMs: 0 };
+
+  const handled = last.handled - first.handled;
+  return {
+    handled: handled / seconds,
+    failed: (last.failed - first.failed) / seconds,
+    seen: (last.published - first.published) / seconds,
+    averageMs: handled ? (last.handlingMs - first.handlingMs) / handled : 0,
+  };
+}
+
+function applyStats(stats) {
+  const now = Date.now();
+  for (const view of state.nodes.values()) sample(view, stats[view.data.id], now);
+  // While paused, the totals are still kept, but the screen doesn't change.
+  if (state.paused) return;
+  refreshRates();
+}
+
+function refreshRates() {
+  for (const view of state.nodes.values()) updateRate(view);
+  updateEdgeWidths();
+  if (state.selection && state.selection.type === "node") listDirty = true;
+}
+
+function perSecond(rate) {
+  if (rate >= 100) return Math.round(rate) + "/s";
+  // A rate too small to show is still not zero.
+  if (rate > 0 && rate < 0.05) return "<0.1/s";
+  return rate.toFixed(1) + "/s";
+}
+
+function updateRate(view) {
+  const rate = rates(view);
+  // The caption and the rate share a line. While a handler fails, its caption gives way to the rate of failures.
+  view.caption.textContent = rate.failed
+    ? perSecond(rate.failed) + " failed"
+    : shorten(captionOf(view.data), view.data.kind === "topic" ? 20 : 24);
+  view.caption.classList.toggle("errors", rate.failed > 0);
+  if (view.data.kind !== "handler") {
+    view.rate.textContent = rate.seen ? perSecond(rate.seen) : "";
+    view.g.classList.toggle("receiving", rate.seen > 0);
+    return;
+  }
+
+  view.health.classList.toggle("ok", rate.handled > 0 && rate.failed === 0);
+  view.health.classList.toggle("failing", rate.failed > 0);
+
+  view.rate.textContent = rate.handled ? perSecond(rate.handled) : "";
+}
+
+// Edges count the messages that went along them in the last RATE_WINDOW seconds, one counter per second.
+// The server has no totals for edges, so these come from the events that reached the browser.
+function countOnEdge(edge, now) {
+  const second = Math.floor(now / 1000);
+  if (second !== edge.second) {
+    for (let s = edge.second + 1; s <= second && s <= edge.second + RATE_WINDOW; s++) edge.buckets[s % RATE_WINDOW] = 0;
+    edge.second = second;
+  }
+  edge.buckets[second % RATE_WINDOW]++;
+}
+
+function edgeRate(edge, now) {
+  const second = Math.floor(now / 1000);
+  let sum = 0;
+  for (let s = Math.max(second - RATE_WINDOW + 1, 0); s <= edge.second; s++) sum += edge.buckets[s % RATE_WINDOW];
+  return sum / RATE_WINDOW;
+}
+
+// A busier edge is thicker, on a log scale: 1/s is barely thicker than idle, 1000/s is about four times as thick.
+function updateEdgeWidths() {
+  const now = Date.now();
+  for (const edge of state.edges.values()) {
+    const width = 1.5 + Math.min(5, 1.5 * Math.log10(1 + edgeRate(edge, now)));
+    edge.path.style.setProperty("--w", width.toFixed(2) + "px");
+  }
+}
+
+// lanes puts every node in a lane. Each service has a lane, drawn as a frame around its nodes.
+// Topics of shared Pub/Subs don't belong to any service, even when only one uses them.
+// They are in a lane of their own, between the services.
+function lanes() {
+  for (const view of state.nodes.values()) view.lane = view.data.service || "";
+
+  const connected = new Set(); // services that use a shared topic
+  for (const { data } of state.edges.values()) {
+    const from = state.nodes.get(data.from).lane, to = state.nodes.get(data.to).lane;
+    if (from && !to) connected.add(from);
+    if (to && !from) connected.add(to);
+  }
+
+  // Services that use shared topics are around them. The rest is below.
+  const names = state.services.map(service => service.name);
+  for (const view of state.nodes.values()) if (view.lane && !names.includes(view.lane)) names.push(view.lane);
+  const talking = names.filter(name => connected.has(name));
+  const half = Math.ceil(talking.length / 2);
+  return [...talking.slice(0, half), "", ...talking.slice(half), ...names.filter(name => !connected.has(name))];
+}
+
+// Layered layout from left to right, with a lane for every service.
+// Nodes moved by hand keep their position.
+function layout(force) {
+  const laneOrder = lanes();
+
+  const ids = [...state.nodes.keys()];
+  const out = new Map(ids.map(id => [id, []]));
+  const incoming = new Map(ids.map(id => [id, []]));
+  for (const { data } of state.edges.values()) {
+    out.get(data.from).push(data.to);
+    incoming.get(data.to).push(data.from);
+  }
+
+  // Depth-first search finds edges that close a cycle. They are ignored when assigning layers.
+  const visit = new Map(), back = new Set(), order = [];
+  const dfs = id => {
+    visit.set(id, 1);
+    for (const next of out.get(id)) {
+      if (visit.get(next) === 1) back.add(id + "|" + next);
+      else if (!visit.has(next)) dfs(next);
+    }
+    visit.set(id, 2);
+    order.unshift(id);
+  };
+  const roots = ids.filter(id => incoming.get(id).length === 0);
+  for (const id of roots.concat(ids)) if (!visit.has(id)) dfs(id);
+
+  const layer = new Map();
+  for (const id of order) {
+    let depth = 0;
+    for (const prev of incoming.get(id)) {
+      if (!back.has(prev + "|" + id) && layer.has(prev)) depth = Math.max(depth, layer.get(prev) + 1);
+    }
+    layer.set(id, depth);
+  }
+
+  // A node with no edges, like a bus that is not used yet, starts where its service starts.
+  const laneStart = new Map();
+  for (const [id, view] of state.nodes) {
+    if (!out.get(id).length && !incoming.get(id).length) continue;
+    laneStart.set(view.lane, Math.min(laneStart.get(view.lane) ?? Infinity, layer.get(id)));
+  }
+  for (const [id, view] of state.nodes) {
+    if (!out.get(id).length && !incoming.get(id).length) layer.set(id, laneStart.get(view.lane) ?? 0);
+  }
+
+  const layers = [];
+  for (const id of order) (layers[layer.get(id)] ||= []).push(id);
+
+  // The order inside a layer follows the order of the nodes that lead to it, to keep edges from crossing.
+  const row = new Map();
+  layers.forEach((members, index) => {
+    const weight = id => {
+      const prev = incoming.get(id).filter(p => row.has(p) && layer.get(p) < index);
+      if (!prev.length) return 1e6;
+      return prev.reduce((sum, p) => sum + row.get(p), 0) / prev.length;
+    };
+    const weights = new Map(members.map(id => [id, weight(id)]));
+    members.sort((a, b) => weights.get(a) - weights.get(b) ||
+      String(state.nodes.get(a).data.parent).localeCompare(String(state.nodes.get(b).data.parent)));
+    members.forEach((id, i) => row.set(id, i));
+  });
+
+  const step = NODE_H + ROW_GAP;
+  let top = 0;
+  for (const lane of laneOrder) {
+    const columns = layers.map(members => members.filter(id => state.nodes.get(id).lane === lane));
+    const tallest = Math.max(0, ...columns.map(members => members.length));
+    if (!tallest) continue;
+
+    // A frame has a header and a padding. The lane of shared topics has no frame.
+    if (lane) top += FRAME_HEAD;
+    columns.forEach((members, index) => {
+      const offset = (tallest - members.length) * step / 2;
+      members.forEach((id, i) => {
+        const view = state.nodes.get(id);
+        if (view.moved && !force) return;
+        view.moved = false;
+        view.x = index * (NODE_W + LAYER_GAP);
+        view.y = top + offset + i * step;
+      });
+    });
+    top += tallest * step - ROW_GAP + (lane ? FRAME_PAD : 0) + LANE_GAP;
+  }
+
+  for (const view of state.nodes.values()) placeNode(view);
+  for (const edge of state.edges.values()) placeEdge(edge);
+  placeFrames();
+}
+
+// placeFrames draws a frame around the nodes of every service.
+function placeFrames() {
+  const boxes = new Map();
+  for (const view of state.nodes.values()) {
+    if (!view.lane) continue;
+    const box = boxes.get(view.lane) || { x1: Infinity, y1: Infinity, x2: -Infinity, y2: -Infinity };
+    box.x1 = Math.min(box.x1, view.x); box.y1 = Math.min(box.y1, view.y);
+    box.x2 = Math.max(box.x2, view.x + NODE_W); box.y2 = Math.max(box.y2, view.y + NODE_H);
+    boxes.set(view.lane, box);
+  }
+
+  for (const [name, frame] of state.frames) {
+    if (boxes.has(name)) continue;
+    frame.g.remove();
+    state.frames.delete(name);
+  }
+
+  for (const [name, box] of boxes) {
+    let frame = state.frames.get(name);
+    if (!frame) {
+      frame = createFrame(name);
+      state.frames.set(name, frame);
+    }
+
+    const x = box.x1 - FRAME_PAD, y = box.y1 - FRAME_HEAD - 4;
+    frame.rect.setAttribute("x", x);
+    frame.rect.setAttribute("y", y);
+    frame.rect.setAttribute("width", box.x2 - box.x1 + 2 * FRAME_PAD);
+    frame.rect.setAttribute("height", box.y2 - y + FRAME_PAD);
+    frame.g.style.setProperty("--c", serviceColor(name));
+
+    const service = state.services.find(service => service.name === name);
+    const instances = service ? service.instances : 1;
+    frame.label.setAttribute("x", x + 14);
+    frame.label.setAttribute("y", y + 22);
+    frame.name.textContent = name;
+    frame.instances.textContent = instances > 1 ? "  " + instances + " instances" : "";
+  }
+}
+
+function createFrame(name) {
+  const g = svgEl("g", { class: "frame" });
+  const rect = svgEl("rect", { rx: 12 });
+  const label = svgEl("text");
+  const nameSpan = svgEl("tspan"), instances = svgEl("tspan", { class: "instances" });
+  label.append(nameSpan, instances);
+  g.append(rect, label);
+  framesLayer.appendChild(g);
+
+  // Dragging a frame moves all nodes of the service.
+  g.addEventListener("pointerdown", e => {
+    e.stopPropagation();
+    const members = [...state.nodes.values()].filter(view => view.lane === name);
+    const start = members.map(view => ({ view, x: view.x, y: view.y }));
+    const from = { x: e.clientX, y: e.clientY };
+    g.setPointerCapture(e.pointerId);
+    const move = ev => {
+      const dx = (ev.clientX - from.x) / state.view.k, dy = (ev.clientY - from.y) / state.view.k;
+      for (const { view, x, y } of start) {
+        view.moved = true;
+        view.x = x + dx;
+        view.y = y + dy;
+        placeNode(view);
+      }
+      for (const edge of state.edges.values()) placeEdge(edge);
+      placeFrames();
+    };
+    const up = () => {
+      g.removeEventListener("pointermove", move);
+      g.removeEventListener("pointerup", up);
+      g.removeEventListener("pointercancel", up);
+    };
+    g.addEventListener("pointermove", move);
+    g.addEventListener("pointerup", up);
+    g.addEventListener("pointercancel", up);
+  });
+
+  return { g, rect, label, name: nameSpan, instances };
+}
+
+function placeNode(view) {
+  view.g.setAttribute("transform", "translate(" + view.x + "," + view.y + ")");
+}
+
+function placeEdge(edge) {
+  const from = state.nodes.get(edge.data.from), to = state.nodes.get(edge.data.to);
+  const x1 = from.x + NODE_W, y1 = from.y + NODE_H / 2;
+  const x2 = to.x - 3, y2 = to.y + NODE_H / 2;
+  const bend = Math.max(50, Math.abs(x2 - x1) / 2);
+  edge.path.setAttribute("d", "M" + x1 + "," + y1 + " C" + (x1 + bend) + "," + y1 + " " + (x2 - bend) + "," + y2 + " " + x2 + "," + y2);
+}
+
+// ---------- pan, zoom, drag ----------
+
+function applyView() {
+  const v = state.view;
+  viewport.setAttribute("transform", "translate(" + v.x + "," + v.y + ") scale(" + v.k + ")");
+}
+
+function fit() {
+  if (!state.nodes.size) return;
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const view of state.nodes.values()) {
+    minX = Math.min(minX, view.x); minY = Math.min(minY, view.y);
+    maxX = Math.max(maxX, view.x + NODE_W); maxY = Math.max(maxY, view.y + NODE_H);
+  }
+  minX -= FRAME_PAD; maxX += FRAME_PAD; minY -= FRAME_HEAD + 4; maxY += FRAME_PAD;
+  const box = svg.getBoundingClientRect(), margin = 30;
+  const width = maxX - minX, height = maxY - minY;
+  const k = Math.max(0.15, Math.min(1.2, (box.width - 2 * margin) / width, (box.height - 2 * margin) / height));
+  state.view.k = k;
+  state.view.x = (box.width - width * k) / 2 - minX * k;
+  state.view.y = (box.height - height * k) / 2 - minY * k;
+  applyView();
+}
+
+svg.addEventListener("wheel", e => {
+  e.preventDefault();
+  const box = svg.getBoundingClientRect();
+  const px = e.clientX - box.left, py = e.clientY - box.top;
+  const v = state.view;
+  const k = Math.min(3, Math.max(0.15, v.k * Math.exp(-e.deltaY * 0.0015)));
+  v.x = px - (px - v.x) * (k / v.k);
+  v.y = py - (py - v.y) * (k / v.k);
+  v.k = k;
+  state.viewMoved = true;
+  applyView();
+}, { passive: false });
+
+// Dragging the background pans. A click on the background clears the selection.
+svg.addEventListener("pointerdown", e => {
+  if (e.target.closest(".node, .frame")) return;
+  const start = { x: e.clientX, y: e.clientY, vx: state.view.x, vy: state.view.y };
+  let moved = false;
+  svg.setPointerCapture(e.pointerId);
+  svg.classList.add("panning");
+  const move = ev => {
+    if (!moved && Math.abs(ev.clientX - start.x) + Math.abs(ev.clientY - start.y) < 4) return;
+    moved = true;
+    state.viewMoved = true;
+    state.view.x = start.vx + ev.clientX - start.x;
+    state.view.y = start.vy + ev.clientY - start.y;
+    applyView();
+  };
+  const up = () => {
+    svg.classList.remove("panning");
+    svg.removeEventListener("pointermove", move);
+    svg.removeEventListener("pointerup", up);
+    svg.removeEventListener("pointercancel", up);
+    if (!moved && state.selection) select(null);
+  };
+  svg.addEventListener("pointermove", move);
+  svg.addEventListener("pointerup", up);
+  svg.addEventListener("pointercancel", up);
+});
+
+function makeDraggable(view) {
+  view.g.addEventListener("pointerdown", e => {
+    e.stopPropagation();
+    const start = { x: e.clientX, y: e.clientY, nx: view.x, ny: view.y };
+    let dragged = false;
+    view.g.setPointerCapture(e.pointerId);
+    const move = ev => {
+      const dx = (ev.clientX - start.x) / state.view.k, dy = (ev.clientY - start.y) / state.view.k;
+      if (!dragged && Math.abs(dx) + Math.abs(dy) < 4) return;
+      dragged = true;
+      view.moved = true;
+      view.x = start.nx + dx;
+      view.y = start.ny + dy;
+      placeNode(view);
+      for (const edge of state.edges.values()) {
+        if (edge.data.from === view.data.id || edge.data.to === view.data.id) placeEdge(edge);
+      }
+      placeFrames();
+    };
+    const up = () => {
+      view.g.removeEventListener("pointermove", move);
+      view.g.removeEventListener("pointerup", up);
+      view.g.removeEventListener("pointercancel", up);
+      if (!dragged) select({ type: "node", id: view.data.id });
+    };
+    view.g.addEventListener("pointermove", move);
+    view.g.addEventListener("pointerup", up);
+    view.g.addEventListener("pointercancel", up);
+  });
+}
+
+// ---------- events and animation ----------
+
+const particles = [];
+const hopEnds = new Map(); // "uuid|node" -> time when the message visually arrives at the node
+
+function hopEnd(uuid, node) {
+  return hopEnds.get(uuid + "|" + node) || 0;
+}
+function setHopEnd(uuid, node, at) {
+  hopEnds.set(uuid + "|" + node, at);
+  if (hopEnds.size > 4000) {
+    const now = performance.now();
+    for (const [key, end] of hopEnds) if (end < now) hopEnds.delete(key);
+  }
+}
+
+function selectedMessage() {
+  return state.selection && state.selection.type === "message" ? state.selection.id : null;
+}
+
+// travel moves a dot along the edge. Each edge has at most MAX_PER_EDGE dots at a time, and the edge's
+// thickness shows how busy it is. Failed and selected messages are always drawn.
+function travel(fromID, toID, uuid, startAt) {
+  const edge = state.edges.get(fromID + "|" + toID);
+  const endAt = startAt + HOP_MS;
+  setHopEnd(uuid, toID, endAt);
+  if (!edge) return endAt;
+  countOnEdge(edge, Date.now());
+  if (reducedMotion || particles.length >= MAX_PARTICLES) return endAt;
+
+  const message = state.messages.get(uuid);
+  const failed = !!(message && message.failed);
+  const selected = selectedMessage() === uuid;
+  if (!failed && !selected && edge.inFlight >= MAX_PER_EDGE) return endAt;
+
+  const circle = svgEl("circle", {
+    class: "particle" + (failed ? " failed" : "") + (selected ? " on-path" : ""), r: 6, visibility: "hidden",
+  });
+  particlesLayer.appendChild(circle);
+  edge.inFlight++;
+  particles.push({ circle, edge, uuid, path: edge.path, length: edge.path.getTotalLength(), startAt, endAt });
+  return endAt;
+}
+
+function flash(view, cls, at) {
+  setTimeout(() => {
+    view.g.classList.add(cls);
+    setTimeout(() => view.g.classList.remove(cls), 450);
+  }, Math.max(0, at - performance.now()));
+}
+
+function frame(now) {
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    if (now >= p.endAt) {
+      p.circle.remove();
+      p.edge.inFlight--;
+      particles.splice(i, 1);
+      continue;
+    }
+    if (now < p.startAt) continue;
+    const point = p.path.getPointAtLength(p.length * (now - p.startAt) / (p.endAt - p.startAt));
+    p.circle.setAttribute("cx", point.x);
+    p.circle.setAttribute("cy", point.y);
+    p.circle.setAttribute("visibility", "visible");
+  }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+function animate(event) {
+  const now = performance.now();
+  const node = state.nodes.get(event.node), topic = state.nodes.get(event.topic);
+
+  if (event.kind === "published" && topic) {
+    if (node) {
+      // A handler publishes after it has received the message it's handling.
+      const startAt = Math.max(now, event.parent ? hopEnd(event.parent, event.node) : 0);
+      travel(event.node, event.topic, event.uuid, startAt);
+    } else {
+      // Published from outside a handler: the message starts at the topic.
+      setHopEnd(event.uuid, event.topic, now);
+    }
+  } else if (event.kind === "received" && node && topic) {
+    travel(event.topic, event.node, event.uuid, Math.max(now, hopEnd(event.uuid, event.topic)));
+  } else if (event.kind === "nacked" && node) {
+    flash(node, "flash-fail", Math.max(now, hopEnd(event.uuid, event.node)));
+  }
+}
+
+let listDirty = false;
+
+// Events that come while paused wait here. They are applied when the inspector is resumed.
+const queued = [];
+
+function receiveEvent(event) {
+  if (!state.paused) {
+    handleEvent(event);
+    return;
+  }
+  queued.push(event);
+  if (queued.length > MAX_QUEUED) queued.splice(0, MAX_QUEUED / 10);
+}
+
+function removeMessage(uuid) {
+  const message = state.messages.get(uuid);
+  if (message && message.failed) state.failedCount--;
+  state.messages.delete(uuid);
+}
+
+// evictMessage removes the oldest message, but keeps failed ones while there are at most MAX_FAILED of them.
+function evictMessage() {
+  for (const [uuid, message] of state.messages) {
+    if (!message.failed || state.failedCount > MAX_FAILED) {
+      removeMessage(uuid);
+      return;
+    }
+  }
+}
+
+function handleEvent(event) {
+  let message = state.messages.get(event.uuid);
+  if (!message) {
+    message = { uuid: event.uuid, seq: ++state.seq, time: event.time, events: [], pending: 0, failed: false };
+    state.messages.set(event.uuid, message);
+    if (state.messages.size > MAX_MESSAGES) evictMessage();
+  }
+  message.events.push(event);
+  // Events of other services may arrive later than they happened.
+  message.time = Math.min(message.time, event.time);
+  if (event.payloadSize || event.metadata) {
+    message.payload = event.payload;
+    message.payloadSize = event.payloadSize;
+    message.payloadTruncated = event.payloadTruncated;
+    message.payloadBinary = event.payloadBinary;
+    message.payloadHidden = event.payloadHidden;
+    message.metadata = event.metadata;
+  }
+  if (event.parent && event.parent !== event.uuid) message.parent = event.parent;
+  if (!message.topic && event.topic) message.topic = event.topic;
+  if (event.kind === "received") message.pending++;
+  if (event.kind === "acked" || event.kind === "nacked") message.pending = Math.max(0, message.pending - 1);
+  if (event.kind === "nacked" && !message.failed) {
+    message.failed = true;
+    state.failedCount++;
+  }
+
+  if (Date.now() - event.time < 3000) animate(event);
+  listDirty = true;
+}
+
+// ---------- side panel ----------
+
+// The selection is kept in the URL, so a link to a message or a node can be shared.
+function select(selection) {
+  state.selection = selection;
+  state.pendingSelection = null;
+  history.replaceState(null, "", selection ? "#" + selection.type + "=" + encodeURIComponent(selection.id) : location.pathname);
+  renderPanel();
+  highlightSelection();
+}
+
+backButton.addEventListener("click", () => select(null));
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && state.selection && !e.target.closest("input")) select(null);
+});
+
+function highlightSelection() {
+  const selection = state.selection;
+  const onPathNodes = new Set(), onPathEdges = new Set();
+  if (selection && selection.type === "message") {
+    const message = state.messages.get(selection.id);
+    for (const event of message ? message.events : []) {
+      if (event.topic) onPathNodes.add(event.topic);
+      if (event.node) onPathNodes.add(event.node);
+      if (event.kind === "published") onPathEdges.add(event.node + "|" + event.topic);
+      if (event.kind === "received") onPathEdges.add(event.topic + "|" + event.node);
+    }
+  }
+  viewport.classList.toggle("dimmed", onPathNodes.size > 0);
+  for (const [id, view] of state.nodes) {
+    view.g.classList.toggle("on-path", onPathNodes.has(id));
+    view.g.classList.toggle("selected", !!selection && selection.type === "node" && selection.id === id);
+  }
+  for (const [key, edge] of state.edges) edge.path.classList.toggle("on-path", onPathEdges.has(key));
+  const uuid = selectedMessage();
+  for (const p of particles) p.circle.classList.toggle("on-path", p.uuid === uuid);
+}
+
+function matchesFilter(message) {
+  if (state.filter.failedOnly && !message.failed) return false;
+  const query = state.filter.text.trim().toLowerCase();
+  if (!query) return true;
+  if (message.uuid.toLowerCase().startsWith(query)) return true;
+  return message.events.some(event =>
+    [event.topic, event.node].some(id => id && nodeName(id).toLowerCase().includes(query)));
+}
+
+function nodeFilter(id) {
+  return message => message.events.some(e => e.node === id || e.topic === id);
+}
+
+// listFilter returns which messages the panel lists, or null when it shows no list.
+function listFilter() {
+  const selection = state.selection;
+  if (!selection) return matchesFilter;
+  if (selection.type === "node") return nodeFilter(selection.id);
+  return null;
+}
+
+function messageRow(message) {
+  const row = el("button", { class: "row" });
+  const dot = el("span", { class: "dot" + (message.failed ? " failed" : message.pending ? " pending" : "") });
+  const what = el("span", { class: "what" }, message.topic ? nodeName(message.topic) : "Unknown topic");
+  const when = el("span", { class: "when" }, clock(message.time));
+  const id = el("span", { class: "id" }, message.uuid.slice(0, 8));
+  row.append(dot, what, when, id);
+  row.addEventListener("click", () => select({ type: "message", id: message.uuid }));
+  return row;
+}
+
+function renderMessageList(filter, empty) {
+  const rows = el("div", { class: "rows" });
+  // Messages are listed by time, not by arrival: events of other services can come late.
+  const messages = [...state.messages.values()].filter(filter).sort((a, b) => b.time - a.time).slice(0, 150);
+  if (!messages.length) rows.append(el("p", { class: "hint" }, empty));
+  else rows.append(...messages.map(messageRow));
+  return rows;
+}
+
+function section(title, content) {
+  const wrap = el("section");
+  wrap.append(el("h3", {}, title), content);
+  return wrap;
+}
+
+function keyValues(pairs) {
+  const dl = el("dl", { class: "kv" });
+  for (const [key, value] of pairs) {
+    const dd = el("dd");
+    dd.append(value instanceof Node ? value : document.createTextNode(String(value)));
+    dl.append(el("dt", {}, capitalize(key)), dd);
+  }
+  return dl;
+}
+
+function prettyPayload(message) {
+  if (message.payloadHidden) {
+    return message.payloadSize + " bytes. Payloads are not shown.\nTo see them, set Payloads to true in inspector.Config.";
+  }
+  if (message.payloadBinary) return "Binary payload, " + message.payloadSize + " bytes";
+  let text = message.payload || "";
+  try { text = JSON.stringify(JSON.parse(text), null, 2); } catch (_) { /* not JSON */ }
+  if (message.payloadTruncated) text += "\n… cut, " + message.payloadSize + " bytes in total";
+  return text || "Empty payload";
+}
+
+function describeHop(event) {
+  const topic = nodeName(event.topic);
+  let node = event.node ? nodeName(event.node) : "";
+  if (node && state.services.length > 1 && event.service) node += " (" + event.service + ")";
+  switch (event.kind) {
+    case "published": return (node ? node + " published to " : "Published to ") + topic;
+    case "received": return node + " received from " + topic;
+    case "acked": return node + " finished in " + (event.durationMs || 0).toFixed(1) + " ms";
+    case "nacked": return node + " failed after " + (event.durationMs || 0).toFixed(1) + " ms: " + event.error;
+  }
+  return event.kind;
+}
+
+function renderMessageDetail(message) {
+  const detail = el("div", { class: "detail" });
+  const facts = [["UUID", message.uuid], ["First seen", clock(message.time)]];
+  if (message.parent) {
+    const link = el("button", { class: "link" }, message.parent.slice(0, 8));
+    link.addEventListener("click", () => select({ type: "message", id: message.parent }));
+    facts.push(["Caused by", state.messages.has(message.parent) ? link : message.parent]);
+  }
+  detail.append(keyValues(facts));
+  detail.append(section("Payload", el("pre", {}, prettyPayload(message))));
+
+  const metadata = Object.entries(message.metadata || {});
+  if (metadata.length) {
+    // Metadata keys are shown as they are.
+    const dl = el("dl", { class: "kv" });
+    for (const [key, value] of metadata) dl.append(el("dt", {}, key), el("dd", {}, value));
+    detail.append(section("Metadata", dl));
+  }
+
+  const hops = el("ol", { class: "hops" });
+  for (const event of [...message.events].sort((a, b) => a.time - b.time)) {
+    const li = el("li");
+    li.append(el("span", { class: "at" }, "+" + (event.time - message.time) + " ms"),
+      el("span", { class: event.kind === "nacked" ? "failed" : "" }, describeHop(event)));
+    hops.appendChild(li);
+  }
+  detail.append(section("Path", hops));
+  return detail;
+}
+
+function renderNodeDetail(data) {
+  const detail = el("div", { class: "detail" });
+  const facts = [["Kind", capitalize(data.kind)]];
+  if (data.service) facts.push(["Service", data.service]);
+  if (data.parent) facts.push([data.kind === "topic" ? "Pub/Sub" : "Router", nodeName(data.parent)]);
+  if (data.type) facts.push(["Type", data.type]);
+  for (const [key, value] of Object.entries(data.labels || {})) facts.push([key, value]);
+  for (const resource of data.resources || []) facts.push([resource.kind, resource.name]);
+  // Resources of subscriptions, like consumer groups, are kept on the edges.
+  for (const { data: edge } of state.edges.values()) {
+    if (edge.from !== data.id && edge.to !== data.id) continue;
+    const other = edge.from === data.id ? edge.to : edge.from;
+    for (const resource of edge.resources || []) {
+      facts.push([resource.kind, data.kind === "topic" ? resource.name + " (" + nodeName(other) + ")" : resource.name]);
+    }
+  }
+  const view = state.nodes.get(data.id);
+  if (view) {
+    const rate = rates(view);
+    if (data.kind === "handler") {
+      facts.push(["Handled", perSecond(rate.handled)], ["Failed", perSecond(rate.failed)]);
+      if (rate.handled) facts.push(["Average time", rate.averageMs.toFixed(1) + " ms"]);
+    } else if (data.kind === "topic") {
+      facts.push(["Published", perSecond(rate.seen)]);
+    }
+  }
+  detail.append(keyValues(facts));
+
+  const list = renderMessageList(nodeFilter(data.id), "No messages yet.");
+  list.style.margin = "0 -16px";
+  detail.append(section("Recent messages", list));
+  return detail;
+}
+
+function renderPanel() {
+  const selection = state.selection;
+  backButton.hidden = !selection;
+  const scroll = scroller.scrollTop;
+
+  if (selection && selection.type === "message" && state.messages.has(selection.id)) {
+    panelTitle.textContent = "Message " + selection.id.slice(0, 8);
+    panel.replaceChildren(renderMessageDetail(state.messages.get(selection.id)));
+  } else if (selection && selection.type === "node" && state.all.has(selection.id)) {
+    panelTitle.textContent = nodeName(selection.id);
+    panel.replaceChildren(renderNodeDetail(state.all.get(selection.id)));
+  } else {
+    state.selection = null;
+    backButton.hidden = true;
+    panelTitle.textContent = "Messages";
+    const filtered = state.filter.text.trim() || state.filter.failedOnly;
+    panel.replaceChildren(renderMessageList(matchesFilter,
+      filtered ? "No messages match the filter." : "No messages yet. They show up here as they are published."));
+  }
+  toolbar.hidden = !!state.selection;
+  scroller.scrollTop = scroll;
+  state.renderedSeq = state.seq;
+  moreButton.hidden = true;
+}
+
+// A list of messages is not redrawn while the pointer is over it or while it's scrolled down,
+// so rows don't move while they are read. A button tells how many new messages are waiting.
+function listHeld() {
+  return !!listFilter() && (state.hoverRows || scroller.scrollTop > 8);
+}
+
+function updateMoreButton() {
+  const filter = listFilter();
+  let count = 0;
+  for (const message of state.messages.values()) if (message.seq > state.renderedSeq && filter(message)) count++;
+  moreButton.textContent = count === 1 ? "1 new message" : count + " new messages";
+  moreButton.hidden = count === 0;
+}
+
+scroller.addEventListener("pointermove", e => { state.hoverRows = !!e.target.closest(".rows"); });
+scroller.addEventListener("pointerleave", () => { state.hoverRows = false; });
+moreButton.addEventListener("click", () => {
+  scroller.scrollTop = 0;
+  state.hoverRows = false;
+  listDirty = false;
+  renderPanel();
+});
+
+filterInput.addEventListener("input", () => {
+  state.filter.text = filterInput.value;
+  renderPanel();
+});
+failedOnlyButton.addEventListener("click", () => {
+  state.filter.failedOnly = !state.filter.failedOnly;
+  failedOnlyButton.setAttribute("aria-pressed", String(state.filter.failedOnly));
+  renderPanel();
+});
+
+function selectionFromURL() {
+  const match = location.hash.match(/^#(message|node)=(.+)$/);
+  return match ? { type: match[1], id: decodeURIComponent(match[2]) } : null;
+}
+
+setInterval(() => {
+  const pending = state.pendingSelection;
+  if (pending && (pending.type === "message" ? state.messages : state.all).has(pending.id)) select(pending);
+  if (state.paused) renderStatus();
+  if (!listDirty) return;
+  if (listHeld()) {
+    updateMoreButton();
+    return;
+  }
+  listDirty = false;
+  renderPanel();
+  if (state.selection && state.selection.type === "message") highlightSelection();
+}, 400);
+
+// ---------- controls and connection ----------
+
+function renderStatus() {
+  statusEl.classList.toggle("live", !!state.connected);
+  if (state.connected === null) statusEl.textContent = "Connecting";
+  else if (!state.connected) statusEl.textContent = "Disconnected, retrying";
+  else if (state.paused) statusEl.textContent = queued.length ? "Paused, " + queued.length + " events waiting" : "Paused";
+  else statusEl.textContent = "Live";
+}
+
+const pauseButton = document.getElementById("pause");
+pauseButton.addEventListener("click", () => {
+  state.paused = !state.paused;
+  pauseButton.setAttribute("aria-pressed", String(state.paused));
+  pauseButton.textContent = state.paused ? "Resume" : "Pause";
+  if (!state.paused) {
+    for (const event of queued.splice(0)) handleEvent(event);
+    refreshRates();
+  }
+  renderStatus();
+});
+const fitAgain = () => { state.viewMoved = false; fit(); };
+document.getElementById("arrange").addEventListener("click", () => { layout(true); fitAgain(); });
+document.getElementById("fit").addEventListener("click", fitAgain);
+
+function connect() {
+  const source = new EventSource("api/events");
+  source.addEventListener("open", () => {
+    state.connected = true;
+    renderStatus();
+  });
+  source.addEventListener("error", () => {
+    state.connected = false;
+    renderStatus();
+  });
+  // Every connection is a new session on the server, which sends everything again.
+  source.addEventListener("hello", () => {
+    state.messages.clear();
+    state.failedCount = 0;
+    queued.length = 0;
+    for (const view of state.nodes.values()) {
+      view.samples.length = 0;
+      updateRate(view);
+    }
+    listDirty = true;
+  });
+  source.addEventListener("topology", e => applyTopology(JSON.parse(e.data)));
+  source.addEventListener("stats", e => applyStats(JSON.parse(e.data)));
+  source.addEventListener("message", e => receiveEvent(JSON.parse(e.data)));
+}
+
+applyView();
+state.pendingSelection = selectionFromURL();
+renderPanel();
+connect();
+</script>
+</body>
+</html>

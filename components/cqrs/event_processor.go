@@ -8,6 +8,7 @@ import (
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/ThreeDotsLabs/watermill/topology"
 )
 
 type EventProcessorConfig struct {
@@ -288,7 +289,10 @@ func (p EventProcessor) addHandlerToRouter(r *message.Router, handler EventHandl
 		return nil, errors.Wrap(err, "cannot create subscriber for event processor")
 	}
 
-	return addHandlerToRouter(p.config.Logger, r, handlerName, topicName, handlerFunc, subscriber), nil
+	routerHandler := addHandlerToRouter(p.config.Logger, r, handlerName, topicName, handlerFunc, subscriber)
+	topology.Current().Annotate(routerHandler, "", map[string]string{topology.LabelComponent: "CQRS Event Handler", "event": eventName})
+
+	return routerHandler, nil
 }
 
 func (p EventProcessor) Handlers() []EventHandler {

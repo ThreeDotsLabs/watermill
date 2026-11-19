@@ -12,6 +12,10 @@ paginate = 10
 rssLimit = 10
 summarylength = 20 # 70 (default)
 
+# Example READMEs are only a source of snippets. build.sh --copy deletes them,
+# but they are symlinked otherwise, and their relative images break the build.
+ignoreFiles = ['src-link/_examples/.*\.md$']
+
 # Multilingual
 defaultContentLanguage = "en"
 disableLanguages = []
