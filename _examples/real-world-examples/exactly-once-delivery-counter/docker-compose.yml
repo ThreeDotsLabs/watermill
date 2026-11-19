@@ -19,6 +19,13 @@ services:
     working_dir: /app
     command: 'go run .'
 
+  # The CI check in .validate_example.yml waits for the counter to reach 3, which only real requests can prove.
+  requests:
+    image: golang:1.25
+    depends_on:
+      - server
+    command: "sh -c 'for i in 1 2 3; do until curl -sf -X POST http://server:8080/count/demo; do sleep 1; done; done'"
+
   mysql:
     image: mysql:8.0
     restart: unless-stopped
