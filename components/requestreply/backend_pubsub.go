@@ -218,9 +218,7 @@ func (p PubSubBackend[Result]) ListenForNotifications(
 	return replyChan, nil
 }
 
-// sendReply gives up when ctx is done, because a plain send blocked the listener goroutine forever
-// once the caller stopped reading: SendWithReply cancels ctx after the first reply,
-// and a fan-out command can have more replies than fit into the buffer.
+// sendReply gives up when ctx is done, so the listener can finish even when nobody reads the replies anymore.
 func sendReply[Result any](ctx context.Context, replyChan chan<- Reply[Result], reply Reply[Result]) bool {
 	// When ctx is already done, the select below picks one of the ready cases at random.
 	// Trying to send first ensures that the reply is not dropped if there is space for it.
