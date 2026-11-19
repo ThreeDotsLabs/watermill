@@ -89,7 +89,7 @@ func (g *GoChannel) DescribeTopic(topic string) topology.Description {
 	}
 
 	return topology.Description{
-		PubSub: topology.PubSub{ID: id, Type: "gochannel", Name: name},
+		PubSub: topology.PubSub{ID: id, Type: "gochannel", Name: name, Local: true},
 	}
 }
 
@@ -130,7 +130,7 @@ func (g *GoChannel) Publish(topic string, messages ...*message.Message) error {
 
 	if registry := topology.Current(); registry != nil {
 		for _, msg := range messages {
-			registry.EmitPublished(g, topic, msg.Context(), msg.UUID, msg.Metadata, msg.Payload)
+			registry.ReportPublished(g, topic, msg.Context(), msg.UUID, msg.Metadata, msg.Payload)
 		}
 	}
 

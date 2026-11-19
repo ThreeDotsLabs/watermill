@@ -39,6 +39,12 @@ func Enable() *Registry {
 	}
 }
 
+// Disable drops the registry. Components created while it was enabled stop reporting to it.
+// It's mostly useful in tests, which can start with a fresh registry by calling Disable and then Enable.
+func Disable() {
+	current.Store(nil)
+}
+
 // Current returns the registry, or nil when it's not enabled.
 func Current() *Registry {
 	return current.Load()
@@ -83,9 +89,9 @@ type Node struct {
 	Labels map[string]string `json:"labels,omitempty"`
 	// Resources are the physical resources behind a topic, as reported by a Describer.
 	Resources []Resource `json:"resources,omitempty"`
-	// Shared is true for Pub/Subs that other services may be connected to, and for their topics.
-	// When topologies of many services are merged, shared nodes with the same ID become one node.
-	Shared bool `json:"shared,omitempty"`
+	// Local is true for Pub/Subs that exist only in this process, like GoChannel, and for their topics.
+	// When topologies of many services are merged, other Pub/Subs and topics with the same ID become one node.
+	Local bool `json:"local,omitempty"`
 }
 
 // Edge connects two nodes. Subscribe edges go from a topic, publish edges go to a topic.
@@ -108,7 +114,7 @@ type Snapshot struct {
 
 // Describer can be implemented by a Publisher or a Subscriber to describe what is behind a Watermill topic.
 //
-// A Pub/Sub that implements Describer should also report the messages it publishes with Registry.EmitPublished.
+// A Pub/Sub that implements Describer should also report the messages it publishes with Registry.ReportPublished.
 // DescribeTopic is called for every published message, so it should be cheap.
 type Describer interface {
 	DescribeTopic(topic string) Description
@@ -131,10 +137,10 @@ type PubSub struct {
 	ID   string
 	Type string
 	Name string
-	// Shared is true when other services may be connected to the same Pub/Sub, like a Kafka cluster.
-	// It's false for a Pub/Sub that exists only in this process, like GoChannel.
-	// When topologies of many services are merged, topics of shared Pub/Subs with the same ID become one node.
-	Shared bool
+	// Local is true for a Pub/Sub that exists only in this process, like GoChannel.
+	// Other Pub/Subs, like a Kafka cluster, may be shared by many services: when their topologies are merged,
+	// topics of Pub/Subs with the same ID become one node.
+	Local bool
 }
 
 // Resource is a physical resource of a Pub/Sub.
@@ -146,14 +152,16 @@ type Resource struct {
 type EventKind string
 
 const (
-	// EventPublished is emitted when a message is published to a topic.
+	// EventPublished is reported when a message is published to a topic.
 	EventPublished EventKind = "published"
-	// EventReceived is emitted when a handler receives a message.
+	// EventReceived is reported when a handler receives a message.
 	EventReceived EventKind = "received"
-	// EventAcked is emitted when a handler has processed a message.
-	EventAcked EventKind = "acked"
-	// EventNacked is emitted when a handler has failed to process a message.
-	EventNacked EventKind = "nacked"
+	// EventHandled is reported when a handler has handled a message with no error.
+	EventHandled EventKind = "handled"
+	// EventFailed is reported when a handler has failed to handle a message. It's about the handler, not the broker:
+	// a message that a middleware has dealt with, like the poison queue, is acked, but its handling has failed
+	// (see ReportFailure).
+	EventFailed EventKind = "failed"
 )
 
 // Event is something that happened to a message.
@@ -165,10 +173,10 @@ type Event struct {
 	NodeID  string
 	TopicID string
 	Message Message
-	// ParentUUID is the UUID of the message that was being handled when this one was published.
-	ParentUUID string
-	Error      string
-	Duration   time.Duration
+	// CausationUUID is the UUID of the message that was being handled when this one was published.
+	CausationUUID string
+	Error         string
+	Duration      time.Duration
 }
 
 // Message is a copy of the observed message.
@@ -211,22 +219,26 @@ func (r *Registry) CopyMessage(uuid string, metadata map[string]string, payload 
 	return m
 }
 
-// Source says which node is handling which message. It travels in the message context,
-// so that a message published while handling another one can be linked to it.
-type Source struct {
-	NodeID      string
-	MessageUUID string
+// Origin says where messages published with a context come from: the node that publishes them,
+// and the message it is handling, if any. It travels in the message context, so that a message
+// published while handling another one can be linked to it.
+type Origin struct {
+	NodeID string
+	// CausationUUID is the UUID of the message that the node is handling.
+	CausationUUID string
 }
 
-type sourceKey struct{}
+type originKey struct{}
 
-func ContextWithSource(ctx context.Context, source Source) context.Context {
-	return context.WithValue(ctx, sourceKey{}, source)
+// ContextWithOrigin returns a context with the origin of messages published with it.
+func ContextWithOrigin(ctx context.Context, origin Origin) context.Context {
+	return context.WithValue(ctx, originKey{}, origin)
 }
 
-func SourceFromContext(ctx context.Context) Source {
-	source, _ := ctx.Value(sourceKey{}).(Source)
-	return source
+// OriginFromContext returns the origin set with ContextWithOrigin, or an empty Origin.
+func OriginFromContext(ctx context.Context) Origin {
+	origin, _ := ctx.Value(originKey{}).(Origin)
+	return origin
 }
 
 type failureKey struct{}
@@ -266,7 +278,7 @@ type PublishTracker struct {
 	reported atomic.Bool
 }
 
-// Reported is true when the publish was reported with Registry.EmitPublished using the tracked context.
+// Reported is true when the publish was reported with Registry.ReportPublished using the tracked context.
 func (t *PublishTracker) Reported() bool {
 	return t.reported.Load()
 }
@@ -308,11 +320,11 @@ type Registry struct {
 	// replacedPubSubs maps old IDs of Pub/Subs to what replaced them (see ReplacePubSub).
 	replacedPubSubs map[string]PubSub
 
-	// emitMu is held while an event gets its sequence number and is passed to subscribers,
+	// reportMu is held while an event gets its sequence number and is passed to subscribers,
 	// so that every subscriber receives the events in the order of their numbers.
-	emitMu  sync.Mutex
-	subs    map[uint64]chan Event
-	nextSub uint64
+	reportMu sync.Mutex
+	subs     map[uint64]chan Event
+	nextSub  uint64
 }
 
 func newRegistry() *Registry {
@@ -646,7 +658,7 @@ func (r *Registry) TopicID(pubSub any, topic string) string {
 	}
 	if description.PubSub.ID == "" {
 		pkg, _, _ := strings.Cut(typeName(pubSub), ".")
-		description.PubSub = PubSub{ID: "pubsub-" + pkg, Type: pkg, Name: pkg, Shared: true}
+		description.PubSub = PubSub{ID: "pubsub-" + pkg, Type: pkg, Name: pkg}
 	}
 
 	id := description.PubSub.ID + "/" + topic
@@ -672,11 +684,11 @@ func (r *Registry) TopicID(pubSub any, topic string) string {
 	}
 
 	r.addNodeLocked(Node{
-		ID:     description.PubSub.ID,
-		Kind:   NodePubSub,
-		Name:   description.PubSub.Name,
-		Type:   description.PubSub.Type,
-		Shared: description.PubSub.Shared,
+		ID:    description.PubSub.ID,
+		Kind:  NodePubSub,
+		Name:  description.PubSub.Name,
+		Type:  description.PubSub.Type,
+		Local: description.PubSub.Local,
 	})
 	r.addNodeLocked(Node{
 		ID:        id,
@@ -685,7 +697,7 @@ func (r *Registry) TopicID(pubSub any, topic string) string {
 		Type:      description.PubSub.Type,
 		Parent:    description.PubSub.ID,
 		Resources: description.Resources,
-		Shared:    description.PubSub.Shared,
+		Local:     description.PubSub.Local,
 	})
 
 	return id
@@ -719,6 +731,18 @@ func (r *Registry) ReplacePubSub(oldID string, pubSub PubSub) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
+	// The new Pub/Sub may have been replaced too.
+	for i := 0; i < maxAliasChain; i++ {
+		replacement, ok := r.replacedPubSubs[pubSub.ID]
+		if !ok {
+			break
+		}
+		pubSub = replacement
+	}
+	if oldID == pubSub.ID {
+		return
+	}
+
 	r.replacedPubSubs[oldID] = pubSub
 
 	// Old ID to new ID of every moved node.
@@ -743,7 +767,7 @@ func (r *Registry) ReplacePubSub(oldID string, pubSub PubSub) {
 
 		node.ID = newNodeID
 		node.Type = pubSub.Type
-		node.Shared = pubSub.Shared
+		node.Local = pubSub.Local
 		if node.Kind == NodePubSub {
 			node.Name = pubSub.Name
 		} else {
@@ -862,8 +886,8 @@ func (r *Registry) Version() uint64 {
 	return r.version.Load()
 }
 
-// Emit passes the event to all subscribers. It never blocks: a subscriber that is too slow loses events.
-func (r *Registry) Emit(event Event) {
+// Report passes the event to all subscribers. It never blocks: a subscriber that is too slow loses events.
+func (r *Registry) Report(event Event) {
 	if r == nil {
 		return
 	}
@@ -880,8 +904,8 @@ func (r *Registry) Emit(event Event) {
 
 	// Subscribers skip events with numbers they have already seen, so an event must not overtake
 	// one with a lower number. Sending is non-blocking, so the lock is held only briefly.
-	r.emitMu.Lock()
-	defer r.emitMu.Unlock()
+	r.reportMu.Lock()
+	defer r.reportMu.Unlock()
 
 	event.Seq = r.seq.Add(1)
 	for _, sub := range r.subs {
@@ -928,14 +952,14 @@ func (r *Registry) count(event Event) {
 		if event.TopicID != "" {
 			r.nodeStats(event.TopicID).published.Add(1)
 		}
-	case EventAcked, EventNacked:
+	case EventHandled, EventFailed:
 		if event.NodeID == "" {
 			return
 		}
 		stats := r.nodeStats(event.NodeID)
 		stats.handled.Add(1)
 		stats.handlingTime.Add(int64(event.Duration))
-		if event.Kind == EventNacked {
+		if event.Kind == EventFailed {
 			stats.failed.Add(1)
 		}
 	}
@@ -962,9 +986,9 @@ func (r *Registry) Stats() []Stats {
 	return all
 }
 
-// EmitPublished reports a message published to the topic of the given Pub/Sub.
+// ReportPublished reports a message published to the topic of the given Pub/Sub.
 // ctx is the context of the message. It is used to find out what published the message.
-func (r *Registry) EmitPublished(pubSub any, topic string, ctx context.Context, uuid string, metadata map[string]string, payload []byte) {
+func (r *Registry) ReportPublished(pubSub any, topic string, ctx context.Context, uuid string, metadata map[string]string, payload []byte) {
 	if r == nil || r.isIgnored(topic) {
 		return
 	}
@@ -973,17 +997,17 @@ func (r *Registry) EmitPublished(pubSub any, topic string, ctx context.Context, 
 		tracker.reported.Store(true)
 	}
 
-	source := SourceFromContext(ctx)
-	r.Emit(Event{
-		Kind:       EventPublished,
-		NodeID:     source.NodeID,
-		TopicID:    r.TopicID(pubSub, topic),
-		Message:    r.CopyMessage(uuid, metadata, payload),
-		ParentUUID: source.MessageUUID,
+	origin := OriginFromContext(ctx)
+	r.Report(Event{
+		Kind:          EventPublished,
+		NodeID:        origin.NodeID,
+		TopicID:       r.TopicID(pubSub, topic),
+		Message:       r.CopyMessage(uuid, metadata, payload),
+		CausationUUID: origin.CausationUUID,
 	})
 }
 
-// SubscribeEvents returns a channel with all events emitted from now on, and a function that ends the subscription.
+// SubscribeEvents returns a channel with all events reported from now on, and a function that ends the subscription.
 // Events are dropped when the buffer of the channel is full. The events are received in the order of Event.Seq.
 //
 // On a nil Registry, the returned channel is closed.
@@ -994,15 +1018,15 @@ func (r *Registry) SubscribeEvents(buffer int) (<-chan Event, func()) {
 		return ch, func() {}
 	}
 
-	r.emitMu.Lock()
+	r.reportMu.Lock()
 	id := r.nextSub
 	r.nextSub++
 	r.subs[id] = ch
-	r.emitMu.Unlock()
+	r.reportMu.Unlock()
 
 	return ch, func() {
-		r.emitMu.Lock()
+		r.reportMu.Lock()
 		delete(r.subs, id)
-		r.emitMu.Unlock()
+		r.reportMu.Unlock()
 	}
 }

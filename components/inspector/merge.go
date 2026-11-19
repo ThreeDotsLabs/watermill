@@ -34,16 +34,16 @@ var peerClient = &http.Client{
 
 // streamPeer sends the topology and the events of another instance to out, until ctx is done.
 // It reconnects when the connection is lost.
-func (h *Handler) streamPeer(ctx context.Context, p peer, out chan<- item) {
+func (i *Inspector) streamPeer(ctx context.Context, p peer, out chan<- item) {
 	// Events are replayed after every connection. lastSeq is used to skip the ones that were already read.
 	var lastSeq uint64
 
 	for {
-		err := h.readPeer(ctx, p, out, &lastSeq)
+		err := i.readPeer(ctx, p, out, &lastSeq)
 		if ctx.Err() != nil {
 			return
 		}
-		h.config.Logger.Debug("Lost the inspector of another service: "+err.Error(), watermill.LogFields{
+		i.config.Logger.Debug("Lost the inspector of another service: "+err.Error(), watermill.LogFields{
 			"service": p.Service,
 			"url":     p.URL,
 		})
@@ -56,7 +56,7 @@ func (h *Handler) streamPeer(ctx context.Context, p peer, out chan<- item) {
 	}
 }
 
-func (h *Handler) readPeer(ctx context.Context, p peer, out chan<- item, lastSeq *uint64) error {
+func (i *Inspector) readPeer(ctx context.Context, p peer, out chan<- item, lastSeq *uint64) error {
 	streamURL, err := peerStreamURL(p.URL)
 	if err != nil {
 		return err
@@ -66,7 +66,7 @@ func (h *Handler) readPeer(ctx context.Context, p peer, out chan<- item, lastSeq
 	if err != nil {
 		return err
 	}
-	req.Header.Set("Authorization", "Bearer "+h.config.Token)
+	req.Header.Set("Authorization", "Bearer "+i.config.Token)
 
 	resp, err := peerClient.Do(req)
 	if err != nil {
@@ -158,10 +158,10 @@ func (h *Handler) readPeer(ctx context.Context, p peer, out chan<- item, lastSeq
 //
 // Nodes that exist only in one process (routers, handlers, buses, local Pub/Subs) get the name of the service
 // in the ID. All instances of one service have the same IDs, so they become one set of nodes.
-// Shared Pub/Subs and their topics keep their IDs, so they connect the services.
+// Other Pub/Subs and their topics keep their IDs, so they connect the services.
 type merger struct {
 	topologies map[source]topology.Snapshot
-	// shared tells which nodes of an instance are shared.
+	// shared tells which nodes of an instance are shared with other services.
 	shared map[source]map[string]bool
 	stats  map[source]map[string]wireStats
 }
@@ -177,7 +177,7 @@ func newMerger() *merger {
 func (m *merger) setTopology(from source, snapshot topology.Snapshot) {
 	shared := make(map[string]bool, len(snapshot.Nodes))
 	for _, node := range snapshot.Nodes {
-		shared[node.ID] = node.Shared
+		shared[node.ID] = !node.Local && (node.Kind == topology.NodePubSub || node.Kind == topology.NodeTopic)
 	}
 
 	m.topologies[from] = snapshot
@@ -278,7 +278,7 @@ func (m *merger) topology() mergedTopology {
 			merged := mergedNode{Node: node}
 			merged.ID = m.id(from, node.ID)
 			merged.Parent = m.id(from, node.Parent)
-			if !node.Shared {
+			if !m.shared[from][node.ID] {
 				merged.Service = from.Service
 			}
 

@@ -988,7 +988,7 @@ function animate(event) {
   if (event.kind === "published" && topic) {
     if (node) {
       // A handler publishes after it has received the message it's handling.
-      const startAt = Math.max(now, event.parent ? hopEnd(event.parent, event.node) : 0);
+      const startAt = Math.max(now, event.causation ? hopEnd(event.causation, event.node) : 0);
       travel(event.node, event.topic, event.uuid, startAt);
     } else {
       // Published from outside a handler: the message starts at the topic.
@@ -996,7 +996,7 @@ function animate(event) {
     }
   } else if (event.kind === "received" && node && topic) {
     travel(event.topic, event.node, event.uuid, Math.max(now, hopEnd(event.uuid, event.topic)));
-  } else if (event.kind === "nacked" && node) {
+  } else if (event.kind === "failed" && node) {
     flash(node, "flash-fail", Math.max(now, hopEnd(event.uuid, event.node)));
   }
 }
@@ -1049,11 +1049,11 @@ function handleEvent(event) {
     message.payloadHidden = event.payloadHidden;
     message.metadata = event.metadata;
   }
-  if (event.parent && event.parent !== event.uuid) message.parent = event.parent;
+  if (event.causation && event.causation !== event.uuid) message.causation = event.causation;
   if (!message.topic && event.topic) message.topic = event.topic;
   if (event.kind === "received") message.pending++;
-  if (event.kind === "acked" || event.kind === "nacked") message.pending = Math.max(0, message.pending - 1);
-  if (event.kind === "nacked" && !message.failed) {
+  if (event.kind === "handled" || event.kind === "failed") message.pending = Math.max(0, message.pending - 1);
+  if (event.kind === "failed" && !message.failed) {
     message.failed = true;
     state.failedCount++;
   }
@@ -1175,8 +1175,8 @@ function describeHop(event) {
   switch (event.kind) {
     case "published": return (node ? node + " published to " : "Published to ") + topic;
     case "received": return node + " received from " + topic;
-    case "acked": return node + " finished in " + (event.durationMs || 0).toFixed(1) + " ms";
-    case "nacked": return node + " failed after " + (event.durationMs || 0).toFixed(1) + " ms: " + event.error;
+    case "handled": return node + " finished in " + (event.durationMs || 0).toFixed(1) + " ms";
+    case "failed": return node + " failed after " + (event.durationMs || 0).toFixed(1) + " ms: " + event.error;
   }
   return event.kind;
 }
@@ -1184,10 +1184,10 @@ function describeHop(event) {
 function renderMessageDetail(message) {
   const detail = el("div", { class: "detail" });
   const facts = [["UUID", message.uuid], ["First seen", clock(message.time)]];
-  if (message.parent) {
-    const link = el("button", { class: "link" }, message.parent.slice(0, 8));
-    link.addEventListener("click", () => select({ type: "message", id: message.parent }));
-    facts.push(["Caused by", state.messages.has(message.parent) ? link : message.parent]);
+  if (message.causation) {
+    const link = el("button", { class: "link" }, message.causation.slice(0, 8));
+    link.addEventListener("click", () => select({ type: "message", id: message.causation }));
+    facts.push(["Caused by", state.messages.has(message.causation) ? link : message.causation]);
   }
   detail.append(keyValues(facts));
   detail.append(section("Payload", el("pre", {}, prettyPayload(message))));
@@ -1204,7 +1204,7 @@ function renderMessageDetail(message) {
   for (const event of [...message.events].sort((a, b) => a.time - b.time)) {
     const li = el("li");
     li.append(el("span", { class: "at" }, "+" + (event.time - message.time) + " ms"),
-      el("span", { class: event.kind === "nacked" ? "failed" : "" }, describeHop(event)));
+      el("span", { class: event.kind === "failed" ? "failed" : "" }, describeHop(event)));
     hops.appendChild(li);
   }
   detail.append(section("Path", hops));

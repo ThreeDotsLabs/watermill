@@ -31,8 +31,8 @@ func (b busTopology) publish(publisher message.Publisher, topic string, msg *mes
 	}
 
 	ctx := msg.Context()
-	if topology.SourceFromContext(ctx).NodeID == "" {
-		ctx = topology.ContextWithSource(ctx, topology.Source{NodeID: b.nodeID})
+	if topology.OriginFromContext(ctx).NodeID == "" {
+		ctx = topology.ContextWithOrigin(ctx, topology.Origin{NodeID: b.nodeID})
 	}
 	ctx, tracker := topology.TrackPublish(ctx)
 	msg.SetContext(ctx)
@@ -42,7 +42,7 @@ func (b busTopology) publish(publisher message.Publisher, topic string, msg *mes
 	}
 
 	if !tracker.Reported() {
-		topology.Current().EmitPublished(publisher, topic, msg.Context(), msg.UUID, msg.Metadata, msg.Payload)
+		topology.Current().ReportPublished(publisher, topic, msg.Context(), msg.UUID, msg.Metadata, msg.Payload)
 	}
 
 	return nil

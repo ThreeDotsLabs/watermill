@@ -1,9 +1,9 @@
 // Package inspector serves a live view of the Watermill setup of the running process:
 // routers, handlers, Pub/Subs and topics as an interactive graph, with messages flowing through it.
 //
-// Create the handler before creating routers and Pub/Subs, as only components created later are visible:
+// Create the inspector before creating routers and Pub/Subs, as only components created later are visible:
 //
-//	inspectorHandler, err := inspector.NewHandler(inspector.Config{})
+//	inspectorHandler, err := inspector.New(inspector.Config{})
 //	// ...
 //	mux.Handle("/watermill/", http.StripPrefix("/watermill", inspectorHandler))
 //
@@ -106,8 +106,8 @@ func (c Config) validate() error {
 	return nil
 }
 
-// Handler is the HTTP handler of the inspector.
-type Handler struct {
+// Inspector serves the inspector UI and its data. It is an http.Handler.
+type Inspector struct {
 	config   Config
 	registry *topology.Registry
 	instance string
@@ -125,10 +125,10 @@ type Handler struct {
 	nextSubscriber   uint64
 }
 
-// NewHandler enables the topology registry and returns the HTTP handler of the inspector.
+// New enables the topology registry and returns the inspector.
 //
-// The UI uses relative URLs, so the handler can be mounted under any path that ends with a slash.
-func NewHandler(config Config) (*Handler, error) {
+// The handler can be mounted under any path.
+func New(config Config) (*Inspector, error) {
 	config.setDefaults()
 	if err := config.validate(); err != nil {
 		return nil, fmt.Errorf("invalid config: %w", err)
@@ -136,7 +136,7 @@ func NewHandler(config Config) (*Handler, error) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	h := &Handler{
+	i := &Inspector{
 		config:   config,
 		registry: topology.Enable(),
 		instance: newID(),
@@ -145,16 +145,16 @@ func NewHandler(config Config) (*Handler, error) {
 
 		eventSubscribers: map[uint64]chan topology.Event{},
 	}
-	h.registry.CapturePayloads(config.Payloads)
+	i.registry.CapturePayloads(config.Payloads)
 
-	events, _ := h.registry.SubscribeEvents(4096)
-	go h.collect(events)
+	events, _ := i.registry.SubscribeEvents(4096)
+	go i.collect(events)
 
 	if config.Discovery != nil {
 		var err error
-		h.peers, err = startPeers(ctx, config.Discovery, config.Token, Announcement{
+		i.peers, err = startPeers(ctx, config.Discovery, config.Token, Announcement{
 			Service:  config.ServiceName,
-			Instance: h.instance,
+			Instance: i.instance,
 			URL:      config.AdvertiseURL,
 		}, config.Logger)
 		if err != nil {
@@ -163,20 +163,20 @@ func NewHandler(config Config) (*Handler, error) {
 		}
 	}
 
-	h.mux.HandleFunc("GET /{$}", h.index)
-	h.mux.HandleFunc("GET /api/events", h.events)
-	h.mux.HandleFunc("GET /api/local/events", h.localEvents)
+	i.mux.HandleFunc("GET /{$}", i.index)
+	i.mux.HandleFunc("GET /api/events", i.events)
+	i.mux.HandleFunc("GET /api/local/events", i.localEvents)
 
-	return h, nil
+	return i, nil
 }
 
-func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	h.mux.ServeHTTP(w, r)
+func (i *Inspector) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	i.mux.ServeHTTP(w, r)
 }
 
 // Close stops announcing this service to others.
-func (h *Handler) Close() error {
-	h.cancel()
+func (i *Inspector) Close() error {
+	i.cancel()
 	return nil
 }
 
@@ -188,46 +188,46 @@ func newID() string {
 
 // collect keeps the most recent events, so they can be replayed to new clients,
 // and passes the events to the streams. A stream that is too slow loses events.
-func (h *Handler) collect(events <-chan topology.Event) {
+func (i *Inspector) collect(events <-chan topology.Event) {
 	for event := range events {
-		h.eventsLock.Lock()
-		if len(h.recent) >= h.config.EventBuffer {
-			copy(h.recent, h.recent[1:])
-			h.recent = h.recent[:len(h.recent)-1]
+		i.eventsLock.Lock()
+		if len(i.recent) >= i.config.EventBuffer {
+			copy(i.recent, i.recent[1:])
+			i.recent = i.recent[:len(i.recent)-1]
 		}
-		h.recent = append(h.recent, event)
+		i.recent = append(i.recent, event)
 
-		for _, subscriber := range h.eventSubscribers {
+		for _, subscriber := range i.eventSubscribers {
 			select {
 			case subscriber <- event:
 			default:
 			}
 		}
-		h.eventsLock.Unlock()
+		i.eventsLock.Unlock()
 	}
 }
 
 // subscribeEvents returns the recent events and a channel with the events that come after them.
 // The returned function ends the subscription.
-func (h *Handler) subscribeEvents(buffer int) ([]topology.Event, <-chan topology.Event, func()) {
-	h.eventsLock.Lock()
-	defer h.eventsLock.Unlock()
+func (i *Inspector) subscribeEvents(buffer int) ([]topology.Event, <-chan topology.Event, func()) {
+	i.eventsLock.Lock()
+	defer i.eventsLock.Unlock()
 
 	ch := make(chan topology.Event, buffer)
-	id := h.nextSubscriber
-	h.nextSubscriber++
-	h.eventSubscribers[id] = ch
+	id := i.nextSubscriber
+	i.nextSubscriber++
+	i.eventSubscribers[id] = ch
 
 	unsubscribe := func() {
-		h.eventsLock.Lock()
-		delete(h.eventSubscribers, id)
-		h.eventsLock.Unlock()
+		i.eventsLock.Lock()
+		delete(i.eventSubscribers, id)
+		i.eventsLock.Unlock()
 	}
 
-	return append([]topology.Event(nil), h.recent...), ch, unsubscribe
+	return append([]topology.Event(nil), i.recent...), ch, unsubscribe
 }
 
-func (h *Handler) index(w http.ResponseWriter, _ *http.Request) {
+func (i *Inspector) index(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	_, _ = w.Write(indexHTML)
 }
@@ -265,9 +265,9 @@ func (s wireStats) add(other wireStats) wireStats {
 
 const statsInterval = time.Second
 
-func (h *Handler) localStats() map[string]wireStats {
+func (i *Inspector) localStats() map[string]wireStats {
 	stats := map[string]wireStats{}
-	for _, node := range h.registry.Stats() {
+	for _, node := range i.registry.Stats() {
 		stats[node.NodeID] = wireStats{
 			Published:  node.Published,
 			Handled:    node.Handled,
@@ -281,10 +281,10 @@ func (h *Handler) localStats() map[string]wireStats {
 // streamLocal sends the topology and the events of this process to out, until ctx is done.
 // It starts with the current topology and the recent events. The topology is always sent before
 // the events that refer to it.
-func (h *Handler) streamLocal(ctx context.Context, out chan<- item) {
-	self := source{Service: h.config.ServiceName, Instance: h.instance}
+func (i *Inspector) streamLocal(ctx context.Context, out chan<- item) {
+	self := source{Service: i.config.ServiceName, Instance: i.instance}
 
-	recent, live, unsubscribe := h.subscribeEvents(4096)
+	recent, live, unsubscribe := i.subscribeEvents(4096)
 	defer unsubscribe()
 
 	send := func(it item) bool {
@@ -298,10 +298,10 @@ func (h *Handler) streamLocal(ctx context.Context, out chan<- item) {
 
 	var sentVersion uint64
 	sendTopologyIfChanged := func() bool {
-		if h.registry.Version() == sentVersion {
+		if i.registry.Version() == sentVersion {
 			return true
 		}
-		snapshot := h.registry.Snapshot()
+		snapshot := i.registry.Snapshot()
 		sentVersion = snapshot.Version
 		return send(item{source: self, topology: &snapshot})
 	}
@@ -311,7 +311,7 @@ func (h *Handler) streamLocal(ctx context.Context, out chan<- item) {
 	}
 
 	sendStats := func() bool {
-		return sendTopologyIfChanged() && send(item{source: self, stats: h.localStats()})
+		return sendTopologyIfChanged() && send(item{source: self, stats: i.localStats()})
 	}
 
 	if !sendStats() {
@@ -351,15 +351,15 @@ func (h *Handler) streamLocal(ctx context.Context, out chan<- item) {
 
 // startStream prepares the response for Server-Sent Events.
 // The returned function has to be called when the stream ends.
-func (h *Handler) startStream(w http.ResponseWriter) (http.Flusher, func(), bool) {
+func (i *Inspector) startStream(w http.ResponseWriter) (http.Flusher, func(), bool) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
 		http.Error(w, "streaming is not supported", http.StatusInternalServerError)
 		return nil, nil, false
 	}
 
-	if h.streams.Add(1) > maxStreams {
-		h.streams.Add(-1)
+	if i.streams.Add(1) > maxStreams {
+		i.streams.Add(-1)
 		http.Error(w, "too many open streams", http.StatusServiceUnavailable)
 		return nil, nil, false
 	}
@@ -368,12 +368,12 @@ func (h *Handler) startStream(w http.ResponseWriter) (http.Flusher, func(), bool
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("X-Accel-Buffering", "no")
 
-	return flusher, func() { h.streams.Add(-1) }, true
+	return flusher, func() { i.streams.Add(-1) }, true
 }
 
 // localEvents streams the topology and the events of this process to the inspectors of other services.
-func (h *Handler) localEvents(w http.ResponseWriter, r *http.Request) {
-	token := h.config.Token
+func (i *Inspector) localEvents(w http.ResponseWriter, r *http.Request) {
+	token := i.config.Token
 	if token == "" {
 		// Without a token, the data of this process is not available to other services.
 		http.NotFound(w, r)
@@ -384,17 +384,17 @@ func (h *Handler) localEvents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	flusher, done, ok := h.startStream(w)
+	flusher, done, ok := i.startStream(w)
 	if !ok {
 		return
 	}
 	defer done()
 
 	items := make(chan item, 256)
-	go h.streamLocal(r.Context(), items)
+	go i.streamLocal(r.Context(), items)
 
 	hello := peerHello{
-		source:   source{Service: h.config.ServiceName, Instance: h.instance},
+		source:   source{Service: i.config.ServiceName, Instance: i.instance},
 		Protocol: protocolVersion,
 	}
 	if err := writeSSE(w, "hello", hello); err != nil {
@@ -448,8 +448,8 @@ func (h *Handler) localEvents(w http.ResponseWriter, r *http.Request) {
 //
 // Every connection is a separate session: it connects to the other services on its own
 // and disconnects when the browser goes away.
-func (h *Handler) events(w http.ResponseWriter, r *http.Request) {
-	flusher, done, ok := h.startStream(w)
+func (i *Inspector) events(w http.ResponseWriter, r *http.Request) {
+	flusher, done, ok := i.startStream(w)
 	if !ok {
 		return
 	}
@@ -459,7 +459,7 @@ func (h *Handler) events(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 
 	items := make(chan item, 1024)
-	go h.streamLocal(ctx, items)
+	go i.streamLocal(ctx, items)
 
 	// The browser drops what it has when it sees a new session.
 	if err := writeSSE(w, "hello", map[string]string{"session": newID()}); err != nil {
@@ -477,7 +477,7 @@ func (h *Handler) events(w http.ResponseWriter, r *http.Request) {
 	}
 	peerStreams := map[string]peerStream{}
 	syncPeers := func() (changed bool) {
-		alive := h.peers.list()
+		alive := i.peers.list()
 
 		for instance, p := range alive {
 			if stream, ok := peerStreams[instance]; ok {
@@ -489,7 +489,7 @@ func (h *Handler) events(w http.ResponseWriter, r *http.Request) {
 			}
 			peerCtx, cancelPeer := context.WithCancel(ctx)
 			peerStreams[instance] = peerStream{url: p.URL, cancel: cancelPeer}
-			go h.streamPeer(peerCtx, p, items)
+			go i.streamPeer(peerCtx, p, items)
 		}
 
 		for instance, stream := range peerStreams {
@@ -509,7 +509,7 @@ func (h *Handler) events(w http.ResponseWriter, r *http.Request) {
 
 	write := func(it item) error {
 		// An item of an instance that is already gone.
-		if _, ok := peerStreams[it.source.Instance]; !ok && it.source.Instance != h.instance {
+		if _, ok := peerStreams[it.source.Instance]; !ok && it.source.Instance != i.instance {
 			return nil
 		}
 
@@ -611,15 +611,15 @@ type peerHello struct {
 
 // wireEvent is an event in the form sent to browsers and to other inspectors.
 type wireEvent struct {
-	Seq        uint64  `json:"seq"`
-	Kind       string  `json:"kind"`
-	Time       int64   `json:"time"`
-	Node       string  `json:"node,omitempty"`
-	Topic      string  `json:"topic,omitempty"`
-	UUID       string  `json:"uuid"`
-	ParentUUID string  `json:"parent,omitempty"`
-	Error      string  `json:"error,omitempty"`
-	DurationMs float64 `json:"durationMs,omitempty"`
+	Seq           uint64  `json:"seq"`
+	Kind          string  `json:"kind"`
+	Time          int64   `json:"time"`
+	Node          string  `json:"node,omitempty"`
+	Topic         string  `json:"topic,omitempty"`
+	UUID          string  `json:"uuid"`
+	CausationUUID string  `json:"causation,omitempty"`
+	Error         string  `json:"error,omitempty"`
+	DurationMs    float64 `json:"durationMs,omitempty"`
 
 	// Service and Instance say where the event happened. They are set when events of many services are merged.
 	Service  string `json:"service,omitempty"`
@@ -637,15 +637,15 @@ type wireEvent struct {
 
 func toWireEvent(event topology.Event) wireEvent {
 	out := wireEvent{
-		Seq:        event.Seq,
-		Kind:       string(event.Kind),
-		Time:       event.Time.UnixMilli(),
-		Node:       event.NodeID,
-		Topic:      event.TopicID,
-		UUID:       event.Message.UUID,
-		ParentUUID: event.ParentUUID,
-		Error:      event.Error,
-		DurationMs: float64(event.Duration.Microseconds()) / 1000,
+		Seq:           event.Seq,
+		Kind:          string(event.Kind),
+		Time:          event.Time.UnixMilli(),
+		Node:          event.NodeID,
+		Topic:         event.TopicID,
+		UUID:          event.Message.UUID,
+		CausationUUID: event.CausationUUID,
+		Error:         event.Error,
+		DurationMs:    float64(event.Duration.Microseconds()) / 1000,
 
 		Metadata:    event.Message.Metadata,
 		PayloadSize: event.Message.PayloadSize,

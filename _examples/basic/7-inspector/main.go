@@ -118,7 +118,7 @@ func main() {
 
 	// The inspector has to be created before routers and Pub/Subs.
 	// Without Discovery, Token and AdvertiseURL it shows only this service.
-	inspectorHandler, err := inspector.NewHandler(inspector.Config{
+	inspectorHandler, err := inspector.New(inspector.Config{
 		ServiceName: *service,
 		// Payloads of messages are not shown by default.
 		Payloads: true,

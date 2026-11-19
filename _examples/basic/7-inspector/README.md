@@ -3,7 +3,7 @@
 This example runs five small services and serves the Watermill Inspector for all of them: routers, handlers,
 CQRS buses, the Forwarder, FanIn, FanOut and topics as a graph, with messages flowing through it.
 
-The inspector is a proof of concept. See `dev/live-preview-plan.md` in the repository root.
+The inspector is a proof of concept.
 
 ## Running
 

@@ -109,12 +109,12 @@ func (f *FanOut) IsClosed() bool {
 	return f.internalRouter.IsClosed()
 }
 
-// Subscribe starts subscription to the FanOut's internal Pub/Sub.
 // DescribeTopic implements topology.Describer.
 func (f *FanOut) DescribeTopic(topic string) topology.Description {
 	return f.internalPubSub.DescribeTopic(topic)
 }
 
+// Subscribe starts subscription to the FanOut's internal Pub/Sub.
 func (f *FanOut) Subscribe(ctx context.Context, topic string) (<-chan *message.Message, error) {
 	return f.internalPubSub.Subscribe(ctx, topic)
 }

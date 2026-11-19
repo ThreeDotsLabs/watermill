@@ -869,6 +869,7 @@ func (r *Router) decorateHandlerSubscriber(h *handler) error {
 	messageTransform := func(msg *Message) {
 		if msg != nil {
 			h.addHandlerContext(msg)
+			h.addTopologyContext(msg)
 		}
 	}
 	sub, err = MessageTransformSubscriberDecorator(messageTransform)(sub)
@@ -906,12 +907,21 @@ func (h *handler) addHandlerContext(messages ...*Message) {
 		if h.publishTopic != "" {
 			ctx = context.WithValue(ctx, publishTopicKey, h.publishTopic)
 		}
-		if h.topologyNodeID != "" {
-			ctx = topology.ContextWithSource(ctx, topology.Source{NodeID: h.topologyNodeID, MessageUUID: msg.UUID})
-			ctx = topology.ContextWithFailureReport(ctx)
-		}
 		messages[i].SetContext(ctx)
 	}
+}
+
+// addTopologyContext marks the received message as handled by this handler, so that messages published
+// while handling it are linked to it, and middlewares can report its failure.
+// Messages returned by the handler get their context in trackProduced.
+func (h *handler) addTopologyContext(msg *Message) {
+	if h.topologyNodeID == "" {
+		return
+	}
+
+	ctx := topology.ContextWithOrigin(msg.Context(), topology.Origin{NodeID: h.topologyNodeID, CausationUUID: msg.UUID})
+	ctx = topology.ContextWithFailureReport(ctx)
+	msg.SetContext(ctx)
 }
 
 func (h *handler) handleClose(ctx context.Context) {
@@ -1024,7 +1034,7 @@ func (h *handler) publishProducedMessages(producedMessages Messages, msgFields w
 func (h *handler) reportReceived(msg *Message) time.Time {
 	startedAt := time.Now()
 	registry := topology.Current()
-	registry.Emit(topology.Event{
+	registry.Report(topology.Event{
 		Kind:    topology.EventReceived,
 		Time:    startedAt,
 		NodeID:  h.topologyNodeID,
@@ -1040,9 +1050,9 @@ func (h *handler) trackProduced(msg *Message, producedMessages []*Message) []*to
 	trackers := make([]*topology.PublishTracker, len(producedMessages))
 
 	for i, produced := range producedMessages {
-		ctx := topology.ContextWithSource(
+		ctx := topology.ContextWithOrigin(
 			produced.Context(),
-			topology.Source{NodeID: h.topologyNodeID, MessageUUID: msg.UUID},
+			topology.Origin{NodeID: h.topologyNodeID, CausationUUID: msg.UUID},
 		)
 		ctx, trackers[i] = topology.TrackPublish(ctx)
 		produced.SetContext(ctx)
@@ -1058,7 +1068,7 @@ func (h *handler) reportPublished(producedMessages []*Message, trackers []*topol
 			continue
 		}
 
-		topology.Current().EmitPublished(
+		topology.Current().ReportPublished(
 			h.topologyPublisher, h.publishTopic,
 			produced.Context(), produced.UUID, produced.Metadata, produced.Payload,
 		)
@@ -1071,21 +1081,21 @@ func (h *handler) reportFinished(msg *Message, startedAt time.Time, err error) {
 	}
 
 	event := topology.Event{
-		Kind:     topology.EventAcked,
+		Kind:     topology.EventHandled,
 		NodeID:   h.topologyNodeID,
 		TopicID:  h.topologySubscribeTopicID,
 		Message:  topology.Message{UUID: msg.UUID},
 		Duration: time.Since(startedAt),
 	}
 	if err != nil {
-		event.Kind = topology.EventNacked
+		event.Kind = topology.EventFailed
 		event.Error = err.Error()
 	} else if reason := topology.ReportedFailure(msg.Context()); reason != "" {
 		// A middleware has dealt with the error, so the message is acked. It's still a failure of the handler.
-		event.Kind = topology.EventNacked
+		event.Kind = topology.EventFailed
 		event.Error = reason
 	}
-	topology.Current().Emit(event)
+	topology.Current().Report(event)
 }
 
 type disabledPublisher struct{}
