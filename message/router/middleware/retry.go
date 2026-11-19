@@ -35,7 +35,7 @@ type RetriesExhaustedParams struct {
 //
 // The error types of github.com/cenkalti/backoff/v5, which this middleware used before,
 // still work the same way: a handler can return backoff.Permanent(err) or a *backoff.RetryAfterError.
-// This is deprecated and will be removed in the next major version; use Permanent and RetryAfter instead.
+// This is deprecated; use Permanent and RetryAfter instead.
 // The middleware logs an error each time a handler returns one of them.
 type Retry struct {
 	// MaxRetries is maximum number of times a retry will be attempted.

@@ -13,7 +13,7 @@ import (
 //
 // The middleware no longer imports backoff, but still handles both, recognized by their package
 // and type name, so that such handlers keep working. This is deprecated in favour of Permanent and
-// RetryAfter, logged when it happens, and will be removed in the next major version.
+// RetryAfter, and logged when it happens.
 
 // logDeprecatedBackoffError logs that a handler returned a deprecated backoff error.
 // It logs at the Error level, as watermill.LoggerAdapter has no warning level.
