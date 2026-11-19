@@ -1,10 +1,8 @@
 package middleware
 
 import (
+	"context"
 	"time"
-
-	"github.com/cenkalti/backoff/v5"
-	"github.com/pkg/errors"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
@@ -31,15 +29,26 @@ type RetriesExhaustedParams struct {
 
 // Retry provides a middleware that retries the handler if errors are returned.
 // The retry behaviour is configurable, with exponential backoff and maximum elapsed time.
+//
+// A handler can return an error wrapped with Permanent to stop the retries,
+// or with RetryAfter to choose the delay before the next retry.
+//
+// The error types of github.com/cenkalti/backoff/v5, which this middleware used before,
+// still work the same way: a handler can return backoff.Permanent(err) or a *backoff.RetryAfterError.
+// This is deprecated; use Permanent and RetryAfter instead.
+// The middleware logs an error each time a handler returns one of them.
 type Retry struct {
 	// MaxRetries is maximum number of times a retry will be attempted.
+	// If negative, the number of retries is not limited.
 	MaxRetries int
 
 	// InitialInterval is the first interval between retries. Subsequent intervals will be scaled by Multiplier.
 	InitialInterval time.Duration
 	// MaxInterval sets the limit for the exponential backoff of retries. The interval will not be increased beyond MaxInterval.
+	// If 0, the interval is not increased: every interval is InitialInterval.
 	MaxInterval time.Duration
 	// Multiplier is the factor by which the waiting interval will be multiplied between retries.
+	// If 0, the interval is not increased: every interval is InitialInterval.
 	Multiplier float64
 	// MaxElapsedTime sets the time limit of how long retries will be attempted. Disabled if 0.
 	MaxElapsedTime time.Duration
@@ -52,8 +61,9 @@ type Retry struct {
 	OnRetryHook func(retryNum int, delay time.Duration)
 
 	// OnRetriesExhausted is an optional function that will be executed when all retries are exhausted.
-	// This is called when MaxRetries is reached and the handler still returns an error.
-	// It is NOT called when ShouldRetry returns false (that path returns a permanent error and exits earlier).
+	// This is called when MaxRetries or MaxElapsedTime is reached and the handler still returns an error,
+	// and when the message's context is canceled before the handler succeeded.
+	// It is NOT called when ShouldRetry returns false.
 	OnRetriesExhausted func(params RetriesExhaustedParams)
 
 	// ShouldRetry is an optional function that will be executed before each retry attempt.
@@ -73,100 +83,105 @@ type Retry struct {
 // Middleware returns the Retry middleware.
 func (r Retry) Middleware(h message.HandlerFunc) message.HandlerFunc {
 	return func(msg *message.Message) ([]*message.Message, error) {
-		originalCtx := msg.Context()
-		retryNum := 0
-		// stoppedByPermanent is set when ShouldRetry returns false, so we know
-		// to skip OnRetriesExhausted — retries weren't actually exhausted, they
-		// were short-circuited. backoff/v5 strips the *PermanentError wrapper
-		// inside Retry, so we can't detect this from the returned error alone.
-		stoppedByPermanent := false
+		ctx := msg.Context()
+		startedAt := time.Now()
 
-		expBackoff := backoff.NewExponentialBackOff()
-		expBackoff.InitialInterval = r.InitialInterval
-		expBackoff.MaxInterval = r.MaxInterval
-		expBackoff.Multiplier = r.Multiplier
-		expBackoff.RandomizationFactor = r.RandomizationFactor
+		delays := newExponentialBackoff(r)
 
-		// MaxRetries + 1 because the first attempt is not a retry
-		retryBackoff := backoff.WithMaxTries(uint(r.MaxRetries + 1))
+		// retriesDone is the number of retries already made, 0 during the first attempt.
+		retriesDone := 0
+		// waited is the delay waited before the current attempt, 0 for the first one.
+		var waited time.Duration
 
-		maxElapsedBackoff := backoff.WithMaxElapsedTime(r.MaxElapsedTime)
+		// attempts includes the first attempt, so it is MaxRetries + 1 when the retries ran out.
+		exhausted := func(producedMessages []*message.Message, err error, attempts int) ([]*message.Message, error) {
+			if r.OnRetriesExhausted != nil {
+				r.OnRetriesExhausted(RetriesExhaustedParams{
+					Err:      err,
+					RetryNum: attempts,
+				})
+			}
+			return producedMessages, err
+		}
 
-		// notification is called on a failed retry attempt.
-		notification := func(err error, delay time.Duration) {
+		for {
+			if ctx.Err() != nil {
+				return exhausted(nil, context.Cause(ctx), retriesDone)
+			}
+
+			if r.ResetContextOnRetry {
+				// message is passed as a pointer, so its context can be canceled
+				// by the previous attempts -> it will break retries, because any
+				// underlying logic that relies on the context will fail.
+				// see more: https://github.com/ThreeDotsLabs/watermill/issues/467
+				//
+				// to avoid this, we need to reset the original context on each attempt
+				// we may lose context value that was set by the previous attempt
+				msg.SetContext(ctx)
+			}
+
+			producedMessages, err := h(msg)
+			if err == nil {
+				return producedMessages, nil
+			}
+
+			if cause, ok := permanentErrorCause(err, r.Logger); ok {
+				return producedMessages, cause
+			}
+
+			if r.OnRetryHook != nil && retriesDone > 0 {
+				r.OnRetryHook(retriesDone, waited)
+			}
+
+			// next advances the backoff, so it is called at most once per attempt:
+			// this delay is given to ShouldRetry and then waited.
+			var delay time.Duration
+			if retryAfter, ok := retryAfterDelay(err, r.Logger); ok {
+				delay = retryAfter
+				delays.reset()
+			} else {
+				delay = delays.next()
+			}
+
+			nextRetry := retriesDone + 1
+
+			// a negative MaxRetries means no limit
+			if r.MaxRetries >= 0 && nextRetry > r.MaxRetries {
+				return exhausted(producedMessages, err, retriesDone+1)
+			}
+			if r.MaxElapsedTime > 0 && time.Since(startedAt)+delay > r.MaxElapsedTime {
+				return exhausted(producedMessages, err, retriesDone+1)
+			}
+			if ctx.Err() != nil {
+				return exhausted(producedMessages, context.Cause(ctx), retriesDone+1)
+			}
+
+			if r.ShouldRetry != nil && !r.ShouldRetry(RetryParams{
+				RetryNum: nextRetry,
+				Err:      err,
+				Delay:    delay,
+			}) {
+				return producedMessages, err
+			}
+
 			if r.Logger != nil {
 				r.Logger.Error("Error occurred, retrying", err, watermill.LogFields{
-					"retry_no":    retryNum,
+					"retry_no":    nextRetry,
 					"max_retries": r.MaxRetries,
 					"wait_time":   delay,
 				})
 			}
-		}
 
-		// operation: the function that will be retried.
-		operation := func() ([]*message.Message, error) {
+			timer := time.NewTimer(delay)
 			select {
-			case <-originalCtx.Done():
-				return nil, originalCtx.Err()
-			default:
-				if r.ResetContextOnRetry {
-					// message is passed as a pointer, so its context can be canceled
-					// by the previous attempts -> it will break retries, because any
-					// underlying logic that relies on the context will fail.
-					// see more: https://github.com/ThreeDotsLabs/watermill/issues/467
-					//
-					// to avoid this, we need to reset the original context on each attempt
-					// we may lose context value that was set by the previous attempt
-					msg.SetContext(originalCtx)
-				}
-
-				producedMessages, err := h(msg)
-				if err == nil {
-					return producedMessages, nil
-				}
-
-				if r.ShouldRetry != nil && !r.ShouldRetry(RetryParams{
-					RetryNum: retryNum,
-					Err:      err,
-					Delay:    expBackoff.NextBackOff(),
-				}) {
-					// backoff.Permanent will stop the retry attempts
-					stoppedByPermanent = true
-					return producedMessages, backoff.Permanent(err)
-				}
-
-				if r.OnRetryHook != nil && retryNum > 0 {
-					// call RetryHook function on each retry attempt.
-					r.OnRetryHook(retryNum, expBackoff.NextBackOff())
-				}
-				retryNum++
-				return producedMessages, err
+			case <-timer.C:
+			case <-ctx.Done():
+				timer.Stop()
+				return exhausted(producedMessages, context.Cause(ctx), retriesDone+1)
 			}
-		}
 
-		producedMessages, retryErr := backoff.Retry(
-			originalCtx,
-			operation,
-			backoff.WithBackOff(expBackoff),
-			retryBackoff,
-			maxElapsedBackoff,
-			backoff.WithNotify(notification),
-		)
-		var backoffPermanentError *backoff.PermanentError
-		if errors.As(retryErr, &backoffPermanentError) {
-			// just in case, we don't want to expose backoff.PermanentError to the outside world
-			return producedMessages, backoffPermanentError.Unwrap()
+			retriesDone = nextRetry
+			waited = delay
 		}
-		if retryErr != nil {
-			if r.OnRetriesExhausted != nil && !stoppedByPermanent {
-				r.OnRetriesExhausted(RetriesExhaustedParams{
-					Err:      retryErr,
-					RetryNum: retryNum,
-				})
-			}
-			return producedMessages, retryErr
-		}
-
-		return producedMessages, nil
 	}
 }
