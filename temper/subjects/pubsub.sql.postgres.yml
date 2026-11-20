@@ -1,0 +1,12 @@
+id: pubsub.sql.postgres
+kind: pubsub
+feature: pubsub.sql.postgres
+answers:
+  pubsub.features:
+    consumer_groups: supported
+    exactly_once: supported
+    guaranteed_order: supported
+    guaranteed_order_single_subscriber: {unsupported: true, reason: "only TestConcurrentSubscribe_different_bulk_sizes sets the flag, and it does not run the order test", tracked_by: "unproven"}
+    persistent: supported
+    new_subscriber_receives_old_messages: {unsupported: true, reason: "declared false in tests.Features; no test proves it", tracked_by: "unproven"}
+    context_preserved: {unsupported: true, reason: "declared false in tests.Features; no test proves it", tracked_by: "unproven"}

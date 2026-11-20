@@ -209,6 +209,8 @@ func runTest(
 		testID := NewTestID()
 
 		t.Run(string(testID), func(t *testing.T) {
+			claimTemper(t, name, features)
+
 			tCtx := TestContext{
 				TestID:   testID,
 				Features: features,

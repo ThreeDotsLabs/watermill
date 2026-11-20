@@ -1,0 +1,16 @@
+id: pubsub.features
+description: >
+  Every capability a Pub/Sub declares in tests.Features (pubsub/tests/test_pubsub.go).
+  A Pub/Sub claims a capability when any of its test configurations sets the flag,
+  and must pass the test for it. A Pub/Sub that declares a capability false answers
+  it as unsupported, with no proof yet.
+applies_to: pubsub
+requires: [ci]
+members:
+  - key: consumer_groups
+  - key: exactly_once
+  - key: guaranteed_order
+  - key: guaranteed_order_single_subscriber
+  - key: persistent
+  - key: new_subscriber_receives_old_messages
+  - key: context_preserved
