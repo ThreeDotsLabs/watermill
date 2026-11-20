@@ -296,6 +296,11 @@ func (r *Router) AddHandler(
 	}
 
 	publisherName, subscriberName := internal.StructName(publisher), internal.StructName(subscriber)
+	if _, ok := publisher.(disabledPublisher); ok {
+		// Consumer handlers have no publisher, so the publisher name is not added to the message context.
+		// Otherwise, publishers used in the handler or middleware would read "message.disabledPublisher" as their name.
+		publisherName = ""
+	}
 
 	newHandler := &handler{
 		name:   handlerName,

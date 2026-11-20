@@ -146,3 +146,48 @@ func setupPubsubNameTests(t *testing.T, capturedMessages chan (*message.Message)
 
 	return router, handlerFunc
 }
+
+func TestRouter_Context_NoPublisherHandler(t *testing.T) {
+	// A handler without a publisher should not put a publisher name in the message context.
+	// Otherwise, publishers used inside the handler or middleware are reported with the wrong name.
+
+	// given
+	capturedMessages := make(chan *message.Message)
+	router, _ := setupPubsubNameTests(t, capturedMessages)
+
+	sub := &unnamedMockSubscriber{make(chan *message.Message)}
+
+	handlerName := "handler_name_no_publisher_test"
+	router.AddConsumerHandler(
+		handlerName,
+		"sub-topic",
+		sub,
+		func(msg *message.Message) error {
+			capturedMessages <- msg
+			return nil
+		},
+	)
+
+	go func() {
+		if err := router.Run(context.Background()); err != nil {
+			panic(err)
+		}
+	}()
+	defer func() {
+		if err := router.Close(); err != nil {
+			panic(err)
+		}
+	}()
+	<-router.Running()
+
+	// when
+	sub.ch <- message.NewMessage("", []byte{})
+	capturedMsg := <-capturedMessages
+
+	ctx := capturedMsg.Context()
+
+	// then
+	require.Equal(t, handlerName, message.HandlerNameFromCtx(ctx))
+	require.Equal(t, "message_test.unnamedMockSubscriber", message.SubscriberNameFromCtx(ctx))
+	require.Empty(t, message.PublisherNameFromCtx(ctx))
+}
