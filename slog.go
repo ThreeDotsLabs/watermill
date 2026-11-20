@@ -3,6 +3,8 @@ package watermill
 import (
 	"context"
 	"log/slog"
+	"runtime"
+	"time"
 )
 
 // LevelTrace must be added, because [slog] package does not have one by default. Generate it by subtracting 4 levels from [slog.Debug] following the example of [slog.LevelWarn] and [slog.LevelError] which are set to 4 and 8.
@@ -55,18 +57,24 @@ func (s *SlogLoggerAdapter) log(level slog.Level, msg string, args ...any) {
 		level = mappedLevel
 	}
 
-	s.slog.Log(
-		// Void context, following the slog example
-		// as it treats context slightly differently from
-		// normal usage, minding contextual
-		// values, but ignoring contextual deadline.
-		// See the [slog] package documentation
-		// for more details.
-		context.Background(),
-		level,
-		msg,
-		args...,
-	)
+	// Void context, following the slog example
+	// as it treats context slightly differently from
+	// normal usage, minding contextual
+	// values, but ignoring contextual deadline.
+	// See the [slog] package documentation
+	// for more details.
+	ctx := context.Background()
+	if !s.slog.Enabled(ctx, level) {
+		return
+	}
+
+	// Skip runtime.Callers, log and the exported method so AddSource reports their caller.
+	var pcs [1]uintptr
+	runtime.Callers(3, pcs[:])
+
+	r := slog.NewRecord(time.Now(), level, msg, pcs[0])
+	r.Add(args...)
+	_ = s.slog.Handler().Handle(ctx, r)
 }
 
 // With return a [SlogLoggerAdapter] with a set of fields injected into all consequent logging messages.

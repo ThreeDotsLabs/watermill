@@ -2,13 +2,16 @@ package watermill
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"log/slog"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSlogLoggerAdapter(t *testing.T) {
@@ -50,6 +53,36 @@ time=[omit] level=INFO msg="test info" common1=commonvalue field3=value3
 		strings.TrimSpace(b.String()),
 		"Logging output does not match saved template.",
 	)
+}
+
+func TestSlogLoggerAdapter_source(t *testing.T) {
+	b := &bytes.Buffer{}
+
+	logger := NewSlogLogger(slog.New(slog.NewJSONHandler(
+		b,
+		&slog.HandlerOptions{
+			AddSource: true,
+			Level:     LevelTrace,
+		},
+	)))
+
+	logger.Trace("test trace", nil)
+	logger.Debug("test debug", nil)
+	logger.Info("test info", nil)
+	logger.With(LogFields{"common1": "commonvalue"}).Error("test error", errors.New("error message"), nil)
+
+	lines := strings.Split(strings.TrimSpace(b.String()), "\n")
+	require.Len(t, lines, 4)
+
+	for _, line := range lines {
+		var record struct {
+			Source slog.Source `json:"source"`
+		}
+		require.NoError(t, json.Unmarshal([]byte(line), &record))
+
+		assert.Equal(t, "github.com/ThreeDotsLabs/watermill.TestSlogLoggerAdapter_source", record.Source.Function, line)
+		assert.Equal(t, "slog_test.go", filepath.Base(record.Source.File), line)
+	}
 }
 
 func TestSlogLoggerAdapter_level_mapping(t *testing.T) {
