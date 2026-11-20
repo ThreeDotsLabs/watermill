@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	stdErrors "errors"
 
 	"github.com/ThreeDotsLabs/watermill/message"
@@ -70,6 +71,11 @@ func (pq poisonQueue) publishPoisonMessage(msg *message.Message, err error) erro
 	msg.Metadata.Set(PoisonedTopicKey, message.SubscribeTopicFromCtx(msg.Context()))
 	msg.Metadata.Set(PoisonedHandlerKey, message.HandlerNameFromCtx(msg.Context()))
 	msg.Metadata.Set(PoisonedSubscriberKey, message.SubscriberNameFromCtx(msg.Context()))
+
+	// The message context might be canceled, for example when AckDeadline is exceeded or Retry timeout.
+	// Strip the cancellation so the publisher can still publish the message to the poison queue.
+	// We use context.WithoutCancel to keep the context values intact.
+	msg.SetContext(context.WithoutCancel(msg.Context()))
 
 	// don't intercept error from publish. Can't help you if the publisher is down as well.
 	return pq.pub.Publish(pq.topic, msg)

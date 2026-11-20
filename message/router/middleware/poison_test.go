@@ -239,3 +239,34 @@ func TestPoisonQueueWithFilter_non_poison_queue(t *testing.T) {
 	assert.Error(t, err)
 	require.Len(t, poisonPublisher.PopMessages(), 0)
 }
+
+func TestPoisonQueue_context_canceled(t *testing.T) {
+	poisonPublisher := mockPublisher{behaviour: BehaviourAlwaysOK}
+
+	poisonQueue, err := middleware.PoisonQueue(&poisonPublisher, topic)
+	require.NoError(t, err)
+
+	msg := message.NewMessage("uuid", []byte("payload"))
+	
+	// Create a context that is already canceled
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	msg.SetContext(ctx)
+
+	produced, err := poisonQueue(handlerFuncAlwaysFailing)(msg)
+
+	// the middleware itself should not fail; the publisher is working OK
+	assert.NoError(t, err)
+
+	// no messages should be passed
+	assert.Empty(t, produced)
+
+	// the original message should end up in the poison queue
+	poisonMsgs := poisonPublisher.PopMessages()
+	require.Len(t, poisonMsgs, 1)
+
+	assert.Equal(t, msg.Payload, poisonMsgs[0].Payload)
+
+	// Context should no longer be canceled
+	assert.NoError(t, poisonMsgs[0].Context().Err())
+}
