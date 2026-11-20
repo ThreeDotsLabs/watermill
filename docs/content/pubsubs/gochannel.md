@@ -16,7 +16,7 @@ You can find a fully functional example with Go Channels in the [Watermill examp
 | ------- | ---------- | ---- |
 | ConsumerGroups | no | |
 | ExactlyOnceDelivery | yes |  |
-| GuaranteedOrder | yes |  |
+| GuaranteedOrder | no | messages are sent to subscribers in separate goroutines; with `BlockPublishUntilSubscriberAck` and a single publishing goroutine, order is preserved |
 | Persistent | no| |
 
 ### Configuration
