@@ -117,7 +117,7 @@ func newRouter(config RouterConfig, logger watermill.LoggerAdapter) *Router {
 		runningHandlersWg:     &sync.WaitGroup{},
 		runningHandlersWgLock: &sync.Mutex{},
 
-		handlerAdded: make(chan struct{}),
+		allHandlersStopped: make(chan struct{}),
 
 		middlewaresLock: &sync.RWMutex{},
 		handlersLock:    &sync.RWMutex{},
@@ -152,12 +152,18 @@ type Router struct {
 	handlers     map[string]*handler
 	handlersLock *sync.RWMutex
 
+	// publishers of started handlers, closed in Close() (protected by handlersLock)
+	publishers []Publisher
+
 	handlersWg *sync.WaitGroup
 
 	runningHandlersWg     *sync.WaitGroup
 	runningHandlersWgLock *sync.Mutex
 
-	handlerAdded chan struct{}
+	// A channel closed under handlersLock instead of handlersWg.Wait(): Wait panics with "WaitGroup is reused"
+	// when AddHandler calls Add while the last handler is stopping.
+	allHandlersStopped       chan struct{}
+	allHandlersStoppedClosed bool
 
 	closingInProgressCh chan struct{}
 	closedCh            chan struct{}
@@ -312,16 +318,11 @@ func (r *Router) AddHandler(
 		routersCloseCh: r.closingInProgressCh,
 
 		startedCh: make(chan struct{}),
+		stopped:   make(chan struct{}),
 	}
 
 	r.handlersWg.Add(1)
 	r.handlers[handlerName] = newHandler
-
-	select {
-	case r.handlerAdded <- struct{}{}:
-	default:
-		// watchAllHandlersStopped is not always waiting for handlerAdded
-	}
 
 	return &Handler{
 		router:  r,
@@ -439,6 +440,7 @@ func (r *Router) RunHandlers(ctx context.Context) error {
 			continue
 		}
 
+		undecoratedPublisher := h.publisher
 		if err := r.decorateHandlerPublisher(h); err != nil {
 			return errors.Wrapf(err, "could not decorate publisher of handler %s", name)
 		}
@@ -462,11 +464,12 @@ func (r *Router) RunHandlers(ctx context.Context) error {
 		}
 
 		h.messagesCh = messages
+		// stopFn is set before startedCh is closed, so Stop can be called as soon as Started is closed
+		h.stopFn = cancel
 		h.started = true
 		close(h.startedCh)
 
-		h.stopFn = cancel
-		h.stopped = make(chan struct{})
+		r.rememberPublisherToClose(undecoratedPublisher, h.publisher)
 
 		go func() {
 			defer cancel()
@@ -482,9 +485,18 @@ func (r *Router) RunHandlers(ctx context.Context) error {
 
 			r.handlersLock.Lock()
 			delete(r.handlers, name)
+			if len(r.handlers) == 0 && !r.allHandlersStoppedClosed {
+				close(r.allHandlersStopped)
+				r.allHandlersStoppedClosed = true
+			}
 			r.handlersLock.Unlock()
 
 			logger.Trace("Removed subscriber from r.handlers", nil)
+
+			// The handler is reported as stopped only after it has finished processing the messages it received.
+			// This wait is after handlersWg.Done(), so a handler function that never returns doesn't keep the router
+			// from closing when all subscriptions end (Close waits for running messages with CloseTimeout).
+			h.runningMessagesWg.Wait()
 
 			close(h.stopped)
 		}()
@@ -495,25 +507,15 @@ func (r *Router) RunHandlers(ctx context.Context) error {
 // watchAllHandlersStopped closes router when all handlers have stopped,
 // (for example, because for example all subscriptions are closed)
 func (r *Router) watchAllHandlersStopped(ctx context.Context) {
-	r.handlersLock.RLock()
-	hasNoHandlersYet := len(r.handlers) == 0
-	r.handlersLock.RUnlock()
-
 	go func() {
-		if hasNoHandlersYet {
-			// we can start router without any handlers,
-			// in that situation router would be closed immediately (even if they are no routers)
-			// let's wait for
-			select {
-			case <-r.handlerAdded:
-				// it should be some handler to track
-			case <-r.closedCh:
-				// let's avoid goroutine leak
-				return
-			}
+		// allHandlersStopped is closed only when a handler is removed, so a router started without handlers
+		// keeps running until the handlers added later have stopped.
+		select {
+		case <-r.allHandlersStopped:
+		case <-r.closedCh:
+			return
 		}
 
-		r.handlersWg.Wait()
 		if r.IsClosed() {
 			r.logger.Trace("watchAllHandlersStopped: already closed", nil)
 			// already closed
@@ -560,6 +562,9 @@ func (r *Router) IsRunning() bool {
 }
 
 // Close gracefully closes the router with a timeout provided in the configuration.
+//
+// Publishers of the handlers are closed after all handlers have finished processing messages
+// (or after the timeout), so messages produced by the running handlers can still be published.
 func (r *Router) Close() error {
 	r.closedLock.Lock()
 	defer r.closedLock.Unlock()
@@ -581,7 +586,15 @@ func (r *Router) Close() error {
 	close(r.closingInProgressCh)
 	defer close(r.closedCh)
 
+	closeDeadline := time.Now().Add(r.config.CloseTimeout)
+
 	timedout := r.waitForHandlers()
+
+	// Publishers are closed even if the timeout was reached, as this is the last chance to close them.
+	if r.closePublishers(time.Until(closeDeadline)) {
+		timedout = true
+	}
+
 	if timedout {
 		return errors.New("router close timeout")
 	}
@@ -594,11 +607,10 @@ func (r *Router) waitForHandlers() bool {
 	waitGroup.Add(1)
 	go func() {
 		defer waitGroup.Done()
+
+		// The message loops add received messages to runningHandlersWg, so they must end first.
+		// Otherwise, a message received after runningHandlersWg.Wait() returned wouldn't be waited for.
 		r.handlersWg.Wait()
-	}()
-	waitGroup.Add(1)
-	go func() {
-		defer waitGroup.Done()
 
 		r.runningHandlersWgLock.Lock()
 		defer r.runningHandlersWgLock.Unlock()
@@ -606,6 +618,44 @@ func (r *Router) waitForHandlers() bool {
 		r.runningHandlersWg.Wait()
 	}()
 	return sync_internal.WaitGroupTimeout(&waitGroup, r.config.CloseTimeout)
+}
+
+// rememberPublisherToClose remembers the handler's publisher, so it's closed when the router is closed.
+// publisher is the one passed to AddHandler, decoratedPublisher is the one used by the handler.
+//
+// The publisher of each handler is remembered, also when it's shared with other handlers,
+// so a shared publisher is closed once per handler.
+// Consumer handlers have no publisher, so nothing is remembered for them.
+func (r *Router) rememberPublisherToClose(publisher Publisher, decoratedPublisher Publisher) {
+	if decoratedPublisher == nil {
+		return
+	}
+	if _, ok := publisher.(disabledPublisher); ok {
+		return
+	}
+
+	r.publishers = append(r.publishers, decoratedPublisher)
+}
+
+// closePublishers closes publishers of all started handlers, including handlers that were stopped earlier.
+// Publishers are often shared between handlers, so they are not closed when a single handler stops.
+// It returns true when the publishers were not closed within the timeout.
+func (r *Router) closePublishers(timeout time.Duration) bool {
+	var waitGroup sync.WaitGroup
+	for _, publisher := range r.publishers {
+		waitGroup.Add(1)
+		go func() {
+			defer waitGroup.Done()
+
+			r.logger.Debug("Waiting for publisher to close", nil)
+			if err := publisher.Close(); err != nil {
+				r.logger.Error("Failed to close publisher", err, nil)
+			}
+			r.logger.Debug("Publisher closed", nil)
+		}()
+	}
+
+	return sync_internal.WaitGroupTimeout(&waitGroup, timeout)
 }
 
 func (r *Router) IsClosed() bool {
@@ -631,6 +681,9 @@ type handler struct {
 
 	runningHandlersWg     *sync.WaitGroup
 	runningHandlersWgLock *sync.Mutex
+
+	// runningMessagesWg tracks messages that this handler is still processing.
+	runningMessagesWg sync.WaitGroup
 
 	messagesCh <-chan *Message
 
@@ -665,17 +718,13 @@ func (h *handler) run(ctx context.Context, middlewares []middleware) {
 		h.runningHandlersWg.Add(1)
 		h.runningHandlersWgLock.Unlock()
 
+		h.runningMessagesWg.Add(1)
+
 		go h.handleMessage(msg, middlewareHandler)
 	}
 
-	if h.publisher != nil {
-		h.logger.Debug("Waiting for publisher to close", nil)
-		if err := h.publisher.Close(); err != nil {
-			h.logger.Error("Failed to close publisher", err, nil)
-		}
-		h.logger.Debug("Publisher closed", nil)
-	}
-
+	// The publisher is not closed here, as it can be shared with other handlers that are still running.
+	// It's closed when the router is closed, after all handlers have finished processing messages.
 	h.logger.Debug("Router handler stopped", nil)
 }
 
@@ -706,6 +755,11 @@ func (h *Handler) Started() chan struct{} {
 // Stop stops the handler.
 // Stop is asynchronous.
 // You can check if handler was stopped with Stopped() function.
+// Stopped() is closed only after the handler's function returns, so when Stop is called
+// from the handler's own function, don't wait for Stopped() there: it would block forever.
+//
+// Stop doesn't close the handler's publisher, as it can be shared with other handlers.
+// The publisher is closed when the router is closed.
 func (h *Handler) Stop() {
 	if !h.handler.started {
 		panic("handler is not started")
@@ -715,6 +769,8 @@ func (h *Handler) Stop() {
 }
 
 // Stopped returns channel which is stopped when handler did stop.
+// It's closed after the handler has finished processing the messages it received,
+// so it must not be awaited from the handler's own function.
 func (h *Handler) Stopped() chan struct{} {
 	return h.handler.stopped
 }
@@ -816,6 +872,7 @@ func (h *handler) handleClose(ctx context.Context) {
 
 func (h *handler) handleMessage(msg *Message, handler HandlerFunc) {
 	defer h.runningHandlersWg.Done()
+	defer h.runningMessagesWg.Done()
 	msgFields := watermill.LogFields{"message_uuid": msg.UUID, "handler_name": h.name}
 
 	defer func() {

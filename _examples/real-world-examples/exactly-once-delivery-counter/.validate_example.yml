@@ -1,4 +1,4 @@
 validation_cmd: "docker compose up"
 teardown_cmd: "docker compose down"
 timeout: 180
-expected_output: "Starting handler"
+expected_output: "Counter demo updated to 3"

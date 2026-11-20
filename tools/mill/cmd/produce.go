@@ -9,7 +9,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/ThreeDotsLabs/watermill-io/pkg/io"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/ThreeDotsLabs/watermill/message/router/plugin"
 )
@@ -41,17 +40,7 @@ For the configuration of particular pub/sub providers, see the help for the prov
 
 			router.AddPlugin(plugin.SignalsHandler)
 
-			in, err := io.NewSubscriber(
-				os.Stdin,
-				io.SubscriberConfig{
-					PollInterval:  time.Second,
-					UnmarshalFunc: io.PayloadUnmarshalFunc,
-				},
-				logger,
-			)
-			if err != nil {
-				return errors.Wrap(err, "could not create console subscriber")
-			}
+			in := newLineSubscriber(os.Stdin)
 
 			router.AddHandler(
 				"produce_from_stdin",
@@ -69,7 +58,12 @@ For the configuration of particular pub/sub providers, see the help for the prov
 				},
 			)
 
-			return router.Run(context.Background())
+			if err := router.Run(context.Background()); err != nil {
+				return err
+			}
+
+			// The router stops without an error when stdin ends, so a read failure has to be checked here.
+			return in.Err()
 		},
 	}
 

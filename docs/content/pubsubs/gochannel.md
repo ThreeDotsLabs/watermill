@@ -29,6 +29,14 @@ You can inject configuration via the constructor.
 
 {{% load-snippet-partial file="src-link/pubsub/gochannel/pubsub.go" first_line_contains="// Publish" last_line_contains="func (g *GoChannel) Publish" %}}
 
+With `BlockPublishUntilSubscriberAck`, only one message per topic waits for the subscribers' ack at a time:
+concurrent `Publish` calls on the same topic wait for each other, and `Subscribe` on that topic waits for the `Publish` in progress.
+Calls on other topics don't wait.
+
+Because of that, a subscriber must not publish to the topic it consumes before acking the message it received
+(for example, a Router handler returning messages for its own topic): the `Publish` waits for the ack, so they deadlock.
+Ack the message first, publish from another goroutine without waiting for it, or publish to another topic.
+
 ### Subscribing
 
 {{% load-snippet-partial file="src-link/pubsub/gochannel/pubsub.go" first_line_contains="// Subscribe" last_line_contains="func (g *GoChannel) Subscribe" %}}

@@ -35,9 +35,14 @@ In produce mode, subsequent lines of data from the standard input are transforme
 provider's topic/exchange. 
 
 The message's payload is set to the line from stdin, the UUID is auto-generated and the metadata is empty.
+Lines can be of any length.
+
+`mill` exits when the standard input ends and all lines have been published, so `cat file | mill <provider> produce`
+finishes by itself, while `tail -f file | mill <provider> produce` keeps running until it is interrupted.
+If reading the standard input fails, `mill` prints the error and exits with a non-zero status.
 
 Similarly, the contents of the message could be parsed differently from stdin, by modification
-of the unmarshaling function of the `io.Subscriber` of the `produceCmd`.
+of the `lineSubscriber` used by the `produceCmd`.
 
 ## Usage
 

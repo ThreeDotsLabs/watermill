@@ -2,11 +2,14 @@ package fanin_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ThreeDotsLabs/watermill"
@@ -203,4 +206,101 @@ func TestNewFanIn(t *testing.T) {
 		)
 		require.NoError(t, err)
 	})
+}
+
+func TestFanIn_source_subscription_ended(t *testing.T) {
+	subscriber := &topicsSubscriberMock{
+		topics: map[string]chan *message.Message{
+			"topic_1": make(chan *message.Message),
+			"topic_2": make(chan *message.Message),
+		},
+	}
+	publisher := &closablePublisherMock{}
+	logger := watermill.NewCaptureLogger()
+
+	fi, err := fanin.NewFanIn(
+		subscriber,
+		publisher,
+		fanin.Config{
+			SourceTopics: []string{"topic_1", "topic_2"},
+			TargetTopic:  "target_topic",
+			CloseTimeout: time.Second,
+		},
+		logger,
+	)
+	require.NoError(t, err)
+
+	runFinished := make(chan struct{})
+	go func() {
+		defer close(runFinished)
+		assert.NoError(t, fi.Run(context.Background()))
+	}()
+	<-fi.Running()
+
+	// the subscription for one of the source topics ends, for example because the consumer was closed by the broker
+	close(subscriber.topics["topic_1"])
+
+	require.Eventually(t, func() bool {
+		return logger.Has(watermill.CapturedMessage{
+			Level:  watermill.InfoLogLevel,
+			Fields: watermill.LogFields{"subscriber_name": "fan_in_topic_1", "topic": "topic_1"},
+			Msg:    "Subscriber stopped",
+		})
+	}, time.Second, time.Millisecond, "handler for topic_1 did not stop")
+
+	msg := message.NewMessage(watermill.NewUUID(), nil)
+	subscriber.topics["topic_2"] <- msg
+
+	select {
+	case <-msg.Acked():
+		// ok
+	case <-msg.Nacked():
+		t.Fatal("message from topic_2 was nacked, FanIn should still forward messages from the other topics")
+	case <-time.After(time.Second):
+		t.Fatal("timeout waiting for ack")
+	}
+
+	// the router closes itself when all subscriptions have ended
+	close(subscriber.topics["topic_2"])
+	select {
+	case <-runFinished:
+	case <-time.After(time.Second):
+		t.Fatal("timeout waiting for FanIn to stop")
+	}
+
+	assert.True(t, publisher.isClosed(), "publisher should be closed when FanIn stops")
+}
+
+// topicsSubscriberMock returns a separate channel for each topic, so the test can end subscriptions independently.
+type topicsSubscriberMock struct {
+	topics map[string]chan *message.Message
+}
+
+func (s *topicsSubscriberMock) Subscribe(ctx context.Context, topic string) (<-chan *message.Message, error) {
+	return s.topics[topic], nil
+}
+
+func (s *topicsSubscriberMock) Close() error {
+	return nil
+}
+
+// closablePublisherMock fails to publish after it was closed, like real publishers do.
+type closablePublisherMock struct {
+	closed atomic.Bool
+}
+
+func (p *closablePublisherMock) Publish(topic string, messages ...*message.Message) error {
+	if p.closed.Load() {
+		return errors.New("publisher closed")
+	}
+	return nil
+}
+
+func (p *closablePublisherMock) Close() error {
+	p.closed.Store(true)
+	return nil
+}
+
+func (p *closablePublisherMock) isClosed() bool {
+	return p.closed.Load()
 }

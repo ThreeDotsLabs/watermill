@@ -4,6 +4,7 @@ import (
 	"context"
 	stdSQL "database/sql"
 	"encoding/json"
+	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -90,6 +91,8 @@ func processMessage(msg *message.Message) error {
 		return err
 	}
 
+	log.Printf("Counter %s updated to %d", payload.CounterUUID, counterValue)
+
 	return nil
 }
 
@@ -114,6 +117,8 @@ func dbCounterValue(ctx context.Context, tx sql.Tx, counterUUID string) (int, er
 	if err != nil {
 		return 0, errors.Wrap(err, "can't get counter value")
 	}
+	// Rows must be closed, or the next query in this transaction fails with "bad connection".
+	defer rows.Close()
 
 	if !rows.Next() {
 		return 0, nil
