@@ -178,30 +178,36 @@ func (p PubSubBackend[Result]) ListenForNotifications(
 		for {
 			select {
 			case <-ctx.Done():
-				replyChan <- Reply[Result]{
+				sendReply(ctx, replyChan, Reply[Result]{
 					Error: ReplyTimeoutError{time.Since(start), ctx.Err()},
-				}
+				})
 				return
 			case notifyMsg, ok := <-notifyMsgs:
 				if !ok {
 					// subscriber is closed
-					replyChan <- Reply[Result]{
+					sendReply(ctx, replyChan, Reply[Result]{
 						Error: ReplyTimeoutError{time.Since(start), fmt.Errorf("subscriber closed")},
-					}
+					})
 					return
 				}
 
 				resp, ok, unmarshalErr := p.handleNotifyMsg(notifyMsg, string(params.OperationID), p.marshaler)
+
+				sent := true
 				if unmarshalErr != nil {
-					replyChan <- Reply[Result]{
+					sent = sendReply(ctx, replyChan, Reply[Result]{
 						Error: ReplyUnmarshalError{unmarshalErr},
-					}
+					})
 				} else if ok {
-					replyChan <- Reply[Result]{
+					sent = sendReply(ctx, replyChan, Reply[Result]{
 						HandlerResult:       resp.HandlerResult,
 						Error:               resp.Error,
 						NotificationMessage: notifyMsg,
-					}
+					})
+				}
+				if !sent {
+					// ctx is done and nobody reads the replies
+					return
 				}
 
 				// we assume that more messages may arrive (in case of fan-out commands handling) - we don't exit yet
@@ -210,6 +216,24 @@ func (p PubSubBackend[Result]) ListenForNotifications(
 	}()
 
 	return replyChan, nil
+}
+
+// sendReply gives up when ctx is done, so the listener can finish even when nobody reads the replies anymore.
+func sendReply[Result any](ctx context.Context, replyChan chan<- Reply[Result], reply Reply[Result]) bool {
+	// When ctx is already done, the select below picks one of the ready cases at random.
+	// Trying to send first ensures that the reply is not dropped if there is space for it.
+	select {
+	case replyChan <- reply:
+		return true
+	default:
+	}
+
+	select {
+	case replyChan <- reply:
+		return true
+	case <-ctx.Done():
+		return false
+	}
 }
 
 const OperationIDMetadataKey = "_watermill_requestreply_op_id"
